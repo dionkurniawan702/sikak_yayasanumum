@@ -1,88 +1,58 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
 
-/* ===== CSS VARIABLES ===== */
-:root {
-    --color-primary: #1e40af; /* Blue 800 - Professional for Yayasan */
-    --color-primary-light: #3b82f6;
-    --color-primary-dark: #1e3a8a;
-    --color-secondary: #0f172a;
-    --color-accent: #f59e0b;
-    --color-sidebar: #0f172a;
-    --color-sidebar-hover: #1e293b;
-    --color-sidebar-active: #1e40af;
-    --color-bg: #f8fafc;
-    --color-card: #ffffff;
-    --color-border: #e2e8f0;
-    --color-text: #0f172a;
-    --color-text-light: #64748b;
-    --color-success: #059669;
-    --color-danger: #dc2626;
-    --color-warning: #d97706;
+@theme {
+  --color-primary: #1e40af;
+  --color-primary-light: #3b82f6;
+  --color-primary-dark: #1e3a8a;
+  
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-display: 'Outfit', 'Inter', sans-serif;
 }
 
-/* Base and Layout styles copied from SIKAK LAZIS for consistency */
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+:root {
+  --blue-600: #1e40af;
+  --blue-500: #3b82f6;
+  --slate-900: #0f172a;
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--color-bg);
-    color: var(--color-text);
-    -webkit-font-smoothing: antialiased;
+  @apply bg-slate-50 text-slate-900 font-sans antialiased;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(220,100%,95%,1) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(210,100%,98%,1) 0, transparent 50%);
+  min-height: 100vh;
 }
 
-/* Sidebar and Main Content styles */
-.sidebar {
-    width: 270px;
-    height: 100vh;
-    background: linear-gradient(180deg, #0f172a 0%, #1a2332 100%);
-    color: #e2e8f0;
-    position: fixed;
-    left: 0;
-    top: 0;
-    overflow-y: auto;
-    z-index: 1000;
-    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.animate-in {
+  animation: fadeIn 0.4s ease-out;
 }
 
-.sidebar-brand {
-    padding: 24px 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.sidebar-brand h1 {
-    font-size: 1.35rem;
-    font-weight: 800;
-    background: linear-gradient(135deg, #3b82f6, #60a5fa);
-    -webkit-background-clip: text;
-    background-clip: text;
-    -webkit-text-fill-color: transparent;
-    letter-spacing: -0.5px;
+/* Custom UI Components */
+.btn {
+  @apply flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl font-bold transition-all duration-300 active:scale-95;
 }
 
-.sidebar-link.active {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+.btn-primary {
+  @apply bg-blue-600 text-white shadow-lg shadow-blue-500/20 hover:bg-blue-700 hover:shadow-blue-500/40;
 }
 
-/* More styles follow the same premium pattern... */
-@layer components {
-    .card {
-        background: var(--color-card);
-        border-radius: 14px;
-        border: 1px solid var(--color-border);
-        padding: 20px 24px;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-        transition: all 0.2s ease;
-    }
+.btn-secondary {
+  @apply bg-white text-slate-600 border border-slate-200 hover:bg-slate-50;
+}
 
-    .card:hover {
-        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
-        transform: translateY(-2px);
-    }
+.form-input, .form-select {
+  @apply w-full px-5 py-3 rounded-2xl border border-slate-200 bg-white focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none text-sm font-medium;
+}
+
+.form-label {
+  @apply text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1;
+}
+
+.card {
+  @apply bg-white rounded-3xl border border-slate-100 shadow-sm transition-all duration-300;
 }
