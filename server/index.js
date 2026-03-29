@@ -25,28 +25,46 @@ console.log(`[Diagnostic] __dirname: ${__dirname}`);
 app.use(cors());
 app.use(express.json());
 
+// Real-time Request Logger (for debugging)
+app.use((req, res, next) => {
+    console.log(`[Request] ${new Date().toISOString()} - ${req.method} ${req.url}`);
+    next();
+});
+
+// Immediate Root Health Check (Crucial for Easypanel)
+app.get('/', (req, res) => {
+    res.status(200).send('SIKAK Yayasan Umum Application is Running');
+});
+
 // Basic Health Check (Verifies Prisma)
 app.get('/api/health', async (req, res) => {
     try {
         await prisma.$queryRaw`SELECT 1`;
         res.json({ status: 'ok', database: 'connected', message: 'SIKAK Yayasan Umum API is running' });
     } catch (error) {
+        console.error(`[DB Error] ${error.message}`);
         res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
     }
 });
 
 // Initial Routes Placeholder
-app.get('/api', (req, res) => {
-    res.send('SIKAK Yayasan Umum Backend API');
+app.get('/api/test', (req, res) => {
+    res.json({ message: 'API is working' });
 });
 
-// Serve Static Files (Vite Build)
 const buildPath = path.join(__dirname, '../dist');
+console.log(`[Diagnostic] Build path set to: ${buildPath}`);
+
+// Static files (Defensive)
 app.use(express.static(buildPath));
 
 // Catch-all route for SPA
 app.get('*', (req, res) => {
-    res.sendFile(path.join(buildPath, 'index.html'));
+    try {
+        res.sendFile(path.join(buildPath, 'index.html'));
+    } catch (error) {
+        res.status(404).send('Frontend build (index.html) not found. Check Docker build logs.');
+    }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
