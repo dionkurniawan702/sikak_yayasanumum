@@ -14,6 +14,14 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 5000;
 
+// Verbose Diagnostic Log
+const rawDBUrl = process.env.DATABASE_URL || '';
+const maskedDBUrl = rawDBUrl.replace(/\/\/.*:.*@/, '//****:****@');
+console.log(`[Diagnostic] Starting SIKAK Yayasan Backend...`);
+console.log(`[Diagnostic] PORT: ${PORT}`);
+console.log(`[Diagnostic] DATABASE_URL: ${maskedDBUrl}`);
+console.log(`[Diagnostic] __dirname: ${__dirname}`);
+
 app.use(cors());
 app.use(express.json());
 

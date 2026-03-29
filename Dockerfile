@@ -24,6 +24,7 @@ RUN npm install --omit=dev
 
 # Copy backend source (influenced by .dockerignore)
 COPY server/ ./
+RUN ls -la /app && ls -la /app/server && ls -la /app/dist || true
 RUN npx prisma generate
 
 # Copy the built frontend from Phase 1
