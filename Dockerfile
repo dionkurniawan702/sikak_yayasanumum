@@ -14,19 +14,19 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy and install backend dependencies
+# Install backend dependencies first (layered cache)
 COPY server/package*.json ./server/
 WORKDIR /app/server
 RUN npm install --omit=dev
 
-# Copy backend source and prisma schema
+# Copy backend source (influenced by .dockerignore)
 COPY server/ ./
 RUN npx prisma generate
 
 # Copy the built frontend from Phase 1
 COPY --from=frontend-builder /app/dist /app/dist
 
-# Expose the API port (standardized to 5000)
+# Expose the API port
 EXPOSE 5000
 
 # Start unified app
