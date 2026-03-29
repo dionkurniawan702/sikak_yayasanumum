@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Edit2, Trash2, X, Check, Info, Search, List } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, Check, Info, Search, List, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function ProgramManagement() {
     const { state, dispatch } = useApp();
@@ -11,6 +12,21 @@ export default function ProgramManagement() {
     const defaultFormData = { name: '', category: 'Umum', description: '', targetAmount: '', status: 'Aktif', initialDonationBalance: '', initialResultBalance: '' };
     const [formData, setFormData] = useState(defaultFormData);
     const [searchTerm, setSearchTerm] = useState('');
+
+    const exportToExcel = () => {
+        const data = filteredPrograms.map(p => ({
+            'ID Program': p.id,
+            'Nama Program': p.name,
+            'Kategori': p.category,
+            'Deskripsi': p.description || '',
+            'Target Anggaran': p.targetAmount || 0,
+            'Status': p.status
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Programs');
+        XLSX.writeFile(wb, 'SIKAK-Yayasan-Programs.xlsx');
+    };
 
     const filteredPrograms = programs.filter(p => 
         p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -49,9 +65,14 @@ export default function ProgramManagement() {
                     <p className="text-slate-500 font-medium">Kelola daftar kegiatan dan alokasi dana yayasan</p>
                 </div>
                 {!isAdding && (
-                    <button onClick={() => { setFormData(defaultFormData); setIsAdding(true); setEditingId(null); }} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
-                        <Plus size={18} /> Tambah Program
-                    </button>
+                    <div className="flex gap-4">
+                        <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                            <FileSpreadsheet size={18} /> Export
+                        </button>
+                        <button onClick={() => { setFormData(defaultFormData); setIsAdding(true); setEditingId(null); }} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
+                            <Plus size={18} /> Tambah Program
+                        </button>
+                    </div>
                 )}
             </div>
 

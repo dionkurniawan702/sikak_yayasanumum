@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { bangunBukuBesar } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { BookMarked, Calendar, Search, Filter } from 'lucide-react';
+import { BookMarked, Calendar, Search, Filter, FileSpreadsheet, Printer } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function GeneralLedger() {
     const { state } = useApp();
@@ -28,6 +29,22 @@ export default function GeneralLedger() {
         : [];
 
     const selectedAcc = accounts.find(a => a.id === selectedAccount);
+
+    const exportToExcel = () => {
+        if (!selectedAccount) return alert('Pilih akun terlebih dahulu!');
+        const data = ledgerEntries.map(e => ({
+            'Tanggal': e.date,
+            'ID Jurnal': e.journalId,
+            'Keterangan': e.description,
+            'Debit': e.debit || 0,
+            'Kredit': e.credit || 0,
+            'Saldo': e.saldo
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'GeneralLedger');
+        XLSX.writeFile(wb, `SIKAK-Yayasan-BukuBesar-${selectedAcc?.code}-${selectedAcc?.name}.xlsx`);
+    };
 
     return (
         <div className="p-8">
@@ -82,6 +99,14 @@ export default function GeneralLedger() {
                                 <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest">{selectedAcc?.type}</span>
                                 <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-[9px] font-black uppercase tracking-widest">{selectedAcc?.fund}</span>
                             </div>
+                        </div>
+                        <div className="flex gap-4">
+                            <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                                <FileSpreadsheet size={18} /> Export Excel
+                            </button>
+                            <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black flex items-center gap-2">
+                                <Printer size={18} /> Cetak
+                            </button>
                         </div>
                         <div className="text-right">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Akhir Periode</p>

@@ -2,8 +2,9 @@ import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { hitungSaldoPerTipe, buildHierarchyAccounts } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { TrendingUp, TrendingDown, Printer, Download, Filter, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, Printer, Download, Filter, Activity, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function ActivityReport() {
     const { state } = useApp();
@@ -14,6 +15,39 @@ export default function ActivityReport() {
     const reportRef = useRef(null);
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const exportToExcel = () => {
+        const data = [];
+        data.push({ 'Keterangan': 'LAPORAN AKTIVITAS', 'Tahun Berjalan': currentYearStr, 'Tahun Sebelumnya': prevYearStr });
+        data.push({});
+
+        data.push({ 'Keterangan': 'PENDAPATAN' });
+        pendapatan.forEach(h => {
+            data.push({ 'Keterangan': h.name, 'Tahun Berjalan': Math.abs(h.saldo), 'Tahun Sebelumnya': Math.abs(h.saldoPrev) });
+            h.children.forEach(c => {
+                data.push({ 'Keterangan': `  ${c.name}`, 'Tahun Berjalan': Math.abs(c.saldo), 'Tahun Sebelumnya': Math.abs(c.saldoPrev) });
+            });
+        });
+        data.push({ 'Keterangan': 'TOTAL PENDAPATAN', 'Tahun Berjalan': totalPendapatanCurr, 'Tahun Sebelumnya': totalPendapatanPrev });
+        data.push({});
+
+        data.push({ 'Keterangan': 'BEBAN' });
+        beban.forEach(h => {
+            data.push({ 'Keterangan': h.name, 'Tahun Berjalan': h.saldo, 'Tahun Sebelumnya': h.saldoPrev });
+            h.children.forEach(c => {
+                data.push({ 'Keterangan': `  ${c.name}`, 'Tahun Berjalan': c.saldo, 'Tahun Sebelumnya': c.saldoPrev });
+            });
+        });
+        data.push({ 'Keterangan': 'TOTAL BEBAN', 'Tahun Berjalan': totalBebanCurr, 'Tahun Sebelumnya': totalBebanPrev });
+        data.push({});
+
+        data.push({ 'Keterangan': 'SURPLUS (DEFISIT)', 'Tahun Berjalan': surplusCurr, 'Tahun Sebelumnya': surplusPrev });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'ActivityReport');
+        XLSX.writeFile(wb, `SIKAK-Yayasan-LaporanAktivitas-${selectedYear}.xlsx`);
+    };
 
     // Helper untuk mendapatkan hierarki Pendapatan & Beban
     const getCompHierarchy = (type) => {
@@ -60,6 +94,9 @@ export default function ActivityReport() {
                         <option value="2026">Tahun 2026</option>
                         <option value="2025">Tahun 2025</option>
                     </select>
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export Excel
+                    </button>
                     <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
                         <Printer size={18} /> Cetak Laporan
                     </button>

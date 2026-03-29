@@ -42,6 +42,22 @@ export default function JournalEntry() {
     const [viewMode, setViewMode] = useState('input');
     const [editingJournal, setEditingJournal] = useState(null);
     const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
+    const [historySearch, setHistorySearch] = useState('');
+
+    const exportHistoryToExcel = () => {
+        const data = journals.map(j => ({
+            'ID Jurnal': j.id,
+            'Tanggal': j.date,
+            'Deskripsi': j.description,
+            'Pihak Terkait': j.name || '-',
+            'Referesi': j.reference || '-',
+            'Total': j.entries.reduce((s, e) => s + e.debit, 0)
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'History');
+        XLSX.writeFile(wb, 'SIKAK-Yayasan-Journal-History.xlsx');
+    };
 
     const TAX_GROUPS = [
         { label: 'Kelompok 1 (4 Tahun) - Peralatan/Laptop/Motor', value: '4' },
@@ -56,9 +72,14 @@ export default function JournalEntry() {
     const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
     const difference = Math.abs(totalDebit - totalCredit);
 
-    const last20Journals = [...journals]
+    const filteredJournals = journals
+        .filter(j => 
+            j.description.toLowerCase().includes(historySearch.toLowerCase()) || 
+            (j.name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
+            j.id.toLowerCase().includes(historySearch.toLowerCase())
+        )
         .sort((a, b) => b.id.localeCompare(a.id))
-        .slice(0, 20);
+        .slice(0, 50);
 
     function addRow() {
         setRows([...rows, { accountId: '', debit: '', credit: '' }]);
@@ -239,6 +260,19 @@ export default function JournalEntry() {
                     <table className="w-full text-left">
                         <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             <tr>
+                                <th colSpan={4} className="px-8 py-4">
+                                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                        <div className="relative flex-1 w-full">
+                                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                            <input className="form-input pl-12 rounded-2xl border-slate-200" placeholder="Cari di riwayat..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
+                                        </div>
+                                        <button onClick={exportHistoryToExcel} className="btn bg-white text-emerald-600 border-emerald-100 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                                            <FileSpreadsheet size={18} /> Export Excel
+                                        </button>
+                                    </div>
+                                </th>
+                            </tr>
+                            <tr>
                                 <th className="px-8 py-6">ID / Tanggal</th>
                                 <th className="px-8 py-6">Deskripsi Transaksi</th>
                                 <th className="px-8 py-6 text-right">Nilai Total</th>
@@ -246,7 +280,7 @@ export default function JournalEntry() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                            {last20Journals.map(j => (
+                            {filteredJournals.map(j => (
                                 <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-8 py-4">
                                         <p className="font-bold text-blue-600 text-xs">{j.id}</p>

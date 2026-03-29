@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserPlus, Edit2, Trash2, Shield, User, Key, X, Check, Search } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Shield, User, Key, X, Check, Search, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function UserManagement() {
     const { state, dispatch } = useApp();
@@ -15,6 +16,19 @@ export default function UserManagement() {
         name: '',
         role: 'admin'
     });
+
+    const exportToExcel = () => {
+        const data = users.map(u => ({
+            'ID User': u.id,
+            'Username': u.username,
+            'Nama Lengkap': u.name,
+            'Role': u.role
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Users');
+        XLSX.writeFile(wb, 'SIKAK-Yayasan-Users.xlsx');
+    };
 
     const openModal = (user = null) => {
         if (user) {
@@ -66,9 +80,14 @@ export default function UserManagement() {
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">Manajemen User</h2>
                     <p className="text-slate-500 font-medium">Atur hak akses dan kredensial staf yayasan</p>
                 </div>
-                <button onClick={() => openModal()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
-                    <UserPlus size={18} /> Tambah User
-                </button>
+                <div className="flex gap-4">
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export Excel
+                    </button>
+                    <button onClick={() => openModal()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
+                        <UserPlus size={18} /> Tambah User
+                    </button>
+                </div>
             </div>
 
             <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden animate-in">

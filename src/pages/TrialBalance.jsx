@@ -2,8 +2,9 @@ import { Fragment, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { bangunNeracaSaldo, buildHierarchyAccounts } from '../utils/accounting';
 import { formatRupiah } from '../utils/format';
-import { CheckCircle, AlertTriangle, Download, Printer, FileText } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Download, Printer, FileText, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function TrialBalance() {
     const { state } = useApp();
@@ -16,6 +17,21 @@ export default function TrialBalance() {
     const totalCredit = trialBalance.reduce((s, r) => s + r.credit, 0);
     const isBalanced = Math.abs(totalDebit - totalCredit) < 1;
 
+    const exportToExcel = () => {
+        const data = trialBalance.map(r => ({
+            'Kode Akun': r.code,
+            'Nama Akun': r.name,
+            'Tipe': r.type,
+            'Dana': r.fund,
+            'Debit': r.debit || 0,
+            'Kredit': r.credit || 0
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'TrialBalance');
+        XLSX.writeFile(wb, 'SIKAK-Yayasan-NeracaSaldo.xlsx');
+    };
+
     const types = ['Aset', 'Kewajiban', 'Aset Neto', 'Pendapatan', 'Beban'];
 
     return (
@@ -26,6 +42,9 @@ export default function TrialBalance() {
                     <p className="text-slate-500 font-medium tracking-tight">Validasi keseimbangan mutasi debit & kredit (Trial Balance)</p>
                 </div>
                 <div className="flex gap-4">
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export Excel
+                    </button>
                     <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
                         <Printer size={18} /> Cetak Laporan
                     </button>

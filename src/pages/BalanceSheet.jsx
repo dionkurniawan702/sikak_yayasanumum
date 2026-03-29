@@ -2,8 +2,9 @@ import { useState, Fragment, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { hitungSaldoPerTipe, buildHierarchyAccounts } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { Landmark, TrendingDown, Printer, Download, FileText, PieChart } from 'lucide-react';
+import { Landmark, TrendingDown, Printer, Download, FileText, PieChart, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function BalanceSheet() {
     const { state } = useApp();
@@ -14,6 +15,51 @@ export default function BalanceSheet() {
     const reportRef = useRef(null);
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const exportToExcel = () => {
+        const data = [];
+        data.push({ 'Keterangan': 'LAPORAN POSISI KEUANGAN', 'Tahun Berjalan': currentYearStr, 'Tahun Sebelumnya': prevYearStr });
+        data.push({});
+        
+        data.push({ 'Keterangan': 'ASET' });
+        hierAset.forEach(st => {
+            data.push({ 'Keterangan': st.name.toUpperCase(), 'Tahun Berjalan': st.saldo, 'Tahun Sebelumnya': st.saldoPrev });
+            st.headers.forEach(h => {
+                h.children.forEach(c => {
+                    data.push({ 'Keterangan': `  ${c.name}`, 'Tahun Berjalan': c.saldo, 'Tahun Sebelumnya': c.saldoPrev });
+                });
+            });
+        });
+        data.push({ 'Keterangan': 'TOTAL ASET', 'Tahun Berjalan': totalAsetCurr, 'Tahun Sebelumnya': totalAsetPrev });
+        data.push({});
+
+        data.push({ 'Keterangan': 'LIABILITAS' });
+        hierKew.forEach(st => {
+            st.headers.forEach(h => {
+                h.children.forEach(c => {
+                    data.push({ 'Keterangan': `  ${c.name}`, 'Tahun Berjalan': Math.abs(c.saldo), 'Tahun Sebelumnya': Math.abs(c.saldoPrev) });
+                });
+            });
+        });
+        data.push({ 'Keterangan': 'TOTAL LIABILITAS', 'Tahun Berjalan': Math.abs(totalKewCurr), 'Tahun Sebelumnya': Math.abs(totalKewPrev) });
+        data.push({});
+
+        data.push({ 'Keterangan': 'ASET NETO' });
+        hierNeto.forEach(st => {
+            st.headers.forEach(h => {
+                h.children.forEach(c => {
+                    data.push({ 'Keterangan': `  ${c.name}`, 'Tahun Berjalan': Math.abs(c.saldo), 'Tahun Sebelumnya': Math.abs(c.saldoPrev) });
+                });
+            });
+        });
+        data.push({ 'Keterangan': 'Surplus (Defisit) Aktivitas', 'Tahun Berjalan': surplusCurr, 'Tahun Sebelumnya': surplusPrev });
+        data.push({ 'Keterangan': 'TOTAL ASET NETO', 'Tahun Berjalan': Math.abs(totalNetoCurr + surplusCurr), 'Tahun Sebelumnya': Math.abs(totalNetoPrev + surplusPrev) });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'BalanceSheet');
+        XLSX.writeFile(wb, `SIKAK-Yayasan-Neraca-${selectedYear}.xlsx`);
+    };
 
     const buildCompHierarchy = (type) => {
         const curr = buildHierarchyAccounts(journals, accounts, type, null, currentYearStr, assets);
@@ -74,6 +120,9 @@ export default function BalanceSheet() {
                         <option value="2025">Tahun 2025</option>
                         <option value="2024">Tahun 2024</option>
                     </select>
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export Excel
+                    </button>
                     <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
                         <Printer size={18} /> Cetak Laporan
                     </button>

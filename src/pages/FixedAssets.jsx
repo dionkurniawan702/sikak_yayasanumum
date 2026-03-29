@@ -15,6 +15,25 @@ export default function FixedAssets() {
     const [showModal, setShowModal] = useState(false);
     const [editingAsset, setEditingAsset] = useState(null);
 
+    const exportToExcel = () => {
+        const data = assets.map(a => ({
+            'ID Aset': a.id,
+            'Nama Aset': a.name,
+            'Tanggal Perolehan': a.acquisitionDate,
+            'Harga Perolehan': a.cost,
+            'Umur Ekonomis (Thn)': a.economicLife,
+            'Kategori': a.category,
+            'Posisi': a.assetPosition || 'Pusat',
+            'Kondisi': a.assetCondition,
+            'Status': a.status,
+            'Nilai Buku': hitungNilaiBuku(a)
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Assets');
+        XLSX.writeFile(wb, 'SIKAK-Yayasan-Assets.xlsx');
+    };
+
     const depAccounts = accounts.filter(a => a.category === 'detail' && a.type === 'Beban');
     const accumAccounts = accounts.filter(a => a.category === 'detail' && a.normalBalance === 'kredit' && a.type === 'Aset');
     const assetAccounts = accounts.filter(a => a.category === 'detail' && a.normalBalance === 'debit' && a.type === 'Aset');
@@ -72,9 +91,14 @@ export default function FixedAssets() {
                     <h2 className="text-3xl font-black text-slate-900 tracking-tight">Database Aset Tetap</h2>
                     <p className="text-slate-500 font-medium">Manajemen Aset & Penyusutan Otomatis (PSAK 35)</p>
                 </div>
-                <button onClick={() => { setEditingAsset(null); setShowModal(true); }} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black tracking-tight">
-                    <Plus size={18} /> Tambah Aset
-                </button>
+                <div className="flex gap-4">
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export
+                    </button>
+                    <button onClick={() => { setEditingAsset(null); setShowModal(true); }} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black tracking-tight">
+                        <Plus size={18} /> Tambah Aset
+                    </button>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

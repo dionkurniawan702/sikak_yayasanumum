@@ -26,6 +26,24 @@ export default function ChartOfAccounts() {
     const [viewMode, setViewMode] = useState('list');
     const fileInputRef = useRef(null);
 
+    const exportToExcel = () => {
+        const data = [];
+        subTypeHierarchy.forEach(st => {
+            data.push({ 'Tipe': st.name, 'Kode': '', 'Nama': '', 'Saldo': st.saldo });
+            st.headers.forEach(h => {
+                data.push({ 'Tipe': '', 'Kode': h.code, 'Nama': h.name, 'Saldo': h.saldo });
+                h.children.forEach(c => {
+                    data.push({ 'Tipe': '', 'Kode': c.code, 'Nama': `   ${c.name}`, 'Saldo': c.saldo });
+                });
+            });
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'CoA');
+        XLSX.writeFile(wb, `SIKAK-Yayasan-ChartOfAccounts-${selectedYear}.xlsx`);
+    };
+
     let subTypeHierarchy = [];
     TIPE_AKUN.forEach(type => {
         if (filterType && type !== filterType) return;
@@ -153,9 +171,14 @@ export default function ChartOfAccounts() {
                             {TIPE_AKUN.map(t => <option key={t} value={t}>{t}</option>)}
                         </select>
                     </div>
-                    <button onClick={openAdd} className="btn btn-primary w-full md:w-auto py-3 px-8 rounded-2xl shadow-lg shadow-blue-500/20 font-bold">
-                        <Plus size={18} /> Tambah Akun
-                    </button>
+                    <div className="flex gap-4 w-full md:w-auto">
+                        <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 w-full md:w-auto py-3 px-8 rounded-2xl shadow-sm font-bold flex items-center gap-2">
+                            <FileSpreadsheet size={18} /> Export Excel
+                        </button>
+                        <button onClick={openAdd} className="btn btn-primary w-full md:w-auto py-3 px-8 rounded-2xl shadow-lg shadow-blue-500/20 font-bold">
+                            <Plus size={18} /> Tambah Akun
+                        </button>
+                    </div>
                 </div>
 
                 {/* Table */}

@@ -2,8 +2,9 @@ import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { hitungSaldoAkun } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { Download, Printer, Activity, TrendingUp, TrendingDown, Landmark, Banknote } from 'lucide-react';
+import { Download, Printer, Activity, TrendingUp, TrendingDown, Landmark, Banknote, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function CashFlowStatement() {
     const { state } = useApp();
@@ -14,6 +15,39 @@ export default function CashFlowStatement() {
     const reportRef = useRef(null);
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const exportToExcel = () => {
+        const data = [];
+        data.push({ 'Keterangan': 'LAPORAN ARUS KAS (METODE LANGSUNG)', 'Nilai': currentYearStr });
+        data.push({});
+
+        data.push({ 'Keterangan': 'ARUS KAS DARI AKTIVITAS OPERASI' });
+        data.push({ 'Keterangan': ' Penerimaan Kas:' });
+        operatingReceipts.forEach(r => data.push({ 'Keterangan': `  ${r.label}`, 'Nilai': r.value }));
+        data.push({ 'Keterangan': ' Pengeluaran Kas:' });
+        operatingPayments.forEach(p => data.push({ 'Keterangan': `  ${p.label}`, 'Nilai': -p.value }));
+        data.push({ 'Keterangan': 'Arus Kas Bersih Operasional', 'Nilai': netOperatingCash });
+        data.push({});
+
+        data.push({ 'Keterangan': 'ARUS KAS DARI AKTIVITAS INVESTASI' });
+        investingActivities.forEach(i => data.push({ 'Keterangan': `  ${i.label}`, 'Nilai': i.value }));
+        data.push({ 'Keterangan': 'Arus Kas Bersih Investasi', 'Nilai': netInvestingCash });
+        data.push({});
+
+        data.push({ 'Keterangan': 'ARUS KAS DARI AKTIVITAS PENDANAAN' });
+        financingActivities.forEach(f => data.push({ 'Keterangan': `  ${f.label}`, 'Nilai': f.value }));
+        data.push({ 'Keterangan': 'Arus Kas Bersih Pendanaan', 'Nilai': netFinancingCash });
+        data.push({});
+
+        data.push({ 'Keterangan': 'Kenaikan (Penurunan) Kas Bersih', 'Nilai': cashIncrease });
+        data.push({ 'Keterangan': 'Kas Awal Periode', 'Nilai': cashStart });
+        data.push({ 'Keterangan': 'KAS AKHIR PERIODE', 'Nilai': cashEnd });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'CashFlow');
+        XLSX.writeFile(wb, `SIKAK-Yayasan-ArusKas-${selectedYear}.xlsx`);
+    };
 
     const cashAccounts = accounts.filter(a => a.category === 'detail' && a.code.startsWith('1-11'));
     
@@ -85,6 +119,9 @@ export default function CashFlowStatement() {
                         <option value="2026">2026</option>
                         <option value="2025">2025</option>
                     </select>
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export Excel
+                    </button>
                     <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
                         <Printer size={18} /> Cetak Laporan
                     </button>

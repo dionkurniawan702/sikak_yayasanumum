@@ -2,8 +2,9 @@ import { useState, Fragment } from 'react';
 import { useApp } from '../context/AppContext';
 import { hitungSaldoAkun } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { Download, Printer, TrendingUp, Landmark, RefreshCw } from 'lucide-react';
+import { Download, Printer, TrendingUp, Landmark, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import * as XLSX from 'xlsx';
 
 export default function StatementOfChangesInNetAssets() {
     const { state } = useApp();
@@ -13,6 +14,25 @@ export default function StatementOfChangesInNetAssets() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const exportToExcel = () => {
+        const data = reportData.map(d => ({
+            'Klasifikasi Aset Neto': d.name,
+            'Saldo Awal (1 Jan)': d.awal,
+            'Surplus / (Defisit)': d.surplus,
+            'Saldo Akhir (31 Des)': d.akhir
+        }));
+        data.push({
+            'Klasifikasi Aset Neto': 'TOTAL SELURUH ASET NETO',
+            'Saldo Awal (1 Jan)': totalAwal,
+            'Surplus / (Defisit)': totalSurplus,
+            'Saldo Akhir (31 Des)': totalAkhir
+        });
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'NetAssetChanges');
+        XLSX.writeFile(wb, `SIKAK-Yayasan-PerubahanAsetNeto-${selectedYear}.xlsx`);
+    };
 
     // Helper to get balance for a specific asset neto category and year
     const getNetAssetBalance = (categoryName, year) => {
@@ -67,6 +87,9 @@ export default function StatementOfChangesInNetAssets() {
                         <option value="2026">2026</option>
                         <option value="2025">2025</option>
                     </select>
+                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                        <FileSpreadsheet size={18} /> Export Excel
+                    </button>
                     <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
                         <Printer size={18} /> Cetak Laporan
                     </button>
