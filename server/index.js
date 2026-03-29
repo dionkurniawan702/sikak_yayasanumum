@@ -2,6 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { PrismaClient } from '@prisma/client';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -18,8 +23,17 @@ app.get('/api/health', (req, res) => {
 });
 
 // Initial Routes Placeholder
-app.get('/', (req, res) => {
+app.get('/api', (req, res) => {
     res.send('SIKAK Yayasan Umum Backend API');
+});
+
+// Serve Static Files (Vite Build)
+const buildPath = path.join(__dirname, '../dist');
+app.use(express.static(buildPath));
+
+// Catch-all route for SPA
+app.get('*', (req, res) => {
+    res.sendFile(path.join(buildPath, 'index.html'));
 });
 
 app.listen(PORT, () => {

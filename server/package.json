@@ -3,9 +3,11 @@
     "version": "1.0.0",
     "description": "Backend API for SIKAK Yayasan Umum",
     "main": "index.js",
+    "type": "module",
     "scripts": {
         "start": "node index.js",
-        "dev": "nodemon index.js"
+        "dev": "nodemon index.js",
+        "build": "prisma generate"
     },
     "dependencies": {
         "@prisma/client": "^6.19.2",
