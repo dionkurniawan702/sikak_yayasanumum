@@ -23,12 +23,12 @@ export const initialAccounts = [
     { id: '21102', code: '2-1102', name: 'Utang Program Sosial', type: 'Kewajiban', subType: 'Kewajiban Jangka Pendek', fund: 'Dana Terikat', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
 
     // === 3. ASET NETO (EKUITAS PSAK 35) ===
-    { id: '31000', code: '3-1000', name: 'Aset Neto Tanpa Pembatasan', type: 'Saldo Dana', subType: 'Saldo Dana', fund: 'Dana Umum', category: 'header', normalBalance: 'kredit' },
-    { id: '31101', code: '3-1101', name: 'Aset Neto Tanpa Pembatasan', type: 'Saldo Dana', subType: 'Saldo Dana', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
+    { id: '31000', code: '3-1000', name: 'Aset Neto Tanpa Pembatasan', type: 'Aset Neto', subType: 'Aset Neto', fund: 'Dana Umum', category: 'header', normalBalance: 'kredit' },
+    { id: '31101', code: '3-1101', name: 'Aset Neto Tanpa Pembatasan', type: 'Aset Neto', subType: 'Aset Neto', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
 
-    { id: '32000', code: '3-2000', name: 'Aset Neto Dengan Pembatasan', type: 'Saldo Dana', subType: 'Saldo Dana', fund: 'Dana Terikat', category: 'header', normalBalance: 'kredit' },
-    { id: '32101', code: '3-2101', name: 'Aset Neto Terikat Temporer', type: 'Saldo Dana', subType: 'Saldo Dana', fund: 'Dana Terikat', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
-    { id: '32102', code: '3-2102', name: 'Aset Neto Terikat Permanen', type: 'Saldo Dana', subType: 'Saldo Dana', fund: 'Dana Terikat', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
+    { id: '32000', code: '3-2000', name: 'Aset Neto Dengan Pembatasan', type: 'Aset Neto', subType: 'Aset Neto', fund: 'Dana Terikat', category: 'header', normalBalance: 'kredit' },
+    { id: '32101', code: '3-2101', name: 'Aset Neto Terikat Temporer', type: 'Aset Neto', subType: 'Aset Neto', fund: 'Dana Terikat', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
+    { id: '32102', code: '3-2102', name: 'Aset Neto Terikat Permanen', type: 'Aset Neto', subType: 'Aset Neto', fund: 'Dana Terikat', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
 
     // === 4. PENGHASILAN / PENERIMAAN ===
     { id: '41000', code: '4-1000', name: 'Penghasilan Tanpa Pembatasan', type: 'Pendapatan', subType: 'Pendapatan', fund: 'Dana Umum', category: 'header', normalBalance: 'kredit' },

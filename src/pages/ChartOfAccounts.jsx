@@ -227,9 +227,10 @@ export default function ChartOfAccounts() {
                                                     <td className="px-8 py-3 text-right font-bold text-slate-700">
                                                         <CurrencyDisplay value={child.saldo} />
                                                     </td>
-                                                    <td className="px-8 py-3">
+                                                    <td className="px-8 py-3 text-center">
                                                         <div className="flex justify-center gap-2">
-                                                            <button onClick={() => openEdit(child)} className="p-1.5 text-slate-300 hover:text-blue-600 transition-all"><Pencil size={14} /></button>
+                                                            <button onClick={() => openEdit(child)} className="p-1.5 text-slate-300 hover:text-blue-600 hover:bg-white rounded-lg shadow-sm transition-all"><Pencil size={14} /></button>
+                                                            <button onClick={() => handleDelete(child.id)} className="p-1.5 text-slate-300 hover:text-rose-600 hover:bg-white rounded-lg shadow-sm transition-all"><Trash2 size={14} /></button>
                                                         </div>
                                                     </td>
                                                 </tr>
