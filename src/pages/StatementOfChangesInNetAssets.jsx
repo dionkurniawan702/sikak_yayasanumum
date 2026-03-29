@@ -38,10 +38,10 @@ export default function StatementOfChangesInNetAssets() {
         return Math.abs(pendapatan) - beban;
     };
 
-    // Categories (Adapting from LAZIS funds to Foundation net assets)
+    // Categories (Foundation net assets classification)
     const categories = [
-        { id: 'unrestricted', name: 'Tanpa Pembatasan', fund: 'Dana Amil' }, // Mapping Amil to Unrestricted
-        { id: 'restricted', name: 'Dengan Pembatasan', fund: 'Dana Zakat' }    // Mapping Zakat/Infak to Restricted
+        { id: 'unrestricted', name: 'Tanpa Pembatasan', fund: 'Dana Umum' },
+        { id: 'restricted', name: 'Dengan Pembatasan', fund: 'Dana Terikat' }
     ];
 
     const reportData = categories.map(cat => {

@@ -205,11 +205,21 @@ export function AppProvider({ children }) {
     const [state, dispatch] = useReducer(appReducer, initialState);
 
     useEffect(() => {
-        if (isRemote) {
+        const token = localStorage.getItem('jwt_token');
+        const isLoginPage = window.location.pathname === '/login';
+        
+        if (isRemote && token && !isLoginPage) {
             api.fetchAllData().then(data => {
                 if (data) dispatch({ type: 'SET_ALL_DATA', payload: data });
                 else dispatch({ type: 'SET_ONLINE_STATUS', payload: false });
-            }).catch(() => dispatch({ type: 'SET_ONLINE_STATUS', payload: false }));
+            }).catch(err => {
+                if (err.message === 'SESSION_EXPIRED') {
+                    dispatch({ type: 'LOGOUT' });
+                    window.location.href = '/login?expired=true';
+                } else {
+                    dispatch({ type: 'SET_ONLINE_STATUS', payload: false });
+                }
+            });
         }
     }, []);
 
@@ -217,8 +227,11 @@ export function AppProvider({ children }) {
         if (state.lastAction) {
             api.pushAction(state.lastAction, state).catch(err => {
                 if (err.message === 'SESSION_EXPIRED') {
+                    const isLoginPage = window.location.pathname === '/login';
                     dispatch({ type: 'LOGOUT' });
-                    window.location.href = '/login?expired=true';
+                    if (!isLoginPage) {
+                        window.location.href = '/login?expired=true';
+                    }
                 }
             });
         }

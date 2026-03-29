@@ -1,5 +1,5 @@
 // ========================================
-// Data Awal (Seed Data) — SIKAK YAYASAN UMUM (Base: LAZIS PSAK 109)
+// Data Awal (Seed Data) — SIKAK YAYASAN UMUM
 // ========================================
 
 // Daftar Akun (Chart of Accounts)

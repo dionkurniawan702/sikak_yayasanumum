@@ -67,18 +67,18 @@ export default function ProgramReport() {
         };
 
         const donasiMasuk = aggregate('Pendapatan', ['4-1', '4-2'], 'kredit');
-        const hasilPengelolaan = aggregate('Pendapatan', ['4-3'], 'kredit');
         const penyaluranSosial = aggregate('Beban', ['5-1'], 'debit');
-        const bebanLainnya = aggregate('Beban', ['5-2', '5-3'], 'debit');
+        const bebanOperasional = aggregate('Beban', ['6-1'], 'debit');
+        const bebanLainnya = aggregate('Beban', ['5-2', '5-8'], 'debit'); // Reserve for future categories
 
         const totalDonasi = (program.initialDonationBalance || 0) + donasiMasuk;
-        const totalNetoProgram = (totalDonasi + hasilPengelolaan) - (penyaluranSosial + bebanLainnya);
+        const totalNetoProgram = totalDonasi - (penyaluranSosial + bebanOperasional + bebanLainnya);
 
         return {
             ...program,
             donasiMasuk,
-            hasilPengelolaan,
             penyaluranSosial,
+            bebanOperasional,
             bebanLainnya,
             totalSaldo: totalNetoProgram
         };

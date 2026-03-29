@@ -17,7 +17,11 @@ export const api = {
         if (!isRemote) return null;
         try {
             const fetchEntity = async (name) => {
-                const res = await fetch(`${API_URL}/${name}`);
+                const token = localStorage.getItem('jwt_token');
+                const headers = {};
+                if (token) headers['Authorization'] = `Bearer ${token}`;
+
+                const res = await fetch(`${API_URL}/${name}`, { headers });
                 if (res.status === 401 || res.status === 403) {
                     throw new Error('SESSION_EXPIRED');
                 }
