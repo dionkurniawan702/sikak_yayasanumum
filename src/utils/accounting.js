@@ -300,3 +300,14 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         return (order[a.name] || 99) - (order[b.name] || 99);
     });
 }
+/**
+ * Menghitung total saldo untuk tipe akun tertentu (Aset, Kewajiban, Aset Neto, Pendapatan, Beban)
+ */
+export function hitungSaldoPerTipe(journals, accounts, type, yearLimit = null, assets = [], isYearOnly = false, programId = null) {
+    const typeAccounts = accounts.filter(a => a.type === type && a.category === 'detail');
+    
+    return typeAccounts.reduce((sum, acc) => {
+        const saldo = hitungSaldoAkun(journals, acc.id, accounts, yearLimit, assets, isYearOnly, programId);
+        return sum + (acc.normalBalance === 'debit' ? saldo : -saldo);
+    }, 0);
+}

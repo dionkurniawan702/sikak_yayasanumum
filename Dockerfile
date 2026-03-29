@@ -1,6 +1,4 @@
-# ========================================
-# Phase 1: Build Frontend (React + Vite)
-# ========================================
+# Stage 1: Build Frontend (React + Vite)
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 COPY package*.json ./
@@ -8,29 +6,29 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# ========================================
-# Phase 2: Setup Backend & Serve
-# ========================================
+# Stage 2: Unified Backend & Serve
 FROM node:20-alpine
 WORKDIR /app
 
-# Install system dependencies for Prisma on Alpine
-RUN apk add --no-cache openssl libc6-compat
+# Install system dependencies
+RUN apk add --no-cache openssl libc6-compat tini
 
-# Install backend dependencies first (layered cache)
+# Copy backend dependencies
 COPY server/package*.json ./server/
 WORKDIR /app/server
 RUN npm install --omit=dev
 
-# Copy backend source (influenced by .dockerignore)
+# Copy backend source
 COPY server/ ./
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
-# Copy the built frontend from Phase 1
+# Copy the built frontend
 COPY --from=frontend-builder /app/dist /app/dist
 
-# Expose the API port
-EXPOSE 5000
+# Configuration
+EXPOSE 3000
+ENV PORT=3000
+ENV NODE_ENV=production
 
-# Start unified app
-CMD ["npm", "start"]
+# Start unified app (Simplified)
+CMD ["node", "index.js"]
