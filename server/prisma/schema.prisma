@@ -1,0 +1,104 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String  @id @default(uuid())
+  name      String
+  username  String  @unique
+  password  String
+  role      String
+  isDeleted Boolean @default(false)
+
+  @@map("users")
+}
+
+model Account {
+  id          String   @id @default(uuid())
+  code        String
+  name        String
+  category    String?
+  type        String?
+  subType     String?
+  fund        String?
+  balance     Decimal? @default(0) @db.Decimal(15, 2)
+  isParent    Boolean  @default(false)
+  parentId    String?
+  level       Int      @default(0)
+  orderIdx    Int      @default(0)
+  isDeleted   Boolean  @default(false)
+
+  @@map("accounts")
+}
+
+model Journal {
+  id              String   @id @default(uuid())
+  date            DateTime?
+  name            String?
+  description     String?  @db.Text
+  entries         Json?
+  receiptPath     String?
+  assetGenerated  Boolean  @default(false) @map("_assetGenerated")
+  isDeleted       Boolean  @default(false)
+  programId       String?
+  reference       String?
+  proof           String?
+  phoneNumber     String?
+
+  @@map("journals")
+}
+
+model Asset {
+  id                   String   @id @default(uuid())
+  name                 String
+  category             String?
+  description          String?  @db.Text
+  acquisitionDate      DateTime?
+  cost                 Decimal? @db.Decimal(15, 2)
+  usefulLifeMonths     Int?
+  residualValue        Decimal? @db.Decimal(15, 2)
+  status               String?  @default("Tersedia")
+  isDeleted            Boolean  @default(false)
+
+  @@map("assets")
+}
+
+model Program {
+  id           String   @id @default(uuid())
+  name         String
+  description  String?  @db.Text
+  category     String?
+  targetAmount Decimal? @default(0) @db.Decimal(15, 2)
+  startDate    DateTime?
+  endDate      DateTime?
+  isDeleted    Boolean  @default(false)
+
+  @@map("programs")
+}
+
+model Budget {
+  id        String   @id @default(uuid())
+  accountId String
+  year      String
+  amount    Decimal  @default(0) @db.Decimal(15, 2)
+  isDeleted Boolean  @default(false)
+
+  @@map("budgets")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  entity    String
+  entityId  String?
+  timestamp DateTime @default(now())
+  details   Json?
+
+  @@map("audit_logs")
+}

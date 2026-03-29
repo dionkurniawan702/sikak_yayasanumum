@@ -1,0 +1,88 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+/* ===== CSS VARIABLES ===== */
+:root {
+    --color-primary: #1e40af; /* Blue 800 - Professional for Yayasan */
+    --color-primary-light: #3b82f6;
+    --color-primary-dark: #1e3a8a;
+    --color-secondary: #0f172a;
+    --color-accent: #f59e0b;
+    --color-sidebar: #0f172a;
+    --color-sidebar-hover: #1e293b;
+    --color-sidebar-active: #1e40af;
+    --color-bg: #f8fafc;
+    --color-card: #ffffff;
+    --color-border: #e2e8f0;
+    --color-text: #0f172a;
+    --color-text-light: #64748b;
+    --color-success: #059669;
+    --color-danger: #dc2626;
+    --color-warning: #d97706;
+}
+
+/* Base and Layout styles copied from SIKAK LAZIS for consistency */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    -webkit-font-smoothing: antialiased;
+}
+
+/* Sidebar and Main Content styles */
+.sidebar {
+    width: 270px;
+    height: 100vh;
+    background: linear-gradient(180deg, #0f172a 0%, #1a2332 100%);
+    color: #e2e8f0;
+    position: fixed;
+    left: 0;
+    top: 0;
+    overflow-y: auto;
+    z-index: 1000;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-brand {
+    padding: 24px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sidebar-brand h1 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.5px;
+}
+
+.sidebar-link.active {
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(30, 64, 175, 0.3);
+}
+
+/* More styles follow the same premium pattern... */
+@layer components {
+    .card {
+        background: var(--color-card);
+        border-radius: 14px;
+        border: 1px solid var(--color-border);
+        padding: 20px 24px;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        transition: all 0.2s ease;
+    }
+
+    .card:hover {
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08);
+        transform: translateY(-2px);
+    }
+}
