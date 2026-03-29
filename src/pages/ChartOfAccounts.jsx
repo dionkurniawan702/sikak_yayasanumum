@@ -6,7 +6,7 @@ import { hitungSaldoAkun, hitungSaldoPerTipe, buildHierarchyAccounts } from '../
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';
 
-const TIPE_AKUN = ['Aset', 'Kewajiban', 'Aset Neto', 'Pendapatan', 'Beban'];
+const TIPE_AKUN = ['Aset', 'Kewajiban', 'Aset Neto', 'Saldo Dana', 'Pendapatan', 'Beban'];
 const JENIS_DANA = ['Dana Umum', 'Dana Terikat'];
 const KATEGORI = ['header', 'detail'];
 

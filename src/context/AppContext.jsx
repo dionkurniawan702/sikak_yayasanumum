@@ -50,6 +50,16 @@ function loadState() {
             } else {
                 data.accounts = initialAccounts;
             }
+
+            // Migration: Standardize 'Saldo Dana' to 'Aset Neto'
+            if (data.accounts) {
+                data.accounts = data.accounts.map(acc => {
+                    if (acc.type === 'Saldo Dana') {
+                        return { ...acc, type: 'Aset Neto', subType: 'Aset Neto' };
+                    }
+                    return acc;
+                });
+            }
             if (!data.assets) data.assets = initialAssets;
             if (!data.journals) data.journals = initialJournals;
             if (!data.budgets) data.budgets = [];
@@ -133,6 +143,16 @@ function appReducer(state, action) {
                 isOnline: true,
                 notes: serverData.notes || state.notes
             };
+
+            // Server Data Migration
+            if (newState.accounts) {
+                newState.accounts = newState.accounts.map(acc => {
+                    if (acc.type === 'Saldo Dana') {
+                        return { ...acc, type: 'Aset Neto', subType: 'Aset Neto' };
+                    }
+                    return acc;
+                });
+            }
             break;
         }
         case 'LOGOUT':
