@@ -28,9 +28,6 @@ dotenv.config();
 const app = express();
 
 // 3. Early Health Check (Before anything else)
-app.get('/', (req, res) => {
-    res.status(200).send('SIKAK Yayasan Umum Application is Running (v2-diagnostic)');
-});
 
 app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
