@@ -14,6 +14,9 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
+# Install system dependencies for Prisma on Alpine
+RUN apk add --no-cache openssl libc6-compat
+
 # Install backend dependencies first (layered cache)
 COPY server/package*.json ./server/
 WORKDIR /app/server
