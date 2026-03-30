@@ -36,7 +36,8 @@ export const api = {
             const [
                 accounts, journals, assets, programs, users, budgets,
                 fields, units, students, incomeItems, distributionSettings,
-                budgetRequests, budgetReports
+                budgetRequests, budgetReports,
+                academicYears, classGroups, positions, studentStatuses, parentStatuses
             ] = await Promise.all([
                 fetchEntity('accounts'),
                 fetchEntity('journals'),
@@ -50,7 +51,12 @@ export const api = {
                 fetchEntity('income-items'),
                 fetchEntity('distribution-settings'),
                 fetchEntity('budget-requests'),
-                fetchEntity('budget-reports')
+                fetchEntity('budget-reports'),
+                fetchEntity('academic-years'),
+                fetchEntity('class-groups'),
+                fetchEntity('positions'),
+                fetchEntity('student-statuses'),
+                fetchEntity('parent-statuses')
             ]);
 
             return {
@@ -67,6 +73,7 @@ export const api = {
                 budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
                 fields, units, students, incomeItems, distributionSettings,
                 budgetRequests, budgetReports,
+                academicYears, classGroups, positions, studentStatuses, parentStatuses,
                 notes: {}, 
             };
         } catch (error) {
@@ -199,6 +206,25 @@ export const api = {
                 case 'SET_BUDGETS':
                     await this.syncWholeState(currentState);
                     break;
+                case 'ADD_ACADEMIC_YEAR': await syncItem('academic-years', null, payload, 'POST'); break;
+                case 'EDIT_ACADEMIC_YEAR': await syncItem('academic-years', payload.id, payload); break;
+                case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', payload, { isDeleted: true }, 'DELETE'); break;
+                
+                case 'ADD_CLASS_GROUP': await syncItem('class-groups', null, payload, 'POST'); break;
+                case 'EDIT_CLASS_GROUP': await syncItem('class-groups', payload.id, payload); break;
+                case 'DELETE_CLASS_GROUP': await syncItem('class-groups', payload, { isDeleted: true }, 'DELETE'); break;
+
+                case 'ADD_POSITION': await syncItem('positions', null, payload, 'POST'); break;
+                case 'EDIT_POSITION': await syncItem('positions', payload.id, payload); break;
+                case 'DELETE_POSITION': await syncItem('positions', payload, { isDeleted: true }, 'DELETE'); break;
+
+                case 'ADD_STUDENT_STATUS': await syncItem('student-statuses', null, payload, 'POST'); break;
+                case 'EDIT_STUDENT_STATUS': await syncItem('student-statuses', payload.id, payload); break;
+                case 'DELETE_STUDENT_STATUS': await syncItem('student-statuses', payload, { isDeleted: true }, 'DELETE'); break;
+
+                case 'ADD_PARENT_STATUS': await syncItem('parent-statuses', null, payload, 'POST'); break;
+                case 'EDIT_PARENT_STATUS': await syncItem('parent-statuses', payload.id, payload); break;
+                case 'DELETE_PARENT_STATUS': await syncItem('parent-statuses', payload, { isDeleted: true }, 'DELETE'); break;
                 default:
                     if (type.includes('RESTORE') || type.includes('TRASH') || type.includes('IMPORT') || type.includes('BULK') || type.includes('DEPRECIATION') || type.includes('NOTES')) {
                         await this.syncWholeState(currentState);

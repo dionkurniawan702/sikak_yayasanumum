@@ -19,6 +19,11 @@ const defaultState = {
     distributionSettings: [],
     budgetRequests: [],
     budgetReports: [],
+    academicYears: [],
+    classGroups: [],
+    positions: [],
+    studentStatuses: [],
+    parentStatuses: [],
     notes: {},
     users: [
         { id: 'USR-001', username: 'superadmin', password: 'admin123', role: 'superadmin', name: 'Super Administrator' }
@@ -155,6 +160,11 @@ function appReducer(state, action) {
                 distributionSettings: serverData.distributionSettings || state.distributionSettings || [],
                 budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
                 budgetReports: serverData.budgetReports || state.budgetReports || [],
+                academicYears: serverData.academicYears || state.academicYears || [],
+                classGroups: serverData.classGroups || state.classGroups || [],
+                positions: serverData.positions || state.positions || [],
+                studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
+                parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
                 users: serverData.users || state.users,
                 currentUser: state.currentUser,
                 isOnline: true,
@@ -296,6 +306,26 @@ function appReducer(state, action) {
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
             break;
+            
+        case 'ADD_ACADEMIC_YEAR': newState = { ...state, academicYears: [...state.academicYears, action.payload] }; break;
+        case 'EDIT_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.filter(i => i.id !== action.payload) }; break;
+
+        case 'ADD_CLASS_GROUP': newState = { ...state, classGroups: [...state.classGroups, action.payload] }; break;
+        case 'EDIT_CLASS_GROUP': newState = { ...state, classGroups: state.classGroups.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_CLASS_GROUP': newState = { ...state, classGroups: state.classGroups.filter(i => i.id !== action.payload) }; break;
+
+        case 'ADD_POSITION': newState = { ...state, positions: [...state.positions, action.payload] }; break;
+        case 'EDIT_POSITION': newState = { ...state, positions: state.positions.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_POSITION': newState = { ...state, positions: state.positions.filter(i => i.id !== action.payload) }; break;
+
+        case 'ADD_STUDENT_STATUS': newState = { ...state, studentStatuses: [...state.studentStatuses, action.payload] }; break;
+        case 'EDIT_STUDENT_STATUS': newState = { ...state, studentStatuses: state.studentStatuses.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_STUDENT_STATUS': newState = { ...state, studentStatuses: state.studentStatuses.filter(i => i.id !== action.payload) }; break;
+
+        case 'ADD_PARENT_STATUS': newState = { ...state, parentStatuses: [...state.parentStatuses, action.payload] }; break;
+        case 'EDIT_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.filter(i => i.id !== action.payload) }; break;
         default:
             return state;
     }

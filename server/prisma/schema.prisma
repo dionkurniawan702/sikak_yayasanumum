@@ -165,7 +165,8 @@ model ExpenseItem {
   field     Field?   @relation(fields: [fieldId], references: [id])
   accountId String?
   sourceOfFunds String?
-  isDeleted Boolean  @default(false)
+  isBos         Boolean  @default(false)
+  isDeleted     Boolean  @default(false)
 
   allocations          BudgetAllocation[]
   distributionSettings DistributionSetting[]
@@ -173,6 +174,47 @@ model ExpenseItem {
   reports              BudgetReport[]
 
   @@map("expense_items")
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., 2023/2024
+  isCurrent Boolean  @default(false)
+  isDeleted Boolean  @default(false)
+
+  @@map("academic_years")
+}
+
+model ClassGroup {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., Reguler, Tahfizh
+  isDeleted Boolean  @default(false)
+
+  @@map("class_groups")
+}
+
+model Position {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., Kepala Sekolah, Bendahara
+  isDeleted Boolean  @default(false)
+
+  @@map("positions")
+}
+
+model StudentStatus {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., Aktif, Alumni
+  isDeleted Boolean  @default(false)
+
+  @@map("student_statuses")
+}
+
+model ParentStatus {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g., Mampu, Tidak Mampu
+  isDeleted Boolean  @default(false)
+
+  @@map("parent_statuses")
 }
 
 model StudentIncomeDetail {

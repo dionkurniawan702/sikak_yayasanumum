@@ -443,4 +443,57 @@ router.get('/fund-availability/:unitId', async (req, res) => {
     }
 });
 
+// --- MISC MASTER DATA ---
+
+// Helper function to create generic CRUD routes
+const createGenericRoutes = (entityName, modelName) => {
+    router.get(`/${entityName}`, async (req, res) => {
+        try {
+            const data = await getPrisma(req)[modelName].findMany({ where: { isDeleted: false } });
+            res.json({ data });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    router.post(`/${entityName}`, async (req, res) => {
+        try {
+            const item = await getPrisma(req)[modelName].create({ data: req.body });
+            res.json({ data: item });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    router.put(`/${entityName}/:id`, async (req, res) => {
+        try {
+            const item = await getPrisma(req)[modelName].update({
+                where: { id: req.params.id },
+                data: req.body
+            });
+            res.json({ data: item });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+
+    router.delete(`/${entityName}/:id`, async (req, res) => {
+        try {
+            await getPrisma(req)[modelName].update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+            res.json({ message: 'Success' });
+        } catch (error) {
+            res.status(500).json({ error: error.message });
+        }
+    });
+};
+
+createGenericRoutes('academic-years', 'academicYear');
+createGenericRoutes('class-groups', 'classGroup');
+createGenericRoutes('positions', 'position');
+createGenericRoutes('student-statuses', 'studentStatus');
+createGenericRoutes('parent-statuses', 'parentStatus');
+
 export default router;

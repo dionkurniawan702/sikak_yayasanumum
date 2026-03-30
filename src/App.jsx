@@ -29,6 +29,14 @@ import MonthlyReport from './pages/pelaporan/MonthlyReport';
 import FundAvailability from './pages/pelaporan/FundAvailability';
 import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
+import GenericMasterManagement from './components/GenericMasterManagement';
+import { 
+    Calendar,
+    Users2,
+    Briefcase,
+    UserCheck,
+    UserCircle
+} from 'lucide-react';
 
 // Placeholder untuk halaman yang belum dimigrasi
 const Placeholder = ({ title }) => (
@@ -101,11 +109,51 @@ export default function App() {
                         <Route path="anggaran/kelas" element={<Placeholder title="Database Kelas" />} />
 
                         <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
-                        <Route path="anggaran/tahun-ajaran" element={<Placeholder title="Pengaturan Tahun Ajaran" />} />
-                        <Route path="anggaran/kelompok-kelas" element={<Placeholder title="Pengaturan Kelompok Kelas" />} />
-                        <Route path="anggaran/set-jabatan" element={<Placeholder title="Pengaturan Jabatan" />} />
-                        <Route path="anggaran/status-siswa" element={<Placeholder title="Pengaturan Status Siswa" />} />
-                        <Route path="anggaran/status-ortu" element={<Placeholder title="Pengaturan Status Orang Tua" />} />
+                        <Route path="anggaran/tahun-ajaran" element={
+                            <GenericMasterManagement 
+                                title="Tahun Ajaran" 
+                                entity="academicYears" 
+                                actionPrefix="ACADEMIC_YEAR" 
+                                icon={Calendar} 
+                                description="Kelola periode tahun ajaran aktif dan mendatang"
+                            />
+                        } />
+                        <Route path="anggaran/kelompok-kelas" element={
+                            <GenericMasterManagement 
+                                title="Kelompok Kelas" 
+                                entity="classGroups" 
+                                actionPrefix="CLASS_GROUP" 
+                                icon={Users2} 
+                                description="Kategorisasi kelompok kelas (Reguler, Tahfizh, dsb)"
+                            />
+                        } />
+                        <Route path="anggaran/set-jabatan" element={
+                            <GenericMasterManagement 
+                                title="Set Jabatan" 
+                                entity="positions" 
+                                actionPrefix="POSITION" 
+                                icon={Briefcase} 
+                                description="Master data jabatan struktural unit dan yayasan"
+                            />
+                        } />
+                        <Route path="anggaran/status-siswa" element={
+                            <GenericMasterManagement 
+                                title="Status Siswa" 
+                                entity="studentStatuses" 
+                                actionPrefix="STUDENT_STATUS" 
+                                icon={UserCheck} 
+                                description="Master status keberadaan siswa (Aktif, Mutasi, dsb)"
+                            />
+                        } />
+                        <Route path="anggaran/status-ortu" element={
+                            <GenericMasterManagement 
+                                title="Status Orang Tua" 
+                                entity="parentStatuses" 
+                                actionPrefix="PARENT_STATUS" 
+                                icon={UserCircle} 
+                                description="Master status ekonomi/sosial orang tua"
+                            />
+                        } />
                         <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
                         <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
                         <Route path="anggaran/item-pengeluaran-bos" element={<Placeholder title="Master Item Pengeluaran BOS" />} />
