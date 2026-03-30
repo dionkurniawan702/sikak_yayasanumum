@@ -1,36 +1,21 @@
 #!/bin/sh
-set -e
+# Simplified startup script without strict exit on error for debugging
+echo "[Diagnostic] $(date) - SIKAK Initialization Start"
 
-echo "[Diagnostic] $(date) - Starting SIKAK Initialization Script..."
+# Use local prisma binary to avoid npx overhead/issues
+PRISMA="./node_modules/.bin/prisma"
 
-# 0. Wait for Database Connectivity
-echo "[Diagnostic] $(date) - Waiting for database to be ready..."
-# We try to ping the database using prisma, if it fails we wait and retry
-MAX_RETRIES=15
-COUNT=0
-while [ $COUNT -lt $MAX_RETRIES ]; do
-  ERROR_LOG=$(npx prisma db pull --print-schema 2>&1)
-  if [ $? -eq 0 ]; then
-    echo "[Diagnostic] $(date) - Database is reachable!"
-    break
-  fi
-  
-  # Print the error for debugging
-  echo "[Diagnostic] Error: $(echo $ERROR_LOG | head -n 1)"
-  
-  echo "[Diagnostic] $(date) - Database not ready yet, retrying in 3s ($((COUNT+1))/$MAX_RETRIES)..."
-  sleep 3
-  COUNT=$((COUNT+1))
-done
+echo "[Diagnostic] Checking for Prisma binary at $PRISMA..."
+if [ ! -f "$PRISMA" ]; then
+    echo "[Error] Prisma binary not found at $PRISMA. Trying fallback..."
+    PRISMA="npx prisma"
+fi
 
-# 1. Sync Database Schema
-echo "[Diagnostic] $(date) - Running Prisma DB Push..."
-npx prisma db push --accept-data-loss
+echo "[Diagnostic] Running Database Sync (db push)..."
+$PRISMA db push --accept-data-loss || echo "[Error] DB Push failed. Please check DATABASE_URL."
 
-# 2. Run Database Seeding
-echo "[Diagnostic] $(date) - Running Database Seeding..."
-node prisma/seed_income_items.cjs || echo "[Warning] Seeding failed, but continuing..."
+echo "[Diagnostic] Running Seeding..."
+node prisma/seed_income_items.cjs || echo "[Error] Seeding failed."
 
-# 3. Start the main application
-echo "[Diagnostic] $(date) - Launching SIKAK Backend..."
+echo "[Diagnostic] Starting Process..."
 exec node index.js
