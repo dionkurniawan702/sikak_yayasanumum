@@ -31,47 +31,48 @@ function loadState() {
     try {
         const saved = localStorage.getItem('sikak-yayasan-data');
         if (saved) {
-            const data = JSON.parse(saved);
-            if (!data.programs) data.programs = initialPrograms;
-            if (!data.notes) data.notes = {};
-            if (!data.users || data.users.length === 0) data.users = defaultState.users;
-            if (data.currentUser === undefined) data.currentUser = null;
+            // Ensure all new keys from defaultState are present
+            const merged = { ...defaultState, ...data };
+            
             if (data.accounts) {
                 const currentSeedIds = new Set(initialAccounts.map(a => a.id));
-                data.accounts = data.accounts.filter(a => {
+                merged.accounts = data.accounts.filter(a => {
                     const isSeedId = /^\d{5}$/.test(a.id);
                     if (!isSeedId) return true;
                     return currentSeedIds.has(a.id);
                 });
 
-                const storedIds = new Set(data.accounts.map(a => a.id));
+                const storedIds = new Set(merged.accounts.map(a => a.id));
                 initialAccounts.forEach(seedAcc => {
                     if (!storedIds.has(seedAcc.id)) {
-                        data.accounts.push(seedAcc);
+                        merged.accounts.push(seedAcc);
                     } else {
-                        const idx = data.accounts.findIndex(a => a.id === seedAcc.id);
+                        const idx = merged.accounts.findIndex(a => a.id === seedAcc.id);
                         if (idx !== -1) {
-                            data.accounts[idx] = { ...seedAcc, ...data.accounts[idx] };
+                            merged.accounts[idx] = { ...seedAcc, ...merged.accounts[idx] };
                         }
                     }
                 });
             } else {
-                data.accounts = initialAccounts;
+                merged.accounts = initialAccounts;
             }
 
             // Migration: Standardize 'Saldo Dana' to 'Aset Neto'
-            if (data.accounts) {
-                data.accounts = data.accounts.map(acc => {
+            if (merged.accounts) {
+                merged.accounts = merged.accounts.map(acc => {
                     if (acc.type === 'Saldo Dana') {
                         return { ...acc, type: 'Aset Neto', subType: 'Aset Neto' };
                     }
                     return acc;
                 });
             }
-            if (!data.assets) data.assets = initialAssets;
-            if (!data.journals) data.journals = initialJournals;
-            if (!data.budgets) data.budgets = [];
-            return data;
+            
+            // Ensure all critical arrays are initialized
+            if (!merged.assets) merged.assets = initialAssets;
+            if (!merged.journals) merged.journals = initialJournals;
+            if (!merged.programs) merged.programs = initialPrograms;
+            
+            return merged;
         }
     } catch (e) { /* ignore */ }
     return null;

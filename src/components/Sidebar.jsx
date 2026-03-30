@@ -158,7 +158,7 @@ export default function Sidebar({ isOpen, onClose }) {
                             `}
                             end={item.path === '/'}
                         >
-                            <Icon size={18} />
+                            {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                             <span className="text-sm font-medium">{item.label}</span>
                         </NavLink>
                     );
