@@ -292,10 +292,10 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
 
     return Object.values(subTypes).sort((a, b) => {
         const order = {
-            'Aset Lancar': 1, 'Aset Tidak Lancar': 2,
-            'Kewajiban Jangka Pendek': 3, 'Kewajiban Jangka Panjang': 4,
-            'Aset Neto': 5, 'Saldo Dana': 6,
-            'Pendapatan': 7, 'Beban': 8
+            'Aset': 0, 'Aset Lancar': 1, 'Aset Tidak Lancar': 2,
+            'Kewajiban': 2.5, 'Kewajiban Jangka Pendek': 3, 'Kewajiban Jangka Panjang': 4,
+            'Aset Neto': 4.5, 'Saldo Dana': 5,
+            'Pendapatan': 6, 'Beban': 7
         };
         return (order[a.name] || 99) - (order[b.name] || 99);
     });
