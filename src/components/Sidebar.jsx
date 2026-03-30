@@ -70,7 +70,7 @@ export default function Sidebar({ isOpen, onClose }) {
     };
 
     return (
-        <aside className={`sidebar fixed bg-slate-900 h-screen w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">✦ SIKAK YAYASAN</h1>
                 <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Sistem Informasi Keuangan</p>
@@ -106,7 +106,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 </div>
             </div>
 
-            <nav className="flex-1 overflow-y-auto px-4 py-6 space-y-1 custom-scrollbar">
+            <nav className="flex-1 overflow-y-auto min-h-0 px-4 py-6 space-y-1 custom-scrollbar">
                 {menuItems.map((item, idx) => {
                     if (item.section) {
                         return (

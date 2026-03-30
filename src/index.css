@@ -57,7 +57,11 @@ body {
   @apply bg-white rounded-3xl border border-slate-100 shadow-sm transition-all duration-300;
 }
 
-/* Custom Scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(51, 65, 85, 0.5) transparent;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
 }

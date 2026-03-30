@@ -32,7 +32,7 @@ export default function Layout() {
 
             <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-            <main className="main-content flex-1 w-full lg:ml-[270px] transition-all duration-300">
+            <main className="main-content flex-1 w-full lg:ml-72 transition-all duration-300">
                 <div className="show-on-mobile fixed top-4 left-4 z-[1001] lg:hidden">
                     <button
                         className="mobile-nav-toggle p-2 bg-white rounded-lg shadow-md border border-slate-200"
