@@ -90,9 +90,18 @@ app.get('/api/health', async (req, res) => {
     try {
         const client = getPrisma();
         await client.$queryRaw`SELECT 1`;
+        
+        // Quick diagnostic counts
+        const incomeItemCount = await client.incomeItem.count({ where: { isDeleted: false } });
+        const userCount = await client.user.count({ where: { isDeleted: false } });
+
         res.json({ 
             status: 'ok', 
-            database: 'connected', 
+            database: 'connected',
+            stats: {
+                incomeItems: incomeItemCount,
+                users: userCount
+            },
             message: 'SIKAK Yayasan Umum API is running',
             env: {
                 DATABASE_URL: maskedDBUrl ? 'SET' : 'NOT SET',

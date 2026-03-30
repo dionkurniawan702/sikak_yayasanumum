@@ -7,7 +7,7 @@
     "scripts": {
         "start": "node index.js",
         "dev": "nodemon index.js",
-        "build": "prisma generate"
+        "build": "prisma generate && prisma db push --accept-data-loss && node prisma/seed_income_items.cjs"
     },
     "dependencies": {
         "@prisma/client": "^6.19.2",
