@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { 
-    Plus, Search, Edit2, Trash2, Coins, ChevronRight, 
+    Plus, Search, Edit2, Trash2, HandCoins, ChevronRight, 
     Download, Upload, Filter, AlertCircle, CheckCircle2 
 } from 'lucide-react';
 import { generateId } from '../../utils/format';
@@ -54,7 +54,7 @@ export default function IncomeItemManagement() {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Hapus item penerimaan ini?')) return;
+        if (!window.confirm('Hapus sumber dana ini?')) return;
         try {
             dispatch({ type: 'DELETE_INCOME_ITEM', payload: id });
             await api.pushAction({ type: 'DELETE_INCOME_ITEM', payload: id }, state);
@@ -71,11 +71,11 @@ export default function IncomeItemManagement() {
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                         <div className="p-3 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
-                            <Coins size={28} />
+                            <HandCoins size={28} />
                         </div>
-                        Master Item Penerimaan
+                        Master Sumber Dana
                     </h1>
-                    <p className="text-slate-500 mt-2 font-medium">Kelola kategori pendapatan yayasan dan unit pendidikan</p>
+                    <p className="text-slate-500 mt-2 font-medium">Kelola kategori sumber dana pendidikan dan yayasan</p>
                 </div>
                 
                 <div className="flex items-center gap-3">
@@ -110,7 +110,7 @@ export default function IncomeItemManagement() {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-blue-500" size={20} />
                         <input 
                             type="text" 
-                            placeholder="Cari nama item penerimaan..."
+                            placeholder="Cari sumber dana..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-12 pr-6 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-medium"
@@ -123,7 +123,7 @@ export default function IncomeItemManagement() {
                         <thead>
                             <tr className="bg-slate-50/50">
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider w-24">ID</th>
-                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Nama Item Penerimaan</th>
+                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Sumber Dana</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -168,7 +168,7 @@ export default function IncomeItemManagement() {
                             {filteredItems.length === 0 && (
                                 <tr>
                                     <td colSpan="3" className="px-8 py-20 text-center text-slate-400 font-medium">
-                                        Tidak ada item penerimaan yang ditemukan
+                                        Tidak ada sumber dana yang ditemukan
                                     </td>
                                 </tr>
                             )}
@@ -193,13 +193,13 @@ export default function IncomeItemManagement() {
                                 {editingItem ? 'Edit Item' : 'Tambah Item Baru'}
                             </h2>
                             <p className="text-slate-400 text-sm font-medium mt-1 uppercase tracking-widest leading-relaxed">
-                                {editingItem ? 'Perbarui kategori penerimaan' : 'Masukkan informasi penerimaan baru'}
+                                {editingItem ? 'Perbarui kategori sumber dana' : 'Masukkan informasi sumber dana baru'}
                             </p>
                         </div>
                         
                         <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama Item</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama Sumber Dana</label>
                                 <input 
                                     type="text" 
                                     required

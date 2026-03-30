@@ -109,7 +109,7 @@ export default function App() {
                         <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
                         <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
                         <Route path="anggaran/item-pengeluaran-bos" element={<Placeholder title="Master Item Pengeluaran BOS" />} />
-                        <Route path="anggaran/sumber-dana" element={<Placeholder title="Master Sumber Dana" />} />
+                        <Route path="anggaran/sumber-dana" element={<IncomeItemManagement />} />
                     </Route>
                 </Routes>
             </BrowserRouter>
