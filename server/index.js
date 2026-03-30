@@ -97,6 +97,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
+            version: '1.0.2',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,

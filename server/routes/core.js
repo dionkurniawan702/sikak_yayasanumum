@@ -33,17 +33,22 @@ router.post('/accounts', async (req, res) => {
 
 router.put('/accounts/:id', async (req, res) => {
     try {
+        console.log(`[Account Update] ID: ${req.params.id}`);
+        console.log(`[Account Update] Body:`, req.body);
+        
         const { code, name, category, type, subType, fund, initialBalance, isDeleted } = req.body;
         const data = await getPrisma(req).account.update({
             where: { id: req.params.id },
             data: {
                 code, name, category, type, subType, fund,
-                balance: initialBalance !== undefined ? initialBalance : undefined,
+                balance: initialBalance !== undefined ? parseFloat(initialBalance) : undefined,
                 isDeleted: isDeleted || false
             }
         });
+        console.log(`[Account Update] Success: ${data.name}`);
         res.json({ data });
     } catch (error) {
+        console.error(`[Account Update Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
