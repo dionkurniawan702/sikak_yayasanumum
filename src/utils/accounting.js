@@ -272,12 +272,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
     headerHierarchy.forEach(h => {
         let st = h.subType;
         if (!st || st === 'Lainnya') {
-            if (h.type === 'Aset') {
-                const codeNum = parseInt(h.code.split('-')[1]);
-                st = codeNum >= 2000 ? 'Aset Tidak Lancar' : 'Aset Lancar';
-            }
-            else if (h.type === 'Kewajiban') st = 'Kewajiban Jangka Pendek';
-            else st = h.type || 'Lainnya';
+            st = h.type || 'Lainnya';
         }
         if (!subTypes[st]) {
             subTypes[st] = {
