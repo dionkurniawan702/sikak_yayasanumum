@@ -2,7 +2,8 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
-    User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2
+    User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
+    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRemote } from '../services/api';
@@ -26,13 +27,42 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
             { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
             { path: '/manajemen-anggaran', label: 'Manajemen Anggaran', icon: Target },
+
             { section: 'ANGGARAN & PELAPORAN' },
-            { path: '/anggaran/unit-bidang', label: 'Unit & Bidang', icon: Building2 },
-            { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
+            { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
+            { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
+            { path: '/pelaporan/bos', label: 'BOS', icon: Landmark },
+            { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
+            
+            { section: 'PERENCANAAN (RAB)' },
+            { path: '/anggaran/rab', label: 'RAB', icon: Target },
+            { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
             { path: '/anggaran/distribusi', label: 'Setting Distribusi', icon: Share2 },
-            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Wallet },
-            { path: '/pelaporan/bulanan', label: 'Laporan Bulanan', icon: FileText },
-            { section: 'TRANSAKSI' },
+
+            { section: 'OPERASIONAL DANA' },
+            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
+            { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
+            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
+            { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
+            { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark },
+
+            { section: 'DATABASE ANGGARAN' },
+            { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
+            { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
+
+            { section: 'PENGATURAN ANGGARAN' },
+            { path: '/anggaran/unit-bidang', label: 'Unit & Bidang', icon: Building2 },
+            { path: '/anggaran/tahun-ajaran', label: 'Tahun Ajaran', icon: Calendar },
+            { path: '/anggaran/kelompok-kelas', label: 'Kelompok Kelas', icon: Layers },
+            { path: '/anggaran/set-jabatan', label: 'Set Jabatan', icon: Briefcase },
+            { path: '/anggaran/status-siswa', label: 'Status Siswa', icon: UserCheck },
+            { path: '/anggaran/status-ortu', label: 'Status Orang Tua', icon: Heart },
+            { path: '/anggaran/item-penerimaan', label: 'Item Penerimaan', icon: Coins },
+            { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
+            { path: '/anggaran/item-pengeluaran-bos', label: 'Item Pengeluaran BOS', icon: CreditCard },
+            { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
+
+            { section: 'TRANSAKSI AKUNTANSI' },
             { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
             { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
             { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock },
@@ -45,7 +75,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
             { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
             { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText },
-            { section: 'PENGATURAN' },
+            { section: 'ADMINISTRASI SISTEM' },
             { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
             { path: '/pengaturan/audit-log', label: 'Audit Log Sistem', icon: Activity },
             { path: '/pengaturan/tempat-sampah', label: 'Tempat Sampah', icon: Trash2 },
@@ -53,11 +83,13 @@ export default function Sidebar({ isOpen, onClose }) {
         ];
     } else if (isAdminField || isAdminUnit) {
         menuItems = [
-            { section: 'ANGGARAN & PELAPORAN' },
+            { section: 'OPERASIONAL ANGGARAN' },
             { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-            { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
-            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Wallet },
-            { path: '/pelaporan/bulanan', label: 'Laporan Bulanan', icon: FileText },
+            { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
+            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
+            { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
+            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
+            { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
             { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark }
         ];
     }

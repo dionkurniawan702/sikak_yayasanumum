@@ -80,12 +80,34 @@ export default function App() {
                         <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
 
                         {/* ANGGARAN & PELAPORAN ROUTES */}
-                        <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
-                        <Route path="anggaran/siswa" element={<StudentDatabase />} />
+                        <Route path="pelaporan/dashboard" element={<Placeholder title="Dashboard Anggaran" />} />
+                        <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
+                        <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
+                        <Route path="pelaporan/saldo" element={<Placeholder title="Informasi Saldo Dana" />} />
+                        
+                        <Route path="anggaran/rab" element={<Placeholder title="Rencana Anggaran Biaya (RAB)" />} />
+                        <Route path="anggaran/arsip-rab" element={<Placeholder title="Arsip RAB" />} />
                         <Route path="anggaran/distribusi" element={<DistributionSettings />} />
+                        
                         <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
+                        <Route path="pelaporan/arsip-permintaan" element={<Placeholder title="Arsip Permintaan Dana" />} />
                         <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
+                        <Route path="pelaporan/arsip-laporan" element={<Placeholder title="Arsip Laporan Realisasi" />} />
                         <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
+
+                        <Route path="anggaran/siswa" element={<StudentDatabase />} />
+                        <Route path="anggaran/kelas" element={<Placeholder title="Database Kelas" />} />
+
+                        <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
+                        <Route path="anggaran/tahun-ajaran" element={<Placeholder title="Pengaturan Tahun Ajaran" />} />
+                        <Route path="anggaran/kelompok-kelas" element={<Placeholder title="Pengaturan Kelompok Kelas" />} />
+                        <Route path="anggaran/set-jabatan" element={<Placeholder title="Pengaturan Jabatan" />} />
+                        <Route path="anggaran/status-siswa" element={<Placeholder title="Pengaturan Status Siswa" />} />
+                        <Route path="anggaran/status-ortu" element={<Placeholder title="Pengaturan Status Orang Tua" />} />
+                        <Route path="anggaran/item-penerimaan" element={<Placeholder title="Master Item Penerimaan" />} />
+                        <Route path="anggaran/item-pengeluaran" element={<Placeholder title="Master Item Pengeluaran" />} />
+                        <Route path="anggaran/item-pengeluaran-bos" element={<Placeholder title="Master Item Pengeluaran BOS" />} />
+                        <Route path="anggaran/sumber-dana" element={<Placeholder title="Master Sumber Dana" />} />
                     </Route>
                 </Routes>
             </BrowserRouter>
