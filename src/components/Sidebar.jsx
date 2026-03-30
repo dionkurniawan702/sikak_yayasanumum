@@ -57,6 +57,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/anggaran/set-jabatan', label: 'Set Jabatan', icon: Briefcase },
             { path: '/anggaran/status-siswa', label: 'Status Siswa', icon: UserCheck },
             { path: '/anggaran/status-ortu', label: 'Status Orang Tua', icon: Heart },
+            { path: '/anggaran/item-penerimaan', label: 'Item Penerimaan', icon: Coins },
             { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
             { path: '/anggaran/item-pengeluaran-bos', label: 'Item Pengeluaran BOS', icon: CreditCard },
             { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
