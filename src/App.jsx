@@ -29,6 +29,7 @@ import MonthlyReport from './pages/pelaporan/MonthlyReport';
 import FundAvailability from './pages/pelaporan/FundAvailability';
 import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
+import ClassManagement from './pages/anggaran/ClassManagement';
 import GenericMasterManagement from './components/GenericMasterManagement';
 import { 
     Calendar,
@@ -106,7 +107,7 @@ export default function App() {
                         <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
 
                         <Route path="anggaran/siswa" element={<StudentDatabase />} />
-                        <Route path="anggaran/kelas" element={<Placeholder title="Database Kelas" />} />
+                        <Route path="anggaran/kelas" element={<ClassManagement />} />
 
                         <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
                         <Route path="anggaran/tahun-ajaran" element={

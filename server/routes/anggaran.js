@@ -100,7 +100,14 @@ router.get('/students', async (req, res) => {
     try {
         const students = await getPrisma(req).student.findMany({ 
             where: { isDeleted: false },
-            include: { unit: true, incomeDetails: true }
+            include: { 
+                unit: true, 
+                class: true, 
+                academicYear: true,
+                status: true,
+                parentStatus: true,
+                incomeDetails: true 
+            }
         });
         res.json({ data: students });
     } catch (error) {
@@ -110,12 +117,18 @@ router.get('/students', async (req, res) => {
 
 router.post('/students', async (req, res) => {
     try {
-        const { id, name, nis, unitId, incomeDetails } = req.body;
+        const { 
+            id, name, nis, unitId, 
+            classId, academicYearId, statusId, parentStatusId, 
+            incomeDetails 
+        } = req.body;
+        
         const student = await getPrisma(req).student.create({
             data: {
                 id, name, nis, unitId,
+                classId, academicYearId, statusId, parentStatusId,
                 incomeDetails: {
-                    create: incomeDetails.map(d => ({
+                    create: (incomeDetails || []).map(d => ({
                         incomeItemId: d.incomeItemId,
                         amount: d.amount
                     }))
@@ -130,21 +143,29 @@ router.post('/students', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
     try {
-        const { name, nis, unitId, incomeDetails } = req.body;
+        const { 
+            name, nis, unitId, 
+            classId, academicYearId, statusId, parentStatusId, 
+            incomeDetails 
+        } = req.body;
         
         // Transaction to update student and details
         const student = await getPrisma(req).$transaction(async (tx) => {
-            await tx.studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
+            if (incomeDetails) {
+                await tx.studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
+            }
+            
             return tx.student.update({
                 where: { id: req.params.id },
                 data: {
                     name, nis, unitId,
-                    incomeDetails: {
-                        create: (incomeDetails || []).map(d => ({
+                    classId, academicYearId, statusId, parentStatusId,
+                    incomeDetails: incomeDetails ? {
+                        create: incomeDetails.map(d => ({
                             incomeItemId: d.incomeItemId,
                             amount: d.amount
                         }))
-                    }
+                    } : undefined
                 }
             });
         });
@@ -495,5 +516,48 @@ createGenericRoutes('class-groups', 'classGroup');
 createGenericRoutes('positions', 'position');
 createGenericRoutes('student-statuses', 'studentStatus');
 createGenericRoutes('parent-statuses', 'parentStatus');
+
+// Classes (with Unit include)
+router.get('/classes', async (req, res) => {
+    try {
+        const data = await getPrisma(req).class.findMany({ 
+            where: { isDeleted: false },
+            include: { unit: true }
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.post('/classes', async (req, res) => {
+    try {
+        const item = await getPrisma(req).class.create({ data: req.body });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.put('/classes/:id', async (req, res) => {
+    try {
+        const item = await getPrisma(req).class.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.delete('/classes/:id', async (req, res) => {
+    try {
+        await getPrisma(req).class.update({
+            where: { id: req.params.id },
+            data: { isDeleted: true }
+        });
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
 
 export default router;

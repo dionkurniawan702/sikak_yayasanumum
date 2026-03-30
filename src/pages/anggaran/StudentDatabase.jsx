@@ -9,27 +9,54 @@ export default function StudentDatabase() {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [unitFilter, setUnitFilter] = useState('all');
+    const [academicYearFilter, setAcademicYearFilter] = useState('all');
+    const [classFilter, setClassFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+    
     const [showStudentModal, setShowStudentModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
     const [showPaymentSettings, setShowPaymentSettings] = useState(null);
-    const [studentForm, setStudentForm] = useState({ name: '', nis: '', unitId: '' });
+    const [studentForm, setStudentForm] = useState({ 
+        name: '', nis: '', unitId: '', 
+        classId: '', academicYearId: '', 
+        statusId: '', parentStatusId: '' 
+    });
     const [paymentForm, setPaymentForm] = useState([]);
 
     const filteredStudents = students.filter(s => {
         const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                              (s.nis && s.nis.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesUnit = unitFilter === 'all' || s.unitId === unitFilter;
-        return matchesSearch && !s.isDeleted;
+        const matchesYear = academicYearFilter === 'all' || s.academicYearId === academicYearFilter;
+        const matchesClass = classFilter === 'all' || s.classId === classFilter;
+        const matchesStatus = statusFilter === 'all' || s.statusId === statusFilter;
+        
+        return matchesSearch && matchesUnit && matchesYear && matchesClass && matchesStatus && !s.isDeleted;
     });
 
     const handleOpenStudentModal = (student = null) => {
         if (student) {
             setEditingStudent(student);
-            setStudentForm({ name: student.name, nis: student.nis || '', unitId: student.unitId });
+            setStudentForm({ 
+                name: student.name, 
+                nis: student.nis || '', 
+                unitId: student.unitId,
+                classId: student.classId || '',
+                academicYearId: student.academicYearId || '',
+                statusId: student.statusId || '',
+                parentStatusId: student.parentStatusId || ''
+            });
         } else {
             setEditingStudent(null);
-            setStudentForm({ name: '', nis: '', unitId: units[0]?.id || '' });
+            setStudentForm({ 
+                name: '', nis: '', 
+                unitId: units[0]?.id || '',
+                classId: '',
+                academicYearId: state.academicYears?.find(y => y.isCurrent)?.id || '',
+                statusId: state.studentStatuses?.find(s => s.name === 'Aktif')?.id || '',
+                parentStatusId: ''
+            });
         }
         setShowStudentModal(true);
     };
@@ -128,30 +155,57 @@ export default function StudentDatabase() {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-4 mb-8">
-                <div className="flex-1 relative">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+                <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
                         type="text" 
-                        className="form-input !pl-12" 
-                        placeholder="Cari nama atau NIS siswa..." 
+                        className="form-input !pl-12 w-full" 
+                        placeholder="Cari nama/NIS..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
                     />
                 </div>
-                <div className="w-full md:w-64 relative">
-                    <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                    <select 
-                        className="form-select !pl-12"
-                        value={unitFilter}
-                        onChange={e => setUnitFilter(e.target.value)}
-                    >
-                        <option value="all">Semua Unit</option>
-                        {units.map(u => (
-                            <option key={u.id} value={u.id}>{u.name}</option>
-                        ))}
-                    </select>
-                </div>
+                <select 
+                    className="form-select"
+                    value={unitFilter}
+                    onChange={e => setUnitFilter(e.target.value)}
+                >
+                    <option value="all">Semua Unit</option>
+                    {units.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                </select>
+                <select 
+                    className="form-select"
+                    value={academicYearFilter}
+                    onChange={e => setAcademicYearFilter(e.target.value)}
+                >
+                    <option value="all">Semua Thn Ajaran</option>
+                    {state.academicYears?.map(y => (
+                        <option key={y.id} value={y.id}>{y.name}</option>
+                    ))}
+                </select>
+                <select 
+                    className="form-select"
+                    value={classFilter}
+                    onChange={e => setClassFilter(e.target.value)}
+                >
+                    <option value="all">Semua Kelas</option>
+                    {state.classes?.filter(c => unitFilter === 'all' || c.unitId === unitFilter).map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                </select>
+                <select 
+                    className="form-select"
+                    value={statusFilter}
+                    onChange={e => setStatusFilter(e.target.value)}
+                >
+                    <option value="all">Semua Status</option>
+                    {state.studentStatuses?.map(s => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
             </div>
 
             {/* Student List */}
@@ -181,10 +235,20 @@ export default function StudentDatabase() {
                         <h3 className="font-black text-slate-900 text-lg mb-1">{student.name}</h3>
                         <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">NIS: {student.nis || '-'}</p>
                         
-                        <div className="flex items-center gap-2 mb-6">
+                        <div className="flex flex-wrap gap-2 mb-6">
                             <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider">
                                 {units.find(u => u.id === student.unitId)?.name || 'Unknown Unit'}
                             </span>
+                            {student.classId && (
+                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-indigo-100">
+                                    {state.classes?.find(c => c.id === student.classId)?.name}
+                                </span>
+                            )}
+                            {student.academicYearId && (
+                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+                                    {state.academicYears?.find(y => y.id === student.academicYearId)?.name}
+                                </span>
+                            )}
                         </div>
 
                         <button 
@@ -216,38 +280,96 @@ export default function StudentDatabase() {
                                 {editingStudent ? 'Edit' : 'Tambah'} Siswa
                             </h2>
                             <form onSubmit={handleStudentSubmit} className="space-y-6">
-                                <div>
-                                    <label className="form-label">Nama Lengkap</label>
-                                    <input
-                                        type="text"
-                                        required
-                                        className="form-input"
-                                        value={studentForm.name}
-                                        onChange={e => setStudentForm({ ...studentForm, name: e.target.value })}
-                                        placeholder="Nama Lengkap Siswa"
-                                    />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="form-label">Nama Lengkap</label>
+                                        <input
+                                            type="text"
+                                            required
+                                            className="form-input"
+                                            value={studentForm.name}
+                                            onChange={e => setStudentForm({ ...studentForm, name: e.target.value })}
+                                            placeholder="Nama Lengkap Siswa"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">NIS (Pilihan)</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            value={studentForm.nis}
+                                            onChange={e => setStudentForm({ ...studentForm, nis: e.target.value })}
+                                            placeholder="Nomor Induk Siswa"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="form-label">Unit Pendidikan</label>
+                                        <select
+                                            required
+                                            className="form-select"
+                                            value={studentForm.unitId}
+                                            onChange={e => setStudentForm({ ...studentForm, unitId: e.target.value })}
+                                        >
+                                            <option value="">Pilih Unit</option>
+                                            {units.map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Kelas</label>
+                                        <select
+                                            className="form-select"
+                                            value={studentForm.classId}
+                                            onChange={e => setStudentForm({ ...studentForm, classId: e.target.value })}
+                                        >
+                                            <option value="">Pilih Kelas</option>
+                                            {state.classes?.filter(c => c.unitId === studentForm.unitId).map(c => (
+                                                <option key={c.id} value={c.id}>{c.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="form-label">Tahun Ajaran</label>
+                                        <select
+                                            className="form-select"
+                                            value={studentForm.academicYearId}
+                                            onChange={e => setStudentForm({ ...studentForm, academicYearId: e.target.value })}
+                                        >
+                                            <option value="">Pilih Tahun</option>
+                                            {state.academicYears?.map(y => (
+                                                <option key={y.id} value={y.id}>{y.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Status Siswa</label>
+                                        <select
+                                            className="form-select"
+                                            value={studentForm.statusId}
+                                            onChange={e => setStudentForm({ ...studentForm, statusId: e.target.value })}
+                                        >
+                                            <option value="">Pilih Status</option>
+                                            {state.studentStatuses?.map(s => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                                 <div>
-                                    <label className="form-label">NIS (Pilihan)</label>
-                                    <input
-                                        type="text"
-                                        className="form-input"
-                                        value={studentForm.nis}
-                                        onChange={e => setStudentForm({ ...studentForm, nis: e.target.value })}
-                                        placeholder="Nomor Induk Siswa"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="form-label">Unit Pendidikan</label>
+                                    <label className="form-label">Status Orang Tua / Ekonomi</label>
                                     <select
-                                        required
                                         className="form-select"
-                                        value={studentForm.unitId}
-                                        onChange={e => setStudentForm({ ...studentForm, unitId: e.target.value })}
+                                        value={studentForm.parentStatusId}
+                                        onChange={e => setStudentForm({ ...studentForm, parentStatusId: e.target.value })}
                                     >
-                                        <option value="">Pilih Unit</option>
-                                        {units.map(u => (
-                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                        <option value="">Pilih Status Orang Tua</option>
+                                        {state.parentStatuses?.map(s => (
+                                            <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
                                     </select>
                                 </div>

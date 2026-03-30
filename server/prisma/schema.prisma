@@ -127,22 +127,43 @@ model Unit {
 
   students     Student[]
   expenseItems ExpenseItem[]
+  classes      Class[]
 
   @@map("units")
 }
 
 model Student {
-  id        String   @id @default(uuid())
-  name      String
-  nis       String?
-  unitId    String
-  unit      Unit     @relation(fields: [unitId], references: [id])
-  isDeleted Boolean  @default(false)
+  id              String         @id @default(uuid())
+  name            String
+  nis             String?
+  unitId          String
+  unit            Unit           @relation(fields: [unitId], references: [id])
+  classId         String?
+  class           Class?         @relation(fields: [classId], references: [id])
+  academicYearId  String?
+  academicYear    AcademicYear?  @relation(fields: [academicYearId], references: [id])
+  statusId        String?
+  status          StudentStatus? @relation(fields: [statusId], references: [id])
+  parentStatusId  String?
+  parentStatus    ParentStatus?  @relation(fields: [parentStatusId], references: [id])
+  isDeleted       Boolean        @default(false)
 
   incomeDetails StudentIncomeDetail[]
   payments      StudentPayment[]
 
   @@map("students")
+}
+
+model Class {
+  id          String      @id @default(uuid())
+  name        String      // e.g., 7-A, 10-IPA-1
+  unitId      String
+  unit        Unit        @relation(fields: [unitId], references: [id])
+  isDeleted   Boolean     @default(false)
+
+  students    Student[]
+
+  @@map("classes")
 }
 
 model IncomeItem {
@@ -182,6 +203,8 @@ model AcademicYear {
   isCurrent Boolean  @default(false)
   isDeleted Boolean  @default(false)
 
+  students  Student[]
+
   @@map("academic_years")
 }
 
@@ -206,6 +229,8 @@ model StudentStatus {
   name      String   @unique // e.g., Aktif, Alumni
   isDeleted Boolean  @default(false)
 
+  students  Student[]
+
   @@map("student_statuses")
 }
 
@@ -213,6 +238,8 @@ model ParentStatus {
   id        String   @id @default(uuid())
   name      String   @unique // e.g., Mampu, Tidak Mampu
   isDeleted Boolean  @default(false)
+
+  students  Student[]
 
   @@map("parent_statuses")
 }
