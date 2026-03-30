@@ -190,12 +190,14 @@ const ensureFundSources = async () => {
 };
 
 // Server Listening with Robust Error Handling
-const server = app.listen(PORT, '0.0.0.0', async () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Success] SIKAK Yayasan Backend listening on port ${PORT}`);
     console.log(`[Success] Internal Health Check Path: /health`);
     
-    // Trigger background seeding
-    await ensureFundSources();
+    // Trigger background seeding WITHOUT blocking startup
+    ensureFundSources().catch(err => {
+        console.error(`[Background Seed Error] ${err.message}`);
+    });
 });
 
 server.on('error', (err) => {
