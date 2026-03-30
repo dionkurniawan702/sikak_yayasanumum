@@ -166,6 +166,15 @@ export const api = {
                 case 'DELETE_STUDENT':
                     await syncItem('students', payload, { isDeleted: true }, 'DELETE');
                     break;
+                case 'ADD_INCOME_ITEM':
+                    await syncItem('income-items', null, payload, 'POST');
+                    break;
+                case 'EDIT_INCOME_ITEM':
+                    await syncItem('income-items', payload.id, payload);
+                    break;
+                case 'DELETE_INCOME_ITEM':
+                    await syncItem('income-items', payload, { isDeleted: true }, 'DELETE');
+                    break;
                 case 'ADD_EXPENSE_ITEM':
                     await syncItem('expense-items', null, payload, 'POST');
                     break;

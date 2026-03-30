@@ -27,6 +27,7 @@ import DistributionSettings from './pages/anggaran/DistributionSettings';
 import MonthlyRequest from './pages/pelaporan/MonthlyRequest';
 import MonthlyReport from './pages/pelaporan/MonthlyReport';
 import FundAvailability from './pages/pelaporan/FundAvailability';
+import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 
 // Placeholder untuk halaman yang belum dimigrasi
 const Placeholder = ({ title }) => (
@@ -104,7 +105,7 @@ export default function App() {
                         <Route path="anggaran/set-jabatan" element={<Placeholder title="Pengaturan Jabatan" />} />
                         <Route path="anggaran/status-siswa" element={<Placeholder title="Pengaturan Status Siswa" />} />
                         <Route path="anggaran/status-ortu" element={<Placeholder title="Pengaturan Status Orang Tua" />} />
-                        <Route path="anggaran/item-penerimaan" element={<Placeholder title="Master Item Penerimaan" />} />
+                        <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
                         <Route path="anggaran/item-pengeluaran" element={<Placeholder title="Master Item Pengeluaran" />} />
                         <Route path="anggaran/item-pengeluaran-bos" element={<Placeholder title="Master Item Pengeluaran BOS" />} />
                         <Route path="anggaran/sumber-dana" element={<Placeholder title="Master Sumber Dana" />} />

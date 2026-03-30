@@ -60,3 +60,42 @@ export const initialJournals = [];
 
 // Aset Tetap Awal
 export const initialAssets = [];
+
+// Item Penerimaan
+export const initialIncomeItems = [
+    { id: 'INC-001', name: 'Gedung' },
+    { id: 'INC-002', name: 'Asrama' },
+    { id: 'INC-003', name: 'Lokal' },
+    { id: 'INC-004', name: 'Perlengkapan' },
+    { id: 'INC-005', name: 'Penggajian' },
+    { id: 'INC-006', name: 'Operasional Bulanan' },
+    { id: 'INC-007', name: 'Pengembangan dan Pelatihan' },
+    { id: 'INC-008', name: 'Uang Makan' },
+    { id: 'INC-009', name: 'Seragam' },
+    { id: 'INC-010', name: 'Kopiah' },
+    { id: 'INC-011', name: 'Paket 1 tahun' },
+    { id: 'INC-012', name: 'Kegiatan Kesiswaan' },
+    { id: 'INC-013', name: 'Ekskul' },
+    { id: 'INC-014', name: 'Uang Ujian' },
+    { id: 'INC-015', name: 'Infaq Perpustakaan' },
+    { id: 'INC-016', name: 'Buku komunikasi & Raport(LKPD)' },
+    { id: 'INC-017', name: 'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah' },
+    { id: 'INC-018', name: 'Buku Pelajaran' },
+    { id: 'INC-019', name: 'Buku Kontrol Tahfizh' },
+    { id: 'INC-020', name: 'Buku Tulis' },
+    { id: 'INC-021', name: 'Uang Osis' },
+    { id: 'INC-022', name: 'Biaya Pramuka' },
+    { id: 'INC-023', name: 'Biaya UKS' },
+    { id: 'INC-024', name: 'Biaya Berobat' },
+    { id: 'INC-025', name: 'Biaya Bus' },
+    { id: 'INC-026', name: 'Labor IPA' },
+    { id: 'INC-027', name: 'Labor Komputer' },
+    { id: 'INC-028', name: 'Outing Class' },
+    { id: 'INC-029', name: 'Komite' },
+    { id: 'INC-030', name: 'Biaya Aplikasi' },
+    { id: 'INC-031', name: 'Biaya Try Out' },
+    { id: 'INC-032', name: 'Biaya Perpisahan' },
+    { id: 'INC-033', name: 'Perawatan Sarpras dan Bangunan' },
+    { id: 'INC-034', name: 'Biaya Kompre' },
+    { id: 'INC-035', name: 'Sosial' }
+];

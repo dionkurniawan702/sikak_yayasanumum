@@ -176,6 +176,39 @@ router.get('/income-items', async (req, res) => {
     }
 });
 
+router.post('/income-items', async (req, res) => {
+    try {
+        const item = await getPrisma(req).incomeItem.create({ data: req.body });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/income-items/:id', async (req, res) => {
+    try {
+        const item = await getPrisma(req).incomeItem.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/income-items/:id', async (req, res) => {
+    try {
+        await getPrisma(req).incomeItem.update({
+            where: { id: req.params.id },
+            data: { isDeleted: true }
+        });
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/expense-items', async (req, res) => {
     try {
         const items = await getPrisma(req).expenseItem.findMany({ 
