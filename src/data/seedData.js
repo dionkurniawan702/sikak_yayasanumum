@@ -100,3 +100,42 @@ export const initialIncomeItems = [
     { id: 'INC-035', name: 'Sosial' },
     { id: 'INC-036', name: 'SPP' }
 ];
+
+// Item Pengeluaran
+export const initialExpenseItems = [
+    { id: 'EXP-001', name: 'Gedung', sourceOfFunds: 'Gedung' },
+    { id: 'EXP-002', name: 'Asrama', sourceOfFunds: 'Asrama' },
+    { id: 'EXP-003', name: 'Lokal', sourceOfFunds: 'Lokal' },
+    { id: 'EXP-004', name: 'Perlengkapan', sourceOfFunds: 'Perlengkapan' },
+    { id: 'EXP-005', name: 'Penggajian', sourceOfFunds: 'SPP' },
+    { id: 'EXP-006', name: 'Operasional Bulanan', sourceOfFunds: 'SPP' },
+    { id: 'EXP-007', name: 'Pengembangan dan Pelatihan', sourceOfFunds: 'SPP' },
+    { id: 'EXP-008', name: 'Uang Makan', sourceOfFunds: 'Uang Makan' },
+    { id: 'EXP-009', name: 'Seragam', sourceOfFunds: 'Seragam' },
+    { id: 'EXP-010', name: 'Kopiah', sourceOfFunds: 'Kopiah' },
+    { id: 'EXP-011', name: 'Paket 1 tahun', sourceOfFunds: 'Paket 1 tahun' },
+    { id: 'EXP-012', name: 'Kegiatan Kesiswaan', sourceOfFunds: 'Kegiatan Kesiswaan' },
+    { id: 'EXP-013', name: 'Ekskul', sourceOfFunds: 'Ekskul' },
+    { id: 'EXP-014', name: 'Uang Ujian', sourceOfFunds: 'Uang Ujian' },
+    { id: 'EXP-015', name: 'Infaq Perpustakaan', sourceOfFunds: 'Infaq Perpustakaan' },
+    { id: 'EXP-016', name: 'Buku komunikasi & Raport(LKPD)', sourceOfFunds: 'Buku komunikasi & Raport(LKPD)' },
+    { id: 'EXP-017', name: 'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah', sourceOfFunds: 'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah' },
+    { id: 'EXP-018', name: 'Buku Pelajaran', sourceOfFunds: 'Buku Pelajaran' },
+    { id: 'EXP-019', name: 'Buku Kontrol Tahfizh', sourceOfFunds: 'Buku Kontrol Tahfizh' },
+    { id: 'EXP-020', name: 'Buku Tulis', sourceOfFunds: 'Buku Tulis' },
+    { id: 'EXP-021', name: 'Uang Osis', sourceOfFunds: 'Uang Osis' },
+    { id: 'EXP-022', name: 'Biaya Pramuka', sourceOfFunds: 'Biaya Pramuka' },
+    { id: 'EXP-023', name: 'Biaya UKS', sourceOfFunds: 'Biaya UKS' },
+    { id: 'EXP-024', name: 'Biaya Berobat', sourceOfFunds: 'Biaya Berobat' },
+    { id: 'EXP-025', name: 'Biaya Bus', sourceOfFunds: 'Biaya Bus' },
+    { id: 'EXP-026', name: 'Labor IPA', sourceOfFunds: 'Labor IPA' },
+    { id: 'EXP-027', name: 'Labor Komputer', sourceOfFunds: 'Labor Komputer' },
+    { id: 'EXP-028', name: 'Outing Class', sourceOfFunds: 'Outing Class' },
+    { id: 'EXP-029', name: 'Komite', sourceOfFunds: 'Komite' },
+    { id: 'EXP-030', name: 'Biaya Aplikasi', sourceOfFunds: 'Biaya Aplikasi' },
+    { id: 'EXP-031', name: 'Biaya Try Out', sourceOfFunds: 'Biaya Try Out' },
+    { id: 'EXP-032', name: 'Biaya Perpisahan', sourceOfFunds: 'Biaya Perpisahan' },
+    { id: 'EXP-033', name: 'Perawatan Sarpras dan Bangunan', sourceOfFunds: 'Perawatan Sarpras dan Bangunan' },
+    { id: 'EXP-034', name: 'Biaya Kompre', sourceOfFunds: 'Biaya Kompre' },
+    { id: 'EXP-035', name: 'Sosial', sourceOfFunds: 'Sosial' }
+];

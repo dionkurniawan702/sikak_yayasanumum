@@ -275,36 +275,23 @@ function appReducer(state, action) {
                 ...state,
                 incomeItems: [action.payload, ...state.incomeItems]
             };
+        case 'ADD_INCOME_ITEM':
+            newState = { ...state, incomeItems: [action.payload, ...state.incomeItems] };
+            break;
         case 'EDIT_INCOME_ITEM':
-            return {
-                ...state,
-                incomeItems: state.incomeItems.map(i => i.id === action.payload.id ? action.payload : i)
-            };
+            newState = { ...state, incomeItems: state.incomeItems.map(i => i.id === action.payload.id ? action.payload : i) };
+            break;
         case 'DELETE_INCOME_ITEM':
-            return {
-                ...state,
-                incomeItems: state.incomeItems.filter(i => i.id !== action.payload)
-            };
+            newState = { ...state, incomeItems: state.incomeItems.filter(i => i.id !== action.payload) };
+            break;
         case 'ADD_EXPENSE_ITEM':
-            return {
-                ...state,
-                expenseItems: [action.payload, ...state.expenseItems]
-            };
-        case 'EDIT_EXPENSE_ITEM':
-            return {
-                ...state,
-                expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i)
-            };
-        case 'DELETE_EXPENSE_ITEM':
-            return {
-                ...state,
-                expenseItems: state.expenseItems.filter(i => i.id !== action.payload)
-            };
+            newState = { ...state, expenseItems: [action.payload, ...state.expenseItems] };
+            break;
         case 'EDIT_EXPENSE_ITEM':
             newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i) };
             break;
         case 'DELETE_EXPENSE_ITEM':
-            newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) };
+            newState = { ...state, expenseItems: state.expenseItems.filter(i => i.id !== action.payload) };
             break;
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
