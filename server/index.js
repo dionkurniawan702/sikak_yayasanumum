@@ -114,6 +114,27 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+// 4.1 Manual Seeding Endpoint (Debug)
+app.get('/api/seed', async (req, res) => {
+    try {
+        console.log('[Manual Seed] Executing...');
+        const { execSync } = await import('child_process');
+        const output = execSync('node prisma/seed_yayasan_final.cjs').toString();
+        
+        // Also ensure fund sources via internal function as fallback
+        await ensureFundSources();
+
+        res.json({ 
+            status: 'ok', 
+            message: 'Seeding triggered successfully', 
+            output: output 
+        });
+    } catch (error) {
+        console.error(`[Manual Seed Error] ${error.message}`);
+        res.status(500).json({ status: 'error', error: error.message });
+    }
+});
+
 const buildPath = path.join(__dirname, '../dist');
 console.log(`[Diagnostic] Build path: ${buildPath}`);
 
