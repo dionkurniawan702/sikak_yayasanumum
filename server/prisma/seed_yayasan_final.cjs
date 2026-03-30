@@ -6,34 +6,34 @@ async function main() {
 
     // 1. DATA MASTER ACCOUNTS (PSAK 35)
     const accounts = [
-        { id: '1-0000', name: 'ASET', type: 'Asset', isParent: true, level: 0 },
-        { id: '1-1000', name: 'Aset Lancar', type: 'Asset', isParent: true, parentId: '1-0000', level: 1 },
-        { id: '1-1100', name: 'Kas & Setara Kas', type: 'Asset', isParent: true, parentId: '1-1000', level: 2 },
-        { id: '1-1101', name: 'Kas Yayasan (Umum)', type: 'Asset', parentId: '1-1100', level: 3 },
-        { id: '1-1102', name: 'Kas Dana Terikat', type: 'Asset', parentId: '1-1100', level: 3 },
-        { id: '1-1111', name: 'Bank Yayasan (BSI)', type: 'Asset', parentId: '1-1100', level: 3 },
-        { id: '1-1112', name: 'Bank Dana Terikat', type: 'Asset', parentId: '1-1100', level: 3 },
-        { id: '1-1201', name: 'Piutang Operasional', type: 'Asset', parentId: '1-1000', level: 2 },
-        { id: '1-2000', name: 'Aset Tidak Lancar', type: 'Asset', isParent: true, parentId: '1-0000', level: 1 },
-        { id: '1-2101', name: 'Peralatan Kantor', type: 'Asset', parentId: '1-2000', level: 2 },
-        { id: '1-2201', name: 'Kendaraan Operasional', type: 'Asset', parentId: '1-2000', level: 2 },
+        { id: '1-0000', code: '1-0000', name: 'ASET', type: 'Asset', isParent: true, level: 0 },
+        { id: '1-1000', code: '1-1000', name: 'Aset Lancar', type: 'Asset', isParent: true, parentId: '1-0000', level: 1 },
+        { id: '1-1100', code: '1-1100', name: 'Kas & Setara Kas', type: 'Asset', isParent: true, parentId: '1-1000', level: 2 },
+        { id: '1-1101', code: '1-1101', name: 'Kas Yayasan (Umum)', type: 'Asset', parentId: '1-1100', level: 3 },
+        { id: '1-1102', code: '1-1102', name: 'Kas Dana Terikat', type: 'Asset', parentId: '1-1100', level: 3 },
+        { id: '1-1111', code: '1-1111', name: 'Bank Yayasan (BSI)', type: 'Asset', parentId: '1-1100', level: 3 },
+        { id: '1-1112', code: '1-1112', name: 'Bank Dana Terikat', type: 'Asset', parentId: '1-1100', level: 3 },
+        { id: '1-1201', code: '1-1201', name: 'Piutang Operasional', type: 'Asset', parentId: '1-1000', level: 2 },
+        { id: '1-2000', code: '1-2000', name: 'Aset Tidak Lancar', type: 'Asset', isParent: true, parentId: '1-0000', level: 1 },
+        { id: '1-2101', code: '1-2101', name: 'Peralatan Kantor', type: 'Asset', parentId: '1-2000', level: 2 },
+        { id: '1-2201', code: '1-2201', name: 'Kendaraan Operasional', type: 'Asset', parentId: '1-2000', level: 2 },
         
-        { id: '2-0000', name: 'LIABILITAS', type: 'Liability', isParent: true, level: 0 },
-        { id: '2-1000', name: 'Utang Jangka Pendek', type: 'Liability', isParent: true, parentId: '2-0000', level: 1 },
-        { id: '2-1101', name: 'Utang Gaji', type: 'Liability', parentId: '2-1000', level: 2 },
+        { id: '2-0000', code: '2-0000', name: 'LIABILITAS', type: 'Liability', isParent: true, level: 0 },
+        { id: '2-1000', code: '2-1000', name: 'Utang Jangka Pendek', type: 'Liability', isParent: true, parentId: '2-0000', level: 1 },
+        { id: '2-1101', code: '2-1101', name: 'Utang Gaji', type: 'Liability', parentId: '2-1000', level: 2 },
 
-        { id: '3-0000', name: 'ASET NETO', type: 'Equity', isParent: true, level: 0 },
-        { id: '3-1000', name: 'Aset Neto Tidak Terikat', type: 'Equity', parentId: '3-0000', level: 1 },
-        { id: '3-2000', name: 'Aset Neto Terikat', type: 'Equity', parentId: '3-0000', level: 1 },
+        { id: '3-0000', code: '3-0000', name: 'ASET NETO', type: 'Equity', isParent: true, level: 0 },
+        { id: '3-1000', code: '3-1000', name: 'Aset Neto Tidak Terikat', type: 'Equity', parentId: '3-0000', level: 1 },
+        { id: '3-2000', code: '3-2000', name: 'Aset Neto Terikat', type: 'Equity', parentId: '3-0000', level: 1 },
         
-        { id: '4-0000', name: 'PENDAPATAN', type: 'Revenue', isParent: true, level: 0 },
-        { id: '4-1000', name: 'Pendapatan Pendidikan', type: 'Revenue', parentId: '4-0000', level: 1 },
-        { id: '4-2000', name: 'Pendapatan Donasi', type: 'Revenue', parentId: '4-0000', level: 1 },
+        { id: '4-0000', code: '4-0000', name: 'PENDAPATAN', type: 'Revenue', isParent: true, level: 0 },
+        { id: '4-1000', code: '4-1000', name: 'Pendapatan Pendidikan', type: 'Revenue', parentId: '4-0000', level: 1 },
+        { id: '4-2000', code: '4-2000', name: 'Pendapatan Donasi', type: 'Revenue', parentId: '4-0000', level: 1 },
 
-        { id: '5-0000', name: 'BEBAN', type: 'Expense', isParent: true, level: 0 },
-        { id: '5-1000', name: 'Beban Gaji & Upah', type: 'Expense', parentId: '5-0000', level: 1 },
-        { id: '5-2000', name: 'Beban Operasional', type: 'Expense', parentId: '5-0000', level: 1 },
-        { id: '5-3000', name: 'Beban Program Sosial', type: 'Expense', parentId: '5-0000', level: 1 }
+        { id: '5-0000', code: '5-0000', name: 'BEBAN', type: 'Expense', isParent: true, level: 0 },
+        { id: '5-1000', code: '5-1000', name: 'Beban Gaji & Upah', type: 'Expense', parentId: '5-0000', level: 1 },
+        { id: '5-2000', code: '5-2000', name: 'Beban Operasional', type: 'Expense', parentId: '5-0000', level: 1 },
+        { id: '5-3000', code: '5-3000', name: 'Beban Program Sosial', type: 'Expense', parentId: '5-0000', level: 1 }
     ];
 
     console.log('Seeding Accounts...');
