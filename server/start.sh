@@ -15,7 +15,8 @@ echo "[Diagnostic] Running Database Sync (db push)..."
 $PRISMA db push --accept-data-loss || echo "[Error] DB Push failed. Please check DATABASE_URL."
 
 echo "[Diagnostic] Running Seeding..."
-node prisma/seed_income_items.cjs || echo "[Error] Seeding failed."
+node prisma/seed_income_items.cjs || echo "[Error] Seeding income items failed."
+node prisma/seed_yayasan.js || echo "[Error] Seeding yayasan master data failed."
 
 echo "[Diagnostic] Starting Process..."
 exec node index.js
