@@ -33,13 +33,24 @@ export const api = {
                 return json.data || [];
             };
 
-            const [accounts, journals, assets, programs, users, budgets] = await Promise.all([
+            const [
+                accounts, journals, assets, programs, users, budgets,
+                fields, units, students, incomeItems, distributionSettings,
+                budgetRequests, budgetReports
+            ] = await Promise.all([
                 fetchEntity('accounts'),
                 fetchEntity('journals'),
                 fetchEntity('assets'),
                 fetchEntity('programs'),
                 fetchEntity('users'),
-                fetchEntity('budgets')
+                fetchEntity('budgets'),
+                fetchEntity('fields'),
+                fetchEntity('units'),
+                fetchEntity('students'),
+                fetchEntity('income-items'),
+                fetchEntity('distribution-settings'),
+                fetchEntity('budget-requests'),
+                fetchEntity('budget-reports')
             ]);
 
             return {
@@ -52,18 +63,32 @@ export const api = {
                     ...j,
                     entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries
                 })),
-                assets: assets,
-                programs: programs,
-                users: users,
-                budgets: budgets.map(b => ({
-                    ...b,
-                    amount: parseFloat(b.amount) || 0
-                })),
+                assets, programs, users, 
+                budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
+                fields, units, students, incomeItems, distributionSettings,
+                budgetRequests, budgetReports,
                 notes: {}, 
             };
         } catch (error) {
             console.error('Failed to load data from server:', error.message);
             return null;
+        }
+    },
+
+    async fetchFundAvailability(unitId) {
+        if (!isRemote) return [];
+        try {
+            const token = localStorage.getItem('jwt_token');
+            const headers = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+
+            const res = await fetch(`${API_URL}/fund-availability/${unitId}`, { headers });
+            if (!res.ok) throw new Error('Fetch failed');
+            const json = await res.json();
+            return json.data || [];
+        } catch (error) {
+            console.error('Failed to fetch fund availability:', error);
+            return [];
         }
     },
 
@@ -114,43 +139,47 @@ export const api = {
                     await syncItem('journals', null, latestJournal, 'POST');
                     break;
                 }
-                case 'EDIT_JOURNAL':
-                    await syncItem('journals', payload.id, payload);
+                case 'ADD_FIELD':
+                    await syncItem('fields', null, payload, 'POST');
                     break;
-                case 'DELETE_JOURNAL': {
-                    const jrnDel = currentState.journals.find(j => j.id === payload);
-                    if (jrnDel) await syncItem('journals', payload, { ...jrnDel, isDeleted: true });
+                case 'EDIT_FIELD':
+                    await syncItem('fields', payload.id, payload);
                     break;
-                }
-                case 'ADD_PROGRAM':
-                    await syncItem('programs', null, payload, 'POST');
+                case 'DELETE_FIELD':
+                    await syncItem('fields', payload, { isDeleted: true }, 'DELETE');
                     break;
-                case 'EDIT_PROGRAM':
-                    await syncItem('programs', payload.id, payload);
+                case 'ADD_UNIT':
+                    await syncItem('units', null, payload, 'POST');
                     break;
-                case 'DELETE_PROGRAM':
-                    const prgDel = currentState.programs.find(p => p.id === payload);
-                    if (prgDel) await syncItem('programs', payload, { ...prgDel, isDeleted: true });
+                case 'EDIT_UNIT':
+                    await syncItem('units', payload.id, payload);
                     break;
-                case 'ADD_ASSET':
-                    await syncItem('assets', null, currentState.assets[currentState.assets.length - 1], 'POST');
+                case 'DELETE_UNIT':
+                    await syncItem('units', payload, { isDeleted: true }, 'DELETE');
                     break;
-                case 'EDIT_ASSET':
-                    await syncItem('assets', payload.id, payload);
+                case 'ADD_STUDENT':
+                    await syncItem('students', null, payload, 'POST');
                     break;
-                case 'DELETE_ASSET':
-                    const astDel = currentState.assets.find(a => a.id === payload);
-                    if (astDel) await syncItem('assets', payload, { ...astDel, isDeleted: true });
+                case 'EDIT_STUDENT':
+                    await syncItem('students', payload.id, payload);
                     break;
-                case 'ADD_USER':
-                    await syncItem('users', null, currentState.users[currentState.users.length - 1], 'POST');
+                case 'DELETE_STUDENT':
+                    await syncItem('students', payload, { isDeleted: true }, 'DELETE');
                     break;
-                case 'EDIT_USER':
-                    await syncItem('users', payload.id, payload);
+                case 'ADD_EXPENSE_ITEM':
+                    await syncItem('expense-items', null, payload, 'POST');
                     break;
-                case 'DELETE_USER':
-                    const usrDel = currentState.users.find(u => u.id === payload);
-                    if (usrDel) await syncItem('users', payload, { ...usrDel, isDeleted: true });
+                case 'UPDATE_DISTRIBUTION_SETTINGS':
+                    await syncItem('distribution-settings', null, payload, 'POST');
+                    break;
+                case 'ADD_BUDGET_REQUEST':
+                    await syncItem('budget-requests', null, payload, 'POST');
+                    break;
+                case 'EDIT_BUDGET_REQUEST':
+                    await syncItem('budget-requests', payload.id, payload);
+                    break;
+                case 'ADD_BUDGET_REPORT':
+                    await syncItem('budget-reports', null, payload, 'POST');
                     break;
                 case 'SET_BUDGETS':
                     await this.syncWholeState(currentState);

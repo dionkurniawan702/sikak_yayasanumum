@@ -12,34 +12,54 @@ export default function Sidebar({ isOpen, onClose }) {
     const { currentUser } = state;
     const navigate = useNavigate();
 
-    const menuItems = [
-        { section: 'UTAMA' },
-        { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-        { path: '/daftar-akun', label: 'Bagan Akun (COA)', icon: BookOpen },
-        { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
-        { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
-        { path: '/manajemen-anggaran', label: 'Manajemen Anggaran', icon: Target },
-        { section: 'TRANSAKSI' },
-        { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
-        { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
-        { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock },
-        { section: 'LAPORAN KEUANGAN' },
-        { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
-        { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
-        { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
-        { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
-        { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
-        { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
-        { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
-        { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText },
-        { section: 'PENGATURAN' },
-        { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
-        { path: '/pengaturan/audit-log', label: 'Audit Log Sistem', icon: Activity },
-        { path: '/pengaturan/tempat-sampah', label: 'Tempat Sampah', icon: Trash2 }
-    ];
+    let menuItems = [];
 
-    if (currentUser?.role === 'superadmin') {
-        menuItems.push({ path: '/manajemen-user', label: 'Manajemen User', icon: ShieldCheck });
+    const isSuperAdmin = currentUser?.role === 'superadmin';
+    const isAdminField = currentUser?.role === 'admin_bidang';
+    const isAdminUnit = currentUser?.role === 'admin_unit';
+
+    if (isSuperAdmin) {
+        menuItems = [
+            { section: 'UTAMA' },
+            { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+            { path: '/daftar-akun', label: 'Bagan Akun (COA)', icon: BookOpen },
+            { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
+            { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
+            { path: '/manajemen-anggaran', label: 'Manajemen Anggaran', icon: Target },
+            { section: 'ANGGARAN & PELAPORAN' },
+            { path: '/anggaran/unit-bidang', label: 'Unit & Bidang', icon: Building2 },
+            { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
+            { path: '/anggaran/distribusi', label: 'Setting Distribusi', icon: Share2 },
+            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Wallet },
+            { path: '/pelaporan/bulanan', label: 'Laporan Bulanan', icon: FileText },
+            { section: 'TRANSAKSI' },
+            { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
+            { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
+            { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock },
+            { section: 'LAPORAN KEUANGAN' },
+            { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
+            { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
+            { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
+            { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
+            { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
+            { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
+            { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
+            { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText },
+            { section: 'PENGATURAN' },
+            { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
+            { path: '/pengaturan/audit-log', label: 'Audit Log Sistem', icon: Activity },
+            { path: '/pengaturan/tempat-sampah', label: 'Tempat Sampah', icon: Trash2 },
+            { path: '/manajemen-user', label: 'Manajemen User', icon: ShieldCheck }
+        ];
+    } else if (isAdminField || isAdminUnit) {
+        menuItems = [
+            { section: 'ANGGARAN & PELAPORAN' },
+            { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+            { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
+            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Wallet },
+            { path: '/pelaporan/bulanan', label: 'Laporan Bulanan', icon: FileText },
+            { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark }
+        ];
     }
 
     const handleLogout = () => {

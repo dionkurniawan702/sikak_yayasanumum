@@ -13,6 +13,8 @@ model User {
   username  String  @unique
   password  String
   role      String
+  fieldId   String?
+  unitId    String?
   isDeleted Boolean @default(false)
 
   @@map("users")
@@ -101,4 +103,154 @@ model AuditLog {
   details   Json?
 
   @@map("audit_logs")
+}
+
+// --- NEW MODELS FOR ANGGARAN & PELAPORAN ---
+
+model Field {
+  id        String   @id @default(uuid())
+  name      String
+  isDeleted Boolean  @default(false)
+  
+  units        Unit[]
+  expenseItems ExpenseItem[]
+
+  @@map("fields")
+}
+
+model Unit {
+  id        String   @id @default(uuid())
+  name      String
+  fieldId   String
+  field     Field    @relation(fields: [fieldId], references: [id])
+  isDeleted Boolean  @default(false)
+
+  students     Student[]
+  expenseItems ExpenseItem[]
+
+  @@map("units")
+}
+
+model Student {
+  id        String   @id @default(uuid())
+  name      String
+  nis       String?
+  unitId    String
+  unit      Unit     @relation(fields: [unitId], references: [id])
+  isDeleted Boolean  @default(false)
+
+  incomeDetails StudentIncomeDetail[]
+  payments      StudentPayment[]
+
+  @@map("students")
+}
+
+model IncomeItem {
+  id        String   @id @default(uuid())
+  name      String
+  isDeleted Boolean  @default(false)
+
+  studentDetails       StudentIncomeDetail[]
+  distributionSettings DistributionSetting[]
+
+  @@map("income_items")
+}
+
+model ExpenseItem {
+  id        String   @id @default(uuid())
+  name      String
+  unitId    String?
+  unit      Unit?    @relation(fields: [unitId], references: [id])
+  fieldId   String?
+  field     Field?   @relation(fields: [fieldId], references: [id])
+  accountId String?
+  isDeleted Boolean  @default(false)
+
+  allocations          BudgetAllocation[]
+  distributionSettings DistributionSetting[]
+  requests             BudgetRequest[]
+  reports              BudgetReport[]
+
+  @@map("expense_items")
+}
+
+model StudentIncomeDetail {
+  id           String     @id @default(uuid())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  incomeItemId String
+  incomeItem   IncomeItem @relation(fields: [incomeItemId], references: [id])
+  amount       Decimal    @db.Decimal(15, 2)
+  isDeleted    Boolean    @default(false)
+
+  @@map("student_income_details")
+}
+
+model StudentPayment {
+  id           String     @id @default(uuid())
+  studentId    String
+  student      Student    @relation(fields: [studentId], references: [id])
+  incomeItemId String
+  amount       Decimal    @db.Decimal(15, 2)
+  date         DateTime   @default(now())
+  description  String?
+  isDeleted    Boolean    @default(false)
+
+  @@map("student_payments")
+}
+
+model DistributionSetting {
+  id             String      @id @default(uuid())
+  unitId         String      // The unit receiving the income
+  incomeItemId   String
+  incomeItem     IncomeItem  @relation(fields: [incomeItemId], references: [id])
+  expenseItemId  String
+  expenseItem    ExpenseItem @relation(fields: [expenseItemId], references: [id])
+  percentage     Decimal     @db.Decimal(5, 2)
+  isDeleted      Boolean     @default(false)
+
+  @@map("distribution_settings")
+}
+
+model BudgetAllocation {
+  id            String      @id @default(uuid())
+  expenseItemId String
+  expenseItem   ExpenseItem @relation(fields: [expenseItemId], references: [id])
+  year          String
+  amount        Decimal     @db.Decimal(15, 2)
+  isDeleted     Boolean     @default(false)
+
+  @@map("budget_allocations")
+}
+
+model BudgetRequest {
+  id            String      @id @default(uuid())
+  expenseItemId String
+  expenseItem   ExpenseItem @relation(fields: [expenseItemId], references: [id])
+  amount        Decimal     @db.Decimal(15, 2)
+  date          DateTime    @default(now())
+  month         Int
+  year          Int
+  description   String?
+  status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
+  isDeleted     Boolean     @default(false)
+
+  reports       BudgetReport[]
+
+  @@map("budget_requests")
+}
+
+model BudgetReport {
+  id              String        @id @default(uuid())
+  budgetRequestId String
+  budgetRequest   BudgetRequest @relation(fields: [budgetRequestId], references: [id])
+  expenseItemId   String
+  expenseItem     ExpenseItem   @relation(fields: [expenseItemId], references: [id])
+  amount          Decimal       @db.Decimal(15, 2)
+  date            DateTime      @default(now())
+  description     String?
+  journalId       String?
+  isDeleted       Boolean       @default(false)
+
+  @@map("budget_reports")
 }

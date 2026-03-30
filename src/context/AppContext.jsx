@@ -11,6 +11,14 @@ const defaultState = {
     assets: initialAssets,
     programs: initialPrograms,
     budgets: [],
+    fields: [],
+    units: [],
+    students: [],
+    incomeItems: [],
+    expenseItems: [],
+    distributionSettings: [],
+    budgetRequests: [],
+    budgetReports: [],
     notes: {},
     users: [
         { id: 'USR-001', username: 'superadmin', password: 'admin123', role: 'superadmin', name: 'Super Administrator' }
@@ -138,6 +146,14 @@ function appReducer(state, action) {
                 assets: serverData.assets || state.assets,
                 programs: serverData.programs || state.programs,
                 budgets: serverData.budgets || state.budgets || [],
+                fields: serverData.fields || state.fields || [],
+                units: serverData.units || state.units || [],
+                students: serverData.students || state.students || [],
+                incomeItems: serverData.incomeItems || state.incomeItems || [],
+                expenseItems: serverData.expenseItems || state.expenseItems || [],
+                distributionSettings: serverData.distributionSettings || state.distributionSettings || [],
+                budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
+                budgetReports: serverData.budgetReports || state.budgetReports || [],
                 users: serverData.users || state.users,
                 currentUser: state.currentUser,
                 isOnline: true,
@@ -213,6 +229,57 @@ function appReducer(state, action) {
             break;
         case 'RESTORE_DATA':
             newState = action.payload;
+            break;
+        case 'ADD_FIELD':
+            newState = { ...state, fields: [...state.fields, action.payload] };
+            break;
+        case 'EDIT_FIELD':
+            newState = { ...state, fields: state.fields.map(f => f.id === action.payload.id ? action.payload : f) };
+            break;
+        case 'DELETE_FIELD':
+            newState = { ...state, fields: state.fields.map(f => f.id === action.payload ? { ...f, isDeleted: true } : f) };
+            break;
+        case 'ADD_UNIT':
+            newState = { ...state, units: [...state.units, action.payload] };
+            break;
+        case 'EDIT_UNIT':
+            newState = { ...state, units: state.units.map(u => u.id === action.payload.id ? action.payload : u) };
+            break;
+        case 'DELETE_UNIT':
+            newState = { ...state, units: state.units.map(u => u.id === action.payload ? { ...u, isDeleted: true } : u) };
+            break;
+        case 'ADD_STUDENT':
+            newState = { ...state, students: [...state.students, action.payload] };
+            break;
+        case 'EDIT_STUDENT':
+            newState = { ...state, students: state.students.map(s => s.id === action.payload.id ? action.payload : s) };
+            break;
+        case 'DELETE_STUDENT':
+            newState = { ...state, students: state.students.map(s => s.id === action.payload ? { ...s, isDeleted: true } : s) };
+            break;
+        case 'UPDATE_DISTRIBUTION_SETTINGS': {
+            const { unitId, incomeItemId, settings } = action.payload;
+            const otherSettings = state.distributionSettings.filter(s => !(s.unitId === unitId && s.incomeItemId === incomeItemId));
+            newState = { ...state, distributionSettings: [...otherSettings, ...settings] };
+            break;
+        }
+        case 'ADD_BUDGET_REQUEST':
+            newState = { ...state, budgetRequests: [...state.budgetRequests, action.payload] };
+            break;
+        case 'EDIT_BUDGET_REQUEST':
+            newState = { ...state, budgetRequests: state.budgetRequests.map(r => r.id === action.payload.id ? action.payload : r) };
+            break;
+        case 'ADD_EXPENSE_ITEM':
+            newState = { ...state, expenseItems: [...state.expenseItems, action.payload] };
+            break;
+        case 'EDIT_EXPENSE_ITEM':
+            newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i) };
+            break;
+        case 'DELETE_EXPENSE_ITEM':
+            newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) };
+            break;
+        case 'ADD_BUDGET_REPORT':
+            newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
             break;
         default:
             return state;

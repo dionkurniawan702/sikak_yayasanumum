@@ -21,6 +21,12 @@ import AuditLog from './pages/AuditLog';
 import BackupRestore from './pages/BackupRestore';
 import TrashBin from './pages/TrashBin';
 import Profile from './pages/Profile';
+import FieldUnitManagement from './pages/anggaran/FieldUnitManagement';
+import StudentDatabase from './pages/anggaran/StudentDatabase';
+import DistributionSettings from './pages/anggaran/DistributionSettings';
+import MonthlyRequest from './pages/pelaporan/MonthlyRequest';
+import MonthlyReport from './pages/pelaporan/MonthlyReport';
+import FundAvailability from './pages/pelaporan/FundAvailability';
 
 // Placeholder untuk halaman yang belum dimigrasi
 const Placeholder = ({ title }) => (
@@ -72,6 +78,14 @@ export default function App() {
                         <Route path="pengaturan/backup-restore" element={<BackupRestore />} />
                         <Route path="pengaturan/audit-log" element={<AuditLog />} />
                         <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
+
+                        {/* ANGGARAN & PELAPORAN ROUTES */}
+                        <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
+                        <Route path="anggaran/siswa" element={<StudentDatabase />} />
+                        <Route path="anggaran/distribusi" element={<DistributionSettings />} />
+                        <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
+                        <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
+                        <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
                     </Route>
                 </Routes>
             </BrowserRouter>
