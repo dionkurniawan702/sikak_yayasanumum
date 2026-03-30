@@ -118,6 +118,31 @@ app.get('*', (req, res) => {
     }
 });
 
+// Global Error Handler
+app.use((err, req, res, next) => {
+    console.error(`[Error] ${new Date().toISOString()} - ${err.message}`);
+    
+    // Handle Prisma specific errors
+    if (err.message.includes('Authentication failed')) {
+        return res.status(500).json({ 
+            error: 'Database Authentication Failed', 
+            details: 'Please check DATABASE_URL credentials in Easypanel Environment Variables.' 
+        });
+    }
+    
+    if (err.message.includes('Can not connect to database')) {
+        return res.status(500).json({ 
+            error: 'Database Connection Failed', 
+            details: 'Ensure the database container is running and accessible.' 
+        });
+    }
+
+    res.status(500).json({ 
+        error: 'Internal Server Error', 
+        message: err.message 
+    });
+});
+
 // Server Listening with Robust Error Handling
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Success] SIKAK Yayasan Backend listening on port ${PORT}`);
