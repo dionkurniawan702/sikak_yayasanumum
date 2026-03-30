@@ -202,7 +202,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         typeAccounts = typeAccounts.filter(a => funds.includes(a.fund) || a.category === 'header');
     }
 
-    const headers = typeAccounts.filter(a => a.category === 'header').sort((a, b) => a.code.localeCompare(b.code));
+    const headers = typeAccounts.filter(a => a.category === 'header').sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
     const details = typeAccounts.filter(a => a.category === 'detail');
 
     const detailToHeader = {};
@@ -228,7 +228,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         }));
 
         const visibleChildren = (showEmpty ? childrenWithSaldo : childrenWithSaldo.filter(c => c.saldo !== 0))
-            .sort((a, b) => a.code.localeCompare(b.code));
+            .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
 
         const totalSaldo = childrenWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0) + (header.initialBalance || 0);
 
@@ -248,7 +248,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
             saldo: hitungSaldoAkun(journals, c.id, accounts, yearLimit, assets, isYearOnly)
         }));
         const visibleOrphans = (showEmpty ? orphansWithSaldo : orphansWithSaldo.filter(c => c.saldo !== 0))
-            .sort((a, b) => a.code.localeCompare(b.code));
+            .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
 
         if (showEmpty || visibleOrphans.length > 0) {
             const totalOrphanSaldo = orphansWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0);

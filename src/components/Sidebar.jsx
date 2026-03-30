@@ -23,7 +23,7 @@ export default function Sidebar({ isOpen, onClose }) {
         menuItems = [
             { section: 'UTAMA' },
             { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-            { path: '/daftar-akun', label: 'Bagan Akun (COA)', icon: BookOpen },
+            { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
             { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
             { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
             { path: '/manajemen-anggaran', label: 'Manajemen Anggaran', icon: Target },

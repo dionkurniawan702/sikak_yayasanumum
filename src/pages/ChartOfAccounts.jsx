@@ -116,7 +116,7 @@ export default function ChartOfAccounts() {
                         <PieChart size={24} />
                     </div>
                     <div>
-                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Chart of Accounts</h2>
+                        <h2 className="text-2xl font-black text-slate-900 tracking-tight">Daftar Akun</h2>
                         <p className="text-sm text-slate-500 font-medium tracking-tight">Struktur Akun Standar PSAK 35 — Yayasan Umum</p>
                     </div>
                 </div>
