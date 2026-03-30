@@ -20,6 +20,7 @@ RUN npm install --omit=dev
 
 # Copy backend source
 COPY server/ ./
+RUN chmod +x start.sh
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
 # Copy the built frontend
@@ -30,5 +31,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV NODE_ENV=production
 
-# Start unified app (Simplified)
-CMD ["node", "index.js"]
+# Start unified app using startup script
+CMD ["sh", "start.sh"]
