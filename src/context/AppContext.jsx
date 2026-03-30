@@ -36,6 +36,7 @@ function loadState() {
     try {
         const saved = localStorage.getItem('sikak-yayasan-data');
         if (saved) {
+            const data = JSON.parse(saved);
             // Ensure all new keys from defaultState are present
             const merged = { ...defaultState, ...data };
             
