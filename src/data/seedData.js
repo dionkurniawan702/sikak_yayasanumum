@@ -97,5 +97,6 @@ export const initialIncomeItems = [
     { id: 'INC-032', name: 'Biaya Perpisahan' },
     { id: 'INC-033', name: 'Perawatan Sarpras dan Bangunan' },
     { id: 'INC-034', name: 'Biaya Kompre' },
-    { id: 'INC-035', name: 'Sosial' }
+    { id: 'INC-035', name: 'Sosial' },
+    { id: 'INC-036', name: 'SPP' }
 ];

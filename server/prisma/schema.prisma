@@ -164,6 +164,7 @@ model ExpenseItem {
   fieldId   String?
   field     Field?   @relation(fields: [fieldId], references: [id])
   accountId String?
+  sourceOfFunds String?
   isDeleted Boolean  @default(false)
 
   allocations          BudgetAllocation[]

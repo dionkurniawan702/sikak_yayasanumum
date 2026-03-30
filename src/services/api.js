@@ -178,6 +178,12 @@ export const api = {
                 case 'ADD_EXPENSE_ITEM':
                     await syncItem('expense-items', null, payload, 'POST');
                     break;
+                case 'EDIT_EXPENSE_ITEM':
+                    await syncItem('expense-items', payload.id, payload);
+                    break;
+                case 'DELETE_EXPENSE_ITEM':
+                    await syncItem('expense-items', payload, { isDeleted: true }, 'DELETE');
+                    break;
                 case 'UPDATE_DISTRIBUTION_SETTINGS':
                     await syncItem('distribution-settings', null, payload, 'POST');
                     break;

@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
-import { initialAccounts, initialJournals, initialAssets, initialPrograms, initialIncomeItems } from '../data/seedData';
+import { initialAccounts, initialJournals, initialAssets, initialPrograms, initialIncomeItems, initialExpenseItems } from '../data/seedData';
 import { generateId } from '../utils/format';
 import { isRemote, api } from '../services/api';
 
@@ -15,7 +15,7 @@ const defaultState = {
     units: [],
     students: [],
     incomeItems: initialIncomeItems,
-    expenseItems: [],
+    expenseItems: initialExpenseItems,
     distributionSettings: [],
     budgetRequests: [],
     budgetReports: [],
@@ -286,8 +286,20 @@ function appReducer(state, action) {
                 incomeItems: state.incomeItems.filter(i => i.id !== action.payload)
             };
         case 'ADD_EXPENSE_ITEM':
-            newState = { ...state, expenseItems: [...state.expenseItems, action.payload] };
-            break;
+            return {
+                ...state,
+                expenseItems: [action.payload, ...state.expenseItems]
+            };
+        case 'EDIT_EXPENSE_ITEM':
+            return {
+                ...state,
+                expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i)
+            };
+        case 'DELETE_EXPENSE_ITEM':
+            return {
+                ...state,
+                expenseItems: state.expenseItems.filter(i => i.id !== action.payload)
+            };
         case 'EDIT_EXPENSE_ITEM':
             newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i) };
             break;

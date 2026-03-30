@@ -230,6 +230,30 @@ router.post('/expense-items', async (req, res) => {
     }
 });
 
+router.put('/expense-items/:id', async (req, res) => {
+    try {
+        const item = await getPrisma(req).expenseItem.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/expense-items/:id', async (req, res) => {
+    try {
+        await getPrisma(req).expenseItem.update({
+            where: { id: req.params.id },
+            data: { isDeleted: true }
+        });
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- DISTRIBUTION SETTINGS ---
 router.get('/distribution-settings', async (req, res) => {
     try {
