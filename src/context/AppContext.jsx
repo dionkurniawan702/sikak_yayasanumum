@@ -30,13 +30,23 @@ const defaultState = {
     ],
     currentUser: null,
     isOnline: true,
+    version: '1.1.0'
 };
+
+const CURRENT_VERSION = '1.1.0';
 
 function loadState() {
     try {
         const saved = localStorage.getItem('sikak-yayasan-data');
         if (saved) {
             const data = JSON.parse(saved);
+            
+            // Forced reset if version mismatch (important for ID synchronization)
+            if (data.version !== CURRENT_VERSION) {
+                console.log('[Migration] Version mismatch, resetting local cache to initial state.');
+                return { ...defaultState, version: CURRENT_VERSION };
+            }
+
             // Ensure all new keys from defaultState are present
             const merged = { ...defaultState, ...data };
             
