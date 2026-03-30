@@ -30,10 +30,10 @@ const defaultState = {
     ],
     currentUser: null,
     isOnline: true,
-    version: '1.1.0'
+    version: '1.2.0'
 };
 
-const CURRENT_VERSION = '1.1.0';
+const CURRENT_VERSION = '1.2.0';
 
 function loadState() {
     try {
