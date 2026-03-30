@@ -168,7 +168,7 @@ model Class {
 
 model IncomeItem {
   id        String   @id @default(uuid())
-  name      String
+  name      String   @unique
   isDeleted Boolean  @default(false)
 
   studentDetails       StudentIncomeDetail[]
