@@ -105,7 +105,17 @@ export default function Sidebar({ isOpen, onClose }) {
         <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
                 <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">✦ SIKAK YAYASAN</h1>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Sistem Informasi Keuangan</p>
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-white/10 rounded-xl shadow-inner backdrop-blur-sm border border-white/5">
+                        <Landmark className="text-blue-200" size={24} />
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xl font-black text-white tracking-tight">SIKAK</span>
+                        <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] -mt-1 line-clamp-1 italic">
+                            YAYASAN UMUM
+                        </span>
+                    </div>
+                </div>
 
                 {/* Status Sinkronisasi */}
                 <div className="mt-4 p-2 bg-slate-800/50 rounded-xl flex items-center gap-2">

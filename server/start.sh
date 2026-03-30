@@ -9,10 +9,15 @@ echo "[Diagnostic] $(date) - Waiting for database to be ready..."
 MAX_RETRIES=15
 COUNT=0
 while [ $COUNT -lt $MAX_RETRIES ]; do
-  if npx prisma db pull --print-schema > /dev/null 2>&1; then
+  ERROR_LOG=$(npx prisma db pull --print-schema 2>&1)
+  if [ $? -eq 0 ]; then
     echo "[Diagnostic] $(date) - Database is reachable!"
     break
   fi
+  
+  # Print the error for debugging
+  echo "[Diagnostic] Error: $(echo $ERROR_LOG | head -n 1)"
+  
   echo "[Diagnostic] $(date) - Database not ready yet, retrying in 3s ($((COUNT+1))/$MAX_RETRIES)..."
   sleep 3
   COUNT=$((COUNT+1))

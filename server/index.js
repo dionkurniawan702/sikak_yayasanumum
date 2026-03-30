@@ -152,10 +152,50 @@ app.use((err, req, res, next) => {
     });
 });
 
+// 5. Auto-Seed Function (Background)
+const ensureFundSources = async () => {
+    const incomeItemsList = [
+        'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian', 
+        'Operasional Bulanan', 'Pengembangan dan Pelatihan', 'Uang Makan', 
+        'Seragam', 'Kopiah', 'Paket 1 tahun', 'Kegiatan Kesiswaan', 
+        'Ekskul', 'Uang Ujian', 'Infaq Perpustakaan', 
+        'Buku komunikasi & Raport(LKPD)', 
+        'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah', 
+        'Buku Pelajaran', 'Buku Kontrol Tahfizh', 'Buku Tulis', 
+        'Uang Osis', 'Biaya Pramuka', 'Biaya UKS', 'Biaya Berobat', 
+        'Biaya Bus', 'Labor IPA', 'Labor Komputer', 'Outing Class', 
+        'Komite', 'Biaya Aplikasi', 'Biaya Try Out', 'Biaya Perpisahan', 
+        'Perawatan Sarpras dan Bangunan', 'Biaya Kompre', 'Sosial'
+    ];
+
+    try {
+        const client = getPrisma();
+        console.log(`[Seed] Checking Fund Sources (${incomeItemsList.length} items)...`);
+        for (const name of incomeItemsList) {
+            const existing = await client.incomeItem.findFirst({
+                where: { name, isDeleted: false }
+            });
+            
+            if (!existing) {
+                await client.incomeItem.create({
+                    data: { name }
+                });
+                console.log(`[Seed] Added: ${name}`);
+            }
+        }
+        console.log(`[Seed] Fund Source check complete.`);
+    } catch (error) {
+        console.error(`[Seed Error] ${error.message}`);
+    }
+};
+
 // Server Listening with Robust Error Handling
-const server = app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`[Success] SIKAK Yayasan Backend listening on port ${PORT}`);
     console.log(`[Success] Internal Health Check Path: /health`);
+    
+    // Trigger background seeding
+    await ensureFundSources();
 });
 
 server.on('error', (err) => {
