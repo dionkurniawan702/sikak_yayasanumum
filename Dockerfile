@@ -11,7 +11,7 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Install system dependencies
-RUN apk add --no-cache openssl libc6-compat tini
+RUN apk add --no-cache openssl libc6-compat tini dos2unix
 
 # Copy backend dependencies
 COPY server/package*.json ./server/
@@ -20,6 +20,7 @@ RUN npm install --omit=dev
 
 # Copy backend source
 COPY server/ ./
+RUN dos2unix start.sh
 RUN chmod +x start.sh
 RUN npx prisma generate --schema=./prisma/schema.prisma
 
