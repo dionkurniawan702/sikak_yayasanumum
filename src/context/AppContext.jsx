@@ -353,7 +353,16 @@ function appReducer(state, action) {
         case 'DELETE_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.filter(i => i.id !== action.payload) }; break;
 
         case 'ADD_CONTACT': newState = { ...state, contacts: [...state.contacts, action.payload] }; break;
-        case 'EDIT_CONTACT': newState = { ...state, contacts: state.contacts.map(c => c.id === action.payload.id ? action.payload : c) }; break;
+        case 'EDIT_CONTACT': {
+            const oldContact = state.contacts.find(c => c.id === action.payload.id);
+            const nameChanged = oldContact && oldContact.name !== action.payload.name;
+            newState = { 
+                ...state, 
+                contacts: state.contacts.map(c => c.id === action.payload.id ? action.payload : c),
+                journals: nameChanged ? state.journals.map(j => j.name === oldContact.name ? { ...j, name: action.payload.name } : j) : state.journals
+            };
+            break;
+        }
         case 'DELETE_CONTACT': newState = { ...state, contacts: state.contacts.filter(c => c.id !== action.payload) }; break;
         
         default:

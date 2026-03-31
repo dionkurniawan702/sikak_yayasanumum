@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { generateId } from '../utils/format';
+import { generateId, formatRupiah } from '../utils/format';
 import { 
     Users, MapPin, Search, Plus, Edit2, Trash2, Save, X, Phone 
 } from 'lucide-react';
@@ -53,12 +53,24 @@ export default function ContactsData() {
     const [formData, setFormData] = useState({});
 
     const filteredContacts = useMemo(() => {
-        return contacts.filter(c => {
+        return contacts.map(c => {
+            const relevantJournals = (state.journals || []).filter(j => !j.isDeleted && j.name === c.name);
+            const totalContribution = relevantJournals.reduce((acc, j) => {
+                // Sum only positive debits (contributions)
+                const journalTotal = (j.entries || []).reduce((sum, e) => sum + (e.debit || 0), 0);
+                return acc + journalTotal;
+            }, 0);
+            return {
+                ...c,
+                totalContribution,
+                transactionCount: relevantJournals.length
+            };
+        }).filter(c => {
             const matchesType = filterType === 'All' || c.type === filterType;
             const matchesSearch = c.name?.toLowerCase().includes(search.toLowerCase()) || c.city?.toLowerCase().includes(search.toLowerCase());
             return matchesType && matchesSearch;
         });
-    }, [contacts, filterType, search]);
+    }, [contacts, state.journals, filterType, search]);
 
     const handleEdit = (contact) => {
         setFormData(contact);
@@ -211,9 +223,11 @@ export default function ContactsData() {
                         <table className="w-full text-left border-t border-slate-100">
                             <thead className="bg-white text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
                                 <tr>
-                                    <th className="px-8 py-5">Identitas & Status</th>
-                                    <th className="px-8 py-5">Informasi Kontak</th>
-                                    <th className="px-8 py-5 text-center">Tindakan</th>
+                                    <th className="px-8 py-5">Informasi Entitas</th>
+                                    <th className="px-8 py-5">Kategori</th>
+                                    <th className="px-8 py-5">Wilayah</th>
+                                    <th className="px-8 py-5 text-right">Total Kontribusi</th>
+                                    <th className="px-8 py-5 text-center">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-50">
@@ -226,16 +240,34 @@ export default function ContactsData() {
                                                 </div>
                                                 <div>
                                                     <p className="font-bold text-slate-800 text-base">{c.name}</p>
-                                                    <p className={`text-[10px] font-black uppercase tracking-widest mt-1 ${c.type === 'Donatur' ? 'text-emerald-500' : c.type === 'Penerima Manfaat' ? 'text-amber-500' : 'text-slate-400'}`}>
-                                                        {c.type}
-                                                    </p>
+                                                    <p className="text-[10px] text-slate-400 font-bold flex items-center gap-1"><Phone size={10}/> {c.phone || '-'}</p>
                                                 </div>
                                             </div>
                                         </td>
                                         <td className="px-8 py-5">
-                                            <div className="flex flex-col gap-2">
-                                                <p className="text-sm text-slate-700 font-bold flex items-center gap-2"><Phone size={14} className="text-slate-400"/> {c.phone || 'Belum ada nomor'}</p>
-                                                <p className="text-xs text-slate-500 flex items-center gap-2 max-w-xs truncate" title={c.address || c.city || ''}><MapPin size={14} className="text-slate-400"/> {c.city ? `${c.city}, ${c.province}` : c.address || 'Alamat tidak tersedia'}</p>
+                                            <span className={`text-[10px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full ${c.type === 'Donatur' ? 'bg-emerald-50 text-emerald-600' : c.type === 'Penerima Manfaat' ? 'bg-amber-50 text-amber-600' : 'bg-slate-50 text-slate-400'}`}>
+                                                {c.type}
+                                            </span>
+                                        </td>
+                                        <td className="px-8 py-5">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                    {(c.city || c.province) ? 'Lokasi Utama' : '-'}
+                                                </p>
+                                                <p className="text-xs text-slate-600 font-bold flex items-center gap-1.5 uppercase tracking-tight">
+                                                    {c.city ? `${c.city}, ${c.province}` : c.province || c.address || 'Alamat tidak tersedia'}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 font-medium">{c.district || ''}</p>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-5 text-right">
+                                            <div className="flex flex-col items-end">
+                                                <p className="text-sm font-black text-slate-800 tracking-tight">
+                                                    {formatRupiah(c.totalContribution)}
+                                                </p>
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+                                                    {c.transactionCount} Transaksi
+                                                </p>
                                             </div>
                                         </td>
                                         <td className="px-8 py-5">
@@ -252,7 +284,7 @@ export default function ContactsData() {
                                 ))}
                                 {filteredContacts.length === 0 && (
                                     <tr>
-                                        <td colSpan={3} className="px-8 py-20 text-center">
+                                        <td colSpan={5} className="px-8 py-20 text-center">
                                             <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 border border-slate-100">
                                                 <Users size={32} className="text-slate-300" />
                                             </div>
