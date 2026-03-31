@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { formatRupiah, formatTanggal } from '../utils/format';
+import { formatRupiah, formatTanggal, generateId } from '../utils/format';
 import {
     Plus, Trash2, Save, AlertTriangle, CheckCircle, Calendar, FileText,
     Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users
@@ -35,6 +35,13 @@ export default function JournalEntry() {
     const [assetRoom, setAssetRoom] = useState('');
     const [assetCondition, setAssetCondition] = useState('');
     const [programId, setProgramId] = useState('PRG-GEN');
+    
+    // Contact States
+    const [contactStatus, setContactStatus] = useState('');
+    const [contactAddress, setContactAddress] = useState('');
+    const [contactProvince, setContactProvince] = useState('');
+    const [contactCity, setContactCity] = useState('');
+    const [contactDistrict, setContactDistrict] = useState('');
     const [rows, setRows] = useState([
         { accountId: '', debit: '', credit: '' },
         { accountId: '', debit: '', credit: '' },
@@ -94,6 +101,20 @@ export default function JournalEntry() {
         setRows(rows.map((r, i) => i === idx ? { ...r, [field]: value, ...(field === 'debit' && value ? { credit: '' } : field === 'credit' && value ? { debit: '' } : {}) } : r));
     }
 
+    function handleNameChange(e) {
+        const val = e.target.value;
+        setName(val);
+        const existing = state.contacts?.find(c => c.name.toLowerCase() === val.toLowerCase());
+        if (existing) {
+            setContactStatus(existing.type || '');
+            setPhoneNumber(existing.phone || '');
+            setContactAddress(existing.address || '');
+            setContactProvince(existing.province || '');
+            setContactCity(existing.city || '');
+            setContactDistrict(existing.district || '');
+        }
+    }
+
     function handleEdit(journal) {
         setEditingJournal(journal);
         setDate(journal.date);
@@ -102,6 +123,21 @@ export default function JournalEntry() {
         setReference(journal.reference || '');
         setProof(journal.proof || '');
         setPhoneNumber(journal.phoneNumber || '');
+        
+        const existing = state.contacts?.find(c => c.name === (journal.name || ''));
+        if (existing) {
+            setContactStatus(existing.type || '');
+            setContactAddress(existing.address || '');
+            setContactProvince(existing.province || '');
+            setContactCity(existing.city || '');
+            setContactDistrict(existing.district || '');
+        } else {
+            setContactStatus('');
+            setContactAddress('');
+            setContactProvince('');
+            setContactCity('');
+            setContactDistrict('');
+        }
         setEconomicLife(journal.economicLife || '');
         setAssetPosition(journal.assetPosition || '');
         setAssetRoom(journal.assetRoom || '');
@@ -133,6 +169,21 @@ export default function JournalEntry() {
             assetPosition, assetRoom, assetCondition
         };
 
+        if (name && contactStatus && contactStatus !== '') {
+            const existingContact = state.contacts?.find(c => c.name.toLowerCase() === name.toLowerCase());
+            const contactPayload = {
+                id: existingContact ? existingContact.id : generateId('CNT'),
+                name,
+                type: contactStatus,
+                phone: phoneNumber,
+                address: contactAddress,
+                province: contactProvince,
+                city: contactCity,
+                district: contactDistrict
+            };
+            dispatch({ type: existingContact ? 'EDIT_CONTACT' : 'ADD_CONTACT', payload: contactPayload });
+        }
+
         if (editingJournal) {
             dispatch({ type: 'EDIT_JOURNAL', payload: { ...payload, id: editingJournal.id } });
             setEditingJournal(null);
@@ -148,6 +199,11 @@ export default function JournalEntry() {
         setDescription('');
         setReference('');
         setProof('');
+        setContactStatus('');
+        setContactAddress('');
+        setContactProvince('');
+        setContactCity('');
+        setContactDistrict('');
         setRows([{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }]);
     }
 
@@ -173,8 +229,42 @@ export default function JournalEntry() {
                         </div>
                         <div>
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Pihak Terkait</label>
-                            <input className="form-input rounded-2xl border-slate-200" value={name} onChange={e => setName(e.target.value)} placeholder="Nama Donatur / Vendor" />
+                            <input className="form-input rounded-2xl border-slate-200" value={name} onChange={handleNameChange} placeholder="Nama Donatur / Vendor" list="contact-list" />
+                            <datalist id="contact-list">
+                                {state.contacts?.map(c => <option key={c.id} value={c.name} />)}
+                            </datalist>
                         </div>
+                        <div>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Status Pihak (Opsional)</label>
+                            <select className="form-select rounded-2xl border-slate-200" value={contactStatus} onChange={e => setContactStatus(e.target.value)}>
+                                <option value="">Tanpa Status</option>
+                                <option value="Donatur">Donatur</option>
+                                <option value="Penerima Manfaat">Penerima Manfaat</option>
+                                <option value="Lainnya">Lainnya</option>
+                            </select>
+                        </div>
+                        {(contactStatus === 'Donatur' || contactStatus === 'Penerima Manfaat') && (
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50 mb-2">
+                                <div className="md:col-span-2">
+                                    <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Alamat Lengkap</label>
+                                    <input className="form-input rounded-xl border-emerald-100 bg-white text-sm" value={contactAddress} onChange={e => setContactAddress(e.target.value)} placeholder="Jl. Contoh No. 123..." />
+                                </div>
+                                <div className="grid grid-cols-3 gap-4 md:col-span-2">
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Provinsi</label>
+                                        <input className="form-input rounded-xl border-emerald-100 bg-white text-sm" value={contactProvince} onChange={e => setContactProvince(e.target.value)} placeholder="Provinsi" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Kota/Kab</label>
+                                        <input className="form-input rounded-xl border-emerald-100 bg-white text-sm" value={contactCity} onChange={e => setContactCity(e.target.value)} placeholder="Kota/Kabupaten" />
+                                    </div>
+                                    <div>
+                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest block mb-1">Kecamatan</label>
+                                        <input className="form-input rounded-xl border-emerald-100 bg-white text-sm" value={contactDistrict} onChange={e => setContactDistrict(e.target.value)} placeholder="Kecamatan" />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                         <div className="md:col-span-2">
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Keterangan Jurnal</label>
                             <input className="form-input rounded-2xl border-slate-200" value={description} onChange={e => setDescription(e.target.value)} placeholder="Deskripsi lengkap transaksi..." />

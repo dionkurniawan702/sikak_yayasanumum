@@ -324,3 +324,18 @@ model BudgetReport {
 
   @@map("budget_reports")
 }
+
+model Contact {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  type      String   // "Donatur", "Penerima Manfaat", "Lainnya"
+  phone     String?
+  address   String?  @db.Text
+  province  String?
+  city      String?
+  district  String?
+  isDeleted Boolean  @default(false)
+  updatedAt DateTime @default(now()) @updatedAt
+  
+  @@map("contacts")
+}

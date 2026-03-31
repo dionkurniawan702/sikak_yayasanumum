@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import ChartOfAccounts from './pages/ChartOfAccounts';
 import JournalEntry from './pages/JournalEntry';
+import ContactsData from './pages/ContactsData';
 import FixedAssets from './pages/FixedAssets';
 import GeneralLedger from './pages/GeneralLedger';
 import TrialBalance from './pages/TrialBalance';
@@ -70,6 +71,7 @@ export default function App() {
                         <Route index element={<Dashboard />} />
                         <Route path="daftar-akun" element={<ChartOfAccounts />} />
                         <Route path="jurnal" element={<JournalEntry />} />
+                        <Route path="data-entitas" element={<ContactsData />} />
                         
                         {/* Reports & Management (Placeholders for now) */}
                         <Route path="profil" element={<Profile />} />

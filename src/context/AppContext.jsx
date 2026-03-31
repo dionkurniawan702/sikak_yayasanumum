@@ -24,6 +24,7 @@ const defaultState = {
     positions: [],
     studentStatuses: [],
     parentStatuses: [],
+    contacts: [],
     notes: {},
     users: [
         { id: 'USR-001', username: 'superadmin', password: 'admin123', role: 'superadmin', name: 'Super Administrator' }
@@ -184,6 +185,7 @@ function appReducer(state, action) {
                 positions: serverData.positions || state.positions || [],
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
+                contacts: serverData.contacts || state.contacts || [],
                 users: serverData.users || state.users,
                 currentUser: state.currentUser,
                 isOnline: true,
@@ -349,6 +351,11 @@ function appReducer(state, action) {
         case 'ADD_PARENT_STATUS': newState = { ...state, parentStatuses: [...state.parentStatuses, action.payload] }; break;
         case 'EDIT_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.filter(i => i.id !== action.payload) }; break;
+
+        case 'ADD_CONTACT': newState = { ...state, contacts: [...state.contacts, action.payload] }; break;
+        case 'EDIT_CONTACT': newState = { ...state, contacts: state.contacts.map(c => c.id === action.payload.id ? action.payload : c) }; break;
+        case 'DELETE_CONTACT': newState = { ...state, contacts: state.contacts.filter(c => c.id !== action.payload) }; break;
+        
         default:
             return state;
     }
