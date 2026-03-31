@@ -83,6 +83,14 @@ function loadState() {
                 });
             }
             
+            // Migration: Add specific field-only expense items
+            if (merged.expenseItems) {
+                if (!merged.expenseItems.some(ex => ex.id === 'EXP-036' || ex.name === 'Aset' || ex.isFieldOnly)) {
+                    merged.expenseItems.push({ id: 'EXP-036', name: 'Aset', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true });
+                    merged.expenseItems.push({ id: 'EXP-037', name: 'Pengembangan (umum)', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true });
+                }
+            }
+            
             // Ensure all critical arrays are initialized
             if (!merged.assets) merged.assets = initialAssets;
             if (!merged.journals) merged.journals = initialJournals;
@@ -279,6 +287,15 @@ function appReducer(state, action) {
         case 'DELETE_STUDENT':
             newState = { ...state, students: state.students.map(s => s.id === action.payload ? { ...s, isDeleted: true } : s) };
             break;
+        case 'ADD_USER':
+            newState = { ...state, users: [...state.users, action.payload] };
+            break;
+        case 'EDIT_USER':
+            newState = { ...state, users: state.users.map(u => u.id === action.payload.id ? action.payload : u) };
+            break;
+        case 'DELETE_USER':
+            newState = { ...state, users: state.users.map(u => u.id === action.payload ? { ...u, isDeleted: true } : u) };
+            break;
         case 'UPDATE_DISTRIBUTION_SETTINGS': {
             const { unitId, incomeItemId, settings } = action.payload;
             const otherSettings = state.distributionSettings.filter(s => !(s.unitId === unitId && s.incomeItemId === incomeItemId));
@@ -291,11 +308,6 @@ function appReducer(state, action) {
         case 'EDIT_BUDGET_REQUEST':
             newState = { ...state, budgetRequests: state.budgetRequests.map(r => r.id === action.payload.id ? action.payload : r) };
             break;
-        case 'ADD_INCOME_ITEM':
-            return {
-                ...state,
-                incomeItems: [action.payload, ...state.incomeItems]
-            };
         case 'ADD_INCOME_ITEM':
             newState = { ...state, incomeItems: [action.payload, ...state.incomeItems] };
             break;

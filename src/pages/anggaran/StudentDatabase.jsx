@@ -5,10 +5,11 @@ import * as XLSX from 'xlsx';
 
 export default function StudentDatabase() {
     const { state, dispatch } = useApp();
-    const { students = [], units = [], incomeItems = [] } = state;
+    const { currentUser, students = [], units = [], incomeItems = [] } = state;
+    const isUnitAdmin = currentUser?.role === 'admin_unit';
     
     const [searchTerm, setSearchTerm] = useState('');
-    const [unitFilter, setUnitFilter] = useState('all');
+    const [unitFilter, setUnitFilter] = useState(isUnitAdmin ? currentUser.unitId : 'all');
     const [academicYearFilter, setAcademicYearFilter] = useState('all');
     const [classFilter, setClassFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
@@ -20,11 +21,13 @@ export default function StudentDatabase() {
     const [studentForm, setStudentForm] = useState({ 
         name: '', nis: '', unitId: '', 
         classId: '', academicYearId: '', 
-        statusId: '', parentStatusId: '' 
+        statusId: '', parentStatusId: '',
+        incomeDetails: []
     });
     const [paymentForm, setPaymentForm] = useState([]);
 
     const filteredStudents = students.filter(s => {
+        if (isUnitAdmin && s.unitId !== currentUser.unitId) return false;
         const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                              (s.nis && s.nis.toLowerCase().includes(searchTerm.toLowerCase()));
         const matchesUnit = unitFilter === 'all' || s.unitId === unitFilter;
@@ -45,17 +48,19 @@ export default function StudentDatabase() {
                 classId: student.classId || '',
                 academicYearId: student.academicYearId || '',
                 statusId: student.statusId || '',
-                parentStatusId: student.parentStatusId || ''
+                parentStatusId: student.parentStatusId || '',
+                incomeDetails: student.incomeDetails || []
             });
         } else {
             setEditingStudent(null);
             setStudentForm({ 
                 name: '', nis: '', 
-                unitId: units[0]?.id || '',
+                unitId: isUnitAdmin ? currentUser.unitId : (units[0]?.id || ''),
                 classId: '',
                 academicYearId: state.academicYears?.find(y => y.isCurrent)?.id || '',
                 statusId: state.studentStatuses?.find(s => s.name === 'Aktif')?.id || '',
-                parentStatusId: ''
+                parentStatusId: '',
+                incomeDetails: []
             });
         }
         setShowStudentModal(true);
@@ -66,7 +71,7 @@ export default function StudentDatabase() {
         const actionType = editingStudent ? 'EDIT_STUDENT' : 'ADD_STUDENT';
         const payload = editingStudent 
             ? { ...editingStudent, ...studentForm }
-            : { id: crypto.randomUUID(), ...studentForm, incomeDetails: incomeItems.map(ii => ({ incomeItemId: ii.id, amount: 0 })) };
+            : { id: crypto.randomUUID(), ...studentForm };
         
         dispatch({ type: actionType, payload });
         setShowStudentModal(false);
@@ -128,6 +133,11 @@ export default function StudentDatabase() {
         reader.readAsBinaryString(file);
     };
 
+    const activeIncomeItemIdsForUnit = [...new Set(
+        state.distributionSettings?.filter(s => s.unitId === studentForm.unitId).map(s => s.incomeItemId) || []
+    )];
+    const unitIncomeItems = incomeItems.filter(ii => activeIncomeItemIdsForUnit.includes(ii.id));
+
     return (
         <div className="p-8 animate-in">
             {/* Header */}
@@ -137,13 +147,15 @@ export default function StudentDatabase() {
                     <p className="text-slate-500 font-medium italic">Sumber Data Penerimaan Keuangan Yayasan</p>
                 </div>
                 <div className="flex gap-3">
-                    <button 
-                        onClick={() => setShowImportModal(true)}
-                        className="btn btn-secondary"
-                    >
-                        <Upload size={18} />
-                        <span>Import Masal</span>
-                    </button>
+                    {!isUnitAdmin && (
+                        <button 
+                            onClick={() => setShowImportModal(true)}
+                            className="btn btn-secondary"
+                        >
+                            <Upload size={18} />
+                            <span>Import Masal</span>
+                        </button>
+                    )}
                     <button 
                         onClick={() => handleOpenStudentModal()}
                         className="btn btn-primary"
@@ -167,9 +179,10 @@ export default function StudentDatabase() {
                     />
                 </div>
                 <select 
-                    className="form-select"
+                    className={`form-select ${isUnitAdmin ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
                     value={unitFilter}
                     onChange={e => setUnitFilter(e.target.value)}
+                    disabled={isUnitAdmin}
                 >
                     <option value="all">Semua Unit</option>
                     {units.map(u => (
@@ -308,9 +321,10 @@ export default function StudentDatabase() {
                                         <label className="form-label">Unit Pendidikan</label>
                                         <select
                                             required
-                                            className="form-select"
+                                            className={`form-select ${isUnitAdmin ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
                                             value={studentForm.unitId}
                                             onChange={e => setStudentForm({ ...studentForm, unitId: e.target.value })}
+                                            disabled={isUnitAdmin}
                                         >
                                             <option value="">Pilih Unit</option>
                                             {units.map(u => (
@@ -373,9 +387,44 @@ export default function StudentDatabase() {
                                         ))}
                                     </select>
                                 </div>
-                                <div className="flex gap-3 pt-4">
+
+                                {unitIncomeItems.length > 0 && (
+                                    <div className="pt-4 pb-2 border-t border-slate-100 mt-2">
+                                        <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Nominal Item Penerimaan (Khusus Unit Ini)</h3>
+                                        <div className="space-y-3 max-h-[30vh] overflow-y-auto pr-2 custom-scrollbar">
+                                            {unitIncomeItems.map(item => {
+                                                const existingDetail = studentForm.incomeDetails?.find(d => d.incomeItemId === item.id);
+                                                return (
+                                                    <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3.5 bg-slate-50 border border-slate-100 rounded-2xl hover:border-blue-200 transition-all">
+                                                        <span className="text-sm font-bold text-slate-700">{item.name}</span>
+                                                        <div className="relative w-full sm:w-1/2 md:w-[45%]">
+                                                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
+                                                            <input 
+                                                                type="number"
+                                                                className="form-input !py-2 !pl-9 !text-sm text-right font-black text-blue-600 !rounded-xl"
+                                                                placeholder="0"
+                                                                value={existingDetail?.amount || ''}
+                                                                onChange={e => {
+                                                                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                                                    const newDetails = [...(studentForm.incomeDetails || [])];
+                                                                    const idx = newDetails.findIndex(d => d.incomeItemId === item.id);
+                                                                    if (idx >= 0) newDetails[idx].amount = val;
+                                                                    else newDetails.push({ incomeItemId: item.id, amount: val });
+                                                                    setStudentForm({ ...studentForm, incomeDetails: newDetails });
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="flex gap-3 pt-4 border-t border-slate-100">
                                     <button type="button" onClick={() => setShowStudentModal(false)} className="btn btn-secondary flex-1">Batal</button>
                                     <button type="submit" className="btn btn-primary flex-1 shadow-blue-500/20">Simpan Siswa</button>
+
                                 </div>
                             </form>
                         </div>

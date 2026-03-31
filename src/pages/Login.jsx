@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { LogIn, Key, User as UserIcon, AlertCircle, Clock } from 'lucide-react';
+import { LogIn, Key, User as UserIcon, AlertCircle, Clock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function Login() {
@@ -10,6 +10,7 @@ export default function Login() {
     const isExpired = searchParams.get('expired') === 'true';
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
 
     const handleLogin = async (e) => {
@@ -128,14 +129,21 @@ export default function Login() {
                         <div style={{ position: 'relative' }}>
                             <Key style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
                             <input
-                                type="password"
+                                type={showPassword ? "text" : "password"}
                                 className="form-input"
                                 placeholder="Masukkan password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                style={{ paddingLeft: '44px' }}
+                                style={{ paddingLeft: '44px', paddingRight: '44px' }}
                                 required
                             />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
                     </div>
 

@@ -9,23 +9,25 @@ import { generateId } from '../../utils/format';
 
 export default function ClassManagement() {
     const { state, dispatch } = useApp();
-    const { classes = [], units = [] } = state;
+    const { currentUser, classes = [], units = [] } = state;
+    const isUnitAdmin = currentUser?.role === 'admin_unit';
 
     const [searchTerm, setSearchTerm] = useState('');
-    const [unitFilter, setUnitFilter] = useState('all');
+    const [unitFilter, setUnitFilter] = useState(isUnitAdmin ? currentUser.unitId : 'all');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({ name: '', unitId: '' });
+    const [formData, setFormData] = useState({ name: '', unitId: isUnitAdmin ? currentUser.unitId : '' });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
     useEffect(() => {
         if (!formData.unitId && units.length > 0) {
-            setFormData(prev => ({ ...prev, unitId: units[0].id }));
+            setFormData(prev => ({ ...prev, unitId: isUnitAdmin ? currentUser.unitId : units[0].id }));
         }
     }, [units]);
 
     const filteredItems = classes.filter(item => {
+        if (isUnitAdmin && item.unitId !== currentUser.unitId) return false;
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesUnit = unitFilter === 'all' || item.unitId === unitFilter;
         return matchesSearch && matchesUnit && !item.isDeleted;
@@ -53,7 +55,7 @@ export default function ClassManagement() {
             }
             setIsModalOpen(false);
             setEditingItem(null);
-            setFormData({ name: '', unitId: units[0]?.id || '' });
+            setFormData({ name: '', unitId: isUnitAdmin ? currentUser.unitId : (units[0]?.id || '') });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -91,7 +93,7 @@ export default function ClassManagement() {
                     <button 
                         onClick={() => {
                             setEditingItem(null);
-                            setFormData({ name: '', unitId: units[0]?.id || '' });
+                            setFormData({ name: '', unitId: isUnitAdmin ? currentUser.unitId : (units[0]?.id || '') });
                             setIsModalOpen(true);
                         }}
                         className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-200 active:scale-95"
@@ -129,7 +131,8 @@ export default function ClassManagement() {
                         <select 
                             value={unitFilter}
                             onChange={(e) => setUnitFilter(e.target.value)}
-                            className="w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium"
+                            disabled={isUnitAdmin}
+                            className={`w-full px-6 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-medium ${isUnitAdmin ? 'opacity-50 cursor-not-allowed bg-slate-100' : ''}`}
                         >
                             <option value="all">Semua Unit</option>
                             {units.map(u => (
@@ -235,7 +238,8 @@ export default function ClassManagement() {
                                     required
                                     value={formData.unitId}
                                     onChange={(e) => setFormData({ ...formData, unitId: e.target.value })}
-                                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                                    disabled={isUnitAdmin}
+                                    className={`w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900 ${isUnitAdmin ? 'opacity-50 cursor-not-allowed cursor-not-allowed' : ''}`}
                                 >
                                     {units.map(u => (
                                         <option key={u.id} value={u.id}>{u.name}</option>

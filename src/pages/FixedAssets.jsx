@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal, generateId } from '../utils/format';
-import { hitungPenyusutanBulanan, hitungNilaiBuku, hitungTotalPenyusutan, hitungPersentasePenyusutan } from '../utils/depreciation';
+import { hitungPenyusutanBulanan, hitungNilaiBuku, hitungTotalPenyusutan } from '../utils/depreciation';
 import { Plus, X, Play, Calculator, Trash2, Coins, TrendingDown, Landmark, Info, Calendar, Tag, DollarSign, Clock, Layout, Pencil, Download, FileSpreadsheet } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';

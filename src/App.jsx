@@ -26,6 +26,7 @@ import StudentDatabase from './pages/anggaran/StudentDatabase';
 import DistributionSettings from './pages/anggaran/DistributionSettings';
 import MonthlyRequest from './pages/pelaporan/MonthlyRequest';
 import MonthlyReport from './pages/pelaporan/MonthlyReport';
+import BudgetDashboard from './pages/pelaporan/BudgetDashboard';
 import FundAvailability from './pages/pelaporan/FundAvailability';
 import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
@@ -91,7 +92,7 @@ export default function App() {
                         <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
 
                         {/* ANGGARAN & PELAPORAN ROUTES */}
-                        <Route path="pelaporan/dashboard" element={<Placeholder title="Dashboard Anggaran" />} />
+                        <Route path="pelaporan/dashboard" element={<BudgetDashboard />} />
                         <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
                         <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
                         <Route path="pelaporan/saldo" element={<Placeholder title="Informasi Saldo Dana" />} />

@@ -157,5 +157,7 @@ export const initialExpenseItems = [
     { id: 'EXP-032', name: 'Biaya Perpisahan', sourceOfFunds: 'Biaya Perpisahan' },
     { id: 'EXP-033', name: 'Perawatan Sarpras dan Bangunan', sourceOfFunds: 'Perawatan Sarpras dan Bangunan' },
     { id: 'EXP-034', name: 'Biaya Kompre', sourceOfFunds: 'Biaya Kompre' },
-    { id: 'EXP-035', name: 'Sosial', sourceOfFunds: 'Sosial' }
+    { id: 'EXP-035', name: 'Sosial', sourceOfFunds: 'Sosial' },
+    { id: 'EXP-036', name: 'Aset', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true },
+    { id: 'EXP-037', name: 'Pengembangan (umum)', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true }
 ];

@@ -1,20 +1,25 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserPlus, Edit2, Trash2, Shield, User, Key, X, Check, Search, FileSpreadsheet } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Shield, User, Key, X, Check, Search, FileSpreadsheet, Eye, EyeOff } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { api } from '../services/api';
+import { generateId } from '../utils/format';
 
 export default function UserManagement() {
     const { state, dispatch } = useApp();
     const users = state.users.filter(u => !u.isDeleted);
-    const { currentUser } = state;
+    const { currentUser, units = [], fields = [] } = state;
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingUser, setEditingUser] = useState(null);
+    const [showPassword, setShowPassword] = useState(false);
     const [formData, setFormData] = useState({
         username: '',
         password: '',
         name: '',
-        role: 'admin'
+        role: 'admin',
+        unitId: '',
+        fieldId: ''
     });
 
     const exportToExcel = () => {
@@ -33,31 +38,45 @@ export default function UserManagement() {
     const openModal = (user = null) => {
         if (user) {
             setEditingUser(user);
-            setFormData({ ...user, password: '' });
+            setFormData({ ...user, password: '', unitId: user.unitId || '', fieldId: user.fieldId || '' });
         } else {
             setEditingUser(null);
-            setFormData({ username: '', password: '', name: '', role: 'admin' });
+            setFormData({ username: '', password: '', name: '', role: 'admin', unitId: '', fieldId: '' });
         }
+        setShowPassword(false);
         setIsModalOpen(true);
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        if (editingUser) {
-            dispatch({ type: 'EDIT_USER', payload: { ...formData, id: editingUser.id } });
-        } else {
-            dispatch({ type: 'ADD_USER', payload: formData });
+        try {
+            if (editingUser) {
+                const payload = { ...formData, id: editingUser.id };
+                dispatch({ type: 'EDIT_USER', payload });
+                await api.pushAction({ type: 'EDIT_USER', payload }, state);
+            } else {
+                const payload = { ...formData, id: `USR-${generateId()}` };
+                dispatch({ type: 'ADD_USER', payload });
+                await api.pushAction({ type: 'ADD_USER', payload }, state);
+            }
+            setIsModalOpen(false);
+        } catch (error) {
+            alert('Gagal menyimpan user: ' + error.message);
         }
-        setIsModalOpen(false);
     };
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
         if (id === currentUser.id) {
             alert('Anda tidak bisa menghapus diri sendiri!');
             return;
         }
         if (window.confirm('Hapus user ini?')) {
-            dispatch({ type: 'DELETE_USER', payload: id });
+            try {
+                dispatch({ type: 'DELETE_USER', payload: id });
+                await api.pushAction({ type: 'DELETE_USER', payload: id }, state);
+            } catch (error) {
+                alert('Gagal menghapus user: ' + error.message);
+            }
         }
     };
 
@@ -121,9 +140,13 @@ export default function UserManagement() {
                                     </div>
                                 </td>
                                 <td className="px-10 py-5">
-                                    <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-2 ${u.role === 'superadmin' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
-                                        <Shield size={10} /> {u.role}
-                                    </span>
+                                    <div className="flex flex-col items-start gap-1">
+                                        <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest inline-flex items-center gap-2 ${u.role === 'superadmin' ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600'}`}>
+                                            <Shield size={10} /> {u.role.replace('_', ' ')}
+                                        </span>
+                                        {u.role === 'admin_unit' && <span className="text-[10px] font-bold text-slate-400">Unit: {units.find(un => un.id === u.unitId)?.name || 'N/A'}</span>}
+                                        {u.role === 'admin_bidang' && <span className="text-[10px] font-bold text-slate-400">Bidang: {fields.find(f => f.id === u.fieldId)?.name || 'N/A'}</span>}
+                                    </div>
                                 </td>
                                 <td className="px-10 py-5">
                                     <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -159,15 +182,48 @@ export default function UserManagement() {
                                 </div>
                                 <div>
                                     <label className="form-label">Password {editingUser && '(Opsional / Kosongkan jika tidak ubah)'}</label>
-                                    <input type="password" className="form-input" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder="••••••••" required={!editingUser} />
+                                    <div style={{ position: 'relative' }}>
+                                        <input type={showPassword ? "text" : "password"} className="form-input" value={formData.password} onChange={e => setFormData({ ...formData, password: e.target.value })} placeholder="••••••••" required={!editingUser} style={{ paddingRight: '44px' }} />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label className="form-label">Level Akses</label>
                                     <select className="form-select" value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })}>
                                         <option value="admin">Admin (Operasional/Pencatatan)</option>
                                         <option value="superadmin">Super Admin (Akses Penuh)</option>
+                                        <option value="admin_unit">Admin Unit Khusus</option>
+                                        <option value="admin_bidang">Admin Bidang Khusus</option>
                                     </select>
                                 </div>
+                                {formData.role === 'admin_unit' && (
+                                    <div className="animate-in fade-in slide-in-from-top-4">
+                                        <label className="form-label">Tugas Unit</label>
+                                        <select className="form-select" value={formData.unitId} onChange={e => setFormData({ ...formData, unitId: e.target.value })} required>
+                                            <option value="">Pilih Unit...</option>
+                                            {units.filter(u => !u.isDeleted).map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
+                                {formData.role === 'admin_bidang' && (
+                                    <div className="animate-in fade-in slide-in-from-top-4">
+                                        <label className="form-label">Tugas Bidang</label>
+                                        <select className="form-select" value={formData.fieldId} onChange={e => setFormData({ ...formData, fieldId: e.target.value })} required>
+                                            <option value="">Pilih Bidang...</option>
+                                            {fields.filter(f => !f.isDeleted).map(f => (
+                                                <option key={f.id} value={f.id}>{f.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
                             <div className="p-8 bg-slate-50 border-t border-slate-100 flex gap-4">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 px-6 py-4 rounded-2xl font-black text-xs text-slate-400 uppercase tracking-widest">Batalkan</button>

@@ -82,16 +82,41 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/manajemen-user', label: 'Manajemen User', icon: ShieldCheck }
         ];
     } else if (isAdminField || isAdminUnit) {
+        let isPendidikanKeuangan = false;
+        if (isAdminField && state.fields) {
+            const fieldName = state.fields.find(f => f.id === currentUser.fieldId)?.name?.toLowerCase() || '';
+            isPendidikanKeuangan = fieldName.includes('pendidikan') || fieldName.includes('keuangan');
+        }
+
+        const showDatabaseItems = isAdminUnit || isPendidikanKeuangan;
+
         menuItems = [
-            { section: 'OPERASIONAL ANGGARAN' },
-            { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-            { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
+            { section: 'ANGGARAN & PELAPORAN' },
+            { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
+            { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
+            { path: '/pelaporan/bos', label: 'BOS', icon: Landmark },
+            { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
+            
+            { section: 'PERENCANAAN (RAB)' },
+            { path: '/anggaran/rab', label: 'RAB', icon: Target },
+            { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
+
+            { section: 'OPERASIONAL DANA' },
             { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
             { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
             { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
             { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark }
         ];
+
+        if (showDatabaseItems) {
+            menuItems.push(
+                { section: 'DATABASE ANGGARAN' },
+                { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
+                { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
+                { path: '/anggaran/kelompok-kelas', label: 'Kelompok Kelas', icon: Layers }
+            );
+        }
     }
 
     const handleLogout = () => {
@@ -183,13 +208,15 @@ export default function Sidebar({ isOpen, onClose }) {
                     <LogOut size={16} />
                     <span>Keluar</span>
                 </button>
-                <button
-                    className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
-                    onClick={() => { if (window.confirm('Reset semua data?')) dispatch({ type: 'RESET_DATA' }); }}
-                >
-                    <RotateCcw size={14} />
-                    <span>Reset Database</span>
-                </button>
+                {isSuperAdmin && (
+                    <button
+                        className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
+                        onClick={() => { if (window.confirm('Reset semua data?')) dispatch({ type: 'RESET_DATA' }); }}
+                    >
+                        <RotateCcw size={14} />
+                        <span>Reset Database</span>
+                    </button>
+                )}
             </div>
         </aside>
     );
