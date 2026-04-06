@@ -77,3 +77,130 @@ body {
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   @apply bg-slate-600;
 }
+
+/* ========================================
+   Budget Dashboard Styles
+   ======================================== */
+
+.budget-select {
+  @apply px-5 py-3 rounded-2xl border border-slate-200 bg-white text-sm font-bold text-slate-700;
+  @apply focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all outline-none;
+  @apply cursor-pointer;
+  min-width: 160px;
+}
+
+.budget-export-btn {
+  @apply flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold;
+  @apply bg-white text-emerald-700 border border-emerald-200;
+  @apply hover:bg-emerald-50 hover:border-emerald-300 hover:shadow-sm;
+  @apply active:scale-95 transition-all duration-200;
+}
+
+.budget-table-wrapper {
+  @apply bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm;
+}
+
+.budget-table-title {
+  @apply flex items-center gap-3 px-6 py-5 text-xl font-black text-slate-800 border-b border-slate-100;
+  @apply tracking-tight;
+}
+
+.budget-table-scroll {
+  @apply overflow-x-auto;
+}
+
+.budget-table {
+  @apply w-full text-left border-collapse;
+  min-width: 700px;
+}
+
+.budget-th {
+  @apply text-xs font-bold uppercase tracking-wider;
+  background-color: #c5cfa0;
+  color: #3d4a2a;
+  padding: 12px 20px;
+  border-bottom: 2px solid #b3bc8e;
+}
+
+.budget-th-name {
+  width: 35%;
+}
+
+.budget-th-number {
+  text-align: right;
+  width: 21.66%;
+}
+
+.budget-cell {
+  padding: 14px 20px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 14px;
+}
+
+.budget-cell-name {
+  /* Name column */
+}
+
+.budget-cell-number {
+  text-align: right;
+}
+
+.budget-cell-sisa {
+  background-color: #fafbf7;
+}
+
+.budget-row {
+  transition: background-color 0.15s ease;
+}
+
+.budget-row:hover {
+  background-color: #f8fafc;
+}
+
+.budget-row-detail {
+  background-color: #fafbfc;
+  animation: slideDown 0.2s ease-out;
+}
+
+.budget-row-detail:hover {
+  background-color: #f1f5f9;
+}
+
+.budget-row-total {
+  background-color: #f1f5f0;
+  border-top: 2px solid #d4dbb8;
+}
+
+.budget-row-total .budget-cell {
+  padding: 16px 20px;
+  border-bottom: none;
+}
+
+.expand-icon {
+  @apply text-slate-400 transition-transform duration-200 inline-flex items-center;
+}
+
+@keyframes slideDown {
+  from { 
+    opacity: 0; 
+    transform: translateY(-4px); 
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0); 
+  }
+}
+
+/* Print styles for budget dashboard */
+@media print {
+  .budget-select,
+  .budget-export-btn {
+    display: none !important;
+  }
+  
+  .budget-table-wrapper {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}

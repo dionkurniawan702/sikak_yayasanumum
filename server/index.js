@@ -66,6 +66,61 @@ app.set('prisma', getPrisma());
 // 4. API Routes
 import anggaranRouter from './routes/anggaran.js';
 import coreRouter from './routes/core.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'sikak-yayasan-umum-secret-2026';
+
+// --- LOGIN ENDPOINT ---
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        const client = getPrisma();
+
+        const user = await client.user.findFirst({
+            where: { username, isDeleted: false }
+        });
+
+        if (!user) {
+            return res.status(401).json({ success: false, error: 'Username atau password salah' });
+        }
+
+        // Check if password is hashed (bcrypt hashes start with $2)
+        let passwordMatch = false;
+        if (user.password.startsWith('$2')) {
+            passwordMatch = await bcrypt.compare(password, user.password);
+        } else {
+            // Plain text fallback (for initial superadmin)
+            passwordMatch = (user.password === password);
+        }
+
+        if (!passwordMatch) {
+            return res.status(401).json({ success: false, error: 'Username atau password salah' });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            data: {
+                token,
+                id: user.id,
+                name: user.name,
+                username: user.username,
+                role: user.role,
+                unitId: user.unitId || null,
+                fieldId: user.fieldId || null
+            }
+        });
+    } catch (error) {
+        console.error(`[Login Error] ${error.message}`);
+        res.status(500).json({ success: false, error: 'Gagal memproses login' });
+    }
+});
 
 app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
