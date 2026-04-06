@@ -122,15 +122,6 @@ export default function App() {
                                 description="Kelola periode tahun ajaran aktif dan mendatang"
                             />
                         } />
-                        <Route path="anggaran/kelompok-kelas" element={
-                            <GenericMasterManagement 
-                                title="Kelompok Kelas" 
-                                entity="classGroups" 
-                                actionPrefix="CLASS_GROUP" 
-                                icon={Users2} 
-                                description="Kategorisasi kelompok kelas (Reguler, Tahfizh, dsb)"
-                            />
-                        } />
                         <Route path="anggaran/set-jabatan" element={
                             <GenericMasterManagement 
                                 title="Set Jabatan" 

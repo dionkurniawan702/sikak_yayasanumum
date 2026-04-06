@@ -54,7 +54,6 @@ export default function Sidebar({ isOpen, onClose }) {
             { section: 'PENGATURAN ANGGARAN' },
             { path: '/anggaran/unit-bidang', label: 'Unit & Bidang', icon: Building2 },
             { path: '/anggaran/tahun-ajaran', label: 'Tahun Ajaran', icon: Calendar },
-            { path: '/anggaran/kelompok-kelas', label: 'Kelompok Kelas', icon: Layers },
             { path: '/anggaran/set-jabatan', label: 'Set Jabatan', icon: Briefcase },
             { path: '/anggaran/status-siswa', label: 'Status Siswa', icon: UserCheck },
             { path: '/anggaran/status-ortu', label: 'Status Orang Tua', icon: Heart },
@@ -114,8 +113,7 @@ export default function Sidebar({ isOpen, onClose }) {
             menuItems.push(
                 { section: 'DATABASE ANGGARAN' },
                 { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
-                { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
-                { path: '/anggaran/kelompok-kelas', label: 'Kelompok Kelas', icon: Layers },
+                { path: '/anggaran/kelas', label: 'Kelas', icon: Users }
 
             );
         }
