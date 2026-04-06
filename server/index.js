@@ -250,66 +250,90 @@ app.post('/api/sync', async (req, res) => {
             // 5. Sync Positions
             if (positions && Array.isArray(positions)) {
                 for (const pos of positions) {
-                    await tx.position.upsert({
-                        where: { id: pos.id },
-                        update: { name: pos.name, isDeleted: pos.isDeleted || false },
-                        create: { id: pos.id, name: pos.name, isDeleted: pos.isDeleted || false }
-                    });
+                    try {
+                        await tx.position.upsert({
+                            where: { id: pos.id },
+                            update: { name: pos.name, isDeleted: pos.isDeleted || false },
+                            create: { id: pos.id, name: pos.name, isDeleted: pos.isDeleted || false }
+                        });
+                    } catch (err) {
+                        console.error(`[Sync Error] Position ${pos.name}: ${err.message}`);
+                    }
                 }
             }
 
             // 6. Sync Student Statuses
             if (studentStatuses && Array.isArray(studentStatuses)) {
                 for (const ss of studentStatuses) {
-                    await tx.studentStatus.upsert({
-                        where: { id: ss.id },
-                        update: { name: ss.name, isDeleted: ss.isDeleted || false },
-                        create: { id: ss.id, name: ss.name, isDeleted: ss.isDeleted || false }
-                    });
+                    try {
+                        await tx.studentStatus.upsert({
+                            where: { id: ss.id },
+                            update: { name: ss.name, isDeleted: ss.isDeleted || false },
+                            create: { id: ss.id, name: ss.name, isDeleted: ss.isDeleted || false }
+                        });
+                    } catch (err) {
+                        console.error(`[Sync Error] Student Status ${ss.name}: ${err.message}`);
+                    }
                 }
             }
 
             // 7. Sync Parent Statuses
             if (parentStatuses && Array.isArray(parentStatuses)) {
                 for (const ps of parentStatuses) {
-                    await tx.parentStatus.upsert({
-                        where: { id: ps.id },
-                        update: { name: ps.name, isDeleted: ps.isDeleted || false },
-                        create: { id: ps.id, name: ps.name, isDeleted: ps.isDeleted || false }
-                    });
+                    try {
+                        await tx.parentStatus.upsert({
+                            where: { id: ps.id },
+                            update: { name: ps.name, isDeleted: ps.isDeleted || false },
+                            create: { id: ps.id, name: ps.name, isDeleted: ps.isDeleted || false }
+                        });
+                    } catch (err) {
+                        console.error(`[Sync Error] Parent Status ${ps.name}: ${err.message}`);
+                    }
                 }
             }
 
             // 8. Sync Income Items
             if (incomeItems && Array.isArray(incomeItems)) {
                 for (const ii of incomeItems) {
-                    await tx.incomeItem.upsert({
-                        where: { id: ii.id },
-                        update: { name: ii.name, isDeleted: ii.isDeleted || false },
-                        create: { id: ii.id, name: ii.name, isDeleted: ii.isDeleted || false }
-                    });
+                    try {
+                        await tx.incomeItem.upsert({
+                            where: { id: ii.id },
+                            update: { name: ii.name, isDeleted: ii.isDeleted || false },
+                            create: { id: ii.id, name: ii.name, isDeleted: ii.isDeleted || false }
+                        });
+                    } catch (err) {
+                        console.error(`[Sync Error] Income Item ${ii.name}: ${err.message}`);
+                    }
                 }
             }
 
             // 9. Sync ClassGroups
             if (classGroups && Array.isArray(classGroups)) {
                 for (const cg of classGroups) {
-                    await tx.classGroup.upsert({
-                        where: { id: cg.id },
-                        update: { name: cg.name, isDeleted: cg.isDeleted || false },
-                        create: { id: cg.id, name: cg.name, isDeleted: cg.isDeleted || false }
-                    });
+                    try {
+                        await tx.classGroup.upsert({
+                            where: { id: cg.id },
+                            update: { name: cg.name, isDeleted: cg.isDeleted || false },
+                            create: { id: cg.id, name: cg.name, isDeleted: cg.isDeleted || false }
+                        });
+                    } catch (err) {
+                        console.error(`[Sync Error] Class Group ${cg.name}: ${err.message}`);
+                    }
                 }
             }
 
             // 10. Sync Classes (The actual unit-specific classes)
             if (classes && Array.isArray(classes)) {
                 for (const cls of classes) {
-                    await tx.class.upsert({
-                        where: { id: cls.id },
-                        update: { name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false },
-                        create: { id: cls.id, name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false }
-                    });
+                    try {
+                        await tx.class.upsert({
+                            where: { id: cls.id },
+                            update: { name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false },
+                            create: { id: cls.id, name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false }
+                        });
+                    } catch (err) {
+                        console.error(`[Sync Error] Class ${cls.name}: ${err.message}`);
+                    }
                 }
             }
 
