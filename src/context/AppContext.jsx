@@ -398,12 +398,16 @@ export function AppProvider({ children }) {
     useEffect(() => {
         if (state.lastAction) {
             api.pushAction(state.lastAction, state).catch(err => {
+                console.error(`[Sync Failed] Action: ${state.lastAction.type}`, err);
                 if (err.message === 'SESSION_EXPIRED') {
                     const isLoginPage = window.location.pathname === '/login';
                     dispatch({ type: 'LOGOUT' });
                     if (!isLoginPage) {
                         window.location.href = '/login?expired=true';
                     }
+                } else {
+                    // Generic sync error alert for debugging
+                    console.error('Critical Sync Error:', err.message);
                 }
             });
         }

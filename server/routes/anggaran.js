@@ -126,11 +126,14 @@ router.post('/students', async (req, res) => {
         const student = await getPrisma(req).student.create({
             data: {
                 id, name, nis, unitId,
-                classId, academicYearId, statusId, parentStatusId,
+                classId: classId || null,
+                academicYearId: academicYearId || null,
+                statusId: statusId || null,
+                parentStatusId: parentStatusId || null,
                 incomeDetails: {
                     create: (incomeDetails || []).map(d => ({
                         incomeItemId: d.incomeItemId,
-                        amount: d.amount
+                        amount: parseFloat(d.amount) || 0
                     }))
                 }
             }
@@ -159,22 +162,28 @@ router.put('/students/:id', async (req, res) => {
                 where: { id: req.params.id },
                 update: {
                     name, nis, unitId,
-                    classId, academicYearId, statusId, parentStatusId,
+                    classId: classId || null,
+                    academicYearId: academicYearId || null,
+                    statusId: statusId || null,
+                    parentStatusId: parentStatusId || null,
                     incomeDetails: incomeDetails ? {
                         create: incomeDetails.map(d => ({
                             incomeItemId: d.incomeItemId,
-                            amount: d.amount
+                            amount: parseFloat(d.amount) || 0
                         }))
                     } : undefined,
                     isDeleted: false
                 },
                 create: {
                     id: req.params.id, name, nis, unitId,
-                    classId, academicYearId, statusId, parentStatusId,
+                    classId: classId || null,
+                    academicYearId: academicYearId || null,
+                    statusId: statusId || null,
+                    parentStatusId: parentStatusId || null,
                     incomeDetails: {
                         create: (incomeDetails || []).map(d => ({
                             incomeItemId: d.incomeItemId,
-                            amount: d.amount
+                            amount: parseFloat(d.amount) || 0
                         }))
                     }
                 }

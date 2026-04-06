@@ -364,7 +364,7 @@ app.post('/api/sync', async (req, res) => {
                                         data: {
                                             studentId: s.id,
                                             incomeItemId: detail.incomeItemId,
-                                            amount: detail.amount
+                                            amount: parseFloat(detail.amount) || 0
                                         }
                                     });
                                 }
