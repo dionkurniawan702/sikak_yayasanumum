@@ -134,7 +134,7 @@ app.post('/api/sync', async (req, res) => {
             accounts, journals, assets, programs, users, budgets, 
             fields, units, students, incomeItems, expenseItems, 
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
-            budgetRequests, budgetReports, classes
+            budgetRequests, budgetReports, classes, distributionSettings
         } = req.body;
         
         console.log(`[Sync] Processing bulk update from client`);
@@ -245,6 +245,7 @@ app.post('/api/sync', async (req, res) => {
                     await tx.academicYear.upsert({
                         where: { id: ay.id },
                         update: { name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false },
+                        create: { id: ay.id, name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false }
                     });
                 }
             }
@@ -311,6 +312,25 @@ app.post('/api/sync', async (req, res) => {
                     });
                 }
             }
+
+            // 12. Sync Distribution Settings
+            if (distributionSettings && Array.isArray(distributionSettings)) {
+                for (const ds of distributionSettings) {
+                    await tx.distributionSetting.upsert({
+                        where: { id: ds.id },
+                        update: { 
+                            unitId: ds.unitId, incomeItemId: ds.incomeItemId, 
+                            expenseItemId: ds.expenseItemId, percentage: ds.percentage,
+                            isDeleted: ds.isDeleted || false 
+                        },
+                        create: { 
+                            id: ds.id, unitId: ds.unitId, incomeItemId: ds.incomeItemId, 
+                            expenseItemId: ds.expenseItemId, percentage: ds.percentage,
+                            isDeleted: ds.isDeleted || false 
+                        }
+                    });
+                }
+            }
         });
 
         res.json({ status: 'ok', message: 'Synchronization completed successfully' });
@@ -335,7 +355,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.0.9',
+            version: '1.1.0',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,

@@ -35,7 +35,7 @@ export const api = {
 
             const [
                 accounts, journals, assets, programs, users, budgets,
-                fields, units, students, incomeItems, distributionSettings,
+                fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes
             ] = await Promise.all([
@@ -49,6 +49,7 @@ export const api = {
                 fetchEntity('units'),
                 fetchEntity('students'),
                 fetchEntity('income-items'),
+                fetchEntity('expense-items'),
                 fetchEntity('distribution-settings'),
                 fetchEntity('budget-requests'),
                 fetchEntity('budget-reports'),
@@ -72,7 +73,7 @@ export const api = {
                 })),
                 assets, programs, users, 
                 budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
-                fields, units, students, incomeItems, distributionSettings,
+                fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
                 notes: {}, 
