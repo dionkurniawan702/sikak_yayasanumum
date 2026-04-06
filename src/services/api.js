@@ -257,7 +257,18 @@ export const api = {
                     users: state.users,
                     budgets: state.budgets,
                     fields: state.fields,
-                    units: state.units
+                    units: state.units,
+                    students: state.students,
+                    incomeItems: state.incomeItems,
+                    expenseItems: state.expenseItems,
+                    distributionSettings: state.distributionSettings,
+                    academicYears: state.academicYears,
+                    classGroups: state.classGroups,
+                    positions: state.positions,
+                    studentStatuses: state.studentStatuses,
+                    parentStatuses: state.parentStatuses,
+                    budgetRequests: state.budgetRequests,
+                    budgetReports: state.budgetReports
                 })
             });
 

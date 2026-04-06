@@ -194,9 +194,48 @@ app.post('/api/sync', async (req, res) => {
                     });
                 }
             }
+
+            // 4. Sync ClassGroups
+            if (classGroups && Array.isArray(classGroups)) {
+                for (const cg of classGroups) {
+                    await tx.classGroup.upsert({
+                        where: { id: cg.id },
+                        update: { name: cg.name, unitId: cg.unitId, isDeleted: cg.isDeleted || false },
+                        create: { id: cg.id, name: cg.name, unitId: cg.unitId, isDeleted: cg.isDeleted || false }
+                    });
+                }
+            }
+
+            // 5. Sync Students
+            if (students && Array.isArray(students)) {
+                for (const s of students) {
+                    await tx.student.upsert({
+                        where: { id: s.id },
+                        update: { 
+                            nis: s.nis, name: s.name, unitId: s.unitId, classGroupId: s.classGroupId,
+                            status: s.status, parentStatus: s.parentStatus, isDeleted: s.isDeleted || false 
+                        },
+                        create: { 
+                            id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, classGroupId: s.classGroupId,
+                            status: s.status, parentStatus: s.parentStatus, isDeleted: s.isDeleted || false 
+                        }
+                    });
+                }
+            }
+
+            // 6. Sync Academic Years
+            if (academicYears && Array.isArray(academicYears)) {
+                for (const ay of academicYears) {
+                    await tx.academicYear.upsert({
+                        where: { id: ay.id },
+                        update: { name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false },
+                        create: { id: ay.id, name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false }
+                    });
+                }
+            }
         });
 
-        res.json({ status: 'ok', message: 'Master data synchronized successfully' });
+        res.json({ status: 'ok', message: 'Synchronization completed successfully' });
     } catch (error) {
         console.error(`[Sync Error] ${error.message}`);
         res.status(500).json({ error: error.message });
@@ -212,14 +251,20 @@ app.get('/api/health', async (req, res) => {
         // Quick diagnostic counts
         const incomeItemCount = await client.incomeItem.count({ where: { isDeleted: false } });
         const userCount = await client.user.count({ where: { isDeleted: false } });
+        const fieldCount = await client.field.count({ where: { isDeleted: false } });
+        const unitCount = await client.unit.count({ where: { isDeleted: false } });
+        const classCount = await client.classGroup.count({ where: { isDeleted: false } });
 
         res.json({ 
             status: 'ok', 
-            version: '1.0.3',
+            version: '1.0.4',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,
-                users: userCount
+                users: userCount,
+                fields: fieldCount,
+                units: unitCount,
+                classes: classCount
             },
             message: 'SIKAK Yayasan Umum API is running',
             env: {

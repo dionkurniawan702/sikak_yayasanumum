@@ -9,7 +9,7 @@ import { generateId } from '../../utils/format';
 
 export default function ClassManagement() {
     const { state, dispatch } = useApp();
-    const { currentUser, classes = [], units = [] } = state;
+    const { currentUser, classGroups = [], units = [] } = state;
     const isUnitAdmin = currentUser?.role === 'admin_unit';
 
     const [searchTerm, setSearchTerm] = useState('');
@@ -26,7 +26,7 @@ export default function ClassManagement() {
         }
     }, [units]);
 
-    const filteredItems = classes.filter(item => {
+    const filteredItems = classGroups.filter(item => {
         if (isUnitAdmin && item.unitId !== currentUser.unitId) return false;
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
         const matchesUnit = unitFilter === 'all' || item.unitId === unitFilter;
@@ -41,16 +41,16 @@ export default function ClassManagement() {
         try {
             if (editingItem) {
                 const updatedItem = { ...editingItem, ...formData };
-                dispatch({ type: 'EDIT_CLASS', payload: updatedItem });
-                await api.pushAction({ type: 'EDIT_CLASS', payload: updatedItem }, state);
+                dispatch({ type: 'EDIT_CLASS_GROUP', payload: updatedItem });
+                await api.pushAction({ type: 'EDIT_CLASS_GROUP', payload: updatedItem }, state);
                 setMessage({ type: 'success', text: 'Kelas berhasil diperbarui' });
             } else {
                 const newItem = {
                     id: `CLS-${generateId()}`,
                     ...formData
                 };
-                dispatch({ type: 'ADD_CLASS', payload: newItem });
-                await api.pushAction({ type: 'ADD_CLASS', payload: newItem }, state);
+                dispatch({ type: 'ADD_CLASS_GROUP', payload: newItem });
+                await api.pushAction({ type: 'ADD_CLASS_GROUP', payload: newItem }, state);
                 setMessage({ type: 'success', text: 'Kelas baru berhasil ditambahkan' });
             }
             setIsModalOpen(false);
@@ -67,8 +67,8 @@ export default function ClassManagement() {
     const handleDelete = async (id) => {
         if (!window.confirm('Hapus kelas ini?')) return;
         try {
-            dispatch({ type: 'DELETE_CLASS', payload: id });
-            await api.pushAction({ type: 'DELETE_CLASS', payload: id }, state);
+            dispatch({ type: 'DELETE_CLASS_GROUP', payload: id });
+            await api.pushAction({ type: 'DELETE_CLASS_GROUP', payload: id }, state);
             setMessage({ type: 'success', text: 'Kelas berhasil dihapus' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
