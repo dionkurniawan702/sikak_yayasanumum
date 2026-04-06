@@ -331,11 +331,11 @@ app.get('/api/health', async (req, res) => {
         const userCount = await client.user.count({ where: { isDeleted: false } });
         const fieldCount = await client.field.count({ where: { isDeleted: false } });
         const unitCount = await client.unit.count({ where: { isDeleted: false } });
-        const classCount = await client.classGroup.count({ where: { isDeleted: false } });
+        const classCount = await client.class.count({ where: { isDeleted: false } });
 
         res.json({ 
             status: 'ok', 
-            version: '1.0.8',
+            version: '1.0.9',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,

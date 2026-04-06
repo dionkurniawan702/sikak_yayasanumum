@@ -34,6 +34,9 @@ export const api = {
             };
 
             const [
+                accounts, journals, assets, programs, users, budgets,
+                fields, units, students, incomeItems, distributionSettings,
+                budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes
             ] = await Promise.all([
                 fetchEntity('accounts'),
