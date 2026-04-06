@@ -488,9 +488,11 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.put(`/${entityName}/:id`, async (req, res) => {
         try {
-            const item = await getPrisma(req)[modelName].update({
+            const data = { ...req.body, id: req.params.id };
+            const item = await getPrisma(req)[modelName].upsert({
                 where: { id: req.params.id },
-                data: req.body
+                update: req.body,
+                create: data
             });
             res.json({ data: item });
         } catch (error) {
@@ -500,9 +502,10 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.delete(`/${entityName}/:id`, async (req, res) => {
         try {
-            await getPrisma(req)[modelName].update({
+            await getPrisma(req)[modelName].upsert({
                 where: { id: req.params.id },
-                data: { isDeleted: true }
+                update: { isDeleted: true },
+                create: { id: req.params.id, name: 'Deleted Item', isDeleted: true }
             });
             res.json({ message: 'Success' });
         } catch (error) {
@@ -539,9 +542,10 @@ router.post('/classes', async (req, res) => {
 });
 router.put('/classes/:id', async (req, res) => {
     try {
-        const item = await getPrisma(req).class.update({
+        const item = await getPrisma(req).class.upsert({
             where: { id: req.params.id },
-            data: req.body
+            update: req.body,
+            create: { ...req.body, id: req.params.id }
         });
         res.json({ data: item });
     } catch (error) {
@@ -550,9 +554,10 @@ router.put('/classes/:id', async (req, res) => {
 });
 router.delete('/classes/:id', async (req, res) => {
     try {
-        await getPrisma(req).class.update({
+        await getPrisma(req).class.upsert({
             where: { id: req.params.id },
-            data: { isDeleted: true }
+            update: { isDeleted: true },
+            create: { id: req.params.id, name: 'Deleted Class', unitId: 'N/A', isDeleted: true }
         });
         res.json({ message: 'Success' });
     } catch (error) {

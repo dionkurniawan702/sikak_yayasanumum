@@ -133,9 +133,8 @@ app.post('/api/sync', async (req, res) => {
         const { 
             accounts, journals, assets, programs, users, budgets, 
             fields, units, students, incomeItems, expenseItems, 
-            distributionSettings, academicYears, classGroups,            positions: positions, studentStatuses: studentStatuses, parentStatuses: parentStatuses, 
-            budgetRequests: budgetRequests, budgetReports: budgetReports,
-            classes: classes
+            academicYears, classGroups, positions, studentStatuses, parentStatuses,
+            budgetRequests, budgetReports, classes
         } = req.body;
         
         console.log(`[Sync] Processing bulk update from client`);
@@ -246,7 +245,69 @@ app.post('/api/sync', async (req, res) => {
                     await tx.academicYear.upsert({
                         where: { id: ay.id },
                         update: { name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false },
-                        create: { id: ay.id, name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false }
+                    });
+                }
+            }
+
+            // 7. Sync Positions
+            if (positions && Array.isArray(positions)) {
+                for (const pos of positions) {
+                    await tx.position.upsert({
+                        where: { id: pos.id },
+                        update: { name: pos.name, isDeleted: pos.isDeleted || false },
+                        create: { id: pos.id, name: pos.name, isDeleted: pos.isDeleted || false }
+                    });
+                }
+            }
+
+            // 8. Sync Student Statuses
+            if (studentStatuses && Array.isArray(studentStatuses)) {
+                for (const ss of studentStatuses) {
+                    await tx.studentStatus.upsert({
+                        where: { id: ss.id },
+                        update: { name: ss.name, isDeleted: ss.isDeleted || false },
+                        create: { id: ss.id, name: ss.name, isDeleted: ss.isDeleted || false }
+                    });
+                }
+            }
+
+            // 9. Sync Parent Statuses
+            if (parentStatuses && Array.isArray(parentStatuses)) {
+                for (const ps of parentStatuses) {
+                    await tx.parentStatus.upsert({
+                        where: { id: ps.id },
+                        update: { name: ps.name, isDeleted: ps.isDeleted || false },
+                        create: { id: ps.id, name: ps.name, isDeleted: ps.isDeleted || false }
+                    });
+                }
+            }
+
+            // 10. Sync Income Items
+            if (incomeItems && Array.isArray(incomeItems)) {
+                for (const ii of incomeItems) {
+                    await tx.incomeItem.upsert({
+                        where: { id: ii.id },
+                        update: { name: ii.name, isDeleted: ii.isDeleted || false },
+                        create: { id: ii.id, name: ii.name, isDeleted: ii.isDeleted || false }
+                    });
+                }
+            }
+
+            // 11. Sync Expense Items
+            if (expenseItems && Array.isArray(expenseItems)) {
+                for (const ei of expenseItems) {
+                    await tx.expenseItem.upsert({
+                        where: { id: ei.id },
+                        update: { 
+                            name: ei.name, unitId: ei.unitId, fieldId: ei.fieldId, 
+                            accountId: ei.accountId, sourceOfFunds: ei.sourceOfFunds,
+                            isBos: ei.isBos || false, isDeleted: ei.isDeleted || false 
+                        },
+                        create: { 
+                            id: ei.id, name: ei.name, unitId: ei.unitId, fieldId: ei.fieldId, 
+                            accountId: ei.accountId, sourceOfFunds: ei.sourceOfFunds,
+                            isBos: ei.isBos || false, isDeleted: ei.isDeleted || false 
+                        }
                     });
                 }
             }
@@ -274,7 +335,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.0.7',
+            version: '1.0.8',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,
