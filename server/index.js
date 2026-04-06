@@ -1,3 +1,4 @@
+// SIKAK Yayasan Umum - Unified Server (Version 1.0.3 deployed at 2026-04-06 12:05)
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
