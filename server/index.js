@@ -130,6 +130,10 @@ app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
 
 // Bulk Sync Endpoint (for legacy support and master data initialization)
+// Global for debugging sync
+let lastSyncStats = null;
+
+// Bulk Sync Endpoint (for legacy support and master data initialization)
 app.post('/api/sync', async (req, res) => {
     try {
         const client = getPrisma();
@@ -141,9 +145,18 @@ app.post('/api/sync', async (req, res) => {
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
             budgetRequests, budgetReports, classes, distributionSettings
         } = req.body;
+
+        // Record stats for health check diagnostics
+        lastSyncStats = {
+            timestamp: new Date().toISOString(),
+            studentsCount: students?.length || 0,
+            academicYearsCount: academicYears?.length || 0,
+            unitsCount: units?.length || 0,
+            firstStudent: students?.[0]?.name || 'N/A',
+            payloadSize: JSON.stringify(req.body || {}).length
+        };
         
-        console.log(`[Sync] Received bulk update request`);
-        console.log(`[Sync] Counts - Students: ${students?.length || 0}, Accounts: ${accounts?.length || 0}, Journals: ${journals?.length || 0}`);
+        console.log(`[Sync] Received bulk update request. Students: ${students?.length || 0}`);
         
         if (!students || !Array.isArray(students)) {
             console.warn(`[Sync Warning] Students array is missing or not an array. Type: ${typeof students}`);
@@ -423,9 +436,10 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.1.3',
+            version: '1.1.4', // Bump version to verify deploy
             database: 'connected',
             lastSyncError: lastSyncError,
+            lastSyncStats: lastSyncStats,
             stats: {
                 students: studentCount,
                 incomeItems: incomeItemCount,
