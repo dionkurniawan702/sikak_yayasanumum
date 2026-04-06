@@ -37,7 +37,7 @@ export const api = {
                 accounts, journals, assets, programs, users, budgets,
                 fields, units, students, incomeItems, distributionSettings,
                 budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses, contacts
+                academicYears, classGroups, positions, studentStatuses, parentStatuses
             ] = await Promise.all([
                 fetchEntity('accounts'),
                 fetchEntity('journals'),
@@ -56,8 +56,7 @@ export const api = {
                 fetchEntity('class-groups'),
                 fetchEntity('positions'),
                 fetchEntity('student-statuses'),
-                fetchEntity('parent-statuses'),
-                fetchEntity('contacts')
+                fetchEntity('parent-statuses')
             ]);
 
             return {
@@ -74,7 +73,7 @@ export const api = {
                 budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
                 fields, units, students, incomeItems, distributionSettings,
                 budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses, contacts,
+                academicYears, classGroups, positions, studentStatuses, parentStatuses,
                 notes: {}, 
             };
         } catch (error) {
@@ -227,9 +226,7 @@ export const api = {
                 case 'EDIT_PARENT_STATUS': await syncItem('parent-statuses', payload.id, payload); break;
                 case 'DELETE_PARENT_STATUS': await syncItem('parent-statuses', payload, { isDeleted: true }, 'DELETE'); break;
 
-                case 'ADD_CONTACT': await syncItem('contacts', null, payload, 'POST'); break;
-                case 'EDIT_CONTACT': await syncItem('contacts', payload.id, payload); break;
-                case 'DELETE_CONTACT': await syncItem('contacts', payload, { isDeleted: true }, 'DELETE'); break;
+
                 default:
                     if (type.includes('RESTORE') || type.includes('TRASH') || type.includes('IMPORT') || type.includes('BULK') || type.includes('DEPRECIATION') || type.includes('NOTES')) {
                         await this.syncWholeState(currentState);

@@ -199,56 +199,5 @@ router.put('/budgets/:id', async (req, res) => {
     }
 });
 
-// --- CONTACTS ---
-router.get('/contacts', async (req, res) => {
-    try {
-        const data = await getPrisma(req).contact.findMany({ where: { isDeleted: false } });
-        res.json({ data });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.post('/contacts', async (req, res) => {
-    try {
-        const { id, name, type, phone, address, province, city, district } = req.body;
-        
-        // Upsert by name to handle duplicates safely
-        const data = await getPrisma(req).contact.upsert({
-            where: { name: name },
-            update: { type, phone, address, province, city, district, isDeleted: false },
-            create: { id, name, type, phone, address, province, city, district }
-        });
-        
-        res.json({ data });
-    } catch (error) {
-        console.error(`[Contact Create Error] ${error.message}`);
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.put('/contacts/:id', async (req, res) => {
-    try {
-        const data = await getPrisma(req).contact.update({
-            where: { id: req.params.id },
-            data: req.body
-        });
-        res.json({ data });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.delete('/contacts/:id', async (req, res) => {
-    try {
-        const data = await getPrisma(req).contact.update({
-            where: { id: req.params.id },
-            data: { isDeleted: true }
-        });
-        res.json({ data });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
 export default router;
+
