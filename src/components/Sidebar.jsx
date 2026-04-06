@@ -47,7 +47,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark },
 
             { section: 'DATABASE ANGGARAN' },
-            { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
+            { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
             { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
 
 
@@ -112,7 +112,7 @@ export default function Sidebar({ isOpen, onClose }) {
         if (showDatabaseItems) {
             menuItems.push(
                 { section: 'DATABASE ANGGARAN' },
-                { path: '/anggaran/siswa', label: 'Siswa / Pendapatan', icon: User },
+                { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
                 { path: '/anggaran/kelas', label: 'Kelas', icon: Users }
 
             );
