@@ -139,12 +139,15 @@ export default function FieldUnitManagement() {
             });
         }
         
-        if (!editingItem) {
-            setEditingItem({ id, ...formData });
-        }
-        
         setIsSaved(true);
-        setTimeout(() => setIsSaved(false), 2000);
+        setTimeout(() => {
+            setIsSaved(false);
+            setShowModal(false);
+            setEditingItem(null);
+            setFormData({ name: '', fieldId: activeTab === 'units' ? fields[0]?.id || '' : '' });
+            setSelectedIncomeItems([]);
+            setUnitDistributions({});
+        }, 1500);
     };
 
     const handleDelete = (id) => {
