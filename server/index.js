@@ -125,17 +125,79 @@ app.post('/api/login', async (req, res) => {
 app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
 
-// Bulk Sync Endpoint (for legacy support and complex updates)
+// Bulk Sync Endpoint (for legacy support and master data initialization)
 app.post('/api/sync', async (req, res) => {
     try {
         const client = getPrisma();
-        const { accounts, journals, assets, programs, users, budgets } = req.body;
+        const { accounts, journals, assets, programs, users, budgets, fields, units } = req.body;
         
-        // This is a simplified bulk sync. In a real app, you'd use a transaction.
-        // For now, we'll just acknowledge recept of data.
-        console.log(`[Sync] Received bulk update from client`);
-        res.json({ status: 'ok', message: 'Sync received' });
+        console.log(`[Sync] Processing bulk update from client`);
+        
+        // Use a transaction for master data
+        await client.$transaction(async (tx) => {
+            // 1. Sync Fields
+            if (fields && Array.isArray(fields)) {
+                for (const field of fields) {
+                    await tx.field.upsert({
+                        where: { id: field.id },
+                        update: { name: field.name, isDeleted: field.isDeleted || false },
+                        create: { id: field.id, name: field.name, isDeleted: field.isDeleted || false }
+                    });
+                }
+            }
+
+            // 2. Sync Units
+            if (units && Array.isArray(units)) {
+                for (const unit of units) {
+                    await tx.unit.upsert({
+                        where: { id: unit.id },
+                        update: { 
+                            name: unit.name, 
+                            fieldId: unit.fieldId, 
+                            isDeleted: unit.isDeleted || false 
+                        },
+                        create: { 
+                            id: unit.id, 
+                            name: unit.name, 
+                            fieldId: unit.fieldId, 
+                            isDeleted: unit.isDeleted || false 
+                        }
+                    });
+                }
+            }
+
+            // 3. Sync Users
+            if (users && Array.isArray(users)) {
+                for (const user of users) {
+                    await tx.user.upsert({
+                        where: { id: user.id },
+                        update: {
+                            name: user.name,
+                            username: user.username,
+                            password: user.password,
+                            role: user.role,
+                            fieldId: user.fieldId,
+                            unitId: user.unitId,
+                            isDeleted: user.isDeleted || false
+                        },
+                        create: {
+                            id: user.id,
+                            name: user.name,
+                            username: user.username,
+                            password: user.password,
+                            role: user.role,
+                            fieldId: user.fieldId,
+                            unitId: user.unitId,
+                            isDeleted: user.isDeleted || false
+                        }
+                    });
+                }
+            }
+        });
+
+        res.json({ status: 'ok', message: 'Master data synchronized successfully' });
     } catch (error) {
+        console.error(`[Sync Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });

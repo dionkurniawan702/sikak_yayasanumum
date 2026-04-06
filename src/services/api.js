@@ -255,7 +255,9 @@ export const api = {
                     assets: state.assets,
                     programs: state.programs,
                     users: state.users,
-                    budgets: state.budgets
+                    budgets: state.budgets,
+                    fields: state.fields,
+                    units: state.units
                 })
             });
 

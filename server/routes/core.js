@@ -168,6 +168,27 @@ router.get('/users', async (req, res) => {
     }
 });
 
+router.post('/users', async (req, res) => {
+    try {
+        const data = await getPrisma(req).user.create({ data: req.body });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/users/:id', async (req, res) => {
+    try {
+        const data = await getPrisma(req).user.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- BUDGETS ---
 router.get('/budgets', async (req, res) => {
     try {
