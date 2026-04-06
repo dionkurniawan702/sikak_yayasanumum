@@ -315,6 +315,22 @@ app.post('/api/sync', async (req, res) => {
 
             // 11. Sync Students (Now everything they depend on is synced)
             if (students && Array.isArray(students)) {
+                const incomingIds = students.map(s => s.id);
+                
+                // Mark students as deleted if they are not in the incoming payload (Mirror local state)
+                const deactivated = await tx.student.updateMany({
+                    where: { 
+                        id: { notIn: incomingIds },
+                        isDeleted: false
+                    },
+                    data: { isDeleted: true }
+                });
+
+                if (deactivated.count > 0) {
+                    console.log(`[Sync] Deactivated ${deactivated.count} students not present in payload`);
+                    if (lastSyncStats) lastSyncStats.deactivatedCount = deactivated.count;
+                }
+
                 for (const s of students) {
                     try {
                         await tx.student.upsert({
