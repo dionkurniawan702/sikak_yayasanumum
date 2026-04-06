@@ -139,7 +139,8 @@ app.post('/api/sync', async (req, res) => {
             budgetRequests, budgetReports, classes, distributionSettings
         } = req.body;
         
-        console.log(`[Sync] Processing bulk update from client`);
+        console.log(`[Sync] Received bulk update request`);
+        console.log(`[Sync] Counts - Students: ${students?.length || 0}, Accounts: ${accounts?.length || 0}, Journals: ${journals?.length || 0}`);
         
         // Use a transaction for master data
         await client.$transaction(async (tx) => {
@@ -202,7 +203,82 @@ app.post('/api/sync', async (req, res) => {
                 }
             }
 
-            // 4. Sync ClassGroups
+            // 4. Sync Academic Years
+            if (academicYears && Array.isArray(academicYears)) {
+                for (const ay of academicYears) {
+                    try {
+                        const startDate = (ay.startDate && !isNaN(new Date(ay.startDate))) ? new Date(ay.startDate) : new Date(`${new Date().getFullYear()}-01-01`);
+                        const endDate = (ay.endDate && !isNaN(new Date(ay.endDate))) ? new Date(ay.endDate) : new Date(`${new Date().getFullYear()}-12-31`);
+
+                        await tx.academicYear.upsert({
+                            where: { id: ay.id },
+                            update: { 
+                                name: ay.name, 
+                                startDate, 
+                                endDate, 
+                                isCurrent: ay.isCurrent || false, 
+                                isDeleted: ay.isDeleted || false 
+                            },
+                            create: { 
+                                id: ay.id, 
+                                name: ay.name, 
+                                startDate, 
+                                endDate, 
+                                isCurrent: ay.isCurrent || false, 
+                                isDeleted: ay.isDeleted || false 
+                            }
+                        });
+                    } catch (ayError) {
+                        console.error(`[Sync Error] Academic Year ${ay.name}: ${ayError.message}`);
+                    }
+                }
+            }
+
+            // 5. Sync Positions
+            if (positions && Array.isArray(positions)) {
+                for (const pos of positions) {
+                    await tx.position.upsert({
+                        where: { id: pos.id },
+                        update: { name: pos.name, isDeleted: pos.isDeleted || false },
+                        create: { id: pos.id, name: pos.name, isDeleted: pos.isDeleted || false }
+                    });
+                }
+            }
+
+            // 6. Sync Student Statuses
+            if (studentStatuses && Array.isArray(studentStatuses)) {
+                for (const ss of studentStatuses) {
+                    await tx.studentStatus.upsert({
+                        where: { id: ss.id },
+                        update: { name: ss.name, isDeleted: ss.isDeleted || false },
+                        create: { id: ss.id, name: ss.name, isDeleted: ss.isDeleted || false }
+                    });
+                }
+            }
+
+            // 7. Sync Parent Statuses
+            if (parentStatuses && Array.isArray(parentStatuses)) {
+                for (const ps of parentStatuses) {
+                    await tx.parentStatus.upsert({
+                        where: { id: ps.id },
+                        update: { name: ps.name, isDeleted: ps.isDeleted || false },
+                        create: { id: ps.id, name: ps.name, isDeleted: ps.isDeleted || false }
+                    });
+                }
+            }
+
+            // 8. Sync Income Items
+            if (incomeItems && Array.isArray(incomeItems)) {
+                for (const ii of incomeItems) {
+                    await tx.incomeItem.upsert({
+                        where: { id: ii.id },
+                        update: { name: ii.name, isDeleted: ii.isDeleted || false },
+                        create: { id: ii.id, name: ii.name, isDeleted: ii.isDeleted || false }
+                    });
+                }
+            }
+
+            // 9. Sync ClassGroups
             if (classGroups && Array.isArray(classGroups)) {
                 for (const cg of classGroups) {
                     await tx.classGroup.upsert({
@@ -213,7 +289,7 @@ app.post('/api/sync', async (req, res) => {
                 }
             }
 
-            // 4b. Sync Classes (The actual unit-specific classes)
+            // 10. Sync Classes (The actual unit-specific classes)
             if (classes && Array.isArray(classes)) {
                 for (const cls of classes) {
                     await tx.class.upsert({
@@ -224,7 +300,7 @@ app.post('/api/sync', async (req, res) => {
                 }
             }
 
-            // 5. Sync Students
+            // 11. Sync Students (Now everything they depend on is synced)
             if (students && Array.isArray(students)) {
                 for (const s of students) {
                     try {
@@ -270,81 +346,6 @@ app.post('/api/sync', async (req, res) => {
                         console.error(`[Sync Error] ${lastSyncError}`);
                         // Don't fail the whole transaction for one student
                     }
-                }
-            }
-
-            // 6. Sync Academic Years
-            if (academicYears && Array.isArray(academicYears)) {
-                for (const ay of academicYears) {
-                    try {
-                        const startDate = (ay.startDate && !isNaN(new Date(ay.startDate))) ? new Date(ay.startDate) : new Date(`${new Date().getFullYear()}-01-01`);
-                        const endDate = (ay.endDate && !isNaN(new Date(ay.endDate))) ? new Date(ay.endDate) : new Date(`${new Date().getFullYear()}-12-31`);
-
-                        await tx.academicYear.upsert({
-                            where: { id: ay.id },
-                            update: { 
-                                name: ay.name, 
-                                startDate, 
-                                endDate, 
-                                isCurrent: ay.isCurrent || false, 
-                                isDeleted: ay.isDeleted || false 
-                            },
-                            create: { 
-                                id: ay.id, 
-                                name: ay.name, 
-                                startDate, 
-                                endDate, 
-                                isCurrent: ay.isCurrent || false, 
-                                isDeleted: ay.isDeleted || false 
-                            }
-                        });
-                    } catch (ayError) {
-                        console.error(`[Sync Error] Academic Year ${ay.name}: ${ayError.message}`);
-                    }
-                }
-            }
-
-            // 7. Sync Positions
-            if (positions && Array.isArray(positions)) {
-                for (const pos of positions) {
-                    await tx.position.upsert({
-                        where: { id: pos.id },
-                        update: { name: pos.name, isDeleted: pos.isDeleted || false },
-                        create: { id: pos.id, name: pos.name, isDeleted: pos.isDeleted || false }
-                    });
-                }
-            }
-
-            // 8. Sync Student Statuses
-            if (studentStatuses && Array.isArray(studentStatuses)) {
-                for (const ss of studentStatuses) {
-                    await tx.studentStatus.upsert({
-                        where: { id: ss.id },
-                        update: { name: ss.name, isDeleted: ss.isDeleted || false },
-                        create: { id: ss.id, name: ss.name, isDeleted: ss.isDeleted || false }
-                    });
-                }
-            }
-
-            // 9. Sync Parent Statuses
-            if (parentStatuses && Array.isArray(parentStatuses)) {
-                for (const ps of parentStatuses) {
-                    await tx.parentStatus.upsert({
-                        where: { id: ps.id },
-                        update: { name: ps.name, isDeleted: ps.isDeleted || false },
-                        create: { id: ps.id, name: ps.name, isDeleted: ps.isDeleted || false }
-                    });
-                }
-            }
-
-            // 10. Sync Income Items
-            if (incomeItems && Array.isArray(incomeItems)) {
-                for (const ii of incomeItems) {
-                    await tx.incomeItem.upsert({
-                        where: { id: ii.id },
-                        update: { name: ii.name, isDeleted: ii.isDeleted || false },
-                        create: { id: ii.id, name: ii.name, isDeleted: ii.isDeleted || false }
-                    });
                 }
             }
 
