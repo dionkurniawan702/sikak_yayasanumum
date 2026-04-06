@@ -276,11 +276,31 @@ app.post('/api/sync', async (req, res) => {
             // 6. Sync Academic Years
             if (academicYears && Array.isArray(academicYears)) {
                 for (const ay of academicYears) {
-                    await tx.academicYear.upsert({
-                        where: { id: ay.id },
-                        update: { name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false },
-                        create: { id: ay.id, name: ay.name, startDate: new Date(ay.startDate), endDate: new Date(ay.endDate), isCurrent: ay.isCurrent, isDeleted: ay.isDeleted || false }
-                    });
+                    try {
+                        const startDate = (ay.startDate && !isNaN(new Date(ay.startDate))) ? new Date(ay.startDate) : new Date(`${new Date().getFullYear()}-01-01`);
+                        const endDate = (ay.endDate && !isNaN(new Date(ay.endDate))) ? new Date(ay.endDate) : new Date(`${new Date().getFullYear()}-12-31`);
+
+                        await tx.academicYear.upsert({
+                            where: { id: ay.id },
+                            update: { 
+                                name: ay.name, 
+                                startDate, 
+                                endDate, 
+                                isCurrent: ay.isCurrent || false, 
+                                isDeleted: ay.isDeleted || false 
+                            },
+                            create: { 
+                                id: ay.id, 
+                                name: ay.name, 
+                                startDate, 
+                                endDate, 
+                                isCurrent: ay.isCurrent || false, 
+                                isDeleted: ay.isDeleted || false 
+                            }
+                        });
+                    } catch (ayError) {
+                        console.error(`[Sync Error] Academic Year ${ay.name}: ${ayError.message}`);
+                    }
                 }
             }
 

@@ -49,9 +49,17 @@ export default function GenericMasterManagement({
                 await api.pushAction({ type: `EDIT_${actionPrefix}`, payload: updatedItem }, state);
                 setMessage({ type: 'success', text: `${title} berhasil diperbarui` });
             } else {
+                const currentYear = new Date().getFullYear();
+                const defaultDates = actionPrefix === 'ACADEMIC_YEAR' ? {
+                    startDate: `${currentYear}-01-01`,
+                    endDate: `${currentYear}-12-31`,
+                    isCurrent: false
+                } : {};
+
                 const newItem = {
                     id: `${actionPrefix.substring(0,3)}-${generateId()}`,
-                    name: formData.name
+                    name: formData.name,
+                    ...defaultDates
                 };
                 dispatch({ type: `ADD_${actionPrefix}`, payload: newItem });
                 await api.pushAction({ type: `ADD_${actionPrefix}`, payload: newItem }, state);

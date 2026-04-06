@@ -93,10 +93,16 @@ function loadState() {
                 }
             }
             
-            // Ensure all critical arrays are initialized
-            if (!merged.assets) merged.assets = initialAssets;
-            if (!merged.journals) merged.journals = initialJournals;
-            if (!merged.programs) merged.programs = initialPrograms;
+            // Migration: Ensure Academic Years have valid dates (Fix for "Invalid Date" sync issue)
+            if (merged.academicYears && Array.isArray(merged.academicYears)) {
+                const currentYear = new Date().getFullYear();
+                merged.academicYears = merged.academicYears.map(ay => ({
+                    ...ay,
+                    startDate: (ay.startDate && !isNaN(new Date(ay.startDate))) ? ay.startDate : `${currentYear}-01-01`,
+                    endDate: (ay.endDate && !isNaN(new Date(ay.endDate))) ? ay.endDate : `${currentYear}-12-31`,
+                    isCurrent: ay.isCurrent || false
+                }));
+            }
             
             return merged;
         }
