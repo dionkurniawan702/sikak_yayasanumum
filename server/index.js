@@ -130,7 +130,13 @@ app.use('/api', coreRouter);
 app.post('/api/sync', async (req, res) => {
     try {
         const client = getPrisma();
-        const { accounts, journals, assets, programs, users, budgets, fields, units } = req.body;
+        const { 
+            accounts, journals, assets, programs, users, budgets, 
+            fields, units, students, incomeItems, expenseItems, 
+            distributionSettings, academicYears, classGroups, 
+            positions, studentStatuses, parentStatuses, 
+            budgetRequests, budgetReports 
+        } = req.body;
         
         console.log(`[Sync] Processing bulk update from client`);
         
@@ -257,7 +263,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.0.4',
+            version: '1.0.5',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,
