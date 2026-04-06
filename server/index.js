@@ -34,8 +34,10 @@ app.get('/health', (req, res) => {
     res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Lazy Prisma Initialization (to prevent boot-time crashes)
+// Lazy Prisma Initialization
 let prisma;
+let lastSyncError = null;
+
 const getPrisma = () => {
     if (!prisma) {
         prisma = new PrismaClient();
@@ -264,7 +266,8 @@ app.post('/api/sync', async (req, res) => {
                             }
                         }
                     } catch (studentError) {
-                        console.error(`[Sync Error] Failed for student ${s.name} (${s.id}): ${studentError.message}`);
+                        lastSyncError = `Student ${s.name} (${s.id}): ${studentError.message}`;
+                        console.error(`[Sync Error] ${lastSyncError}`);
                         // Don't fail the whole transaction for one student
                     }
                 }
@@ -366,7 +369,8 @@ app.post('/api/sync', async (req, res) => {
 
         res.json({ status: 'ok', message: 'Synchronization completed successfully' });
     } catch (error) {
-        console.error(`[Sync Error] ${error.message}`);
+        lastSyncError = `Global Sync Error: ${error.message}`;
+        console.error(`[Sync Error] ${lastSyncError}`);
         res.status(500).json({ error: error.message });
     }
 });
@@ -391,8 +395,9 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.1.2',
+            version: '1.1.3',
             database: 'connected',
+            lastSyncError: lastSyncError,
             stats: {
                 students: studentCount,
                 incomeItems: incomeItemCount,
