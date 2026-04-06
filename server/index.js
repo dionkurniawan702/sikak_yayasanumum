@@ -55,7 +55,8 @@ console.log(`[Diagnostic] DATABASE_URL: ${maskedDBUrl}`);
 console.log(`[Diagnostic] __dirname: ${__dirname}`);
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // Real-time Request Logger
 app.use((req, res, next) => {
@@ -132,6 +133,8 @@ app.use('/api', coreRouter);
 app.post('/api/sync', async (req, res) => {
     try {
         const client = getPrisma();
+        lastSyncError = null; // Reset for new attempt
+        
         const { 
             accounts, journals, assets, programs, users, budgets, 
             fields, units, students, incomeItems, expenseItems, 
@@ -141,6 +144,10 @@ app.post('/api/sync', async (req, res) => {
         
         console.log(`[Sync] Received bulk update request`);
         console.log(`[Sync] Counts - Students: ${students?.length || 0}, Accounts: ${accounts?.length || 0}, Journals: ${journals?.length || 0}`);
+        
+        if (!students || !Array.isArray(students)) {
+            console.warn(`[Sync Warning] Students array is missing or not an array. Type: ${typeof students}`);
+        }
         
         // Use a transaction for master data
         await client.$transaction(async (tx) => {
@@ -342,9 +349,9 @@ app.post('/api/sync', async (req, res) => {
                             }
                         }
                     } catch (studentError) {
-                        lastSyncError = `Student ${s.name} (${s.id}): ${studentError.message}`;
-                        console.error(`[Sync Error] ${lastSyncError}`);
-                        // Don't fail the whole transaction for one student
+                        const errorMsg = `Student ${s.name} (${s.id}): ${studentError.message}`;
+                        lastSyncError = lastSyncError ? `${lastSyncError} | ${errorMsg}` : errorMsg;
+                        console.error(`[Sync Error] ${errorMsg}`);
                     }
                 }
             }
