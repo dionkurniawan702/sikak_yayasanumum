@@ -225,34 +225,47 @@ app.post('/api/sync', async (req, res) => {
             // 5. Sync Students
             if (students && Array.isArray(students)) {
                 for (const s of students) {
-                    await tx.student.upsert({
-                        where: { id: s.id },
-                        update: { 
-                            nis: s.nis, name: s.name, unitId: s.unitId, 
-                            classId: s.classId, academicYearId: s.academicYearId, 
-                            statusId: s.statusId, parentStatusId: s.parentStatusId,
-                            isDeleted: s.isDeleted || false 
-                        },
-                        create: { 
-                            id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
-                            classId: s.classId, academicYearId: s.academicYearId, 
-                            statusId: s.statusId, parentStatusId: s.parentStatusId,
-                            isDeleted: s.isDeleted || false 
-                        }
-                    });
+                    try {
+                        await tx.student.upsert({
+                            where: { id: s.id },
+                            update: { 
+                                nis: s.nis, name: s.name, unitId: s.unitId, 
+                                classId: s.classId || null, academicYearId: s.academicYearId || null, 
+                                statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                                isDeleted: s.isDeleted || false 
+                            },
+                            create: { 
+                                id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
+                                classId: s.classId || null, academicYearId: s.academicYearId || null, 
+                                statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                                isDeleted: s.isDeleted || false 
+                            }
+                        });
 
-                    // Sync Student Income Details (Clearing and Re-adding for simplicity)
-                    if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
-                        await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
-                        for (const detail of s.incomeDetails) {
-                            await tx.studentIncomeDetail.create({
-                                data: {
-                                    studentId: s.id,
-                                    incomeItemId: detail.incomeItemId,
-                                    amount: detail.amount
-                                }
+                        // Sync Student Income Details
+                        if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
+                            // Only sync valid items
+                            const validIncomeItems = await tx.incomeItem.findMany({ 
+                                where: { id: { in: s.incomeDetails.map(d => d.incomeItemId) }, isDeleted: false }
                             });
+                            const validIds = validIncomeItems.map(i => i.id);
+
+                            await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
+                            for (const detail of s.incomeDetails) {
+                                if (validIds.includes(detail.incomeItemId)) {
+                                    await tx.studentIncomeDetail.create({
+                                        data: {
+                                            studentId: s.id,
+                                            incomeItemId: detail.incomeItemId,
+                                            amount: detail.amount
+                                        }
+                                    });
+                                }
+                            }
                         }
+                    } catch (studentError) {
+                        console.error(`[Sync Error] Failed for student ${s.name} (${s.id}): ${studentError.message}`);
+                        // Don't fail the whole transaction for one student
                     }
                 }
             }
@@ -365,18 +378,28 @@ app.get('/api/health', async (req, res) => {
         await client.$queryRaw`SELECT 1`;
         
         // Quick diagnostic counts
+        const studentCount = await client.student.count({ where: { isDeleted: false } });
         const incomeItemCount = await client.incomeItem.count({ where: { isDeleted: false } });
         const userCount = await client.user.count({ where: { isDeleted: false } });
         const fieldCount = await client.field.count({ where: { isDeleted: false } });
         const unitCount = await client.unit.count({ where: { isDeleted: false } });
         const classCount = await client.class.count({ where: { isDeleted: false } });
+        const ayCount = await client.academicYear.count({ where: { isDeleted: false } });
+        const posCount = await client.position.count({ where: { isDeleted: false } });
+        const stStatusCount = await client.studentStatus.count({ where: { isDeleted: false } });
+        const ptStatusCount = await client.parentStatus.count({ where: { isDeleted: false } });
 
         res.json({ 
             status: 'ok', 
-            version: '1.1.1',
+            version: '1.1.2',
             database: 'connected',
             stats: {
+                students: studentCount,
                 incomeItems: incomeItemCount,
+                academicYears: ayCount,
+                positions: posCount,
+                studentStatuses: stStatusCount,
+                parentStatuses: ptStatusCount,
                 users: userCount,
                 fields: fieldCount,
                 units: unitCount,
