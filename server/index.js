@@ -228,14 +228,32 @@ app.post('/api/sync', async (req, res) => {
                     await tx.student.upsert({
                         where: { id: s.id },
                         update: { 
-                            nis: s.nis, name: s.name, unitId: s.unitId, classGroupId: s.classGroupId,
-                            status: s.status, parentStatus: s.parentStatus, isDeleted: s.isDeleted || false 
+                            nis: s.nis, name: s.name, unitId: s.unitId, 
+                            classId: s.classId, academicYearId: s.academicYearId, 
+                            statusId: s.statusId, parentStatusId: s.parentStatusId,
+                            isDeleted: s.isDeleted || false 
                         },
                         create: { 
-                            id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, classGroupId: s.classGroupId,
-                            status: s.status, parentStatus: s.parentStatus, isDeleted: s.isDeleted || false 
+                            id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
+                            classId: s.classId, academicYearId: s.academicYearId, 
+                            statusId: s.statusId, parentStatusId: s.parentStatusId,
+                            isDeleted: s.isDeleted || false 
                         }
                     });
+
+                    // Sync Student Income Details (Clearing and Re-adding for simplicity)
+                    if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
+                        await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
+                        for (const detail of s.incomeDetails) {
+                            await tx.studentIncomeDetail.create({
+                                data: {
+                                    studentId: s.id,
+                                    incomeItemId: detail.incomeItemId,
+                                    amount: detail.amount
+                                }
+                            });
+                        }
+                    }
                 }
             }
 
@@ -355,7 +373,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.1.0',
+            version: '1.1.1',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,

@@ -155,9 +155,9 @@ router.put('/students/:id', async (req, res) => {
                 await tx.studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
             }
             
-            return tx.student.update({
+            return tx.student.upsert({
                 where: { id: req.params.id },
-                data: {
+                update: {
                     name, nis, unitId,
                     classId, academicYearId, statusId, parentStatusId,
                     incomeDetails: incomeDetails ? {
@@ -165,7 +165,18 @@ router.put('/students/:id', async (req, res) => {
                             incomeItemId: d.incomeItemId,
                             amount: d.amount
                         }))
-                    } : undefined
+                    } : undefined,
+                    isDeleted: false
+                },
+                create: {
+                    id: req.params.id, name, nis, unitId,
+                    classId, academicYearId, statusId, parentStatusId,
+                    incomeDetails: {
+                        create: (incomeDetails || []).map(d => ({
+                            incomeItemId: d.incomeItemId,
+                            amount: d.amount
+                        }))
+                    }
                 }
             });
         });
@@ -178,9 +189,10 @@ router.put('/students/:id', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
     try {
-        await getPrisma(req).student.update({
+        await getPrisma(req).student.upsert({
             where: { id: req.params.id },
-            data: { isDeleted: true }
+            update: { isDeleted: true },
+            create: { id: req.params.id, name: 'Deleted Student', unitId: 'N/A', isDeleted: true }
         });
         res.json({ message: 'Success' });
     } catch (error) {
