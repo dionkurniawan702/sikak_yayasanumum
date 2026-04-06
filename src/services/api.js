@@ -34,10 +34,7 @@ export const api = {
             };
 
             const [
-                accounts, journals, assets, programs, users, budgets,
-                fields, units, students, incomeItems, distributionSettings,
-                budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses
+                academicYears, classGroups, positions, studentStatuses, parentStatuses, classes
             ] = await Promise.all([
                 fetchEntity('accounts'),
                 fetchEntity('journals'),
@@ -56,7 +53,8 @@ export const api = {
                 fetchEntity('class-groups'),
                 fetchEntity('positions'),
                 fetchEntity('student-statuses'),
-                fetchEntity('parent-statuses')
+                fetchEntity('parent-statuses'),
+                fetchEntity('classes')
             ]);
 
             return {
@@ -73,7 +71,7 @@ export const api = {
                 budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
                 fields, units, students, incomeItems, distributionSettings,
                 budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses,
+                academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
                 notes: {}, 
             };
         } catch (error) {
@@ -268,7 +266,8 @@ export const api = {
                     studentStatuses: state.studentStatuses,
                     parentStatuses: state.parentStatuses,
                     budgetRequests: state.budgetRequests,
-                    budgetReports: state.budgetReports
+                    budgetReports: state.budgetReports,
+                    classes: state.classes
                 })
             });
 

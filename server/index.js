@@ -133,9 +133,9 @@ app.post('/api/sync', async (req, res) => {
         const { 
             accounts, journals, assets, programs, users, budgets, 
             fields, units, students, incomeItems, expenseItems, 
-            distributionSettings, academicYears, classGroups, 
-            positions, studentStatuses, parentStatuses, 
-            budgetRequests, budgetReports 
+            distributionSettings, academicYears, classGroups,            positions: positions, studentStatuses: studentStatuses, parentStatuses: parentStatuses, 
+            budgetRequests: budgetRequests, budgetReports: budgetReports,
+            classes: classes
         } = req.body;
         
         console.log(`[Sync] Processing bulk update from client`);
@@ -206,8 +206,19 @@ app.post('/api/sync', async (req, res) => {
                 for (const cg of classGroups) {
                     await tx.classGroup.upsert({
                         where: { id: cg.id },
-                        update: { name: cg.name, unitId: cg.unitId, isDeleted: cg.isDeleted || false },
-                        create: { id: cg.id, name: cg.name, unitId: cg.unitId, isDeleted: cg.isDeleted || false }
+                        update: { name: cg.name, isDeleted: cg.isDeleted || false },
+                        create: { id: cg.id, name: cg.name, isDeleted: cg.isDeleted || false }
+                    });
+                }
+            }
+
+            // 4b. Sync Classes (The actual unit-specific classes)
+            if (classes && Array.isArray(classes)) {
+                for (const cls of classes) {
+                    await tx.class.upsert({
+                        where: { id: cls.id },
+                        update: { name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false },
+                        create: { id: cls.id, name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false }
                     });
                 }
             }
@@ -263,7 +274,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.0.5',
+            version: '1.0.6',
             database: 'connected',
             stats: {
                 incomeItems: incomeItemCount,

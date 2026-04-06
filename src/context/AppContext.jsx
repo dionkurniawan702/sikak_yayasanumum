@@ -24,6 +24,7 @@ const defaultState = {
     positions: [],
     studentStatuses: [],
     parentStatuses: [],
+    classes: [],
 
     notes: {},
     users: [
@@ -185,6 +186,7 @@ function appReducer(state, action) {
                 positions: serverData.positions || state.positions || [],
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
+                classes: serverData.classes || state.classes || [],
 
                 users: serverData.users || state.users,
                 currentUser: state.currentUser,
@@ -351,6 +353,10 @@ function appReducer(state, action) {
         case 'ADD_PARENT_STATUS': newState = { ...state, parentStatuses: [...state.parentStatuses, action.payload] }; break;
         case 'EDIT_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_PARENT_STATUS': newState = { ...state, parentStatuses: state.parentStatuses.filter(i => i.id !== action.payload) }; break;
+
+        case 'ADD_CLASS': newState = { ...state, classes: [...state.classes, action.payload] }; break;
+        case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
 
 
         
