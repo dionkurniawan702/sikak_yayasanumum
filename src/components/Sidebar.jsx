@@ -141,7 +141,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         version: d.version,
                         dbError: d.dbError,
                         firstStudent: d.dbContent?.students?.[0],
-                        tables: d.tables
+                        tables: d.tables,
+                        rawCounts: d.rawCounts
                     });
                 })
                 .catch(() => {});
@@ -236,6 +237,11 @@ export default function Sidebar({ isOpen, onClose }) {
                             {serverStats?.tables && (
                                 <div className="mt-1 text-[6px] text-slate-500 bg-slate-800/20 p-1 font-mono break-all line-clamp-2" title={serverStats.tables.join(', ')}>
                                     TBL: {serverStats.tables.join(', ')}
+                                </div>
+                            )}
+                            {serverStats?.rawCounts && (
+                                <div className="mt-1 text-[7px] text-amber-400 font-mono">
+                                    Raw: Siswa {serverStats.rawCounts.students ?? '?'} / Kelas {serverStats.rawCounts.classes ?? '?'}
                                 </div>
                             )}
                         </div>

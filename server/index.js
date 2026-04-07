@@ -492,12 +492,23 @@ app.get('/api/health', async (req, res) => {
         let dbContent = null;
         let dbError = null;
         let tables = [];
+        let rawCounts = {};
 
         try {
             // Get actual table names from MySQL
             const rawTables = await client.$queryRaw`SHOW TABLES`;
             tables = rawTables.map(t => Object.values(t)[0]);
             console.log(`[Diagnostic] Tables found in DB: ${tables.join(', ')}`);
+
+            // Check if PascalCase table exists
+            if (tables.some(t => t.toLowerCase() === 'student')) {
+                const actualTableName = tables.find(t => t.toLowerCase() === 'student');
+                const rawStudentCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${actualTableName} WHERE isDeleted = 0`);
+                rawCounts.students = Number(rawStudentCount[0].count);
+                
+                const rawClassCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${tables.find(t => t.toLowerCase() === 'class') || 'Class'} WHERE isDeleted = 0`);
+                rawCounts.classes = Number(rawClassCount[0].count);
+            }
 
             const studentCount = await client.student.count({ where: { isDeleted: false } });
             const classCount = await client.class.count({ where: { isDeleted: false } });
@@ -540,10 +551,11 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.3.3', 
+            version: '1.3.4', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             tables: tables,
+            rawCounts: rawCounts,
             lastSyncError: lastSyncError,
             lastSyncStats: lastSyncStats,
             dbContent: dbContent,
