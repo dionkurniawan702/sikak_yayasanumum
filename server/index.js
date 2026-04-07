@@ -308,7 +308,8 @@ app.get('/api/health', async (req, res) => {
             studentStructure = await client.$queryRawUnsafe(`DESCRIBE ${tbl}`);
             const rS = await client.$queryRawUnsafe(`SELECT COUNT(*) as c FROM ${tbl}`);
             const rA = await client.$queryRawUnsafe(`SELECT COUNT(*) as c FROM ${tbl} WHERE isDeleted = 0`);
-            rawCounts = { students: Number(rA[0].c), totalStudents: Number(rS[0].c) };
+            const rC = await client.$queryRawUnsafe(`SELECT COUNT(*) as c FROM ${tables.find(t => t.toLowerCase() === 'class') || 'Class'} WHERE isDeleted = 0`);
+            rawCounts = { students: Number(rA[0].c), totalStudents: Number(rS[0].c), classes: Number(rC[0].c) };
         }
 
         stats = {
