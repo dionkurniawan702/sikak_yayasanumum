@@ -4,7 +4,7 @@ import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
-    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload
+    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRemote, api } from '../services/api';
