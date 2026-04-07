@@ -151,7 +151,7 @@ model Student {
   incomeDetails StudentIncomeDetail[]
   payments      StudentPayment[]
 
-  @@map("students")
+  @@map("Student")
 }
 
 model Class {
@@ -163,7 +163,7 @@ model Class {
 
   students    Student[]
 
-  @@map("classes")
+  @@map("Class")
 }
 
 model IncomeItem {
@@ -205,7 +205,7 @@ model AcademicYear {
 
   students  Student[]
 
-  @@map("academic_years")
+  @@map("AcademicYear")
 }
 
 model ClassGroup {
@@ -231,7 +231,7 @@ model StudentStatus {
 
   students  Student[]
 
-  @@map("student_statuses")
+  @@map("StudentStatus")
 }
 
 model ParentStatus {
@@ -241,7 +241,7 @@ model ParentStatus {
 
   students  Student[]
 
-  @@map("parent_statuses")
+  @@map("ParentStatus")
 }
 
 model StudentIncomeDetail {
@@ -253,7 +253,7 @@ model StudentIncomeDetail {
   amount       Decimal    @db.Decimal(15, 2)
   isDeleted    Boolean    @default(false)
 
-  @@map("student_income_details")
+  @@map("StudentIncomeDetail")
 }
 
 model StudentPayment {
