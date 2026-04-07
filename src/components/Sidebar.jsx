@@ -139,7 +139,8 @@ export default function Sidebar({ isOpen, onClose }) {
                     setServerStats({
                         ...d.stats,
                         version: d.version,
-                        dbError: d.dbError
+                        dbError: d.dbError,
+                        firstStudent: d.dbContent?.students?.[0]
                     });
                 })
                 .catch(() => {});
@@ -226,6 +227,11 @@ export default function Sidebar({ isOpen, onClose }) {
                                     {state.classes?.length || 0} / {serverStats?.classes ?? '?'} / {serverStats?.deletedClasses ?? '?'}
                                 </span>
                             </div>
+                            {serverStats?.firstStudent && (
+                                <div className="mt-2 text-[7px] text-emerald-400 font-bold bg-emerald-500/10 p-1.5 rounded border border-emerald-500/20">
+                                    DI DB: {serverStats.firstStudent}
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

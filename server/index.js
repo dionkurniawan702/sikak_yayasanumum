@@ -40,7 +40,9 @@ let lastSyncError = null;
 
 const getPrisma = () => {
     if (!prisma) {
-        prisma = new PrismaClient();
+        prisma = new PrismaClient({
+            log: ['query', 'info', 'warn', 'error'],
+        });
     }
     return prisma;
 };
@@ -532,7 +534,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.3.0', 
+            version: '1.3.1', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             lastSyncError: lastSyncError,
