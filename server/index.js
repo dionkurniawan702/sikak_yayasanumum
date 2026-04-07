@@ -144,6 +144,7 @@ app.post('/api/sync', async (req, res) => {
             fields, units, users, academicYears, positions, 
             studentStatuses, parentStatuses, incomeItems, 
             classes, students, expenseItems, distributionSettings,
+            classGroups, notes,
             isPurge = false
         } = req.body;
 
@@ -154,7 +155,7 @@ app.post('/api/sync', async (req, res) => {
             payloadSize: JSON.stringify(req.body || {}).length
         };
         
-        console.log(`[Sync] Starting sync 1.4.3${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
+        console.log(`[Sync] Starting sync 1.4.5${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
         
         await client.$transaction(async (tx) => {
             try {
@@ -162,7 +163,7 @@ app.post('/api/sync', async (req, res) => {
                 
                 if (isPurge) {
                     console.log('[Sync] Purging existing database tables...');
-                    const tablesToPurge = ['StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 'ExpenseItem', 'IncomeItem'];
+                    const tablesToPurge = ['StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 'ExpenseItem', 'IncomeItem', 'class_groups'];
                     for (const table of tablesToPurge) {
                         try {
                             await tx.$executeRawUnsafe(`DELETE FROM \`${table}\``);
@@ -178,7 +179,7 @@ app.post('/api/sync', async (req, res) => {
                         try {
                             await tx[model].upsert({
                                 where: { id: item.id },
-                                update: { ...item },
+                                update: { ...item, id: undefined },
                                 create: { ...item }
                             });
                         } catch (e) {
@@ -203,7 +204,23 @@ app.post('/api/sync', async (req, res) => {
                 await safeUpsert('unit', units);
                 await safeUpsert('user', users);
                 await safeUpsert('academicYear', academicYears);
-                await safeUpsert('class', classes);
+                await safeUpsert('classGroup', classGroups);
+                
+                // Explicitly sync classes to handle potential property mismatches
+                if (classes && Array.isArray(classes)) {
+                    for (const c of classes) {
+                        try {
+                            await tx.class.upsert({
+                                where: { id: c.id },
+                                update: { name: c.name, unitId: c.unitId, isDeleted: c.isDeleted || false },
+                                create: { id: c.id, name: c.name, unitId: c.unitId, isDeleted: c.isDeleted || false }
+                            });
+                        } catch (ce) {
+                            console.error(`[Sync Fail] Class ${c.id}: ${ce.message}`);
+                        }
+                    }
+                }
+
                 await safeUpsert('position', positions);
                 await safeUpsert('studentStatus', studentStatuses);
                 await safeUpsert('parentStatus', parentStatuses);
@@ -250,7 +267,7 @@ app.post('/api/sync', async (req, res) => {
             }
         }, { timeout: 60000 });
 
-        res.json({ status: 'ok', message: 'Sync Successful 1.4.5' });
+        res.json({ status: 'ok', message: 'Sync Successful 1.4.6' });
     } catch (error) {
         lastSyncError = error.message;
         console.error(`[Sync Error] ${error.message}`);
