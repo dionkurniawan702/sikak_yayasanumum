@@ -111,8 +111,16 @@ export default function StudentDatabase() {
             const data = XLSX.utils.sheet_to_json(ws);
             
             if (window.confirm(`Import ${data.length} data siswa?`)) {
+                const currentYear = state.academicYears?.find(y => y.isCurrent);
+                const activeStatus = state.studentStatuses?.find(s => s.name === 'Aktif');
+
                 data.forEach(item => {
                     const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toLowerCase());
+                    const studentClass = state.classes?.find(c => 
+                        c.name.toLowerCase() === item.Kelas?.toString().toLowerCase() && 
+                        (unit ? c.unitId === unit.id : true)
+                    );
+
                     dispatch({
                         type: 'ADD_STUDENT',
                         payload: {
@@ -120,6 +128,9 @@ export default function StudentDatabase() {
                             name: item.Nama,
                             nis: item.NIS || '',
                             unitId: unit?.id || units[0]?.id,
+                            academicYearId: currentYear?.id || '',
+                            statusId: activeStatus?.id || '',
+                            classId: studentClass?.id || '',
                             incomeDetails: incomeItems.map(ii => ({
                                 incomeItemId: ii.id,
                                 amount: item[ii.name] || 0

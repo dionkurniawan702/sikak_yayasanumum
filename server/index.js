@@ -351,16 +351,21 @@ app.get('/api/test-student', async (req, res) => {
         // Insert a dummy student to test write permissions
         const testId = `test-${Date.now()}`;
         
-        // Find any unit for the test
+        // Find references for the test
         const anyUnit = await client.unit.findFirst();
         if (!anyUnit) return res.status(400).json({ error: 'No units exist. Create a unit first.' });
+
+        const currentYear = await client.academicYear.findFirst({ where: { isCurrent: true, isDeleted: false } });
+        const activeStatus = await client.studentStatus.findFirst({ where: { name: 'Aktif', isDeleted: false } });
 
         const result = await client.student.create({
             data: {
                 id: testId,
                 name: 'Siswa Percobaan (Test)',
                 nis: `T${Date.now()}`,
-                unitId: anyUnit.id
+                unitId: anyUnit.id,
+                academicYearId: currentYear?.id || null,
+                statusId: activeStatus?.id || null
             }
         });
         res.json({ status: 'ok', message: 'Test Insert Success!', student: result });
