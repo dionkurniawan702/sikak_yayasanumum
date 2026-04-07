@@ -128,13 +128,29 @@ export default function Sidebar({ isOpen, onClose }) {
     };
     
     const [isSyncing, setIsSyncing] = useState(false);
+    const [serverStats, setServerStats] = useState(null);
+
+    // Fetch server stats for diagnostic
+    useEffect(() => {
+        if (isRemote) {
+            fetch(`${window.location.origin}/api/health`)
+                .then(r => r.json())
+                .then(d => setServerStats(d.stats))
+                .catch(() => {});
+        }
+    }, [isSyncing]);
 
     const handleManualSync = async () => {
         if (!isRemote) return;
         setIsSyncing(true);
         try {
             await api.syncWholeState(state);
-            alert('Sinkronisasi Berhasil! Data lokal telah diunggah ke server MySQL.');
+            alert(`Sinkronisasi Berhasil!\n\nData lokal Anda (${state.students?.length || 0} Siswa, ${state.classes?.length || 0} Kelas) telah diunggah ke server MySQL.`);
+            
+            // Refresh stats after sync
+            const res = await fetch(`${window.location.origin}/api/health`);
+            const data = await res.json();
+            setServerStats(data.stats);
         } catch (error) {
             alert('Sinkronisasi Gagal: ' + error.message + '\n\nPastikan skrip SQL sudah dijalankan di phpMyAdmin.');
         } finally {
@@ -159,24 +175,43 @@ export default function Sidebar({ isOpen, onClose }) {
                 </div>
 
                 {/* Status Sinkronisasi */}
-                <div className="mt-4 p-2 bg-slate-800/50 rounded-xl flex items-center gap-2">
-                    {isRemote ? (
-                        state.isOnline ? (
-                            <>
-                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                <span className="text-[9px] font-bold text-emerald-500">SERVER CONNECTED</span>
-                            </>
+                <div className="mt-4 p-3 bg-slate-800/50 rounded-xl space-y-2 border border-slate-700/50">
+                    <div className="flex items-center gap-2">
+                        {isRemote ? (
+                            state.isOnline ? (
+                                <>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
+                                    <span className="text-[9px] font-bold text-emerald-500">SERVER CONNECTED</span>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>
+                                    <span className="text-[9px] font-bold text-rose-500">SERVER DISCONNECTED</span>
+                                </>
+                            )
                         ) : (
                             <>
-                                <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                                <span className="text-[9px] font-bold text-rose-500">SERVER DISCONNECTED</span>
+                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
+                                <span className="text-[9px] font-bold text-amber-500">LOCAL MODE</span>
                             </>
-                        )
-                    ) : (
-                        <>
-                            <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                            <span className="text-[9px] font-bold text-amber-500">LOCAL MODE</span>
-                        </>
+                        )}
+                    </div>
+                    
+                    {isRemote && isSuperAdmin && (
+                        <div className="pt-2 border-t border-slate-700/50 space-y-1">
+                            <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
+                                <span className="text-slate-500 uppercase">Siswa (Lokal/DB)</span>
+                                <span className={state.students?.length > (serverStats?.students || 0) ? 'text-amber-400' : 'text-slate-400'}>
+                                    {state.students?.length || 0} / {serverStats?.students ?? '?'}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
+                                <span className="text-slate-500 uppercase">Kelas (Lokal/DB)</span>
+                                <span className={state.classes?.length > (serverStats?.classes || 0) ? 'text-amber-400' : 'text-slate-400'}>
+                                    {state.classes?.length || 0} / {serverStats?.classes ?? '?'}
+                                </span>
+                            </div>
+                        </div>
                     )}
                 </div>
             </div>
