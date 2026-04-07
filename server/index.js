@@ -455,29 +455,28 @@ app.post('/api/sync', async (req, res) => {
 
 // Advanced Health Check (Verifies Prisma)
 app.get('/api/health', async (req, res) => {
-    try {
-        const client = getPrisma();
-        await client.$queryRaw`SELECT 1`;
-        
-        const studentCount = await client.student.count({ where: { isDeleted: false } });
-        const classCount = await client.class.count({ where: { isDeleted: false } });
-        const deletedStudentCount = await client.student.count({ where: { isDeleted: true } });
-        const deletedClassCount = await client.class.count({ where: { isDeleted: true } });
-        
-        const studentList = await client.student.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
-        const classList = await client.class.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
+        let stats = null;
+        let dbContent = null;
+        let dbError = null;
 
-        res.json({ 
-            status: 'ok', 
-            version: '1.2.5', 
-            database: 'connected',
-            lastSyncError: lastSyncError,
-            lastSyncStats: lastSyncStats,
-            dbContent: {
-                students: studentList.map(s => s.name),
-                classes: classList.map(c => c.name)
-            },
-            stats: {
+        try {
+            const studentCount = await client.student.count({ where: { isDeleted: false } });
+            const classCount = await client.class.count({ where: { isDeleted: false } });
+            const deletedStudentCount = await client.student.count({ where: { isDeleted: true } });
+            const deletedClassCount = await client.class.count({ where: { isDeleted: true } });
+            const incomeItemCount = await client.incomeItem.count({ where: { isDeleted: false } });
+            const userCount = await client.user.count({ where: { isDeleted: false } });
+            const fieldCount = await client.field.count({ where: { isDeleted: false } });
+            const unitCount = await client.unit.count({ where: { isDeleted: false } });
+            const ayCount = await client.academicYear.count({ where: { isDeleted: false } });
+            const posCount = await client.position.count({ where: { isDeleted: false } });
+            const stStatusCount = await client.studentStatus.count({ where: { isDeleted: false } });
+            const ptStatusCount = await client.parentStatus.count({ where: { isDeleted: false } });
+
+            const studentList = await client.student.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
+            const classList = await client.class.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
+
+            stats = {
                 students: studentCount,
                 deletedStudents: deletedStudentCount,
                 classes: classCount,
@@ -490,17 +489,31 @@ app.get('/api/health', async (req, res) => {
                 users: userCount,
                 fields: fieldCount,
                 units: unitCount
-            },
+            };
+            dbContent = {
+                students: studentList.map(s => s.name),
+                classes: classList.map(c => c.name)
+            };
+        } catch (dbErr) {
+            console.error(`[Health DB Error] ${dbErr.message}`);
+            dbError = dbErr.message;
+        }
+
+        res.json({ 
+            status: 'ok', 
+            version: '1.2.6', 
+            database: dbError ? 'error' : 'connected',
+            dbError: dbError,
+            lastSyncError: lastSyncError,
+            lastSyncStats: lastSyncStats,
+            dbContent: dbContent,
+            stats: stats,
             message: 'SIKAK Yayasan Umum API is running',
             env: {
                 DATABASE_URL: maskedDBUrl ? 'SET' : 'NOT SET',
                 NODE_ENV: process.env.NODE_ENV
             }
         });
-    } catch (error) {
-        console.error(`[DB Error] ${error.message}`);
-        res.status(500).json({ status: 'error', database: 'disconnected', error: error.message });
-    }
 });
 
 // 4.1 Manual Seeding Endpoint (Debug)

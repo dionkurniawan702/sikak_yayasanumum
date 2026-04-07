@@ -138,7 +138,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 .then(d => {
                     setServerStats({
                         ...d.stats,
-                        version: d.version
+                        version: d.version,
+                        dbError: d.dbError
                     });
                 })
                 .catch(() => {});
@@ -208,6 +209,11 @@ export default function Sidebar({ isOpen, onClose }) {
                                 <span className="text-slate-400 uppercase">Server Ver</span>
                                 <span className="text-slate-500">{serverStats?.version || '?.?.?'}</span>
                             </div>
+                            {serverStats?.dbError && (
+                                <div className="text-[7px] text-rose-400 font-bold bg-rose-500/10 p-1 rounded border border-rose-500/20 break-words">
+                                    DB ERROR: {serverStats.dbError.substring(0, 50)}...
+                                </div>
+                            )}
                             <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
                                 <span className="text-slate-500 uppercase">Siswa (Lokal/DB/Del)</span>
                                 <span className={state.students?.length > (serverStats?.students || 0) ? 'text-amber-400' : 'text-slate-400'}>
