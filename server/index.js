@@ -356,69 +356,74 @@ app.post('/api/sync', async (req, res) => {
                     if (lastSyncStats) lastSyncStats.deactivatedCount = deactivated.count;
                 }
 
+                const validUnitIds = (units || []).map(u => u.id);
                 const validClassIds = (classes || []).map(c => c.id);
                 const validYearIds = (academicYears || []).map(y => y.id);
                 const validStatusIds = (studentStatuses || []).map(s => s.id);
                 const validParentIds = (parentStatuses || []).map(p => p.id);
 
-                console.log(`[Sync Debug] Valid IDs found: Classes=${validClassIds.length}, Years=${validYearIds.length}, Statuses=${validStatusIds.length}`);
+                console.log(`[Sync Debug] Valid IDs: Units=${validUnitIds.length}, Classes=${validClassIds.length}, Years=${validYearIds.length}, Statuses=${validStatusIds.length}`);
 
                 for (const s of students) {
-                    console.log(`[Sync] Attempting Student: ${s.name} (ID: ${s.id}, NIS: ${s.nis}, Status: ${s.statusId})`);
+                    // 1. Validate UnitID is essential (Cannot be NULL in DB)
+                    // If the student has a unitId not in our payload/DB, we must find a fallback or skip
+                    const unitId = (s.unitId && validUnitIds.includes(s.unitId)) ? s.unitId : validUnitIds[0];
                     
-                    // Absolute validation to prevent FK crashes
+                    if (!unitId) {
+                        console.error(`[Sync Skip] Student ${s.name} skipped: No valid unitId found.`);
+                        continue;
+                    }
+
+                    // 2. Validate optional relations
                     const classId = (s.classId && validClassIds.includes(s.classId)) ? s.classId : null;
                     const academicYearId = (s.academicYearId && validYearIds.includes(s.academicYearId)) ? s.academicYearId : null;
                     const statusId = (s.statusId && validStatusIds.includes(s.statusId)) ? s.statusId : null;
                     const parentStatusId = (s.parentStatusId && validParentIds.includes(s.parentStatusId)) ? s.parentStatusId : null;
                     
-                    // Special case for NIS: if empty string, handle it to avoid potential unique conflicts if there's old data
                     const nisValue = (s.nis && s.nis.trim() !== '') ? s.nis.trim() : `AUTO-${s.id.substring(0, 8)}`;
 
                     try {
+                        // UPSERT Student first
                         await tx.student.upsert({
                             where: { id: s.id },
                             update: { 
-                                nis: nisValue, name: s.name, unitId: s.unitId, 
+                                nis: nisValue, name: s.name, unitId: unitId, 
                                 classId: classId, academicYearId: academicYearId, 
                                 statusId: statusId, parentStatusId: parentStatusId,
                                 isDeleted: s.isDeleted || false 
                             },
                             create: { 
-                                id: s.id, nis: nisValue, name: s.name, unitId: s.unitId, 
+                                id: s.id, nis: nisValue, name: s.name, unitId: unitId, 
                                 classId: classId, academicYearId: academicYearId, 
                                 statusId: statusId, parentStatusId: parentStatusId,
                                 isDeleted: s.isDeleted || false 
                             }
                         });
-                        console.log(`[Sync Success] Student ${s.name} processed.`);
-                    } catch (studentErr) {
-                        console.error(`[Sync Fatal] Student ${s.name} failed EVEN with bypass: ${studentErr.message}`);
-                        // If it fails even now, it might be the unitId or something else.
-                        // We will allow the sync to continue but log this as a major failure.
-                        lastSyncError = `Student ${s.name} (ID: ${s.id}) failed: ${studentErr.message}`;
-                    }
 
-                    // Sync Student Income Details
-                    if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
-                        // Only sync valid items
-                        const validIncomeItems = await tx.incomeItem.findMany({ 
-                            where: { id: { in: s.incomeDetails.map(d => d.incomeItemId) }, isDeleted: false }
-                        });
-                        const validIds = validIncomeItems.map(i => i.id);
+                        // ONLY if student upsert succeeded, sync Income Details
+                        if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
+                            const validIncomeItems = await tx.incomeItem.findMany({ 
+                                where: { id: { in: s.incomeDetails.map(d => d.incomeItemId) }, isDeleted: false }
+                            });
+                            const validIds = validIncomeItems.map(i => i.id);
 
-                        await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
-                        for (const detail of s.incomeDetails) {
-                            if (validIds.includes(detail.incomeItemId)) {
-                                await tx.studentIncomeDetail.create({
-                                    data: {
-                                        studentId: s.id,
-                                        incomeItemId: detail.incomeItemId,
-                                        amount: parseFloat(detail.amount) || 0
-                                    }
-                                });
+                            await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
+                            for (const detail of s.incomeDetails) {
+                                if (validIds.includes(detail.incomeItemId)) {
+                                    await tx.studentIncomeDetail.create({
+                                        data: {
+                                            studentId: s.id,
+                                            incomeItemId: detail.incomeItemId,
+                                            amount: parseFloat(detail.amount) || 0
+                                        }
+                                    });
+                                }
                             }
                         }
+                        console.log(`[Sync Success] Student ${s.name} processed fully.`);
+                    } catch (studentErr) {
+                        console.error(`[Sync Fatal] Student ${s.name} (${s.id}) failed: ${studentErr.message}`);
+                        throw new Error(`Sync Student ${s.name} failed: ${studentErr.message}`);
                     }
                 }
             }
@@ -527,7 +532,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.2.9', 
+            version: '1.3.0', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             lastSyncError: lastSyncError,
