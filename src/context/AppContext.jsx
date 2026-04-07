@@ -171,33 +171,33 @@ function appReducer(state, action) {
             newState = { ...state, isOnline: action.payload };
             break;
         case 'SET_ALL_DATA': {
-            const serverData = action.payload;
+            const serverData = action.payload || {};
             newState = {
                 ...state,
-                accounts: serverData.accounts !== undefined ? serverData.accounts : state.accounts,
-                journals: serverData.journals !== undefined ? (serverData.journals || []).map(j => ({ ...j, programId: j.programId || 'PRG-GEN' })) : state.journals,
-                assets: serverData.assets !== undefined ? serverData.assets : state.assets,
-                programs: serverData.programs !== undefined ? serverData.programs : state.programs,
-                budgets: serverData.budgets !== undefined ? serverData.budgets : state.budgets || [],
-                fields: serverData.fields !== undefined ? serverData.fields : state.fields || [],
-                units: serverData.units !== undefined ? serverData.units : state.units || [],
-                students: serverData.students !== undefined ? serverData.students : state.students || [],
-                incomeItems: serverData.incomeItems !== undefined ? serverData.incomeItems : state.incomeItems || [],
-                expenseItems: serverData.expenseItems !== undefined ? serverData.expenseItems : state.expenseItems || [],
-                distributionSettings: serverData.distributionSettings !== undefined ? serverData.distributionSettings : state.distributionSettings || [],
-                budgetRequests: serverData.budgetRequests !== undefined ? serverData.budgetRequests : state.budgetRequests || [],
-                budgetReports: serverData.budgetReports !== undefined ? serverData.budgetReports : state.budgetReports || [],
-                academicYears: serverData.academicYears !== undefined ? serverData.academicYears : state.academicYears || [],
-                classGroups: serverData.classGroups !== undefined ? serverData.classGroups : state.classGroups || [],
-                positions: serverData.positions !== undefined ? serverData.positions : state.positions || [],
-                studentStatuses: serverData.studentStatuses !== undefined ? serverData.studentStatuses : state.studentStatuses || [],
-                parentStatuses: serverData.parentStatuses !== undefined ? serverData.parentStatuses : state.parentStatuses || [],
-                classes: serverData.classes !== undefined ? serverData.classes : state.classes || [],
+                accounts: serverData.accounts || state.accounts || [],
+                journals: (serverData.journals || state.journals || []).map(j => ({ ...j, programId: j.programId || 'PRG-GEN' })),
+                assets: serverData.assets || state.assets || [],
+                programs: serverData.programs || state.programs || [],
+                budgets: serverData.budgets || state.budgets || [],
+                fields: serverData.fields || state.fields || [],
+                units: serverData.units || state.units || [],
+                students: serverData.students || state.students || [],
+                incomeItems: serverData.incomeItems || state.incomeItems || [],
+                expenseItems: serverData.expenseItems || state.expenseItems || [],
+                distributionSettings: serverData.distributionSettings || state.distributionSettings || [],
+                budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
+                budgetReports: serverData.budgetReports || state.budgetReports || [],
+                academicYears: serverData.academicYears || state.academicYears || [],
+                classGroups: serverData.classGroups || state.classGroups || [],
+                positions: serverData.positions || state.positions || [],
+                studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
+                parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
+                classes: serverData.classes || state.classes || [],
 
-                users: serverData.users || state.users,
+                users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
                 isOnline: true,
-                notes: serverData.notes || state.notes
+                notes: serverData.notes || state.notes || {}
             };
 
             // Server Data Migration

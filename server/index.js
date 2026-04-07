@@ -156,160 +156,99 @@ app.post('/api/sync', async (req, res) => {
         
         console.log(`[Sync] Starting sync 1.4.3${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
         
-        await client.$transaction(async (tx) => {
-            await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-            
-            try {
+        try {
+            await client.$transaction(async (tx) => {
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+                
                 if (isPurge) {
-                    console.log('[Sync] Purging existing data...');
+                    console.log('[Sync] Purging existing database tables...');
                     const tablesToPurge = ['StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 'ExpenseItem', 'IncomeItem'];
                     for (const table of tablesToPurge) {
                         try {
-                            await tx.$executeRawUnsafe(`TRUNCATE TABLE \`${table}\``);
-                        } catch (te) {
-                            console.warn(`[Sync Warn] Could not truncate ${table}: ${te.message}`);
-                            // Fallback to deleteMany if truncate fails due to FK
                             await tx.$executeRawUnsafe(`DELETE FROM \`${table}\``);
+                        } catch (te) {
+                            console.warn(`[Sync Warn] Could not purge ${table}: ${te.message}`);
                         }
                     }
                 }
-                // 1. Fields
-                if (fields && Array.isArray(fields)) {
-                    for (const f of fields) {
-                        await tx.field.upsert({
-                            where: { id: f.id },
-                            update: { name: f.name, isDeleted: f.isDeleted || false },
-                            create: { id: f.id, name: f.name, isDeleted: f.isDeleted || false }
-                        });
-                    }
-                }
 
-                // 2. Units
-                if (units && Array.isArray(units)) {
-                    for (const u of units) {
-                        await tx.unit.upsert({
-                            where: { id: u.id },
-                            update: { name: u.name, fieldId: u.fieldId, isDeleted: u.isDeleted || false },
-                            create: { id: u.id, name: u.name, fieldId: u.fieldId, isDeleted: u.isDeleted || false }
-                        });
-                    }
-                }
-
-                // 3. Users
-                if (users && Array.isArray(users)) {
-                    for (const u of users) {
-                        await tx.user.upsert({
-                            where: { id: u.id },
-                            update: { name: u.name, username: u.username, password: u.password, role: u.role, unitId: u.unitId, fieldId: u.fieldId, isDeleted: u.isDeleted || false },
-                            create: { id: u.id, name: u.name, username: u.username, password: u.password, role: u.role, unitId: u.unitId, fieldId: u.fieldId, isDeleted: u.isDeleted || false }
-                        });
-                    }
-                }
-
-                // 4. Academic Years
-                if (academicYears && Array.isArray(academicYears)) {
-                    for (const ay of academicYears) {
+                // Master Entities Helper
+                const safeUpsert = async (model, data) => {
+                    if (!data || !Array.isArray(data)) return;
+                    for (const item of data) {
                         try {
-                            await tx.academicYear.upsert({
-                                where: { id: ay.id },
-                                update: { name: ay.name, isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false },
-                                create: { id: ay.id, name: ay.name, isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false }
+                            await tx[model].upsert({
+                                where: { id: item.id },
+                                update: { ...item },
+                                create: { ...item }
                             });
                         } catch (e) {
-                            if (e.code === 'P2002') {
-                                await tx.academicYear.update({
-                                    where: { name: ay.name },
-                                    data: { isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false }
-                                });
-                            } else throw e;
-                        }
-                    }
-                }
-
-                // 5. Classes
-                if (classes && Array.isArray(classes)) {
-                    for (const c of classes) {
-                        await tx.class.upsert({
-                            where: { id: c.id },
-                            update: { name: c.name, unitId: c.unitId, isDeleted: c.isDeleted || false },
-                            create: { id: c.id, name: c.name, unitId: c.unitId, isDeleted: c.isDeleted || false }
-                        });
-                    }
-                }
-
-                // 6. Master Lists (Statuses, Positions, IncomeItems)
-                const masters = { position: positions, studentStatus: studentStatuses, parentStatus: parentStatuses, incomeItem: incomeItems };
-                for (const [model, list] of Object.entries(masters)) {
-                    if (list && Array.isArray(list)) {
-                        for (const item of list) {
-                            try {
-                                await tx[model].upsert({
-                                    where: { id: item.id },
-                                    update: { name: item.name, isDeleted: item.isDeleted || false },
-                                    create: { id: item.id, name: item.name, isDeleted: item.isDeleted || false }
-                                });
-                            } catch (e) {
-                                if (e.code === 'P2002') {
+                            // If primary key/unique ID fails, try to find by Name if it's a master list
+                            if (e.code === 'P2002' && item.name) {
+                                console.log(`[Sync Info] Name conflict for ${model}: "${item.name}". Attempting merge.`);
+                                try {
                                     await tx[model].update({
                                         where: { name: item.name },
-                                        data: { isDeleted: item.isDeleted || false }
+                                        data: { ...item, id: undefined }
                                     });
-                                } else throw e;
+                                } catch (innerE) {
+                                    console.error(`[Sync Fail] Could not merge ${model} "${item.name}": ${innerE.message}`);
+                                }
+                            } else {
+                                console.error(`[Sync Fail] ${model} ID ${item.id}: ${e.message}`);
                             }
                         }
                     }
-                }
+                };
+
+                // 1. Structure & Masters
+                await safeUpsert('field', fields);
+                await safeUpsert('unit', units);
+                await safeUpsert('user', users);
+                await safeUpsert('academicYear', academicYears);
+                await safeUpsert('class', classes);
+                await safeUpsert('position', positions);
+                await safeUpsert('studentStatus', studentStatuses);
+                await safeUpsert('parentStatus', parentStatuses);
+                await safeUpsert('incomeItem', incomeItems);
+                await safeUpsert('expenseItem', expenseItems);
 
                 // 7. Students (Crucial)
                 if (students && Array.isArray(students)) {
                     for (const s of students) {
-                        await tx.student.upsert({
-                            where: { id: s.id },
-                            update: { 
-                                nis: s.nis, name: s.name, unitId: s.unitId, 
-                                classId: s.classId || null, academicYearId: s.academicYearId || null,
-                                statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                isDeleted: s.isDeleted || false 
-                            },
-                            create: { 
-                                id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
-                                classId: s.classId || null, academicYearId: s.academicYearId || null,
-                                statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                isDeleted: s.isDeleted || false 
-                            }
-                        });
+                        try {
+                            await tx.student.upsert({
+                                where: { id: s.id },
+                                update: { 
+                                    nis: s.nis, name: s.name, unitId: s.unitId, 
+                                    classId: s.classId || null, academicYearId: s.academicYearId || null,
+                                    statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                                    isDeleted: s.isDeleted || false 
+                                },
+                                create: { 
+                                    id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
+                                    classId: s.classId || null, academicYearId: s.academicYearId || null,
+                                    statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                                    isDeleted: s.isDeleted || false 
+                                }
+                            });
 
-                        if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
-                            await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
-                            for (const d of s.incomeDetails) {
-                                await tx.studentIncomeDetail.create({
-                                    data: { studentId: s.id, incomeItemId: d.incomeItemId, amount: parseFloat(d.amount) || 0 }
-                                });
+                            if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
+                                await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
+                                for (const d of s.incomeDetails) {
+                                    await tx.studentIncomeDetail.create({
+                                        data: { studentId: s.id, incomeItemId: d.incomeItemId, amount: parseFloat(d.amount) || 0 }
+                                    });
+                                }
                             }
+                        } catch (se) {
+                            console.error(`[Sync Fail] Student ${s.id}: ${se.message}`);
                         }
                     }
                 }
 
-                // 8. Financial (ExpenseItems, Distributions)
-                if (expenseItems && Array.isArray(expenseItems)) {
-                    for (const e of expenseItems) {
-                        await tx.expenseItem.upsert({
-                            where: { id: e.id },
-                            update: { name: e.name, unitId: e.unitId, fieldId: e.fieldId, accountId: e.accountId, isDeleted: e.isDeleted || false },
-                            create: { id: e.id, name: e.name, unitId: e.unitId, fieldId: e.fieldId, accountId: e.accountId, isDeleted: e.isDeleted || false }
-                        });
-                    }
-                }
-
-                if (distributionSettings && Array.isArray(distributionSettings)) {
-                    for (const ds of distributionSettings) {
-                        await tx.distributionSetting.upsert({
-                            where: { id: ds.id },
-                            update: { unitId: ds.unitId, incomeItemId: ds.incomeItemId, expenseItemId: ds.expenseItemId, percentage: ds.percentage, isDeleted: ds.isDeleted || false },
-                            create: { id: ds.id, unitId: ds.unitId, incomeItemId: ds.incomeItemId, expenseItemId: ds.expenseItemId, percentage: ds.percentage, isDeleted: ds.isDeleted || false }
-                        });
-                    }
-                }
+                // 8. Other
+                await safeUpsert('distributionSetting', distributionSettings);
 
             } finally {
                 // ALWAYS re-enable FK checks
@@ -317,7 +256,7 @@ app.post('/api/sync', async (req, res) => {
             }
         }, { timeout: 60000 });
 
-        res.json({ status: 'ok', message: 'Sync Successful 1.4.1' });
+        res.json({ status: 'ok', message: 'Sync Successful 1.4.4' });
     } catch (error) {
         lastSyncError = error.message;
         console.error(`[Sync Error] ${error.message}`);
