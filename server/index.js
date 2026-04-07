@@ -356,42 +356,48 @@ app.post('/api/sync', async (req, res) => {
                     if (lastSyncStats) lastSyncStats.deactivatedCount = deactivated.count;
                 }
 
-                const validClassIds = classes.map(c => c.id);
+                const validClassIds = (classes || []).map(c => c.id);
                 const validYearIds = (academicYears || []).map(y => y.id);
                 const validStatusIds = (studentStatuses || []).map(s => s.id);
                 const validParentIds = (parentStatuses || []).map(p => p.id);
 
+                console.log(`[Sync Debug] Valid IDs found: Classes=${validClassIds.length}, Years=${validYearIds.length}, Statuses=${validStatusIds.length}`);
+
                 for (const s of students) {
-                    console.log(`[Sync] Processing Student: ${s.name} (ID: ${s.id})`);
+                    console.log(`[Sync] Attempting Student: ${s.name} (ID: ${s.id}, NIS: ${s.nis}, Status: ${s.statusId})`);
                     
-                    // Validate relations to prevent FK crashes
+                    // Absolute validation to prevent FK crashes
                     const classId = (s.classId && validClassIds.includes(s.classId)) ? s.classId : null;
                     const academicYearId = (s.academicYearId && validYearIds.includes(s.academicYearId)) ? s.academicYearId : null;
                     const statusId = (s.statusId && validStatusIds.includes(s.statusId)) ? s.statusId : null;
                     const parentStatusId = (s.parentStatusId && validParentIds.includes(s.parentStatusId)) ? s.parentStatusId : null;
                     
-                    if (s.statusId && !statusId) {
-                        console.warn(`[Sync Warning] Student ${s.name} has invalid statusId "${s.statusId}". Setting to null.`);
-                    }
-                    if (s.classId && !classId) {
-                        console.warn(`[Sync Warning] Student ${s.name} has invalid classId "${s.classId}". Setting to null.`);
-                    }
+                    // Special case for NIS: if empty string, handle it to avoid potential unique conflicts if there's old data
+                    const nisValue = (s.nis && s.nis.trim() !== '') ? s.nis.trim() : `AUTO-${s.id.substring(0, 8)}`;
 
-                    await tx.student.upsert({
-                        where: { id: s.id },
-                        update: { 
-                            nis: s.nis, name: s.name, unitId: s.unitId, 
-                            classId: classId, academicYearId: academicYearId, 
-                            statusId: statusId, parentStatusId: parentStatusId,
-                            isDeleted: s.isDeleted || false 
-                        },
-                        create: { 
-                            id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
-                            classId: classId, academicYearId: academicYearId, 
-                            statusId: statusId, parentStatusId: parentStatusId,
-                            isDeleted: s.isDeleted || false 
-                        }
-                    });
+                    try {
+                        await tx.student.upsert({
+                            where: { id: s.id },
+                            update: { 
+                                nis: nisValue, name: s.name, unitId: s.unitId, 
+                                classId: classId, academicYearId: academicYearId, 
+                                statusId: statusId, parentStatusId: parentStatusId,
+                                isDeleted: s.isDeleted || false 
+                            },
+                            create: { 
+                                id: s.id, nis: nisValue, name: s.name, unitId: s.unitId, 
+                                classId: classId, academicYearId: academicYearId, 
+                                statusId: statusId, parentStatusId: parentStatusId,
+                                isDeleted: s.isDeleted || false 
+                            }
+                        });
+                        console.log(`[Sync Success] Student ${s.name} processed.`);
+                    } catch (studentErr) {
+                        console.error(`[Sync Fatal] Student ${s.name} failed EVEN with bypass: ${studentErr.message}`);
+                        // If it fails even now, it might be the unitId or something else.
+                        // We will allow the sync to continue but log this as a major failure.
+                        lastSyncError = `Student ${s.name} (ID: ${s.id}) failed: ${studentErr.message}`;
+                    }
 
                     // Sync Student Income Details
                     if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
@@ -521,7 +527,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.2.8', 
+            version: '1.2.9', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             lastSyncError: lastSyncError,
