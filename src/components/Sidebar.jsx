@@ -241,7 +241,7 @@ export default function Sidebar({ isOpen, onClose }) {
                             )}
                             {serverStats?.rawCounts && (
                                 <div className="mt-1 text-[7px] text-amber-400 font-mono">
-                                    Raw: Siswa {serverStats.rawCounts.students ?? '?'} / Kelas {serverStats.rawCounts.classes ?? '?'}
+                                    Raw: Ssw {(serverStats.rawCounts.students || 0)} / Tot {(serverStats.rawCounts.totalStudents || 0)} / Kls {(serverStats.rawCounts.classes || 0)}
                                 </div>
                             )}
                         </div>

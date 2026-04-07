@@ -503,10 +503,12 @@ app.get('/api/health', async (req, res) => {
             // Check if PascalCase table exists
             if (tables.some(t => t.toLowerCase() === 'student')) {
                 const actualTableName = tables.find(t => t.toLowerCase() === 'student');
-                const rawStudentCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${actualTableName} WHERE isDeleted = 0`);
-                rawCounts.students = Number(rawStudentCount[0].count);
+                const rawStudentCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${actualTableName}`);
+                const activeStudentCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${actualTableName} WHERE isDeleted = 0`);
+                rawCounts.students = Number(activeStudentCount[0].count);
+                rawCounts.totalStudents = Number(rawStudentCount[0].count);
                 
-                const rawClassCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${tables.find(t => t.toLowerCase() === 'class') || 'Class'} WHERE isDeleted = 0`);
+                const rawClassCount = await client.$queryRawUnsafe(`SELECT COUNT(*) as count FROM ${tables.find(t => t.toLowerCase() === 'class') || 'Class'}`);
                 rawCounts.classes = Number(rawClassCount[0].count);
             }
 
@@ -551,7 +553,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.3.4', 
+            version: '1.3.5', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             tables: tables,
