@@ -172,15 +172,27 @@ export default function Sidebar({ isOpen, onClose }) {
         if (!isRemote) return;
         setIsSyncing(true);
         try {
-            await api.syncWholeState(state);
+            await api.syncWholeState(state, false);
             alert(`Sinkronisasi Berhasil!\n\nData lokal Anda (${state.students?.length || 0} Siswa, ${state.classes?.length || 0} Kelas) telah diunggah ke server MySQL.`);
-            
-            // Refresh stats after sync
-            const res = await fetch(`${window.location.origin}/api/health`);
-            const data = await res.json();
-            setServerStats(data.stats);
+            fetchStats();
         } catch (error) {
-            alert('Sinkronisasi Gagal: ' + error.message + '\n\nPastikan skrip SQL sudah dijalankan di phpMyAdmin.');
+            alert('Sinkronisasi Gagal: ' + error.message);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
+    const handlePurgeSync = async () => {
+        if (!isRemote) return;
+        if (!window.confirm('PERINGATAN: Fitur "Sapu Jagat" akan MENGHAPUS SEMUA data di database server (Siswa, Kelas, dll) dan menggantinya dengan data dari aplikasi Anda. Lanjutkan?')) return;
+        
+        setIsSyncing(true);
+        try {
+            await api.syncWholeState(state, true);
+            alert('SAPU JAGAT BERHASIL!\n\nDatabase server telah dibersihkan dan disinkronkan ulang dengan data bersih Anda.');
+            fetchStats();
+        } catch (error) {
+            alert('Sapu Jagat Gagal: ' + error.message);
         } finally {
             setIsSyncing(false);
         }
@@ -197,7 +209,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     <div className="flex flex-col">
                         <span className="text-xl font-black text-white tracking-tight">SIKAK</span>
                         <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] -mt-1 line-clamp-1 italic">
-                            v1.4.2
+                            v1.4.3
                         </span>
                     </div>
                 </div>
@@ -319,7 +331,16 @@ export default function Sidebar({ isOpen, onClose }) {
                             className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 text-white rounded text-[9px] font-bold transition-all shadow-lg active:scale-95"
                         >
                             <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                            {isSyncing ? 'SEDANG SINKRON...' : 'SINKRONISASI KE SERVER'}
+                            {isSyncing ? 'SEDANG SINKRON...' : 'SINKRON BIASA (UPSERT)'}
+                        </button>
+
+                        <button
+                            onClick={handlePurgeSync}
+                            disabled={isSyncing}
+                            className="w-full mt-1.5 flex items-center justify-center gap-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white rounded text-[9px] font-bold transition-all shadow-lg active:scale-95 animate-pulse-slow"
+                        >
+                            <Trash2 className="w-3 h-3" />
+                            {isSyncing ? 'SEDANG MEMBERSIHKAN...' : 'SAPU JAGAT (BERSIHKAN & SYNC)'}
                         </button>
 
                         <button

@@ -143,7 +143,8 @@ app.post('/api/sync', async (req, res) => {
         const { 
             fields, units, users, academicYears, positions, 
             studentStatuses, parentStatuses, incomeItems, 
-            classes, students, expenseItems, distributionSettings 
+            classes, students, expenseItems, distributionSettings,
+            isPurge = false
         } = req.body;
 
         lastSyncStats = {
@@ -153,13 +154,25 @@ app.post('/api/sync', async (req, res) => {
             payloadSize: JSON.stringify(req.body || {}).length
         };
         
-        console.log(`[Sync] Starting sync 1.4.1. Payload: ${lastSyncStats.payloadSize} bytes`);
+        console.log(`[Sync] Starting sync 1.4.3${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
         
         await client.$transaction(async (tx) => {
-            // THE ULTIMATE BYPASS: Disable FK checks
             await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
             
             try {
+                if (isPurge) {
+                    console.log('[Sync] Purging existing data...');
+                    const tablesToPurge = ['StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 'ExpenseItem', 'IncomeItem'];
+                    for (const table of tablesToPurge) {
+                        try {
+                            await tx.$executeRawUnsafe(`TRUNCATE TABLE \`${table}\``);
+                        } catch (te) {
+                            console.warn(`[Sync Warn] Could not truncate ${table}: ${te.message}`);
+                            // Fallback to deleteMany if truncate fails due to FK
+                            await tx.$executeRawUnsafe(`DELETE FROM \`${table}\``);
+                        }
+                    }
+                }
                 // 1. Fields
                 if (fields && Array.isArray(fields)) {
                     for (const f of fields) {
@@ -326,9 +339,9 @@ app.get('/api/health', async (req, res) => {
     }
 
     res.json({
-        status: 'ok', version: '1.4.2', database: dbError ? 'error' : 'connected',
+        status: 'ok', version: '1.4.3', database: dbError ? 'error' : 'connected',
         dbError, tables, rawCounts, studentStructure, lastSyncError, lastSyncStats,
-        dbContent, stats, message: 'SIKAK API 1.4.2 Running'
+        dbContent, stats, message: 'SIKAK API 1.4.3 Running'
     });
 });
 

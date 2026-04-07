@@ -245,7 +245,7 @@ export const api = {
         }
     },
 
-    async syncWholeState(state) {
+    async syncWholeState(state, isPurge = false) {
         if (!isRemote) return { success: true };
         try {
             const token = localStorage.getItem('jwt_token');
@@ -256,6 +256,7 @@ export const api = {
                 method: 'POST',
                 headers: headers,
                 body: JSON.stringify({
+                    isPurge,
                     accounts: state.accounts,
                     journals: state.journals,
                     assets: state.assets,
