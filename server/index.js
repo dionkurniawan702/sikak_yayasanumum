@@ -156,8 +156,8 @@ app.post('/api/sync', async (req, res) => {
         
         console.log(`[Sync] Starting sync 1.4.3${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
         
-        try {
-            await client.$transaction(async (tx) => {
+        await client.$transaction(async (tx) => {
+            try {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
                 
                 if (isPurge) {
@@ -172,7 +172,6 @@ app.post('/api/sync', async (req, res) => {
                     }
                 }
 
-                // Master Entities Helper
                 const safeUpsert = async (model, data) => {
                     if (!data || !Array.isArray(data)) return;
                     for (const item of data) {
@@ -183,7 +182,6 @@ app.post('/api/sync', async (req, res) => {
                                 create: { ...item }
                             });
                         } catch (e) {
-                            // If primary key/unique ID fails, try to find by Name if it's a master list
                             if (e.code === 'P2002' && item.name) {
                                 console.log(`[Sync Info] Name conflict for ${model}: "${item.name}". Attempting merge.`);
                                 try {
@@ -201,7 +199,6 @@ app.post('/api/sync', async (req, res) => {
                     }
                 };
 
-                // 1. Structure & Masters
                 await safeUpsert('field', fields);
                 await safeUpsert('unit', units);
                 await safeUpsert('user', users);
@@ -213,7 +210,6 @@ app.post('/api/sync', async (req, res) => {
                 await safeUpsert('incomeItem', incomeItems);
                 await safeUpsert('expenseItem', expenseItems);
 
-                // 7. Students (Crucial)
                 if (students && Array.isArray(students)) {
                     for (const s of students) {
                         try {
@@ -247,16 +243,14 @@ app.post('/api/sync', async (req, res) => {
                     }
                 }
 
-                // 8. Other
                 await safeUpsert('distributionSetting', distributionSettings);
 
             } finally {
-                // ALWAYS re-enable FK checks
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
             }
         }, { timeout: 60000 });
 
-        res.json({ status: 'ok', message: 'Sync Successful 1.4.4' });
+        res.json({ status: 'ok', message: 'Sync Successful 1.4.5' });
     } catch (error) {
         lastSyncError = error.message;
         console.error(`[Sync Error] ${error.message}`);
@@ -419,8 +413,12 @@ const ensureFundSources = async () => {
 
 // Server Listening with Robust Error Handling
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`[Success] SIKAK Yayasan Backend listening on port ${PORT}`);
-    console.log(`[Success] Internal Health Check Path: /health`);
+    console.log(`\n\n************************************************`);
+    console.log(`[SUCCESS] SIKAK Yayasan Backend is now ACTIVE!`);
+    console.log(`[Diagnostic] Port: ${PORT}`);
+    console.log(`[Diagnostic] Time: ${new Date().toISOString()}`);
+    console.log(`[Diagnostic] Health Check: http://0.0.0.0:${PORT}/health`);
+    console.log(`************************************************\n\n`);
     
     // Trigger background seeding WITHOUT blocking startup
     ensureFundSources().catch(err => {
