@@ -140,7 +140,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         ...d.stats,
                         version: d.version,
                         dbError: d.dbError,
-                        firstStudent: d.dbContent?.students?.[0]
+                        firstStudent: d.dbContent?.students?.[0],
+                        tables: d.tables
                     });
                 })
                 .catch(() => {});
@@ -230,6 +231,11 @@ export default function Sidebar({ isOpen, onClose }) {
                             {serverStats?.firstStudent && (
                                 <div className="mt-2 text-[7px] text-emerald-400 font-bold bg-emerald-500/10 p-1.5 rounded border border-emerald-500/20">
                                     DI DB: {serverStats.firstStudent}
+                                </div>
+                            )}
+                            {serverStats?.tables && (
+                                <div className="mt-1 text-[6px] text-slate-500 bg-slate-800/20 p-1 font-mono break-all line-clamp-2" title={serverStats.tables.join(', ')}>
+                                    TBL: {serverStats.tables.join(', ')}
                                 </div>
                             )}
                         </div>

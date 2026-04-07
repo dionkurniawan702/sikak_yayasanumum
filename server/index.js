@@ -491,8 +491,14 @@ app.get('/api/health', async (req, res) => {
         let stats = null;
         let dbContent = null;
         let dbError = null;
+        let tables = [];
 
         try {
+            // Get actual table names from MySQL
+            const rawTables = await client.$queryRaw`SHOW TABLES`;
+            tables = rawTables.map(t => Object.values(t)[0]);
+            console.log(`[Diagnostic] Tables found in DB: ${tables.join(', ')}`);
+
             const studentCount = await client.student.count({ where: { isDeleted: false } });
             const classCount = await client.class.count({ where: { isDeleted: false } });
             const deletedStudentCount = await client.student.count({ where: { isDeleted: true } });
@@ -534,9 +540,10 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.3.2', 
+            version: '1.3.3', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
+            tables: tables,
             lastSyncError: lastSyncError,
             lastSyncStats: lastSyncStats,
             dbContent: dbContent,
