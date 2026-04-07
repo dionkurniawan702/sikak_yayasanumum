@@ -325,15 +325,11 @@ app.post('/api/sync', async (req, res) => {
             // 10. Sync Classes (The actual unit-specific classes)
             if (classes && Array.isArray(classes)) {
                 for (const cls of classes) {
-                    try {
-                        await tx.class.upsert({
-                            where: { id: cls.id },
-                            update: { name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false },
-                            create: { id: cls.id, name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false }
-                        });
-                    } catch (err) {
-                        console.error(`[Sync Error] Class ${cls.name}: ${err.message}`);
-                    }
+                    await tx.class.upsert({
+                        where: { id: cls.id },
+                        update: { name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false },
+                        create: { id: cls.id, name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false }
+                    });
                 }
             }
 
@@ -356,48 +352,42 @@ app.post('/api/sync', async (req, res) => {
                 }
 
                 for (const s of students) {
-                    try {
-                        await tx.student.upsert({
-                            where: { id: s.id },
-                            update: { 
-                                nis: s.nis, name: s.name, unitId: s.unitId, 
-                                classId: s.classId || null, academicYearId: s.academicYearId || null, 
-                                statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                isDeleted: s.isDeleted || false 
-                            },
-                            create: { 
-                                id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
-                                classId: s.classId || null, academicYearId: s.academicYearId || null, 
-                                statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                isDeleted: s.isDeleted || false 
-                            }
+                    await tx.student.upsert({
+                        where: { id: s.id },
+                        update: { 
+                            nis: s.nis, name: s.name, unitId: s.unitId, 
+                            classId: s.classId || null, academicYearId: s.academicYearId || null, 
+                            statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                            isDeleted: s.isDeleted || false 
+                        },
+                        create: { 
+                            id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
+                            classId: s.classId || null, academicYearId: s.academicYearId || null, 
+                            statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                            isDeleted: s.isDeleted || false 
+                        }
+                    });
+
+                    // Sync Student Income Details
+                    if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
+                        // Only sync valid items
+                        const validIncomeItems = await tx.incomeItem.findMany({ 
+                            where: { id: { in: s.incomeDetails.map(d => d.incomeItemId) }, isDeleted: false }
                         });
+                        const validIds = validIncomeItems.map(i => i.id);
 
-                        // Sync Student Income Details
-                        if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
-                            // Only sync valid items
-                            const validIncomeItems = await tx.incomeItem.findMany({ 
-                                where: { id: { in: s.incomeDetails.map(d => d.incomeItemId) }, isDeleted: false }
-                            });
-                            const validIds = validIncomeItems.map(i => i.id);
-
-                            await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
-                            for (const detail of s.incomeDetails) {
-                                if (validIds.includes(detail.incomeItemId)) {
-                                    await tx.studentIncomeDetail.create({
-                                        data: {
-                                            studentId: s.id,
-                                            incomeItemId: detail.incomeItemId,
-                                            amount: parseFloat(detail.amount) || 0
-                                        }
-                                    });
-                                }
+                        await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
+                        for (const detail of s.incomeDetails) {
+                            if (validIds.includes(detail.incomeItemId)) {
+                                await tx.studentIncomeDetail.create({
+                                    data: {
+                                        studentId: s.id,
+                                        incomeItemId: detail.incomeItemId,
+                                        amount: parseFloat(detail.amount) || 0
+                                    }
+                                });
                             }
                         }
-                    } catch (studentError) {
-                        const errorMsg = `Student ${s.name} (${s.id}): ${studentError.message}`;
-                        lastSyncError = lastSyncError ? `${lastSyncError} | ${errorMsg}` : errorMsg;
-                        console.error(`[Sync Error] ${errorMsg}`);
                     }
                 }
             }
