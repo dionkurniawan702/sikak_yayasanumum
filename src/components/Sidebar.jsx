@@ -198,6 +198,23 @@ export default function Sidebar({ isOpen, onClose }) {
         }
     };
 
+    const handlePullSync = async () => {
+        if (!isRemote) return;
+        setIsSyncing(true);
+        try {
+            const data = await api.fetchAllData();
+            if (data) {
+                dispatch({ type: 'SET_ALL_DATA', payload: data });
+                alert('DATA BERHASIL DIPERBARUI!\n\nAplikasi Anda sekarang sinkron dengan data terbaru dari server.');
+                fetchStats();
+            }
+        } catch (error) {
+            alert('Gagal Mengambil Data: ' + error.message);
+        } finally {
+            setIsSyncing(false);
+        }
+    };
+
     return (
         <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
@@ -325,6 +342,15 @@ export default function Sidebar({ isOpen, onClose }) {
                 </button>
                 {isSuperAdmin && (
                     <>
+                        <button
+                            onClick={handlePullSync}
+                            disabled={isSyncing}
+                            className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white rounded-xl text-[10px] font-bold transition-all shadow-lg active:scale-95 border border-blue-500/50"
+                        >
+                            <CloudDownload className={`w-4 h-4 ${isSyncing ? 'animate-pulse' : ''}`} />
+                            {isSyncing ? 'SEDANG MENARIK...' : 'TARIK DATA DARI SERVER (PULL)'}
+                        </button>
+
                         <button
                             onClick={handleManualSync}
                             disabled={isSyncing}
