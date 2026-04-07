@@ -326,10 +326,34 @@ app.get('/api/health', async (req, res) => {
     }
 
     res.json({
-        status: 'ok', version: '1.4.1', database: dbError ? 'error' : 'connected',
+        status: 'ok', version: '1.4.2', database: dbError ? 'error' : 'connected',
         dbError, tables, rawCounts, studentStructure, lastSyncError, lastSyncStats,
-        dbContent, stats, message: 'SIKAK API 1.4.1 Running'
+        dbContent, stats, message: 'SIKAK API 1.4.2 Running'
     });
+});
+
+app.get('/api/test-student', async (req, res) => {
+    try {
+        const client = getPrisma();
+        // Insert a dummy student to test write permissions
+        const testId = `test-${Date.now()}`;
+        
+        // Find any unit for the test
+        const anyUnit = await client.unit.findFirst();
+        if (!anyUnit) return res.status(400).json({ error: 'No units exist. Create a unit first.' });
+
+        const result = await client.student.create({
+            data: {
+                id: testId,
+                name: 'Siswa Percobaan (Test)',
+                nis: `T${Date.now()}`,
+                unitId: anyUnit.id
+            }
+        });
+        res.json({ status: 'ok', message: 'Test Insert Success!', student: result });
+    } catch (e) {
+        res.status(500).json({ status: 'error', error: e.message });
+    }
 });
 
 app.get('/api/seed', async (req, res) => {

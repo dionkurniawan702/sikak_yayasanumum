@@ -130,8 +130,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const [isSyncing, setIsSyncing] = useState(false);
     const [serverStats, setServerStats] = useState(null);
 
-    // Fetch server stats for diagnostic
-    useEffect(() => {
+    const fetchStats = () => {
         if (isRemote) {
             fetch(`${window.location.origin}/api/health`)
                 .then(r => r.json())
@@ -147,7 +146,27 @@ export default function Sidebar({ isOpen, onClose }) {
                 })
                 .catch(() => {});
         }
+    };
+
+    // Fetch server stats for diagnostic
+    useEffect(() => {
+        fetchStats();
     }, [isSyncing]);
+
+    const testInsert = async () => {
+        try {
+            const resp = await fetch(`${window.location.origin}/api/test-student`);
+            const d = await resp.json();
+            if (d.status === 'ok') {
+                alert('Test Insert Berhasil! Data bisa masuk ke MySQL.');
+                fetchStats();
+            } else {
+                alert('Test Insert Gagal: ' + (d.error || 'Unknown Error'));
+            }
+        } catch (e) {
+            alert('Test Error: ' + e.message);
+        }
+    };
 
     const handleManualSync = async () => {
         if (!isRemote) return;
@@ -178,7 +197,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     <div className="flex flex-col">
                         <span className="text-xl font-black text-white tracking-tight">SIKAK</span>
                         <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] -mt-1 line-clamp-1 italic">
-                            YAYASAN UMUM
+                            v1.4.2
                         </span>
                     </div>
                 </div>
@@ -239,9 +258,9 @@ export default function Sidebar({ isOpen, onClose }) {
                                     TBL: {serverStats.tables.join(', ')}
                                 </div>
                             )}
-                            {serverStats?.rawCounts && (
-                                <div className="mt-1 text-[7px] text-amber-400 font-mono">
-                                    Raw: Ssw {(serverStats.rawCounts.students || 0)} / Tot {(serverStats.rawCounts.totalStudents || 0)} / Kls {(serverStats.rawCounts.classes || 0)}
+                            {serverStats?.lastSyncStats && (
+                                <div className="mt-1 text-[6px] text-slate-400">
+                                    Size: {serverStats.lastSyncStats.payloadSize?.toLocaleString() || 0} bytes
                                 </div>
                             )}
                         </div>
@@ -295,12 +314,19 @@ export default function Sidebar({ isOpen, onClose }) {
                 {isSuperAdmin && (
                     <>
                         <button
-                            disabled={isSyncing}
-                            className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all ${isSyncing ? 'text-blue-400 bg-blue-500/5 cursor-wait' : 'text-blue-500 hover:bg-blue-500/10'}`}
                             onClick={handleManualSync}
+                            disabled={isSyncing}
+                            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 text-white rounded text-[9px] font-bold transition-all shadow-lg active:scale-95"
                         >
-                            <CloudUpload size={14} className={isSyncing ? 'animate-bounce' : ''} />
-                            <span>{isSyncing ? 'Menyingkronkan...' : 'Sinkronisasi ke Server'}</span>
+                            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                            {isSyncing ? 'SEDANG SINKRON...' : 'SINKRONISASI KE SERVER'}
+                        </button>
+
+                        <button
+                            onClick={testInsert}
+                            className="w-full mt-1.5 py-1 px-3 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[8px] font-bold transition-all active:scale-95 border border-rose-500/50"
+                        >
+                            PERBAIKI DATABASE (TEST INSERT)
                         </button>
                         <button
                             className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
