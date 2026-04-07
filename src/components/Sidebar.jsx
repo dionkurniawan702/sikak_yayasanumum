@@ -127,98 +127,9 @@ export default function Sidebar({ isOpen, onClose }) {
         }
     };
     
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [serverStats, setServerStats] = useState(null);
-
-    const fetchStats = () => {
-        if (isRemote) {
-            fetch(`${window.location.origin}/api/health`)
-                .then(r => r.json())
-                .then(d => {
-                    setServerStats({
-                        ...d.stats,
-                        version: d.version,
-                        dbError: d.dbError,
-                        firstStudent: d.dbContent?.students?.[0],
-                        tables: d.tables,
-                        rawCounts: d.rawCounts
-                    });
-                })
-                .catch(() => {});
-        }
-    };
-
-    // Fetch server stats for diagnostic
-    useEffect(() => {
-        fetchStats();
-    }, [isSyncing]);
-
-    const testInsert = async () => {
-        try {
-            const resp = await fetch(`${window.location.origin}/api/test-student`);
-            const d = await resp.json();
-            if (d.status === 'ok') {
-                alert('Test Insert Berhasil! Data bisa masuk ke MySQL.');
-                fetchStats();
-            } else {
-                alert('Test Insert Gagal: ' + (d.error || 'Unknown Error'));
-            }
-        } catch (e) {
-            alert('Test Error: ' + e.message);
-        }
-    };
-
-    const handleManualSync = async () => {
-        if (!isRemote) return;
-        setIsSyncing(true);
-        try {
-            await api.syncWholeState(state, false);
-            alert(`Sinkronisasi Berhasil!\n\nData lokal Anda (${state.students?.length || 0} Siswa, ${state.classes?.length || 0} Kelas) telah diunggah ke server MySQL.`);
-            fetchStats();
-        } catch (error) {
-            alert('Sinkronisasi Gagal: ' + error.message);
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    const handlePurgeSync = async () => {
-        if (!isRemote) return;
-        if (!window.confirm('PERINGATAN: Fitur "Sapu Jagat" akan MENGHAPUS SEMUA data di database server (Siswa, Kelas, dll) dan menggantinya dengan data dari aplikasi Anda. Lanjutkan?')) return;
-        
-        setIsSyncing(true);
-        try {
-            await api.syncWholeState(state, true);
-            alert('SAPU JAGAT BERHASIL!\n\nDatabase server telah dibersihkan dan disinkronkan ulang dengan data bersih Anda.');
-            fetchStats();
-        } catch (error) {
-            alert('Sapu Jagat Gagal: ' + error.message);
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
-    const handlePullSync = async () => {
-        if (!isRemote) return;
-        setIsSyncing(true);
-        try {
-            const data = await api.fetchAllData();
-            if (data) {
-                dispatch({ type: 'SET_ALL_DATA', payload: data });
-                alert('DATA BERHASIL DIPERBARUI!\n\nAplikasi Anda sekarang sinkron dengan data terbaru dari server.');
-                fetchStats();
-            }
-        } catch (error) {
-            alert('Gagal Mengambil Data: ' + error.message);
-        } finally {
-            setIsSyncing(false);
-        }
-    };
-
     return (
         <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-blue-600 bg-clip-text text-transparent">✦ SIKAK YAYASAN</h1>
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/10 rounded-xl shadow-inner backdrop-blur-sm border border-white/5">
                         <Landmark className="text-blue-200" size={24} />
@@ -226,74 +137,9 @@ export default function Sidebar({ isOpen, onClose }) {
                     <div className="flex flex-col">
                         <span className="text-xl font-black text-white tracking-tight">SIKAK</span>
                         <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] -mt-1 line-clamp-1 italic">
-                            v1.4.3
+                            Yayasan Umum
                         </span>
                     </div>
-                </div>
-
-                {/* Status Sinkronisasi */}
-                <div className="mt-4 p-3 bg-slate-800/50 rounded-xl space-y-2 border border-slate-700/50">
-                    <div className="flex items-center gap-2">
-                        {isRemote ? (
-                            state.isOnline ? (
-                                <>
-                                    <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-                                    <span className="text-[9px] font-bold text-emerald-500">SERVER CONNECTED</span>
-                                </>
-                            ) : (
-                                <>
-                                    <div className="w-2 h-2 rounded-full bg-rose-500"></div>
-                                    <span className="text-[9px] font-bold text-rose-500">SERVER DISCONNECTED</span>
-                                </>
-                            )
-                        ) : (
-                            <>
-                                <div className="w-2 h-2 rounded-full bg-amber-500"></div>
-                                <span className="text-[9px] font-bold text-amber-500">LOCAL MODE</span>
-                            </>
-                        )}
-                    </div>
-                    
-                    {isRemote && isSuperAdmin && (
-                        <div className="pt-2 border-t border-slate-700/50 space-y-1">
-                            <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
-                                <span className="text-slate-400 uppercase">Server Ver</span>
-                                <span className="text-slate-500">{serverStats?.version || '?.?.?'}</span>
-                            </div>
-                            {serverStats?.dbError && (
-                                <div className="text-[7px] text-rose-400 font-bold bg-rose-500/10 p-1 rounded border border-rose-500/20 break-words">
-                                    DB ERROR: {serverStats.dbError.substring(0, 50)}...
-                                </div>
-                            )}
-                            <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
-                                <span className="text-slate-500 uppercase">Siswa (Lokal/DB/Del)</span>
-                                <span className={state.students?.length > (serverStats?.students || 0) ? 'text-amber-400' : 'text-slate-400'}>
-                                    {state.students?.length || 0} / {serverStats?.students ?? '?'} / {serverStats?.deletedStudents ?? '?'}
-                                </span>
-                            </div>
-                            <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
-                                <span className="text-slate-500 uppercase">Kelas (Lokal/DB/Del)</span>
-                                <span className={state.classes?.length > (serverStats?.classes || 0) ? 'text-amber-400' : 'text-slate-400'}>
-                                    {state.classes?.length || 0} / {serverStats?.classes ?? '?'} / {serverStats?.deletedClasses ?? '?'}
-                                </span>
-                            </div>
-                            {serverStats?.firstStudent && (
-                                <div className="mt-2 text-[7px] text-emerald-400 font-bold bg-emerald-500/10 p-1.5 rounded border border-emerald-500/20">
-                                    DI DB: {serverStats.firstStudent}
-                                </div>
-                            )}
-                            {serverStats?.tables && (
-                                <div className="mt-1 text-[6px] text-slate-500 bg-slate-800/20 p-1 font-mono break-all line-clamp-2" title={serverStats.tables.join(', ')}>
-                                    TBL: {serverStats.tables.join(', ')}
-                                </div>
-                            )}
-                            {serverStats?.lastSyncStats && (
-                                <div className="mt-1 text-[6px] text-slate-400">
-                                    Size: {serverStats.lastSyncStats.payloadSize?.toLocaleString() || 0} bytes
-                                </div>
-                            )}
-                        </div>
-                    )}
                 </div>
             </div>
 
@@ -341,48 +187,13 @@ export default function Sidebar({ isOpen, onClose }) {
                     <span>Keluar</span>
                 </button>
                 {isSuperAdmin && (
-                    <>
-                        <button
-                            onClick={handlePullSync}
-                            disabled={isSyncing}
-                            className="w-full mb-3 flex items-center justify-center gap-2 py-2.5 px-3 bg-blue-600 hover:bg-blue-700 disabled:bg-slate-700 text-white rounded-xl text-[10px] font-bold transition-all shadow-lg active:scale-95 border border-blue-500/50"
-                        >
-                            <CloudDownload className={`w-4 h-4 ${isSyncing ? 'animate-pulse' : ''}`} />
-                            {isSyncing ? 'SEDANG MENARIK...' : 'TARIK DATA DARI SERVER (PULL)'}
-                        </button>
-
-                        <button
-                            onClick={handleManualSync}
-                            disabled={isSyncing}
-                            className="w-full flex items-center justify-center gap-2 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-700 text-white rounded text-[9px] font-bold transition-all shadow-lg active:scale-95"
-                        >
-                            <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                            {isSyncing ? 'SEDANG SINKRON...' : 'SINKRON BIASA (UPSERT)'}
-                        </button>
-
-                        <button
-                            onClick={handlePurgeSync}
-                            disabled={isSyncing}
-                            className="w-full mt-1.5 flex items-center justify-center gap-2 py-2 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-700 text-white rounded text-[9px] font-bold transition-all shadow-lg active:scale-95 animate-pulse-slow"
-                        >
-                            <Trash2 className="w-3 h-3" />
-                            {isSyncing ? 'SEDANG MEMBERSIHKAN...' : 'SAPU JAGAT (BERSIHKAN & SYNC)'}
-                        </button>
-
-                        <button
-                            onClick={testInsert}
-                            className="w-full mt-1.5 py-1 px-3 bg-rose-600/80 hover:bg-rose-600 text-white rounded text-[8px] font-bold transition-all active:scale-95 border border-rose-500/50"
-                        >
-                            PERBAIKI DATABASE (TEST INSERT)
-                        </button>
-                        <button
-                            className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
-                            onClick={() => { if (window.confirm('Reset semua data?')) dispatch({ type: 'RESET_DATA' }); }}
-                        >
-                            <RotateCcw size={14} />
-                            <span>Reset Database</span>
-                        </button>
-                    </>
+                    <button
+                        className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
+                        onClick={() => { if (window.confirm('Reset semua data lokal?')) dispatch({ type: 'RESET_DATA' }); }}
+                    >
+                        <RotateCcw size={14} />
+                        <span>Reset Data Lokal</span>
+                    </button>
                 )}
             </div>
         </aside>
