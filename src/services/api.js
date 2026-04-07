@@ -228,6 +228,10 @@ export const api = {
                 case 'EDIT_PARENT_STATUS': await syncItem('parent-statuses', payload.id, payload); break;
                 case 'DELETE_PARENT_STATUS': await syncItem('parent-statuses', payload, { isDeleted: true }, 'DELETE'); break;
 
+                case 'ADD_CLASS': await syncItem('classes', null, payload, 'POST'); break;
+                case 'EDIT_CLASS': await syncItem('classes', payload.id, payload); break;
+                case 'DELETE_CLASS': await syncItem('classes', payload, { isDeleted: true }, 'DELETE'); break;
+
 
                 default:
                     if (type.includes('RESTORE') || type.includes('TRASH') || type.includes('IMPORT') || type.includes('BULK') || type.includes('DEPRECIATION') || type.includes('NOTES')) {
@@ -242,7 +246,7 @@ export const api = {
     },
 
     async syncWholeState(state) {
-        if (!isRemote) return;
+        if (!isRemote) return { success: true };
         try {
             const token = localStorage.getItem('jwt_token');
             const headers = { 'Content-Type': 'application/json' };
@@ -283,8 +287,10 @@ export const api = {
                 const errorData = await response.json().catch(() => ({ error: 'Sync failed' }));
                 throw new Error(errorData.error || `Sync failed ${response.status}`);
             }
+            return { success: true };
         } catch (error) {
             console.error('Failed to sync to server:', error.message);
+            throw error;
         }
     }
 };

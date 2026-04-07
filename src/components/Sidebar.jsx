@@ -1,12 +1,13 @@
+import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
-    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive
+    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { isRemote } from '../services/api';
+import { isRemote, api } from '../services/api';
 
 export default function Sidebar({ isOpen, onClose }) {
     const { state, dispatch } = useApp();
@@ -125,6 +126,21 @@ export default function Sidebar({ isOpen, onClose }) {
             navigate('/login');
         }
     };
+    
+    const [isSyncing, setIsSyncing] = useState(false);
+
+    const handleManualSync = async () => {
+        if (!isRemote) return;
+        setIsSyncing(true);
+        try {
+            await api.syncWholeState(state);
+            alert('Sinkronisasi Berhasil! Data lokal telah diunggah ke server MySQL.');
+        } catch (error) {
+            alert('Sinkronisasi Gagal: ' + error.message + '\n\nPastikan skrip SQL sudah dijalankan di phpMyAdmin.');
+        } finally {
+            setIsSyncing(false);
+        }
+    };
 
     return (
         <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -209,13 +225,23 @@ export default function Sidebar({ isOpen, onClose }) {
                     <span>Keluar</span>
                 </button>
                 {isSuperAdmin && (
-                    <button
-                        className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
-                        onClick={() => { if (window.confirm('Reset semua data?')) dispatch({ type: 'RESET_DATA' }); }}
-                    >
-                        <RotateCcw size={14} />
-                        <span>Reset Database</span>
-                    </button>
+                    <>
+                        <button
+                            disabled={isSyncing}
+                            className={`w-full flex items-center gap-3 px-4 py-2 rounded-xl text-[10px] font-bold tracking-widest uppercase transition-all ${isSyncing ? 'text-blue-400 bg-blue-500/5 cursor-wait' : 'text-blue-500 hover:bg-blue-500/10'}`}
+                            onClick={handleManualSync}
+                        >
+                            <CloudUpload size={14} className={isSyncing ? 'animate-bounce' : ''} />
+                            <span>{isSyncing ? 'Menyingkronkan...' : 'Sinkronisasi ke Server'}</span>
+                        </button>
+                        <button
+                            className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
+                            onClick={() => { if (window.confirm('Reset semua data?')) dispatch({ type: 'RESET_DATA' }); }}
+                        >
+                            <RotateCcw size={14} />
+                            <span>Reset Database</span>
+                        </button>
+                    </>
                 )}
             </div>
         </aside>
