@@ -209,11 +209,20 @@ app.post('/api/sync', async (req, res) => {
                 // 4. Academic Years
                 if (academicYears && Array.isArray(academicYears)) {
                     for (const ay of academicYears) {
-                        await tx.academicYear.upsert({
-                            where: { id: ay.id },
-                            update: { name: ay.name, isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false },
-                            create: { id: ay.id, name: ay.name, isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false }
-                        });
+                        try {
+                            await tx.academicYear.upsert({
+                                where: { id: ay.id },
+                                update: { name: ay.name, isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false },
+                                create: { id: ay.id, name: ay.name, isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false }
+                            });
+                        } catch (e) {
+                            if (e.code === 'P2002') {
+                                await tx.academicYear.update({
+                                    where: { name: ay.name },
+                                    data: { isCurrent: ay.isCurrent || false, isDeleted: ay.isDeleted || false }
+                                });
+                            } else throw e;
+                        }
                     }
                 }
 
@@ -233,11 +242,20 @@ app.post('/api/sync', async (req, res) => {
                 for (const [model, list] of Object.entries(masters)) {
                     if (list && Array.isArray(list)) {
                         for (const item of list) {
-                            await tx[model].upsert({
-                                where: { id: item.id },
-                                update: { name: item.name, isDeleted: item.isDeleted || false },
-                                create: { id: item.id, name: item.name, isDeleted: item.isDeleted || false }
-                            });
+                            try {
+                                await tx[model].upsert({
+                                    where: { id: item.id },
+                                    update: { name: item.name, isDeleted: item.isDeleted || false },
+                                    create: { id: item.id, name: item.name, isDeleted: item.isDeleted || false }
+                                });
+                            } catch (e) {
+                                if (e.code === 'P2002') {
+                                    await tx[model].update({
+                                        where: { name: item.name },
+                                        data: { isDeleted: item.isDeleted || false }
+                                    });
+                                } else throw e;
+                            }
                         }
                     }
                 }
