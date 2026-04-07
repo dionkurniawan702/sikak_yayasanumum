@@ -356,20 +356,39 @@ app.post('/api/sync', async (req, res) => {
                     if (lastSyncStats) lastSyncStats.deactivatedCount = deactivated.count;
                 }
 
+                const validClassIds = classes.map(c => c.id);
+                const validYearIds = (academicYears || []).map(y => y.id);
+                const validStatusIds = (studentStatuses || []).map(s => s.id);
+                const validParentIds = (parentStatuses || []).map(p => p.id);
+
                 for (const s of students) {
                     console.log(`[Sync] Processing Student: ${s.name} (ID: ${s.id})`);
+                    
+                    // Validate relations to prevent FK crashes
+                    const classId = (s.classId && validClassIds.includes(s.classId)) ? s.classId : null;
+                    const academicYearId = (s.academicYearId && validYearIds.includes(s.academicYearId)) ? s.academicYearId : null;
+                    const statusId = (s.statusId && validStatusIds.includes(s.statusId)) ? s.statusId : null;
+                    const parentStatusId = (s.parentStatusId && validParentIds.includes(s.parentStatusId)) ? s.parentStatusId : null;
+                    
+                    if (s.statusId && !statusId) {
+                        console.warn(`[Sync Warning] Student ${s.name} has invalid statusId "${s.statusId}". Setting to null.`);
+                    }
+                    if (s.classId && !classId) {
+                        console.warn(`[Sync Warning] Student ${s.name} has invalid classId "${s.classId}". Setting to null.`);
+                    }
+
                     await tx.student.upsert({
                         where: { id: s.id },
                         update: { 
                             nis: s.nis, name: s.name, unitId: s.unitId, 
-                            classId: s.classId || null, academicYearId: s.academicYearId || null, 
-                            statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                            classId: classId, academicYearId: academicYearId, 
+                            statusId: statusId, parentStatusId: parentStatusId,
                             isDeleted: s.isDeleted || false 
                         },
                         create: { 
                             id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
-                            classId: s.classId || null, academicYearId: s.academicYearId || null, 
-                            statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
+                            classId: classId, academicYearId: academicYearId, 
+                            statusId: statusId, parentStatusId: parentStatusId,
                             isDeleted: s.isDeleted || false 
                         }
                     });
@@ -502,7 +521,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.2.7', 
+            version: '1.2.8', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             lastSyncError: lastSyncError,
