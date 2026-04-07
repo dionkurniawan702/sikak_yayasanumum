@@ -135,7 +135,12 @@ export default function Sidebar({ isOpen, onClose }) {
         if (isRemote) {
             fetch(`${window.location.origin}/api/health`)
                 .then(r => r.json())
-                .then(d => setServerStats(d.stats))
+                .then(d => {
+                    setServerStats({
+                        ...d.stats,
+                        version: d.version
+                    });
+                })
                 .catch(() => {});
         }
     }, [isSyncing]);
@@ -200,15 +205,19 @@ export default function Sidebar({ isOpen, onClose }) {
                     {isRemote && isSuperAdmin && (
                         <div className="pt-2 border-t border-slate-700/50 space-y-1">
                             <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
-                                <span className="text-slate-500 uppercase">Siswa (Lokal/DB)</span>
+                                <span className="text-slate-400 uppercase">Server Ver</span>
+                                <span className="text-slate-500">{serverStats?.version || '?.?.?'}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
+                                <span className="text-slate-500 uppercase">Siswa (Lokal/DB/Del)</span>
                                 <span className={state.students?.length > (serverStats?.students || 0) ? 'text-amber-400' : 'text-slate-400'}>
-                                    {state.students?.length || 0} / {serverStats?.students ?? '?'}
+                                    {state.students?.length || 0} / {serverStats?.students ?? '?'} / {serverStats?.deletedStudents ?? '?'}
                                 </span>
                             </div>
                             <div className="flex justify-between items-center text-[8px] font-bold tracking-tight">
-                                <span className="text-slate-500 uppercase">Kelas (Lokal/DB)</span>
+                                <span className="text-slate-500 uppercase">Kelas (Lokal/DB/Del)</span>
                                 <span className={state.classes?.length > (serverStats?.classes || 0) ? 'text-amber-400' : 'text-slate-400'}>
-                                    {state.classes?.length || 0} / {serverStats?.classes ?? '?'}
+                                    {state.classes?.length || 0} / {serverStats?.classes ?? '?'} / {serverStats?.deletedClasses ?? '?'}
                                 </span>
                             </div>
                         </div>

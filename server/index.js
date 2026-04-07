@@ -437,7 +437,15 @@ app.post('/api/sync', async (req, res) => {
             }
         });
 
-        res.json({ status: 'ok', message: 'Synchronization completed successfully' });
+        res.json({ 
+            status: 'ok', 
+            message: 'Synchronization completed successfully',
+            counts: {
+                students: students?.length || 0,
+                classes: classes?.length || 0,
+                academicYears: academicYears?.length || 0
+            }
+        });
     } catch (error) {
         lastSyncError = `Global Sync Error: ${error.message}`;
         console.error(`[Sync Error] ${lastSyncError}`);
@@ -451,24 +459,17 @@ app.get('/api/health', async (req, res) => {
         const client = getPrisma();
         await client.$queryRaw`SELECT 1`;
         
-        // Quick diagnostic counts
         const studentCount = await client.student.count({ where: { isDeleted: false } });
-        const incomeItemCount = await client.incomeItem.count({ where: { isDeleted: false } });
-        const userCount = await client.user.count({ where: { isDeleted: false } });
-        const fieldCount = await client.field.count({ where: { isDeleted: false } });
-        const unitCount = await client.unit.count({ where: { isDeleted: false } });
         const classCount = await client.class.count({ where: { isDeleted: false } });
-        const ayCount = await client.academicYear.count({ where: { isDeleted: false } });
-        const posCount = await client.position.count({ where: { isDeleted: false } });
-        const stStatusCount = await client.studentStatus.count({ where: { isDeleted: false } });
-        const ptStatusCount = await client.parentStatus.count({ where: { isDeleted: false } });
-
+        const deletedStudentCount = await client.student.count({ where: { isDeleted: true } });
+        const deletedClassCount = await client.class.count({ where: { isDeleted: true } });
+        
         const studentList = await client.student.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
         const classList = await client.class.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
 
         res.json({ 
             status: 'ok', 
-            version: '1.2.0', 
+            version: '1.2.5', 
             database: 'connected',
             lastSyncError: lastSyncError,
             lastSyncStats: lastSyncStats,
@@ -478,6 +479,9 @@ app.get('/api/health', async (req, res) => {
             },
             stats: {
                 students: studentCount,
+                deletedStudents: deletedStudentCount,
+                classes: classCount,
+                deletedClasses: deletedClassCount,
                 incomeItems: incomeItemCount,
                 academicYears: ayCount,
                 positions: posCount,
@@ -485,8 +489,7 @@ app.get('/api/health', async (req, res) => {
                 parentStatuses: ptStatusCount,
                 users: userCount,
                 fields: fieldCount,
-                units: unitCount,
-                classes: classCount
+                units: unitCount
             },
             message: 'SIKAK Yayasan Umum API is running',
             env: {
