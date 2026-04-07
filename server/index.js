@@ -156,10 +156,14 @@ app.post('/api/sync', async (req, res) => {
             payloadSize: JSON.stringify(req.body || {}).length
         };
         
-        console.log(`[Sync] Received bulk update request. Students: ${students?.length || 0}`);
+        console.log(`[Sync] Starting sync. Payload size: ${JSON.stringify(req.body || {}).length} bytes`);
+        console.log(`[Sync] Received: Students=${students?.length || 0}, Classes=${classes?.length || 0}, AcademicYears=${academicYears?.length || 0}`);
         
         if (!students || !Array.isArray(students)) {
-            console.warn(`[Sync Warning] Students array is missing or not an array. Type: ${typeof students}`);
+            throw new Error('Students array is missing or invalid');
+        }
+        if (!classes || !Array.isArray(classes)) {
+            throw new Error('Classes array is missing or invalid');
         }
         
         // Use a transaction for master data
@@ -325,6 +329,7 @@ app.post('/api/sync', async (req, res) => {
             // 10. Sync Classes (The actual unit-specific classes)
             if (classes && Array.isArray(classes)) {
                 for (const cls of classes) {
+                    console.log(`[Sync] Processing Class: ${cls.name} (ID: ${cls.id})`);
                     await tx.class.upsert({
                         where: { id: cls.id },
                         update: { name: cls.name, unitId: cls.unitId, isDeleted: cls.isDeleted || false },
@@ -352,6 +357,7 @@ app.post('/api/sync', async (req, res) => {
                 }
 
                 for (const s of students) {
+                    console.log(`[Sync] Processing Student: ${s.name} (ID: ${s.id})`);
                     await tx.student.upsert({
                         where: { id: s.id },
                         update: { 
@@ -457,12 +463,19 @@ app.get('/api/health', async (req, res) => {
         const stStatusCount = await client.studentStatus.count({ where: { isDeleted: false } });
         const ptStatusCount = await client.parentStatus.count({ where: { isDeleted: false } });
 
+        const studentList = await client.student.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
+        const classList = await client.class.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
+
         res.json({ 
             status: 'ok', 
-            version: '1.1.4', // Bump version to verify deploy
+            version: '1.2.0', 
             database: 'connected',
             lastSyncError: lastSyncError,
             lastSyncStats: lastSyncStats,
+            dbContent: {
+                students: studentList.map(s => s.name),
+                classes: classList.map(c => c.name)
+            },
             stats: {
                 students: studentCount,
                 incomeItems: incomeItemCount,
