@@ -455,6 +455,7 @@ app.post('/api/sync', async (req, res) => {
 
 // Advanced Health Check (Verifies Prisma)
 app.get('/api/health', async (req, res) => {
+        const client = getPrisma();
         let stats = null;
         let dbContent = null;
         let dbError = null;
@@ -501,7 +502,7 @@ app.get('/api/health', async (req, res) => {
 
         res.json({ 
             status: 'ok', 
-            version: '1.2.6', 
+            version: '1.2.7', 
             database: dbError ? 'error' : 'connected',
             dbError: dbError,
             lastSyncError: lastSyncError,
