@@ -59,6 +59,7 @@ export default function RAB() {
     const [showRejectionInput, setShowRejectionInput] = useState(null); // planId if reviewing
     const [searchTerm, setSearchTerm] = useState('');
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
+    const [editingItem, setEditingItem] = useState(null); // { id, name, sourceOfFunds }
 
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
@@ -167,6 +168,31 @@ export default function RAB() {
                 }
             };
         });
+    };
+
+    const handleDistributeMonthly = (itemId) => {
+        const type = activeTab.toLowerCase();
+        const item = currentPlan[type][itemId];
+        if (!item || item.total <= 0) return;
+
+        const perMonth = Math.floor(item.total / 12);
+        const remainder = item.total % 12;
+
+        const updatedMonths = {};
+        months.forEach((m, idx) => {
+            updatedMonths[m.id] = { 
+                jumlah: perMonth + (idx === 0 ? remainder : 0), 
+                m: true 
+            };
+        });
+
+        setCurrentPlan(prev => ({
+            ...prev,
+            [type]: {
+                ...prev[type],
+                [itemId]: { ...item, months: updatedMonths }
+            }
+        }));
     };
 
     const months = useMemo(() => {
@@ -480,33 +506,18 @@ export default function RAB() {
                     </div>
 
                     {activeTab !== 'REVIEW' ? (
-                        <div className="overflow-x-auto border-2 border-slate-200 rounded-3xl shadow-lg bg-white relative">
-                            <table className="w-full text-left border-collapse min-w-[2000px]">
-                                <thead className="sticky top-0 z-20">
+                        <div className="overflow-hidden border-2 border-slate-200 rounded-[2.5rem] shadow-xl bg-white relative">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
                                     <tr className="bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-white">
-                                        <th rowSpan="2" className="p-4 border-r border-white min-w-[250px] sticky left-0 z-30 bg-[#cbdba6]">Item Anggaran</th>
-                                        <th rowSpan="2" className="p-4 border-r border-white min-w-[150px]">Sumber Dana</th>
-                                        <th colSpan="5" className="p-2 border-b border-white text-center">Detail RAB</th>
-                                        {months.map(m => (
-                                            <th key={m.id} colSpan="2" className="p-2 border-b border-l border-white text-center">{m.name}</th>
-                                        ))}
-                                        <th rowSpan="2" className="p-4 border-l border-white text-center sticky right-0 z-30 bg-[#cbdba6]">Aksi</th>
-                                    </tr>
-                                    <tr className="bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black border-b border-slate-300">
-                                        <th className="p-2 border-r border-white text-center w-20">Volume</th>
-                                        <th className="p-2 border-r border-white text-center w-24">Satuan</th>
-                                        <th className="p-2 border-r border-white text-center w-20">Kali</th>
-                                        <th className="p-2 border-r border-white text-center w-32">Harga</th>
-                                        <th className="p-2 border-r border-white text-center w-40">Total</th>
-                                        {months.map(m => (
-                                            <React.Fragment key={m.id}>
-                                                <th className="p-2 border-r border-white text-center w-28">Jumlah</th>
-                                                <th className="p-2 border-r border-white text-center w-12 text-[8px]">M</th>
-                                            </React.Fragment>
-                                        ))}
+                                        <th className="p-6">Item Anggaran</th>
+                                        <th className="p-6">Sumber Dana</th>
+                                        <th className="p-6 text-right">Alokasi (PAGU)</th>
+                                        <th className="p-6 text-right">Rencana (DRAFT)</th>
+                                        <th className="p-6 text-center">Aksi</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-200">
+                                <tbody className="divide-y divide-slate-100">
                                     {(activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []))
                                         .filter(item => {
                                             const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -520,77 +531,37 @@ export default function RAB() {
                                             };
                                             const allocated = rapData.itemAllocations[item.id] || 0;
                                             const isOverBudget = activeTab === 'EXPENSE' && detail.total > (allocated + 1) && allocated > 0;
+                                            const hasData = detail.total > 0;
 
                                             return (
-                                                <tr key={item.id} className={`group hover:bg-emerald-50/30 transition-colors ${isOverBudget ? 'bg-rose-50/50' : ''}`}>
-                                                    <td className="p-4 font-bold text-slate-700 text-xs uppercase sticky left-0 z-10 bg-white group-hover:bg-emerald-50 border-r border-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
-                                                        {item.name}
-                                                        {activeTab === 'EXPENSE' && allocated > 0 && (
-                                                            <div className="text-[9px] text-slate-400 font-black mt-1">PAGU: {formatRupiah(allocated)}</div>
-                                                        )}
+                                                <tr key={item.id} className={`group hover:bg-slate-50 transition-colors ${isOverBudget ? 'bg-rose-50/30' : ''}`}>
+                                                    <td className="p-6">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={`w-2 h-2 rounded-full ${hasData ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                                                            <span className="font-bold text-slate-700 text-sm uppercase tracking-tight">{item.name}</span>
+                                                        </div>
                                                     </td>
-                                                    <td className="p-4 text-[10px] font-black text-slate-400">
-                                                        <span className="px-2 py-1 bg-slate-100 rounded-md border border-slate-200">
+                                                    <td className="p-6">
+                                                        <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                                             {item.sourceOfFunds || 'LAINNYA'}
                                                         </span>
                                                     </td>
-                                                    <td className="p-1 border-r border-slate-100">
-                                                        <input 
-                                                            type="number" className="w-full bg-transparent p-2 text-center text-xs font-bold outline-none focus:bg-white"
-                                                            value={detail.volume || ''} onChange={e => handleItemUpdate(item.id, 'volume', e.target.value)}
-                                                            disabled={isLocked}
-                                                        />
+                                                    <td className="p-6 text-right text-xs font-black text-slate-400 italic">
+                                                        {formatRupiah(allocated)}
                                                     </td>
-                                                    <td className="p-1 border-r border-slate-100">
-                                                        <input 
-                                                            type="text" className="w-full bg-transparent p-2 text-center text-[10px] font-black uppercase outline-none focus:bg-white"
-                                                            value={detail.satuan || ''} onChange={e => handleItemUpdate(item.id, 'satuan', e.target.value)}
-                                                            disabled={isLocked}
-                                                        />
-                                                    </td>
-                                                    <td className="p-1 border-r border-slate-100">
-                                                        <input 
-                                                            type="number" className="w-full bg-transparent p-2 text-center text-xs font-bold outline-none focus:bg-white"
-                                                            value={detail.kali || ''} onChange={e => handleItemUpdate(item.id, 'kali', e.target.value)}
-                                                            disabled={isLocked}
-                                                        />
-                                                    </td>
-                                                    <td className="p-1 border-r border-slate-100">
-                                                        <input 
-                                                            type="number" className="w-full bg-transparent p-2 text-right text-xs font-bold outline-none focus:bg-white"
-                                                            value={detail.harga || ''} onChange={e => handleItemUpdate(item.id, 'harga', e.target.value)}
-                                                            disabled={isLocked}
-                                                        />
-                                                    </td>
-                                                    <td className={`p-4 text-right text-xs font-black ${isOverBudget ? 'text-rose-600' : 'text-slate-900'} bg-slate-50 border-r border-slate-100`}>
+                                                    <td className={`p-6 text-right text-sm font-black ${isOverBudget ? 'text-rose-600' : (hasData ? 'text-emerald-600' : 'text-slate-300')}`}>
                                                         {formatRupiah(detail.total)}
                                                     </td>
-                                                    
-                                                    {months.map(m => {
-                                                        const mData = detail.months?.[m.id] || { jumlah: 0, m: false };
-                                                        return (
-                                                            <React.Fragment key={m.id}>
-                                                                <td className="p-1 border-r border-slate-50 group-hover:bg-white/50 transition-colors bg-white/30">
-                                                                    <input 
-                                                                        type="number" className="w-full bg-transparent p-2 text-right text-[10px] font-bold outline-none"
-                                                                        value={mData.jumlah || ''} onChange={e => handleMonthlyUpdate(item.id, m.id, 'jumlah', parseFloat(e.target.value) || 0)}
-                                                                        disabled={isLocked}
-                                                                    />
-                                                                </td>
-                                                                <td className="p-1 border-r border-slate-100 text-center bg-slate-50/30">
-                                                                    <input 
-                                                                        type="checkbox" className="w-3 h-3 rounded"
-                                                                        checked={mData.m || false} onChange={e => handleMonthlyUpdate(item.id, m.id, 'm', e.target.checked)}
-                                                                        disabled={isLocked}
-                                                                    />
-                                                                </td>
-                                                            </React.Fragment>
-                                                        );
-                                                    })}
-                                                    
-                                                    <td className="p-4 text-center sticky right-0 z-10 bg-white group-hover:bg-emerald-50 border-l border-slate-100">
-                                                        <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
-                                                            <ChevronRight size={14} />
+                                                    <td className="p-6 text-center">
+                                                        <button 
+                                                            onClick={() => setEditingItem(item)}
+                                                            className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                                                hasData 
+                                                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                                                                : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                                            }`}
+                                                        >
+                                                            {hasData ? 'Ubah Rincian' : 'Isi Rincian'}
                                                         </button>
                                                     </td>
                                                 </tr>
@@ -692,23 +663,6 @@ export default function RAB() {
                 </div>
             </div>
 
-            {/* Float Info Box */}
-            {message && (
-                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 duration-500 z-[2000] ${
-                    message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                }`}>
-                    <div className="p-2 bg-white/20 rounded-xl">
-                        {message.type === 'success' ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
-                    </div>
-                    <div>
-                        <p className="font-black text-sm tracking-tight">{message.text}</p>
-                    </div>
-                    <button onClick={() => setMessage(null)} className="ml-4 p-1 hover:bg-white/10 rounded-lg transition-colors">
-                        <ChevronRight size={18} />
-                    </button>
-                </div>
-            )}
-
             {/* Special Notification Pop-up for ACC/Reject */}
             {showStatusModal && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
@@ -754,6 +708,148 @@ export default function RAB() {
                                 }`}
                             >
                                 SAYA MENGERTI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Float Info Box */}
+            {message && (
+                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 duration-500 z-[2000] ${
+                    message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                }`}>
+                    <div className="p-2 bg-white/20 rounded-xl">
+                        {message.type === 'success' ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
+                    </div>
+                    <div>
+                        <p className="font-black text-sm tracking-tight">{message.text}</p>
+                    </div>
+                    <button onClick={() => setMessage(null)} className="ml-4 p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <ChevronRight size={18} />
+                    </button>
+                </div>
+            )}
+
+            {/* Detail Modal */}
+            {editingItem && (
+                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItem(null)} />
+                    <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+                        {/* Modal Header */}
+                        <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
+                                    Sumber Dana: {editingItem.sourceOfFunds || 'Umum'} • TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => setEditingItem(null)}
+                                className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-10">
+                            {/* Calculation Details */}
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
+                                    <input 
+                                        type="number"
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.volume || ''}
+                                        onChange={e => handleItemUpdate(editingItem.id, 'volume', e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
+                                    <input 
+                                        type="text"
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all uppercase"
+                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.satuan || ''}
+                                        onChange={e => handleItemUpdate(editingItem.id, 'satuan', e.target.value)}
+                                        placeholder="E.G. UNIT"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali (Freq)</label>
+                                    <input 
+                                        type="number"
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.kali || ''}
+                                        onChange={e => handleItemUpdate(editingItem.id, 'kali', e.target.value)}
+                                        placeholder="1"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
+                                    <input 
+                                        type="number"
+                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || ''}
+                                        onChange={e => handleItemUpdate(editingItem.id, 'harga', e.target.value)}
+                                        placeholder="0"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Monthly Breakdown Table */}
+                            <div className="space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
+                                    <button 
+                                        onClick={() => handleDistributeMonthly(editingItem.id)}
+                                        className="text-blue-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all"
+                                    >
+                                        <RefreshCw size={14} />
+                                        Bagi Rata (12 Bulan)
+                                    </button>
+                                </div>
+
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                    {months.map(m => {
+                                        const mData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
+                                        return (
+                                            <div key={m.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.label}</span>
+                                                    <input 
+                                                        type="checkbox"
+                                                        checked={mData.m}
+                                                        onChange={e => handleMonthlyUpdate(editingItem.id, m.id, 'm', e.target.checked)}
+                                                        className="w-4 h-4 rounded text-blue-600"
+                                                    />
+                                                </div>
+                                                <input 
+                                                    type="number"
+                                                    className="w-full bg-transparent font-black text-slate-700 outline-none border-b border-dashed border-slate-200 focus:border-blue-500 pb-1"
+                                                    value={mData.jumlah || ''}
+                                                    onChange={e => handleMonthlyUpdate(editingItem.id, m.id, 'jumlah', parseFloat(e.target.value) || 0)}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-8 bg-slate-900 flex items-center justify-between text-white">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Terhitung</span>
+                                <h3 className="text-3xl font-black italic">{formatRupiah(currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0)}</h3>
+                            </div>
+                            <button 
+                                onClick={() => setEditingItem(null)}
+                                className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 hover:text-white transition-all shadow-xl shadow-black/20"
+                            >
+                                SIMPAN RINCIAN
                             </button>
                         </div>
                     </div>
