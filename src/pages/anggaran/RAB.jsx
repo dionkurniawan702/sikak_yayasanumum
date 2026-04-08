@@ -10,6 +10,32 @@ import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
 import { calculateRAP } from '../../utils/budgetEngine';
 
+// Helper to generate 12 months for an academic year (July to June)
+const generateMonths = (academicYearName) => {
+    if (!academicYearName) return [];
+    const [startYearStr, endYearStr] = academicYearName.split('/');
+    const startYear = parseInt(startYearStr);
+    const endYear = parseInt(endYearStr);
+    
+    const months = [];
+    const monthNames = [
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'
+    ];
+
+    monthNames.forEach((name, index) => {
+        const year = index < 6 ? startYear : endYear;
+        const monthNum = index < 6 ? (index + 7) : (index - 5);
+        months.push({
+            id: `${year}-${String(monthNum).padStart(2, '0')}`,
+            name: `${name}-${year}`,
+            label: name,
+            year: year
+        });
+    });
+    return months;
+};
+
 export default function RAB() {
     const { state, dispatch } = useApp();
     const { 
@@ -31,6 +57,8 @@ export default function RAB() {
     const [showStatusModal, setShowStatusModal] = useState(false);
     const [rejectionReason, setRejectionReason] = useState('');
     const [showRejectionInput, setShowRejectionInput] = useState(null); // planId if reviewing
+    const [searchTerm, setSearchTerm] = useState('');
+    const [fundSourceFilter, setFundSourceFilter] = useState('all');
 
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
@@ -95,16 +123,56 @@ export default function RAB() {
 
     const isLocked = currentPlan.status === 'PENDING' || (currentPlan.status === 'APPROVED' && currentUser?.role !== 'superadmin');
 
-    const handleAmountChange = (type, itemId, value) => {
-        const amount = parseFloat(value) || 0;
-        setCurrentPlan(prev => ({
-            ...prev,
-            [type.toLowerCase()]: {
-                ...prev[type.toLowerCase()],
-                [itemId]: amount
+    const handleItemUpdate = (itemId, field, value) => {
+        const type = activeTab.toLowerCase();
+        setCurrentPlan(prev => {
+            const currentItem = prev[type][itemId] || {
+                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}
+            };
+            
+            const updatedItem = { ...currentItem, [field]: value };
+            
+            // Recalculate total if volume, kali, or harga changes
+            if (['volume', 'kali', 'harga'].includes(field)) {
+                updatedItem.total = (parseFloat(updatedItem.volume) || 0) * 
+                                   (parseFloat(updatedItem.kali) || 0) * 
+                                   (parseFloat(updatedItem.harga) || 0);
             }
-        }));
+            
+            return {
+                ...prev,
+                [type]: { ...prev[type], [itemId]: updatedItem }
+            };
+        });
     };
+
+    const handleMonthlyUpdate = (itemId, monthId, field, value) => {
+        const type = activeTab.toLowerCase();
+        setCurrentPlan(prev => {
+            const currentItem = prev[type][itemId] || {
+                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}
+            };
+            
+            const currentMonths = currentItem.months || {};
+            const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
+            
+            const updatedMonthData = { ...currentMonthData, [field]: value };
+            const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
+            
+            return {
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    [itemId]: { ...currentItem, months: updatedMonths }
+                }
+            };
+        });
+    };
+
+    const months = useMemo(() => {
+        const selectedYear = academicYears.find(ay => ay.id === selectedYearId);
+        return generateMonths(selectedYear?.name);
+    }, [selectedYearId, academicYears]);
 
     const handleSave = async () => {
         setIsSaving(true);
@@ -201,11 +269,11 @@ export default function RAB() {
     };
 
     const totalIncome = useMemo(() => 
-        Object.values(currentPlan.income).reduce((sum, val) => sum + val, 0)
+        Object.values(currentPlan.income).reduce((sum, val) => sum + (val.total || 0), 0)
     , [currentPlan.income]);
 
     const totalExpense = useMemo(() => 
-        Object.values(currentPlan.expense).reduce((sum, val) => sum + val, 0)
+        Object.values(currentPlan.expense).reduce((sum, val) => sum + (val.total || 0), 0)
     , [currentPlan.expense]);
 
     const balance = totalIncome - totalExpense;
@@ -213,97 +281,82 @@ export default function RAB() {
     return (
         <div className="p-4 lg:p-10 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-700">
             {/* Top Toolbar */}
-            <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
-                <div className="space-y-2">
-                    <div className="flex items-center gap-3 text-blue-600 font-black uppercase tracking-[0.2em] text-[10px]">
-                        <ShieldCheck size={14} />
-                        <span>Manajemen Anggaran Bisnis & Pendidikan</span>
-                    </div>
-                    <h1 className="text-4xl lg:text-5xl font-black text-slate-900 tracking-tight flex items-center gap-4 italic shrink-0">
-                        Rencana Anggaran Biaya (RAB)
-                    </h1>
-                    <p className="text-slate-500 font-medium max-w-xl">
-                        Penyusunan rencana pendapatan dan belanja tahunan sesuai standar PSAK 35 Yayasan Umum.
-                    </p>
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4 flex-wrap">
+                    <select 
+                        className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
+                        value={selectedUnitId}
+                        onChange={e => setSelectedUnitId(e.target.value)}
+                        disabled={currentUser?.role !== 'superadmin'}
+                    >
+                        <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
+                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
+
+                    <select 
+                        className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
+                        value={fundSourceFilter}
+                        onChange={e => setFundSourceFilter(e.target.value)}
+                    >
+                        <option value="all">Semua Sumber Dana</option>
+                        <option value="Yayasan">Yayasan</option>
+                        <option value="BOS">BOS</option>
+                    </select>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">
-                    {/* Academic Year Selector */}
-                    <div className="relative group">
-                        <label className="absolute -top-2 left-4 px-2 bg-white text-[9px] font-black text-slate-400 uppercase tracking-widest z-10 transition-colors group-focus-within:text-blue-600">
-                            Tahun Ajaran
-                        </label>
-                        <div className="flex items-center gap-2 bg-white border-2 border-slate-100 px-4 py-3.5 rounded-2xl shadow-sm focus-within:border-blue-500 transition-all">
-                            <Calendar size={18} className="text-slate-400" />
-                            <select 
-                                className="bg-transparent border-none font-bold text-slate-900 outline-none pr-8 cursor-pointer"
-                                value={selectedYearId}
-                                onChange={e => setSelectedYearId(e.target.value)}
-                            >
-                                <option value="">Pilih Tahun</option>
-                                {academicYears.map(ay => (
-                                    <option key={ay.id} value={ay.id}>{ay.name}{ay.isCurrent ? ' (Aktif)' : ''}</option>
-                                ))}
-                            </select>
-                        </div>
+                    <input 
+                        type="text"
+                        placeholder="Cari Program Belanja..."
+                        className="p-3 bg-white border border-slate-300 rounded-lg font-medium text-slate-700 w-full max-w-[300px] shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                        value={searchTerm}
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                    
+                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-black text-xs transition-all shadow-md">
+                        Cari
+                    </button>
+                    
+                    <div className="flex items-center gap-3 ml-auto">
+                        <button 
+                            onClick={handleSave}
+                            disabled={isSaving || !selectedYearId || isLocked}
+                            className="bg-white border border-slate-300 hover:border-slate-900 text-slate-900 px-6 py-3 rounded-lg font-black text-xs transition-all disabled:opacity-50 shadow-sm"
+                        >
+                            SIMPAN DRAFT
+                        </button>
+                        <button 
+                            onClick={handleSubmitReview}
+                            disabled={isSaving || !selectedYearId || isLocked}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-black text-xs transition-all shadow-md disabled:opacity-50"
+                        >
+                            KIRIM KE YAYASAN
+                        </button>
                     </div>
+                </div>
 
-                    {/* Unit/Field Selector */}
-                    <div className="relative group">
-                        <label className="absolute -top-2 left-4 px-2 bg-white text-[9px] font-black text-slate-400 uppercase tracking-widest z-10 transition-colors group-focus-within:text-blue-600">
-                            Entitas Kerja
-                        </label>
-                        <div className="flex items-center gap-2 bg-white border-2 border-slate-100 px-4 py-3.5 rounded-2xl shadow-sm focus-within:border-blue-500 transition-all">
-                            <Building2 size={18} className="text-slate-400" />
-                            <select 
-                                className="bg-transparent border-none font-bold text-slate-900 outline-none pr-8 cursor-pointer"
-                                value={selectedUnitId}
-                                onChange={e => setSelectedUnitId(e.target.value)}
-                                disabled={currentUser?.role !== 'superadmin'}
-                            >
-                                <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
-                                <optgroup label="Unit Pendidikan">
-                                    {(units || []).filter(u => !u.isDeleted).map(u => (
-                                        <option key={u.id} value={u.id}>{u.name}</option>
-                                    ))}
-                                </optgroup>
-                                <optgroup label="Bidang Struktural">
-                                    {(fields || []).filter(f => !f.isDeleted).map(f => (
-                                        <option key={f.id} value={`FIELD-${f.id}`}>{f.name}</option>
-                                    ))}
-                                </optgroup>
-                            </select>
-                        </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</p>
+                        <p className={`font-black uppercase tracking-tight ${currentPlan.status === 'APPROVED' ? 'text-emerald-600' : 'text-rose-600'}`}>
+                            {currentPlan.status === 'APPROVED' ? 'Approved' : 'Not approved'}
+                        </p>
                     </div>
-
-                    <div className="flex items-center gap-2">
-                        {currentPlan.status === 'DRAFT' || currentPlan.status === 'REJECTED' ? (
-                            <>
-                                <button 
-                                    onClick={handleSave}
-                                    disabled={isSaving || !selectedYearId || isLocked}
-                                    className="bg-white border-2 border-slate-200 hover:border-slate-900 text-slate-900 px-6 py-4 rounded-2xl font-black text-xs tracking-tight transition-all flex items-center gap-3 disabled:opacity-50"
-                                >
-                                    <Save size={16} />
-                                    SIMPAN DRAFT
-                                </button>
-                                <button 
-                                    onClick={handleSubmitReview}
-                                    disabled={isSaving || !selectedYearId || isLocked}
-                                    className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-2xl font-black text-xs tracking-tight transition-all shadow-xl shadow-blue-100 flex items-center gap-3 disabled:opacity-50"
-                                >
-                                    <Send size={16} />
-                                    KIRIM KE YAYASAN
-                                </button>
-                            </>
-                        ) : (
-                            <div className={`px-8 py-4 rounded-2xl font-black text-xs flex items-center gap-3 shadow-lg ${
-                                currentPlan.status === 'PENDING' ? 'bg-amber-500 text-white shadow-amber-100' : 'bg-emerald-500 text-white shadow-emerald-100'
-                            }`}>
-                                {currentPlan.status === 'PENDING' ? <RefreshCw className="animate-spin" size={16} /> : <CheckCircle2 size={16} />}
-                                STATUS: {currentPlan.status}
-                            </div>
-                        )}
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengisian</p>
+                        <p className="font-black text-slate-700 italic">
+                            Pengisian semester {new Date().getMonth() > 5 ? '1' : '2'}
+                        </p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Keterangan</p>
+                        <p className="font-black text-slate-400">-</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
+                        <p className="font-black text-slate-700 italic">
+                            {currentPlan.status === 'DRAFT' ? 'Belum Diajukan' : 'Sudah Diajukan'}
+                        </p>
                     </div>
                 </div>
             </div>
@@ -414,9 +467,11 @@ export default function RAB() {
                     <div className="flex items-center justify-between mb-10">
                         <div>
                             <h3 className="text-2xl font-black text-slate-900 tracking-tight italic">
-                                {activeTab === 'INCOME' ? 'Rencana Penerimaan Dana' : 'Pagu Pengeluaran Operasional'}
+                                {activeTab === 'INCOME' ? 'Rencana Penerimaan Dana' : (activeTab === 'EXPENSE' ? 'Pagu Pengeluaran Operasional' : 'Review Draft Anggaran')}
                             </h3>
-                            <p className="text-slate-400 text-sm font-medium">Input nilai estimasi kas masuk/keluar untuk satu periode tahun ajaran.</p>
+                            <p className="text-slate-400 text-sm font-medium">
+                                {activeTab === 'REVIEW' ? 'Review pengajuan anggaran dari setiap unit dan bidang struktural.' : 'Input nilai estimasi kas masuk/keluar untuk satu periode tahun ajaran.'}
+                            </p>
                         </div>
                         <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
                             <Filter size={14} />
@@ -424,145 +479,206 @@ export default function RAB() {
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto -mx-2">
-                        <table className="w-full text-left border-separate border-spacing-y-3">
-                            <thead>
-                                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                    <th className="px-6 py-2">Nama Pos Anggaran</th>
-                                    <th className="px-6 py-2">Kategori PSAK 35</th>
-                                    <th className="px-6 py-2 text-right">Nilai Anggaran (IDR)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {(activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || [])).map(item => {
-                                    const allocated = rapData.itemAllocations[item.id] || 0;
-                                    const budgeted = currentPlan[activeTab.toLowerCase()][item.id] || 0;
-                                    const isOverBudget = activeTab === 'EXPENSE' && budgeted > (allocated + 1) && allocated > 0;
-
-                                    return (
-                                        <tr key={item.id} className="group transition-all">
-                                            <td className="px-6 py-5 bg-slate-50 rounded-l-[20px] group-hover:bg-slate-100 transition-colors">
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-1.5 h-6 rounded-full ${activeTab === 'INCOME' ? 'bg-emerald-400' : 'bg-rose-400'} opacity-30 group-hover:opacity-100 transition-opacity`} />
-                                                    <div>
-                                                        <span className="font-bold text-slate-700 uppercase tracking-tight text-sm italic block">{item.name}</span>
-                                                        {activeTab === 'EXPENSE' && (
-                                                            <span className={`text-[10px] font-black ${isOverBudget ? 'text-rose-600' : 'text-slate-400'}`}>
-                                                                Alokasi: {formatRupiah(allocated)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-5 bg-slate-50 group-hover:bg-slate-100 transition-colors">
-                                                <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                                    Tanpa Pembatasan
-                                                </span>
-                                            </td>
-                                            <td className={`px-6 py-5 bg-slate-50 rounded-r-[20px] group-hover:bg-slate-100 transition-colors text-right ${isOverBudget ? 'bg-rose-50 border-r-4 border-rose-500' : ''}`}>
-                                                <div className="flex items-center justify-end gap-3 group/input">
-                                                    <span className="text-[11px] font-black text-slate-300 group-focus-within/input:text-blue-500 transition-colors tracking-tighter">RP.</span>
-                                                    <input 
-                                                        type="number" 
-                                                        placeholder="0"
-                                                        value={currentPlan[activeTab.toLowerCase()][item.id] || ''}
-                                                        onChange={e => handleAmountChange(activeTab, item.id, e.target.value)}
-                                                        disabled={isLocked}
-                                                        className={`bg-transparent border-none text-right font-black focus:ring-0 w-32 xl:w-48 text-lg ${isLocked ? 'opacity-50' : 'text-slate-900'} ${isOverBudget ? 'text-rose-600' : ''}`}
-                                                    />
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-
-                                {activeTab === 'REVIEW' && (
-                                    <tr>
-                                        <td colSpan="3" className="p-0">
-                                            <div className="space-y-4">
-                                                {(rabPlans || []).filter(p => p.status === 'PENDING').map(plan => (
-                                                    <div key={plan.id} className="p-8 bg-indigo-50/50 rounded-[32px] border-2 border-indigo-100">
-                                                        <div className="flex justify-between items-start mb-6">
-                                                            <div>
-                                                                <h4 className="font-black text-slate-900 text-lg">
-                                                                    {plan.unitId === 'FOUNDATION' ? 'Konsolidasi Yayasan' : (units.find(u => u.id === plan.unitId)?.name || 'Bidang')}
-                                                                </h4>
-                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                                    Review Draft Anggaran {academicYears.find(ay => ay.id === plan.academicYearId)?.name}
-                                                                </p>
-                                                            </div>
-                                                            <div className="flex gap-2">
-                                                                <button 
-                                                                    onClick={() => handleApproval(plan.id, 'APPROVED')}
-                                                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-100"
-                                                                >
-                                                                    <CheckCircle2 size={16} />
-                                                                    ACC SEKARANG
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => setShowRejectionInput(plan.id)}
-                                                                    className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-rose-100"
-                                                                >
-                                                                    <XCircle size={16} />
-                                                                    TOLAK
-                                                                </button>
-                                                            </div>
-                                                        </div>
-
-                                                        {showRejectionInput === plan.id && (
-                                                            <div className="mt-4 p-6 bg-white rounded-3xl border-2 border-rose-100 animate-in slide-in-from-top-4">
-                                                                <label className="form-label text-rose-600 flex items-center gap-2">
-                                                                    <MessageSquare size={14} />
-                                                                    Alasan Penolakan
-                                                                </label>
-                                                                <textarea 
-                                                                    className="form-textarea mt-2 mb-4 h-24"
-                                                                    placeholder="Tulis alasan mengapa anggaran ini ditolak agar unit bisa memperbaikinya..."
-                                                                    value={rejectionReason}
-                                                                    onChange={e => setRejectionReason(e.target.value)}
-                                                                />
-                                                                <div className="flex justify-end gap-3">
-                                                                    <button onClick={() => setShowRejectionInput(null)} className="btn btn-secondary !rounded-xl">Batal</button>
-                                                                    <button 
-                                                                        onClick={() => handleApproval(plan.id, 'REJECTED', rejectionReason)}
-                                                                        className="btn btn-primary !bg-rose-600 !hover:bg-rose-700 !rounded-xl"
-                                                                    >
-                                                                        Konfirmasi Tolak
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        )}
-                                                        
-                                                        <div className="grid grid-cols-2 gap-4 mt-4">
-                                                            <div className="p-4 bg-white rounded-2xl border border-indigo-100">
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Penerimaan</p>
-                                                                <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.income || {}).reduce((s, v) => s + v, 0))}</p>
-                                                            </div>
-                                                            <div className="p-4 bg-white rounded-2xl border border-indigo-100">
-                                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Belanja</p>
-                                                                <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.expense || {}).reduce((s, v) => s + v, 0))}</p>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-
-                                                {(rabPlans || []).filter(p => p.status === 'PENDING').length === 0 && (
-                                                    <div className="text-center py-20 bg-slate-50 rounded-[40px] border-4 border-dashed border-slate-100">
-                                                        <CheckCircle2 size={48} className="mx-auto text-emerald-400 mb-4" />
-                                                        <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest">Semua Bersih!</h4>
-                                                        <p className="text-slate-400 text-sm font-medium">Tidak ada anggaran yang menunggu review saat ini.</p>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </td>
+                    {activeTab !== 'REVIEW' ? (
+                        <div className="overflow-x-auto border-2 border-slate-200 rounded-3xl shadow-lg bg-white relative">
+                            <table className="w-full text-left border-collapse min-w-[2000px]">
+                                <thead className="sticky top-0 z-20">
+                                    <tr className="bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-white">
+                                        <th rowSpan="2" className="p-4 border-r border-white min-w-[250px] sticky left-0 z-30 bg-[#cbdba6]">Item Anggaran</th>
+                                        <th rowSpan="2" className="p-4 border-r border-white min-w-[150px]">Sumber Dana</th>
+                                        <th colSpan="5" className="p-2 border-b border-white text-center">Detail RAB</th>
+                                        {months.map(m => (
+                                            <th key={m.id} colSpan="2" className="p-2 border-b border-l border-white text-center">{m.name}</th>
+                                        ))}
+                                        <th rowSpan="2" className="p-4 border-l border-white text-center sticky right-0 z-30 bg-[#cbdba6]">Aksi</th>
                                     </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                    <tr className="bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black border-b border-slate-300">
+                                        <th className="p-2 border-r border-white text-center w-20">Volume</th>
+                                        <th className="p-2 border-r border-white text-center w-24">Satuan</th>
+                                        <th className="p-2 border-r border-white text-center w-20">Kali</th>
+                                        <th className="p-2 border-r border-white text-center w-32">Harga</th>
+                                        <th className="p-2 border-r border-white text-center w-40">Total</th>
+                                        {months.map(m => (
+                                            <React.Fragment key={m.id}>
+                                                <th className="p-2 border-r border-white text-center w-28">Jumlah</th>
+                                                <th className="p-2 border-r border-white text-center w-12 text-[8px]">M</th>
+                                            </React.Fragment>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-200">
+                                    {(activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []))
+                                        .filter(item => {
+                                            const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                                            const matchesFund = fundSourceFilter === 'all' || item.sourceOfFunds === fundSourceFilter;
+                                            return matchesSearch && matchesFund;
+                                        })
+                                        .map(item => {
+                                            const type = activeTab.toLowerCase();
+                                            const detail = currentPlan[type][item.id] || { 
+                                                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {} 
+                                            };
+                                            const allocated = rapData.itemAllocations[item.id] || 0;
+                                            const isOverBudget = activeTab === 'EXPENSE' && detail.total > (allocated + 1) && allocated > 0;
+
+                                            return (
+                                                <tr key={item.id} className={`group hover:bg-emerald-50/30 transition-colors ${isOverBudget ? 'bg-rose-50/50' : ''}`}>
+                                                    <td className="p-4 font-bold text-slate-700 text-xs uppercase sticky left-0 z-10 bg-white group-hover:bg-emerald-50 border-r border-slate-100 shadow-[2px_0_5px_rgba(0,0,0,0.05)]">
+                                                        {item.name}
+                                                        {activeTab === 'EXPENSE' && allocated > 0 && (
+                                                            <div className="text-[9px] text-slate-400 font-black mt-1">PAGU: {formatRupiah(allocated)}</div>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4 text-[10px] font-black text-slate-400">
+                                                        <span className="px-2 py-1 bg-slate-100 rounded-md border border-slate-200">
+                                                            {item.sourceOfFunds || 'LAINNYA'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-1 border-r border-slate-100">
+                                                        <input 
+                                                            type="number" className="w-full bg-transparent p-2 text-center text-xs font-bold outline-none focus:bg-white"
+                                                            value={detail.volume || ''} onChange={e => handleItemUpdate(item.id, 'volume', e.target.value)}
+                                                            disabled={isLocked}
+                                                        />
+                                                    </td>
+                                                    <td className="p-1 border-r border-slate-100">
+                                                        <input 
+                                                            type="text" className="w-full bg-transparent p-2 text-center text-[10px] font-black uppercase outline-none focus:bg-white"
+                                                            value={detail.satuan || ''} onChange={e => handleItemUpdate(item.id, 'satuan', e.target.value)}
+                                                            disabled={isLocked}
+                                                        />
+                                                    </td>
+                                                    <td className="p-1 border-r border-slate-100">
+                                                        <input 
+                                                            type="number" className="w-full bg-transparent p-2 text-center text-xs font-bold outline-none focus:bg-white"
+                                                            value={detail.kali || ''} onChange={e => handleItemUpdate(item.id, 'kali', e.target.value)}
+                                                            disabled={isLocked}
+                                                        />
+                                                    </td>
+                                                    <td className="p-1 border-r border-slate-100">
+                                                        <input 
+                                                            type="number" className="w-full bg-transparent p-2 text-right text-xs font-bold outline-none focus:bg-white"
+                                                            value={detail.harga || ''} onChange={e => handleItemUpdate(item.id, 'harga', e.target.value)}
+                                                            disabled={isLocked}
+                                                        />
+                                                    </td>
+                                                    <td className={`p-4 text-right text-xs font-black ${isOverBudget ? 'text-rose-600' : 'text-slate-900'} bg-slate-50 border-r border-slate-100`}>
+                                                        {formatRupiah(detail.total)}
+                                                    </td>
+                                                    
+                                                    {months.map(m => {
+                                                        const mData = detail.months?.[m.id] || { jumlah: 0, m: false };
+                                                        return (
+                                                            <React.Fragment key={m.id}>
+                                                                <td className="p-1 border-r border-slate-50 group-hover:bg-white/50 transition-colors bg-white/30">
+                                                                    <input 
+                                                                        type="number" className="w-full bg-transparent p-2 text-right text-[10px] font-bold outline-none"
+                                                                        value={mData.jumlah || ''} onChange={e => handleMonthlyUpdate(item.id, m.id, 'jumlah', parseFloat(e.target.value) || 0)}
+                                                                        disabled={isLocked}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-1 border-r border-slate-100 text-center bg-slate-50/30">
+                                                                    <input 
+                                                                        type="checkbox" className="w-3 h-3 rounded"
+                                                                        checked={mData.m || false} onChange={e => handleMonthlyUpdate(item.id, m.id, 'm', e.target.checked)}
+                                                                        disabled={isLocked}
+                                                                    />
+                                                                </td>
+                                                            </React.Fragment>
+                                                        );
+                                                    })}
+                                                    
+                                                    <td className="p-4 text-center sticky right-0 z-10 bg-white group-hover:bg-emerald-50 border-l border-slate-100">
+                                                        <button className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 transition-colors">
+                                                            <ChevronRight size={14} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : (
+                        <div className="space-y-4">
+                            {(rabPlans || []).filter(p => p.status === 'PENDING').map(plan => (
+                                <div key={plan.id} className="p-8 bg-indigo-50/50 rounded-[32px] border-2 border-indigo-100">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <div>
+                                            <h4 className="font-black text-slate-900 text-lg">
+                                                {plan.unitId === 'FOUNDATION' ? 'Konsolidasi Yayasan' : (units.find(u => u.id === plan.unitId)?.name || 'Bidang')}
+                                            </h4>
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                Review Draft Anggaran {academicYears.find(ay => ay.id === plan.academicYearId)?.name}
+                                            </p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={() => handleApproval(plan.id, 'APPROVED')}
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-100"
+                                            >
+                                                <CheckCircle2 size={16} />
+                                                ACC SEKARANG
+                                            </button>
+                                            <button 
+                                                onClick={() => setShowRejectionInput(plan.id)}
+                                                className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-rose-100"
+                                            >
+                                                <XCircle size={16} />
+                                                TOLAK
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {showRejectionInput === plan.id && (
+                                        <div className="mt-4 p-6 bg-white rounded-3xl border-2 border-rose-100 animate-in slide-in-from-top-4">
+                                            <label className="form-label text-rose-600 flex items-center gap-2">
+                                                <MessageSquare size={14} />
+                                                Alasan Penolakan
+                                            </label>
+                                            <textarea 
+                                                className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 text-sm font-medium mt-2 mb-4 h-24 focus:ring-2 focus:ring-rose-100 outline-none"
+                                                placeholder="Tulis alasan mengapa anggaran ini ditolak agar unit bisa memperbaikinya..."
+                                                value={rejectionReason}
+                                                onChange={e => setRejectionReason(e.target.value)}
+                                            />
+                                            <div className="flex justify-end gap-3">
+                                                <button onClick={() => setShowRejectionInput(null)} className="px-6 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs uppercase">Batal</button>
+                                                <button 
+                                                    onClick={() => handleApproval(plan.id, 'REJECTED', rejectionReason)}
+                                                    className="px-6 py-3 bg-rose-600 text-white rounded-xl font-bold text-xs uppercase shadow-md shadow-rose-100"
+                                                >
+                                                    Konfirmasi Tolak
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                    
+                                    <div className="grid grid-cols-2 gap-4 mt-4">
+                                        <div className="p-4 bg-white rounded-2xl border border-indigo-100">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Penerimaan</p>
+                                            <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.income || {}).reduce((s, v) => s + (v.total || 0), 0))}</p>
+                                        </div>
+                                        <div className="p-4 bg-white rounded-2xl border border-indigo-100">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Belanja</p>
+                                            <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.expense || {}).reduce((s, v) => s + (v.total || 0), 0))}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+
+                            {(rabPlans || []).filter(p => p.status === 'PENDING').length === 0 && (
+                                <div className="text-center py-20 bg-slate-50 rounded-[40px] border-4 border-dashed border-slate-100">
+                                    <CheckCircle2 size={48} className="mx-auto text-emerald-400 mb-4" />
+                                    <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest">Semua Bersih!</h4>
+                                    <p className="text-slate-400 text-sm font-medium">Tidak ada anggaran yang menunggu review saat ini.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
 
                     {/* Empty State */}
-                    {(activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || [])).length === 0 && (
+                    {activeTab !== 'REVIEW' && (activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || [])).length === 0 && (
                         <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
                             <div className="p-6 bg-slate-100 rounded-full text-slate-300">
                                 <Layers size={48} />
