@@ -540,6 +540,7 @@ createGenericRoutes('class-groups', 'classGroup');
 createGenericRoutes('positions', 'position');
 createGenericRoutes('student-statuses', 'studentStatus');
 createGenericRoutes('parent-statuses', 'parentStatus');
+createGenericRoutes('rab-plans', 'rabPlan');
 
 // Classes (with Unit include)
 router.get('/classes', async (req, res) => {

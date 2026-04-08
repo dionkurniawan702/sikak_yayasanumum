@@ -147,6 +147,12 @@ export default function RAB() {
         });
     };
 
+    const handleCloseModal = () => {
+        setEditingItem(null);
+        setMessage({ type: 'success', text: 'Rincian sementara disimpan ke draft. Klik "SIMPAN DRAFT" di atas untuk menyimpan ke database!' });
+        setTimeout(() => setMessage(null), 8000);
+    };
+
     const handleMonthlyUpdate = (itemId, monthId, field, value) => {
         const type = activeTab.toLowerCase();
         setCurrentPlan(prev => {
@@ -846,7 +852,7 @@ export default function RAB() {
                                 <h3 className="text-3xl font-black italic">{formatRupiah(currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0)}</h3>
                             </div>
                             <button 
-                                onClick={() => setEditingItem(null)}
+                                onClick={handleCloseModal}
                                 className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 hover:text-white transition-all shadow-xl shadow-black/20"
                             >
                                 SIMPAN RINCIAN
