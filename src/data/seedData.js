@@ -161,3 +161,45 @@ export const initialExpenseItems = [
     { id: 'EXP-036', name: 'Aset', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true },
     { id: 'EXP-037', name: 'Pengembangan (umum)', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true }
 ];
+
+// Tahun Ajaran Awal
+export const initialAcademicYears = [
+    { id: 'AY-2024/2025', name: '2024/2025', startDate: '2024-07-01', endDate: '2025-06-30', isCurrent: false },
+    { id: 'AY-2025/2026', name: '2025/2026', startDate: '2025-07-01', endDate: '2026-06-30', isCurrent: true },
+    { id: 'AY-2026/2027', name: '2026/2027', startDate: '2026-07-01', endDate: '2027-06-30', isCurrent: false },
+];
+
+// Status Siswa
+export const initialStudentStatuses = [
+    { id: 'ST-AKTIF', name: 'Aktif' },
+    { id: 'ST-LULUS', name: 'Lulus' },
+    { id: 'ST-KELUAR', name: 'Keluar' },
+];
+
+// Data Siswa Awal (untuk testing RAP)
+export const initialStudents = [
+    {
+        id: 'S-001',
+        name: 'Ahmad Faisal',
+        nis: '12345',
+        unitId: 'SMP', // ID unit harus sesuai dengan yang ada di state
+        academicYearId: 'AY-2025/2026',
+        statusId: 'ST-AKTIF',
+        incomeDetails: [
+            { incomeItemId: 'INC-036', amount: 500000 }, // SPP
+            { incomeItemId: 'INC-001', amount: 10000000 } // Gedung
+        ]
+    },
+    {
+        id: 'S-002',
+        name: 'Siti Aminah',
+        nis: '12346',
+        unitId: 'SMP',
+        academicYearId: 'AY-2025/2026',
+        statusId: 'ST-AKTIF',
+        incomeDetails: [
+            { incomeItemId: 'INC-036', amount: 500000 },
+            { incomeItemId: 'INC-001', amount: 10000000 }
+        ]
+    }
+];

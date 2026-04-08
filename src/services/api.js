@@ -37,7 +37,8 @@ export const api = {
                 accounts, journals, assets, programs, users, budgets,
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses, classes
+                academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
+                rabPlans
             ] = await Promise.all([
                 fetchEntity('accounts'),
                 fetchEntity('journals'),
@@ -58,7 +59,8 @@ export const api = {
                 fetchEntity('positions'),
                 fetchEntity('student-statuses'),
                 fetchEntity('parent-statuses'),
-                fetchEntity('classes')
+                fetchEntity('classes'),
+                fetchEntity('rab-plans')
             ]);
 
             return {
@@ -76,6 +78,7 @@ export const api = {
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
+                rabPlans,
                 notes: {}, 
             };
         } catch (error) {
@@ -231,6 +234,10 @@ export const api = {
                 case 'ADD_CLASS': await syncItem('classes', null, payload, 'POST'); break;
                 case 'EDIT_CLASS': await syncItem('classes', payload.id, payload); break;
                 case 'DELETE_CLASS': await syncItem('classes', payload, { isDeleted: true }, 'DELETE'); break;
+                
+                case 'SET_RAB_PLAN':
+                    await syncItem('rab-plans', payload.id, payload);
+                    break;
 
 
                 default:
@@ -276,7 +283,8 @@ export const api = {
                     parentStatuses: state.parentStatuses,
                     budgetRequests: state.budgetRequests,
                     budgetReports: state.budgetReports,
-                    classes: state.classes
+                    classes: state.classes,
+                    rabPlans: state.rabPlans
                 })
             });
 

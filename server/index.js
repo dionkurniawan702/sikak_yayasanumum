@@ -144,7 +144,7 @@ app.post('/api/sync', async (req, res) => {
             fields, units, users, academicYears, positions, 
             studentStatuses, parentStatuses, incomeItems, 
             classes, students, expenseItems, distributionSettings,
-            classGroups, notes,
+            classGroups, notes, rabPlans,
             isPurge = false
         } = req.body;
 
@@ -261,6 +261,7 @@ app.post('/api/sync', async (req, res) => {
                 }
 
                 await safeUpsert('distributionSetting', distributionSettings);
+                await safeUpsert('rabPlan', rabPlans);
 
             } finally {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
@@ -297,7 +298,8 @@ app.get('/api/health', async (req, res) => {
             students: await client.student.count({ where: { isDeleted: false } }),
             classes: await client.class.count({ where: { isDeleted: false } }),
             users: await client.user.count({ where: { isDeleted: false } }),
-            units: await client.unit.count({ where: { isDeleted: false } })
+            units: await client.unit.count({ where: { isDeleted: false } }),
+            rabPlans: await client.rabPlan.count()
         };
         
         const sList = await client.student.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });

@@ -32,6 +32,7 @@ import FundAvailability from './pages/pelaporan/FundAvailability';
 import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
 import ClassManagement from './pages/anggaran/ClassManagement';
+import RAB from './pages/anggaran/RAB';
 import GenericMasterManagement from './components/GenericMasterManagement';
 import { 
     Calendar,
@@ -99,7 +100,7 @@ export default function App() {
                         <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
                         <Route path="pelaporan/saldo" element={<Placeholder title="Informasi Saldo Dana" />} />
                         
-                        <Route path="anggaran/rab" element={<Placeholder title="Rencana Anggaran Biaya (RAB)" />} />
+                        <Route path="anggaran/rab" element={<RAB />} />
                         <Route path="anggaran/arsip-rab" element={<Placeholder title="Arsip RAB" />} />
                         <Route path="anggaran/distribusi" element={<DistributionSettings />} />
                         

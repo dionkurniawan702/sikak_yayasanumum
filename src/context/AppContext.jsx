@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
-import { initialAccounts, initialJournals, initialAssets, initialPrograms, initialIncomeItems, initialExpenseItems } from '../data/seedData';
+import { initialAccounts, initialJournals, initialAssets, initialPrograms, initialIncomeItems, initialExpenseItems, initialAcademicYears, initialStudentStatuses, initialStudents } from '../data/seedData';
 import { generateId } from '../utils/format';
 import { isRemote, api } from '../services/api';
 
@@ -19,14 +19,18 @@ const defaultState = {
     distributionSettings: [],
     budgetRequests: [],
     budgetReports: [],
-    academicYears: [],
+    academicYears: initialAcademicYears,
     classGroups: [],
     positions: [],
-    studentStatuses: [],
+    studentStatuses: initialStudentStatuses,
     parentStatuses: [],
     classes: [],
-
-    notes: {},
+    financialYears: [],
+    backupInfo: null,
+    rabPlans: [],
+    notifications: [], // { id, type, title, message, read: false, createdAt }
+    lastAction: null,
+    students: initialStudents,
     users: [
         { id: 'USR-001', username: 'superadmin', password: 'admin123', role: 'superadmin', name: 'Super Administrator' }
     ],
@@ -193,6 +197,7 @@ function appReducer(state, action) {
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
                 classes: serverData.classes || state.classes || [],
+                rabPlans: serverData.rabPlans || state.rabPlans || [],
 
                 users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
@@ -363,6 +368,14 @@ function appReducer(state, action) {
         case 'ADD_CLASS': newState = { ...state, classes: [...state.classes, action.payload] }; break;
         case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
+
+        case 'SET_RAB_PLAN': 
+            newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] }; 
+            break;
+
+        case 'ADD_NOTIFICATION': newState = { ...state, notifications: [action.payload, ...state.notifications] }; break;
+        case 'MARK_NOTIFICATION_READ': newState = { ...state, notifications: state.notifications.map(n => n.id === action.payload ? { ...n, read: true } : n) }; break;
+        case 'CLEAR_NOTIFICATIONS': newState = { ...state, notifications: [] }; break;
 
 
         

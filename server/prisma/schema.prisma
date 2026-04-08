@@ -325,6 +325,22 @@ model BudgetReport {
   @@map("budget_reports")
 }
 
+model RabPlan {
+  id              String   @id // Formatted as academicYearId-unitId or academicYearId-FIELD-fieldId
+  academicYearId  String
+  unitId          String?
+  fieldId         String?
+  income          Json?
+  expense         Json?
+  status          String   @default("DRAFT") // DRAFT, PENDING, APPROVED, REJECTED
+  rejectionReason String?  @db.Text
+  notified        Boolean  @default(false)
+  updatedAt       DateTime @default(now()) @updatedAt
+  updatedBy       String?
+
+  @@map("rab_plans")
+}
+
 model Contact {
   id        String   @id @default(uuid())
   name      String   @unique

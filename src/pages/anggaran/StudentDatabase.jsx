@@ -14,6 +14,23 @@ export default function StudentDatabase() {
     const [classFilter, setClassFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     
+    // Budget Locking Logic
+    const getBudgetStatus = (unitId, yearId) => {
+        if (!unitId || !yearId) return 'DRAFT';
+        const planId = `${yearId}-${unitId}`;
+        return state.rabPlans?.find(p => p.id === planId)?.status || 'DRAFT';
+    };
+
+    const isBudgetLocked = (unitId, yearId) => {
+        if (currentUser?.role === 'superadmin') return false;
+        const status = getBudgetStatus(unitId, yearId);
+        return status === 'PENDING' || status === 'APPROVED';
+    };
+
+    // Global lock state based on filters (for bulk actions)
+    const activeLock = unitFilter !== 'all' && academicYearFilter !== 'all' && isBudgetLocked(unitFilter, academicYearFilter);
+    const activeBudgetStatus = unitFilter !== 'all' && academicYearFilter !== 'all' ? getBudgetStatus(unitFilter, academicYearFilter) : null;
+    
     const [showStudentModal, setShowStudentModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [editingStudent, setEditingStudent] = useState(null);
@@ -162,6 +179,7 @@ export default function StudentDatabase() {
                         <button 
                             onClick={() => setShowImportModal(true)}
                             className="btn btn-secondary"
+                            disabled={activeLock}
                         >
                             <Upload size={18} />
                             <span>Import Masal</span>
@@ -170,12 +188,33 @@ export default function StudentDatabase() {
                     <button 
                         onClick={() => handleOpenStudentModal()}
                         className="btn btn-primary"
+                        disabled={activeLock}
                     >
                         <Plus size={18} />
                         <span>Tambah Siswa</span>
                     </button>
                 </div>
             </div>
+
+            {/* Budget Lock Alert */}
+            {activeLock && (
+                <div className="mb-8 p-6 bg-amber-50 border-2 border-amber-100 rounded-[2rem] flex items-center justify-between animate-in slide-in-from-top-4">
+                    <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-amber-100 text-amber-600 rounded-2xl flex items-center justify-center shadow-sm">
+                            <CreditCard size={24} />
+                        </div>
+                        <div>
+                            <h3 className="font-black text-slate-900 leading-tight">Database Dikunci (Budget {activeBudgetStatus})</h3>
+                            <p className="text-xs text-slate-500 font-medium">Unit ini sedang dalam proses review anggaran. Perubahan data siswa ditangguhkan sementara.</p>
+                        </div>
+                    </div>
+                    {activeBudgetStatus === 'APPROVED' && (
+                        <span className="px-4 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl shadow-lg shadow-emerald-100">
+                            Finalized
+                        </span>
+                    )}
+                </div>
+            )}
 
             {/* Filters */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
@@ -243,13 +282,15 @@ export default function StudentDatabase() {
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                 <button 
                                     onClick={() => handleOpenStudentModal(student)}
-                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
+                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all disabled:opacity-30"
+                                    disabled={isBudgetLocked(student.unitId, student.academicYearId)}
                                 >
                                     <Edit3 size={16} />
                                 </button>
                                 <button 
                                     onClick={() => handleDeleteStudent(student.id)}
-                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all disabled:opacity-30"
+                                    disabled={isBudgetLocked(student.unitId, student.academicYearId)}
                                 >
                                     <Trash2 size={16} />
                                 </button>
@@ -277,7 +318,8 @@ export default function StudentDatabase() {
 
                         <button 
                             onClick={() => handleOpenPaymentSettings(student)}
-                            className="w-full btn btn-secondary !py-2 !text-xs !rounded-xl border-dashed border-2 hover:border-blue-400 hover:text-blue-600"
+                            className="w-full btn btn-secondary !py-2 !text-xs !rounded-xl border-dashed border-2 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:border-slate-200"
+                            disabled={isBudgetLocked(student.unitId, student.academicYearId)}
                         >
                             <Wallet size={14} />
                             <span>Setting Pembayaran (Budget)</span>
