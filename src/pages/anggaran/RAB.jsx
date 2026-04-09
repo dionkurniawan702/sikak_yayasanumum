@@ -182,6 +182,36 @@ export default function RAB() {
         });
     };
 
+    const incomeExpenseBalances = useMemo(() => {
+        const balances = {};
+        const settings = state.distributionSettings || [];
+        const isField = selectedUnitId.startsWith('FIELD-');
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : selectedUnitId;
+        
+        (filteredIncomeItems || []).forEach(item => {
+            // Find distribution rules where this income item is the source
+            // Note: settings already has unitId/fieldId associations
+            const itemSettings = settings.filter(s => 
+                s.incomeItemId === item.id && 
+                s.unitId === (isField ? s.unitId : selectedUnitId) // If field, we look at all units contributing to the field? 
+                // Wait, if I'm viewing a field, I want to see how much of the field's income goes where.
+                // Actually, settings.unitId is the source unit.
+            );
+            
+            const totalSpent = itemSettings.reduce((sum, s) => {
+                // If the target (destId) matches our current context
+                const isMatch = s.destId === (isField ? fieldId : selectedUnitId);
+                if (!isMatch) return sum;
+
+                const expenseDetail = currentPlan.expense[s.expenseItemId] || { total: 0 };
+                const percentage = parseFloat(s.percentage) || 0;
+                return sum + ((expenseDetail.total || 0) * percentage / 100);
+            }, 0);
+            balances[item.id] = totalSpent;
+        });
+        return balances;
+    }, [filteredIncomeItems, state.distributionSettings, currentPlan.expense, selectedUnitId]);
+
     const handleCloseModal = () => {
         setEditingItem(null);
         setMessage({ type: 'success', text: 'Rincian sementara disimpan ke draft. Klik "SIMPAN DRAFT" di atas untuk menyimpan ke database!' });
@@ -552,10 +582,14 @@ export default function RAB() {
                                 <thead>
                                     <tr className="bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-white">
                                         <th className="p-6">Item Anggaran</th>
-                                        <th className="p-6">Sumber Dana</th>
-                                        <th className="p-6 text-right">Alokasi (PAGU)</th>
-                                        <th className="p-6 text-right">Rencana (DRAFT)</th>
-                                        <th className="p-6 text-center">Aksi</th>
+                                        {activeTab === 'EXPENSE' && <th className="p-6">Sumber Dana</th>}
+                                        <th className="p-6 text-right">
+                                            {activeTab === 'INCOME' ? 'Rencana Penerimaan' : 'Alokasi (PAGU)'}
+                                        </th>
+                                        <th className="p-6 text-right">
+                                            {activeTab === 'INCOME' ? 'Rencana Pengeluaran' : 'Rencana (DRAFT)'}
+                                        </th>
+                                        {activeTab === 'EXPENSE' && <th className="p-6 text-center">Aksi</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -570,41 +604,64 @@ export default function RAB() {
                                             const detail = currentPlan[type][item.id] || { 
                                                 volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {} 
                                             };
+                                            
+                                            // Nominal target calculation (Automatic from Students)
+                                            const incomeTarget = rapData.incomeTotals[item.id] || 0;
+                                            
+                                            // Allocated budget from calculation
                                             const allocated = rapData.itemAllocations[item.id] || 0;
+                                            
+                                            // Expenses tied to this income item (for INCOME tab)
+                                            const associatedExpense = incomeExpenseBalances[item.id] || 0;
+
                                             const isOverBudget = activeTab === 'EXPENSE' && detail.total > (allocated + 1) && allocated > 0;
-                                            const hasData = detail.total > 0;
+                                            const hasData = activeTab === 'INCOME' ? associatedExpense > 0 : detail.total > 0;
 
                                             return (
                                                 <tr key={item.id} className={`group hover:bg-slate-50 transition-colors ${isOverBudget ? 'bg-rose-50/30' : ''}`}>
                                                     <td className="p-6">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className={`w-2 h-2 rounded-full ${hasData ? 'bg-emerald-500' : 'bg-slate-200'}`} />
-                                                            <span className="font-bold text-slate-700 text-sm uppercase tracking-tight">{item.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-6">
-                                                        <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                            {item.sourceOfFunds || 'LAINNYA'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="p-6 text-right text-xs font-black text-slate-400 italic">
-                                                        {formatRupiah(allocated)}
-                                                    </td>
-                                                    <td className={`p-6 text-right text-sm font-black ${isOverBudget ? 'text-rose-600' : (hasData ? 'text-emerald-600' : 'text-slate-300')}`}>
-                                                        {formatRupiah(detail.total)}
-                                                    </td>
-                                                    <td className="p-6 text-center">
                                                         <button 
                                                             onClick={() => setEditingItem(item)}
-                                                            className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                                                hasData 
-                                                                ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
-                                                                : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
-                                                            }`}
+                                                            className="flex items-center gap-3 w-full text-left group/item"
                                                         >
-                                                            {hasData ? 'Ubah Rincian' : 'Isi Rincian'}
+                                                            <div className={`w-2 h-2 rounded-full transition-all ${hasData ? 'bg-emerald-500 scale-125' : 'bg-slate-200 group-hover/item:bg-blue-400'}`} />
+                                                            <span className="font-bold text-slate-700 text-sm uppercase tracking-tight group-hover/item:text-blue-600 transition-colors">{item.name}</span>
                                                         </button>
                                                     </td>
+                                                    {activeTab === 'EXPENSE' && (
+                                                        <td className="p-6">
+                                                            <span className="px-3 py-1 bg-white border border-slate-200 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                                {item.sourceOfFunds || 'LAINNYA'}
+                                                            </span>
+                                                        </td>
+                                                    )}
+                                                    <td className="p-6 text-right">
+                                                        {activeTab === 'INCOME' ? (
+                                                            <div className="flex flex-col items-end">
+                                                                <span className="text-sm font-black text-slate-700">{formatRupiah(incomeTarget)}</span>
+                                                                <span className="text-[10px] font-bold text-slate-400 italic">Target Database</span>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs font-black text-slate-400 italic">{formatRupiah(allocated)}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className={`p-6 text-right text-sm font-black ${isOverBudget ? 'text-rose-600' : (hasData ? 'text-emerald-600' : 'text-slate-300')}`}>
+                                                        {formatRupiah(activeTab === 'INCOME' ? associatedExpense : detail.total)}
+                                                    </td>
+                                                    {activeTab === 'EXPENSE' && (
+                                                        <td className="p-6 text-center">
+                                                            <button 
+                                                                onClick={() => setEditingItem(item)}
+                                                                className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                                                                    hasData 
+                                                                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                                                                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                                                }`}
+                                                            >
+                                                                {hasData ? 'Ubah Rincian' : 'Isi Rincian'}
+                                                            </button>
+                                                        </td>
+                                                    )}
                                                 </tr>
                                             );
                                         })}

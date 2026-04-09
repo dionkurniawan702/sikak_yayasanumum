@@ -22,6 +22,7 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
     // 3. Results structure
     const results = {
         totalTarget: 0,
+        incomeTotals: {}, // incomeItemId -> amount
         itemAllocations: {} // expenseItemId -> amount
     };
 
@@ -34,6 +35,9 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
             student.incomeDetails.forEach(detail => {
                 const amount = parseFloat(detail.amount) || 0;
                 if (amount <= 0) return;
+
+                // Track income item total
+                results.incomeTotals[detail.incomeItemId] = (results.incomeTotals[detail.incomeItemId] || 0) + amount;
 
                 // Find distribution rules for this income item from this unit
                 const rules = distributionSettings.filter(
