@@ -374,6 +374,23 @@ export default function RAB() {
             updatedBy: currentUser?.username
         };
 
+        // Strict Validation: Prevent saving if any item exceeds allocation
+        const overBudgetItem = (activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems).find(item => {
+            const detail = newPlan[activeTab.toLowerCase()][item.id] || { total: 0 };
+            const allocated = rapData.itemAllocations[item.id] || 0;
+            return detail.total > (allocated + 100); // Allow 100 rupiah tolerance
+        });
+
+        if (overBudgetItem) {
+            setMessage({ 
+                type: 'error', 
+                text: `DILARANG: Item "${overBudgetItem.name}" melebihi rencana penerimaan. Mohon sesuaikan rincian belanja Anda.` 
+            });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 7000);
+            return;
+        }
+
         try {
             dispatch({ type: 'SET_RAB_PLAN', payload: newPlan });
             await api.pushAction({ type: 'SET_RAB_PLAN', payload: newPlan }, state);
@@ -402,6 +419,23 @@ export default function RAB() {
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
         };
+
+        // Strict Validation for submission
+        const overBudgetItem = (activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems).find(item => {
+            const detail = submittedPlan[activeTab.toLowerCase()][item.id] || { total: 0 };
+            const allocated = rapData.itemAllocations[item.id] || 0;
+            return detail.total > (allocated + 100);
+        });
+
+        if (overBudgetItem) {
+            setMessage({ 
+                type: 'error', 
+                text: `PENGAJUAN DITOLAK: Item "${overBudgetItem.name}" melebihi limit. Harap diperbaiki sebelum dikirim ke Yayasan.` 
+            });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 7000);
+            return;
+        }
 
         try {
             dispatch({ type: 'SET_RAB_PLAN', payload: submittedPlan });
@@ -750,17 +784,36 @@ export default function RAB() {
                                                         </td>
                                                     )}
                                                     <td className="p-6 text-right">
-                                                        <button 
-                                                            onClick={() => setEditingItem(item)}
-                                                            className={`p-2 rounded-xl transition-all shadow-sm ${
-                                                                hasData 
-                                                                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
-                                                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                                                            } ${isConsolidation ? 'opacity-30 cursor-not-allowed' : ''}`}
-                                                            disabled={isConsolidation}
-                                                        >
-                                                            {hasData ? <Edit3 size={16} /> : <PlusCircle size={16} />}
-                                                        </button>
+                                                        {(() => {
+                                                            const isOver = detail.total > (allocated + 1);
+                                                            const isAtLimit = detail.total >= (allocated - 1) && detail.total <= (allocated + 1) && allocated > 0;
+                                                            const isUnder = detail.total < (allocated - 1) || allocated === 0;
+
+                                                            let icon = <PlusCircle size={16} />;
+                                                            let btnClass = 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100';
+                                                            
+                                                            if (isOver) {
+                                                                icon = <AlertCircle size={16} />;
+                                                                btnClass = 'bg-rose-100 text-rose-600 animate-pulse';
+                                                            } else if (isAtLimit) {
+                                                                icon = <Edit3 size={16} />;
+                                                                btnClass = 'bg-blue-50 text-blue-600 hover:bg-blue-100';
+                                                            } else if (hasData && isUnder) {
+                                                                // Under limit but has data -> still allow add/edit with plus for encouragement
+                                                                icon = <PlusCircle size={16} />;
+                                                                btnClass = 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100';
+                                                            }
+
+                                                            return (
+                                                                <button 
+                                                                    onClick={() => setEditingItem(item)}
+                                                                    className={`p-2 rounded-xl transition-all shadow-sm ${btnClass} ${isConsolidation ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                    disabled={isConsolidation}
+                                                                >
+                                                                    {icon}
+                                                                </button>
+                                                            );
+                                                        })()}
                                                     </td>
                                                 </tr>
                                             );
@@ -992,12 +1045,34 @@ export default function RAB() {
                                     Sumber Dana: {editingItem.sourceOfFunds || 'Umum'} • TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
                                 </p>
                             </div>
-                            <button 
-                                onClick={() => setEditingItem(null)}
-                                className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
-                            >
-                                <XCircle size={24} />
-                            </button>
+                            <div className="flex items-center gap-4">
+                                {(() => {
+                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0 };
+                                    const allocated = rapData.itemAllocations[editingItem.id] || 0;
+                                    const isOver = detail.total > (allocated + 1);
+                                    
+                                    if (isOver) {
+                                        return (
+                                            <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
+                                                <AlertCircle size={18} />
+                                                DILARANG: TOTAL MELEBIHI LIMIT!
+                                            </div>
+                                        );
+                                    }
+                                    return (
+                                        <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
+                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget</span>
+                                            <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - detail.total)}</span>
+                                        </div>
+                                    );
+                                })()}
+                                <button 
+                                    onClick={() => setEditingItem(null)}
+                                    className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
+                                >
+                                    <XCircle size={24} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Modal Body */}
