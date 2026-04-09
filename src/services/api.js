@@ -241,6 +241,14 @@ export const api = {
                     await syncItem('rab-plans', payload.id, payload);
                     break;
 
+                case 'ADD_BOS_STAGE': await syncItem('bos-stages', null, payload, 'POST'); break;
+                case 'EDIT_BOS_STAGE': await syncItem('bos-stages', payload.id, payload); break;
+                case 'DELETE_BOS_STAGE': await syncItem('bos-stages', payload, { isDeleted: true }, 'DELETE'); break;
+
+                case 'ADD_BOS_POS': await syncItem('bos-pos', null, payload, 'POST'); break;
+                case 'EDIT_BOS_POS': await syncItem('bos-pos', payload.id, payload); break;
+                case 'DELETE_BOS_POS': await syncItem('bos-pos', payload, { isDeleted: true }, 'DELETE'); break;
+
 
                 default:
                     if (type.includes('RESTORE') || type.includes('TRASH') || type.includes('IMPORT') || type.includes('BULK') || type.includes('DEPRECIATION') || type.includes('NOTES')) {
@@ -286,7 +294,9 @@ export const api = {
                     budgetRequests: state.budgetRequests,
                     budgetReports: state.budgetReports,
                     classes: state.classes,
-                    rabPlans: state.rabPlans
+                    rabPlans: state.rabPlans,
+                    bosStages: state.bosStages,
+                    bosPosList: state.bosPosList
                 })
             });
 
