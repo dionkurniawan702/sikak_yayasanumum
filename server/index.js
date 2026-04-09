@@ -182,18 +182,31 @@ app.post('/api/sync', async (req, res) => {
                     if (!data || !Array.isArray(data)) return;
                     for (const item of data) {
                         try {
+                            let cleanItem = { ...item };
+                            
+                            // Field filtering to prevent Prisma schema mismatch errors
+                            if (model === 'bosPos') {
+                                cleanItem = { id: item.id, name: item.name, isDeleted: item.isDeleted || false };
+                            } else if (model === 'bosStage') {
+                                cleanItem = { id: item.id, name: item.name, academicYearId: item.academicYearId || null, isDeleted: item.isDeleted || false };
+                            }
+
                             await tx[model].upsert({
                                 where: { id: item.id },
-                                update: { ...item, id: undefined },
-                                create: { ...item }
+                                update: { ...cleanItem, id: undefined },
+                                create: { ...cleanItem }
                             });
                         } catch (e) {
                             if (e.code === 'P2002' && item.name) {
                                 console.log(`[Sync Info] Name conflict for ${model}: "${item.name}". Attempting merge.`);
                                 try {
+                                    let mergeData = { ...item, id: undefined };
+                                    if (model === 'bosPos') mergeData = { name: item.name, isDeleted: item.isDeleted || false };
+                                    else if (model === 'bosStage') mergeData = { name: item.name, academicYearId: item.academicYearId || null, isDeleted: item.isDeleted || false };
+
                                     await tx[model].update({
                                         where: { name: item.name },
-                                        data: { ...item, id: undefined }
+                                        data: mergeData
                                     });
                                 } catch (innerE) {
                                     console.error(`[Sync Fail] Could not merge ${model} "${item.name}": ${innerE.message}`);

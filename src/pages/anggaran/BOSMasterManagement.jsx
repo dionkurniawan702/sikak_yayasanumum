@@ -32,6 +32,11 @@ export default function BOSMasterManagement() {
                 id: editingItem ? editingItem.id : (modalType === 'STAGE' ? `BSTG-${generateId()}` : `BPOS-${generateId()}`)
             };
 
+            // Remove academicYearId for POS as it's not in the DB schema
+            if (modalType === 'POS') {
+                delete payload.academicYearId;
+            }
+
             dispatch({ type: actionType, payload });
             await api.pushAction({ type: actionType, payload }, state);
             
