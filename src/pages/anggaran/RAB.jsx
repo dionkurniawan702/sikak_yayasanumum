@@ -118,64 +118,78 @@ export default function RAB() {
 
     // Compute consolidated data if Yayasan is selected
     const consolidatedPlan = useMemo(() => {
-        if (selectedUnitId !== 'FOUNDATION' || !selectedYearId) return null;
-        
-        const yearPlans = (rabPlans || []).filter(p => 
-            p.academicYearId === selectedYearId && 
-            p.unitId !== 'FOUNDATION'
-        );
+        try {
+            if (selectedUnitId !== 'FOUNDATION' || !selectedYearId) return null;
+            
+            const yearPlans = (rabPlans || []).filter(p => 
+                p && p.academicYearId === selectedYearId && 
+                p.unitId !== 'FOUNDATION'
+            );
 
-        const consolidated = {
-            income: {},
-            expense: {},
-            status: 'CONSOLIDATED',
-            rejectionReason: null
-        };
+            const consolidated = {
+                income: {},
+                expense: {},
+                status: 'CONSOLIDATED',
+                rejectionReason: null
+            };
 
-        yearPlans.forEach(plan => {
-            // Merge Income
-            Object.entries(plan.income || {}).forEach(([itemId, data]) => {
-                if (!consolidated.income[itemId]) {
-                    consolidated.income[itemId] = JSON.parse(JSON.stringify(data));
-                } else {
-                    consolidated.income[itemId].total = (consolidated.income[itemId].total || 0) + (data.total || 0);
-                    if (data.months) {
-                        if (!consolidated.income[itemId].months) consolidated.income[itemId].months = {};
-                        Object.entries(data.months).forEach(([mId, mData]) => {
-                            const currentM = consolidated.income[itemId].months[mId] || { jumlah: 0, m: false };
-                            consolidated.income[itemId].months[mId] = {
-                                jumlah: (currentM.jumlah || 0) + (mData.jumlah || 0),
-                                m: currentM.m || mData.m
-                            };
-                        });
+            yearPlans.forEach(plan => {
+                if (!plan) return;
+                // Merge Income
+                const planIncome = plan.income || {};
+                Object.entries(planIncome).forEach(([itemId, data]) => {
+                    if (!data) return;
+                    if (!consolidated.income[itemId]) {
+                        consolidated.income[itemId] = JSON.parse(JSON.stringify(data));
+                    } else {
+                        const existing = consolidated.income[itemId];
+                        existing.total = (existing.total || 0) + (data.total || 0);
+                        if (data.months) {
+                            if (!existing.months) existing.months = {};
+                            Object.entries(data.months).forEach(([mId, mData]) => {
+                                if (!mData) return;
+                                const currentM = existing.months[mId] || { jumlah: 0, m: false };
+                                existing.months[mId] = {
+                                    jumlah: (currentM.jumlah || 0) + (parseFloat(mData.jumlah) || 0),
+                                    m: currentM.m || mData.m
+                                };
+                            });
+                        }
                     }
-                }
-            });
-            // Merge Expense
-            Object.entries(plan.expense || {}).forEach(([itemId, data]) => {
-                if (!consolidated.expense[itemId]) {
-                    consolidated.expense[itemId] = JSON.parse(JSON.stringify(data));
-                } else {
-                    consolidated.expense[itemId].total = (consolidated.expense[itemId].total || 0) + (data.total || 0);
-                    if (data.months) {
-                        if (!consolidated.expense[itemId].months) consolidated.expense[itemId].months = {};
-                        Object.entries(data.months).forEach(([mId, mData]) => {
-                            const currentM = consolidated.expense[itemId].months[mId] || { jumlah: 0, m: false };
-                            consolidated.expense[itemId].months[mId] = {
-                                jumlah: (currentM.jumlah || 0) + (mData.jumlah || 0),
-                                m: currentM.m || mData.m
-                            };
-                        });
+                });
+                // Merge Expense
+                const planExpense = plan.expense || {};
+                Object.entries(planExpense).forEach(([itemId, data]) => {
+                    if (!data) return;
+                    if (!consolidated.expense[itemId]) {
+                        consolidated.expense[itemId] = JSON.parse(JSON.stringify(data));
+                    } else {
+                        const existing = consolidated.expense[itemId];
+                        existing.total = (existing.total || 0) + (data.total || 0);
+                        if (data.months) {
+                            if (!existing.months) existing.months = {};
+                            Object.entries(data.months).forEach(([mId, mData]) => {
+                                if (!mData) return;
+                                const currentM = existing.months[mId] || { jumlah: 0, m: false };
+                                existing.months[mId] = {
+                                    jumlah: (currentM.jumlah || 0) + (parseFloat(mData.jumlah) || 0),
+                                    m: currentM.m || mData.m
+                                };
+                            });
+                        }
                     }
-                }
+                });
             });
-        });
 
-        return consolidated;
+            return consolidated;
+        } catch (err) {
+            console.error('[Consolidation Error]:', err);
+            return null;
+        }
     }, [rabPlans, selectedYearId, selectedUnitId]);
 
     // Determine which plan data to display
-    const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : currentPlan;
+    const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : (currentPlan || { income: {}, expense: {}, status: 'DRAFT' });
 
     // Calculate RAP for the selected context
     const rapData = useMemo(() => {
@@ -436,12 +450,12 @@ export default function RAB() {
     };
 
     const totalIncome = useMemo(() => 
-        Object.values(activePlan.income).reduce((sum, val) => sum + (val.total || 0), 0)
-    , [activePlan.income]);
+        Object.values(activePlan?.income || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
+    , [activePlan?.income]);
 
     const totalExpense = useMemo(() => 
-        Object.values(activePlan.expense).reduce((sum, val) => sum + (val.total || 0), 0)
-    , [activePlan.expense]);
+        Object.values(activePlan?.expense || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
+    , [activePlan?.expense]);
 
     const balance = totalIncome - totalExpense;
 
