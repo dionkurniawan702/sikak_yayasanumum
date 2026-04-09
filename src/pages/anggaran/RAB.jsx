@@ -466,22 +466,22 @@ export default function RAB() {
                 <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
                     <div className="relative z-10">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Target Penerimaan</p>
-                        <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(totalIncome)}</h2>
+                        <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(rapData.totalTarget)}</h2>
                     </div>
                     <ArrowUpCircle className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                 </div>
                 <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-8 rounded-[2.5rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Pagu Pengeluaran</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">RAB</p>
                         <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(totalExpense)}</h2>
                     </div>
                     <ArrowDownCircle className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                 </div>
-                <div className={`${balance >= 0 ? 'bg-blue-600' : 'bg-slate-800'} p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden group transition-colors duration-500`}>
+                <div className={`${(rapData.totalTarget - totalExpense) >= 0 ? 'bg-blue-600' : 'bg-slate-800'} p-8 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden group transition-colors duration-500`}>
                     <div className="relative z-10 flex flex-col justify-between h-full">
                         <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Alokasi (RAP) {selectedUnitId === 'FOUNDATION' ? 'Konsolidasi' : 'Unit'}</p>
-                            <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(rapData.totalTarget)}</h2>
+                            <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Sisa Anggaran</p>
+                            <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(rapData.totalTarget - totalExpense)}</h2>
                         </div>
                         <div className="mt-4">
                             <div className="w-full bg-white/20 h-1.5 rounded-full overflow-hidden">
