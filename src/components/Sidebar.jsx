@@ -60,7 +60,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/anggaran/status-ortu', label: 'Status Orang Tua', icon: Heart },
             { path: '/anggaran/item-penerimaan', label: 'Item Penerimaan', icon: Coins },
             { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
-            { path: '/anggaran/program-belanja', label: 'Program Belanja', icon: Layout },
+            { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
             { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
             { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
 
@@ -111,7 +111,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark },
 
             { section: 'PENGATURAN' },
-            { path: '/anggaran/program-belanja', label: 'Program Belanja', icon: Layout }
+            { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout }
         ];
 
         if (showDatabaseItems) {
