@@ -38,6 +38,7 @@ const generateMonths = (academicYearName) => {
 
 export default function RAB() {
     const { state, dispatch } = useApp();
+    const lastPlanIdRef = React.useRef(null);
     const { 
         units = [], 
         fields = [], 
@@ -91,21 +92,24 @@ export default function RAB() {
         const planId = `${selectedYearId}-${selectedUnitId}`;
         const existingPlan = (rabPlans || []).find(p => p.id === planId);
 
-        if (existingPlan) {
-            setCurrentPlan({
-                income: existingPlan.income || {},
-                expense: existingPlan.expense || {},
-                status: existingPlan.status || 'DRAFT',
-                rejectionReason: existingPlan.rejectionReason || null
-            });
+        // ONLY overwrite currentPlan if we switched to a DIFFERENT plan
+        // This prevents background syncs from wiping unsaved local work on the same plan
+        if (lastPlanIdRef.current !== planId) {
+            if (existingPlan) {
+                setCurrentPlan({
+                    income: existingPlan.income || {},
+                    expense: existingPlan.expense || {},
+                    status: existingPlan.status || 'DRAFT',
+                    rejectionReason: existingPlan.rejectionReason || null
+                });
 
-            // Check if we should show a notification pop-up for this plan
-            // If it was recently updated and status is APPROVED/REJECTED
-            if ((existingPlan.status === 'APPROVED' || existingPlan.status === 'REJECTED') && !existingPlan.notified) {
-                setShowStatusModal(true);
+                if ((existingPlan.status === 'APPROVED' || existingPlan.status === 'REJECTED') && !existingPlan.notified) {
+                    setShowStatusModal(true);
+                }
+            } else {
+                setCurrentPlan({ income: {}, expense: {}, status: 'DRAFT', rejectionReason: null });
             }
-        } else {
-            setCurrentPlan({ income: {}, expense: {}, status: 'DRAFT', rejectionReason: null });
+            lastPlanIdRef.current = planId;
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
 

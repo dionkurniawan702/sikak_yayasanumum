@@ -421,7 +421,11 @@ export function AppProvider({ children }) {
     }, []);
 
     useEffect(() => {
-        if (state.lastAction) {
+        saveState(state);
+    }, [state]);
+
+    useEffect(() => {
+        if (isRemote && state.lastAction) {
             api.pushAction(state.lastAction, state).catch(err => {
                 console.error(`[Sync Failed] Action: ${state.lastAction.type}`, err);
                 if (err.message === 'SESSION_EXPIRED') {
