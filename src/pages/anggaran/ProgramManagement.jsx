@@ -25,10 +25,7 @@ export default function ProgramManagement() {
     const filteredItems = programs.filter(item => {
         if (item.isDeleted) return false;
         
-        // Context filtering
-        if (currentUser?.role === 'admin_unit' && item.unitId !== currentUser.unitId) return false;
-        if (currentUser?.role === 'admin_bidang' && item.fieldId !== currentUser.fieldId) return false;
-
+        // Removed unit/bidang filtering to make programs shared across the foundation
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
         return matchesSearch;
@@ -160,9 +157,9 @@ export default function ProgramManagement() {
                                         </td>
                                         <td className="px-8 py-5">
                                             <div className="flex flex-col">
-                                                <span className="text-xs font-bold text-slate-900">{unitObj ? unitObj.name : (fieldObj ? fieldObj.name : 'Semua Context')}</span>
+                                                <span className="text-xs font-bold text-slate-800">{unitObj ? unitObj.name : (fieldObj ? fieldObj.name : 'Shared / Global')}</span>
                                                 <span className="text-[10px] uppercase tracking-widest text-slate-400 font-black">
-                                                    {unitObj ? 'Unit' : (fieldObj ? 'Bidang' : 'Global')}
+                                                    Dibuat Oleh
                                                 </span>
                                             </div>
                                         </td>

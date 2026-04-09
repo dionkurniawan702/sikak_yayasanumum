@@ -901,7 +901,7 @@ export default function RAB() {
                                             onChange={e => handleItemUpdate(editingItem.id, 'programId', e.target.value)}
                                         >
                                             <option value="">Pilih Program...</option>
-                                            {programs?.filter(p => !p?.isDeleted && (p?.unitId === selectedUnitId || p?.fieldId === selectedUnitId?.replace('FIELD-', '')))?.map(p => (
+                                            {programs?.filter(p => !p?.isDeleted)?.map(p => (
                                                 <option key={p.id} value={p.id}>{p.name}</option>
                                             )) || <option disabled>Tidak ada program tersedia</option>}
                                         </select>
