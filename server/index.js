@@ -145,6 +145,7 @@ app.post('/api/sync', async (req, res) => {
             studentStatuses, parentStatuses, incomeItems, 
             classes, students, expenseItems, distributionSettings,
             classGroups, notes, rabPlans,
+            bosStages, bosPosList,
             isPurge = false
         } = req.body;
 
@@ -161,6 +162,7 @@ app.post('/api/sync', async (req, res) => {
             try {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
                 
+                if (isPurge) {
                     console.log('[Sync] Purging existing database tables...');
                     const tablesToPurge = [
                         'StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 
