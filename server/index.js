@@ -141,10 +141,10 @@ app.post('/api/sync', async (req, res) => {
         lastSyncError = null;
         
         const { 
-            fields, units, users, academicYears, positions, 
-            studentStatuses, parentStatuses, incomeItems, 
-            classes, students, expenseItems, distributionSettings,
-            classGroups, notes, rabPlans,
+            accounts, journals, assets, programs, users, budgets,
+            fields, units, students, incomeItems, expenseItems, distributionSettings,
+            academicYears, classGroups, positions, studentStatuses, parentStatuses, 
+            budgetRequests, budgetReports, classes, rabPlans,
             bosStages, bosPosList,
             isPurge = false
         } = req.body;
@@ -166,8 +166,10 @@ app.post('/api/sync', async (req, res) => {
                     console.log('[Sync] Purging existing database tables...');
                     const tablesToPurge = [
                         'StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 
-                        'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 
-                        'ExpenseItem', 'IncomeItem', 'class_groups', 'bos_stages', 'bos_pos'
+                        'StudentStatus', 'ParentStatus', 'positions', 'distribution_settings', 
+                        'expense_items', 'income_items', 'class_groups', 'bos_stages', 'bos_pos',
+                        'accounts', 'journals', 'assets', 'programs', 'budget_allocations',
+                        'budget_requests', 'budget_reports', 'rab_plans', 'users'
                     ];
                     for (const table of tablesToPurge) {
                         try {
@@ -223,6 +225,25 @@ app.post('/api/sync', async (req, res) => {
                 await safeUpsert('user', users);
                 await safeUpsert('academicYear', academicYears);
                 await safeUpsert('classGroup', classGroups);
+                await safeUpsert('account', accounts);
+                
+                if (journals && Array.isArray(journals)) {
+                    for (const j of journals) {
+                        try {
+                            const entriesJson = typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries;
+                            await tx.journal.upsert({
+                                where: { id: j.id },
+                                update: { ...j, entries: entriesJson, id: undefined },
+                                create: { ...j, entries: entriesJson }
+                            });
+                        } catch (je) {
+                            console.error(`[Sync Fail] Journal ${j.id}: ${je.message}`);
+                        }
+                    }
+                }
+
+                await safeUpsert('asset', assets);
+                await safeUpsert('program', programs);
                 
                 // Explicitly sync classes to handle potential property mismatches
                 if (classes && Array.isArray(classes)) {
@@ -282,6 +303,10 @@ app.post('/api/sync', async (req, res) => {
                 await safeUpsert('rabPlan', rabPlans);
                 await safeUpsert('bosStage', bosStages);
                 await safeUpsert('bosPos', bosPosList);
+
+                await safeUpsert('budgetAllocation', budgets);
+                await safeUpsert('budgetRequest', budgetRequests);
+                await safeUpsert('budgetReport', budgetReports);
 
             } finally {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');

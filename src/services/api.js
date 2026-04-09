@@ -38,7 +38,7 @@ export const api = {
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
-                rabPlans
+                rabPlans, bosStages, bosPos
             ] = await Promise.all([
                 fetchEntity('accounts'),
                 fetchEntity('journals'),
