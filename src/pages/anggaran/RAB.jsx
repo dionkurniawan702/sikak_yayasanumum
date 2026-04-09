@@ -680,6 +680,7 @@ export default function RAB() {
                                             {activeTab === 'INCOME' ? 'Rencana Pengeluaran' : 'Rencana Pengeluaran'}
                                         </th>
                                         {activeTab === 'EXPENSE' && <th className="p-6 text-right">Sisa Anggaran</th>}
+                                        <th className="p-6 text-right w-20">Aksi</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -752,6 +753,19 @@ export default function RAB() {
                                                             </div>
                                                         </td>
                                                     )}
+                                                    <td className="p-6 text-right">
+                                                        <button 
+                                                            onClick={() => setEditingItem(item)}
+                                                            className={`p-2 rounded-xl transition-all shadow-sm ${
+                                                                hasData 
+                                                                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                                                                    : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+                                                            } ${isConsolidation ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                            disabled={isConsolidation}
+                                                        >
+                                                            {hasData ? <Edit3 size={16} /> : <PlusCircle size={16} />}
+                                                        </button>
+                                                    </td>
                                                 </tr>
                                             );
                                         })}
