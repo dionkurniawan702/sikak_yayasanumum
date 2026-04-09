@@ -60,7 +60,9 @@ export const api = {
                 fetchEntity('student-statuses'),
                 fetchEntity('parent-statuses'),
                 fetchEntity('classes'),
-                fetchEntity('rab-plans')
+                fetchEntity('rab-plans'),
+                fetchEntity('bos-stages'),
+                fetchEntity('bos-pos')
             ]);
 
             return {
@@ -78,7 +80,7 @@ export const api = {
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
-                rabPlans,
+                rabPlans, bosStages, bosPosList: bosPos,
                 notes: {}, 
             };
         } catch (error) {

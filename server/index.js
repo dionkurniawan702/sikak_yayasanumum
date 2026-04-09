@@ -161,9 +161,12 @@ app.post('/api/sync', async (req, res) => {
             try {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
                 
-                if (isPurge) {
                     console.log('[Sync] Purging existing database tables...');
-                    const tablesToPurge = ['StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 'ExpenseItem', 'IncomeItem', 'class_groups'];
+                    const tablesToPurge = [
+                        'StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 
+                        'StudentStatus', 'ParentStatus', 'Position', 'DistributionSetting', 
+                        'ExpenseItem', 'IncomeItem', 'class_groups', 'bos_stages', 'bos_pos'
+                    ];
                     for (const table of tablesToPurge) {
                         try {
                             await tx.$executeRawUnsafe(`DELETE FROM \`${table}\``);
@@ -262,6 +265,8 @@ app.post('/api/sync', async (req, res) => {
 
                 await safeUpsert('distributionSetting', distributionSettings);
                 await safeUpsert('rabPlan', rabPlans);
+                await safeUpsert('bosStage', bosStages);
+                await safeUpsert('bosPos', bosPosList);
 
             } finally {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');

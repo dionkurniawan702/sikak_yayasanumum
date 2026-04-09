@@ -541,6 +541,8 @@ createGenericRoutes('positions', 'position');
 createGenericRoutes('student-statuses', 'studentStatus');
 createGenericRoutes('parent-statuses', 'parentStatus');
 createGenericRoutes('rab-plans', 'rabPlan');
+createGenericRoutes('bos-stages', 'bosStage');
+createGenericRoutes('bos-pos', 'bosPos');
 
 // Classes (with Unit include)
 router.get('/classes', async (req, res) => {
