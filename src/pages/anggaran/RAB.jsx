@@ -65,9 +65,6 @@ export default function RAB() {
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [editingItem, setEditingItem] = useState(null); // { id, name, sourceOfFunds }
 
-    const isConsolidation = selectedUnitId === 'FOUNDATION';
-    const isLocked = activePlan.status === 'APPROVED' || activePlan.status === 'PENDING' || isConsolidation;
-
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
         income: {},
@@ -190,6 +187,9 @@ export default function RAB() {
 
     // Determine which plan data to display
     const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : (currentPlan || { income: {}, expense: {}, status: 'DRAFT' });
+
+    const isConsolidation = selectedUnitId === 'FOUNDATION';
+    const isLocked = activePlan?.status === 'APPROVED' || activePlan?.status === 'PENDING' || isConsolidation;
 
     // Calculate RAP for the selected context
     const rapData = useMemo(() => {
