@@ -122,6 +122,41 @@ export default function RAB() {
         return calculateRAP(state, selectedYearId, unitId, fieldId);
     }, [state, selectedYearId, selectedUnitId]);
 
+    // Filtered items based on unit configuration
+    const filteredIncomeItems = useMemo(() => {
+        if (selectedUnitId === 'FOUNDATION') return incomeItems;
+        
+        const distributionSettings = state.distributionSettings || [];
+        const activeIds = new Set(
+            distributionSettings
+                .filter(s => s.unitId === selectedUnitId)
+                .map(s => s.incomeItemId)
+        );
+        return (incomeItems || []).filter(ii => activeIds.has(ii.id));
+    }, [incomeItems, state.distributionSettings, selectedUnitId]);
+
+    const filteredExpenseItems = useMemo(() => {
+        if (selectedUnitId === 'FOUNDATION') return expenseItems;
+        
+        const distributionSettings = state.distributionSettings || [];
+        const isField = selectedUnitId.startsWith('FIELD-');
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+        
+        const activeIds = new Set(
+            distributionSettings
+                .filter(s => s.destId === (isField ? fieldId : selectedUnitId))
+                .map(s => s.expenseItemId)
+        );
+        
+        // Also include items explicitly linked in the model
+        (expenseItems || []).forEach(ei => {
+            if (ei.unitId === selectedUnitId) activeIds.add(ei.id);
+            if (isField && ei.fieldId === fieldId) activeIds.add(ei.id);
+        });
+        
+        return (expenseItems || []).filter(ei => activeIds.has(ei.id));
+    }, [expenseItems, state.distributionSettings, selectedUnitId]);
+
     const isLocked = currentPlan.status === 'PENDING' || (currentPlan.status === 'APPROVED' && currentUser?.role !== 'superadmin');
 
     const handleItemUpdate = (itemId, field, value) => {
@@ -524,7 +559,7 @@ export default function RAB() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {(activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []))
+                                    {(activeTab === 'INCOME' ? (filteredIncomeItems || []) : (filteredExpenseItems || []))
                                         .filter(item => {
                                             const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
                                             const matchesFund = fundSourceFilter === 'all' || item.sourceOfFunds === fundSourceFilter;
@@ -655,7 +690,7 @@ export default function RAB() {
                     )}
 
                     {/* Empty State */}
-                    {activeTab !== 'REVIEW' && (activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || [])).length === 0 && (
+                    {activeTab !== 'REVIEW' && (activeTab === 'INCOME' ? (filteredIncomeItems || []) : (filteredExpenseItems || [])).length === 0 && (
                         <div className="py-20 flex flex-col items-center justify-center text-center space-y-4">
                             <div className="p-6 bg-slate-100 rounded-full text-slate-300">
                                 <Layers size={48} />
