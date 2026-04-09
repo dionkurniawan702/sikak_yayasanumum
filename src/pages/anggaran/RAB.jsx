@@ -674,12 +674,12 @@ export default function RAB() {
                                         <th className="p-6">Item Anggaran</th>
                                         {activeTab === 'EXPENSE' && <th className="p-6">Sumber Dana</th>}
                                         <th className="p-6 text-right">
-                                            {activeTab === 'INCOME' ? 'Rencana Penerimaan' : 'Alokasi (PAGU)'}
+                                            {activeTab === 'INCOME' ? 'Rencana Penerimaan' : 'Rencana Penerimaan'}
                                         </th>
                                         <th className="p-6 text-right">
-                                            {activeTab === 'INCOME' ? 'Rencana Pengeluaran' : 'Rencana (DRAFT)'}
+                                            {activeTab === 'INCOME' ? 'Rencana Pengeluaran' : 'Rencana Pengeluaran'}
                                         </th>
-                                        {activeTab === 'EXPENSE' && <th className="p-6 text-center">Aksi</th>}
+                                        {activeTab === 'EXPENSE' && <th className="p-6 text-right">Sisa Anggaran</th>}
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
@@ -739,20 +739,17 @@ export default function RAB() {
                                                         {formatRupiah(activeTab === 'INCOME' ? associatedExpense : detail.total)}
                                                     </td>
                                                     {activeTab === 'EXPENSE' && (
-                                                        <td className="p-6 text-center">
-                                                            <button 
-                                                                onClick={() => !isConsolidation && setEditingItem(item)}
-                                                                disabled={isConsolidation}
-                                                                className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                                                    isConsolidation 
-                                                                    ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
-                                                                    : (hasData 
-                                                                        ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
-                                                                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200')
-                                                                }`}
-                                                            >
-                                                                {isConsolidation ? 'DETAIL GABUNGAN' : (hasData ? 'Ubah Rincian' : 'Isi Rincian')}
-                                                            </button>
+                                                        <td className="p-6 text-right">
+                                                            <div className={`flex flex-col items-end`}>
+                                                                <span className={`text-sm font-black ${(allocated - detail.total) < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
+                                                                    {formatRupiah(allocated - detail.total)}
+                                                                </span>
+                                                                {!isConsolidation && (
+                                                                    <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                        Klik Nama Untuk Ubah
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </td>
                                                     )}
                                                 </tr>
