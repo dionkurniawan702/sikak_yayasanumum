@@ -45,6 +45,11 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                 // Track income item total
                 results.incomeTotals[detail.incomeItemId] = (results.incomeTotals[detail.incomeItemId] || 0) + amount;
 
+                // SPECIAL: If in Foundation mode (no targetUnit/targetField), sum everything
+                if (!targetUnitId && !targetFieldId) {
+                    results.totalTarget += amount;
+                }
+
                 // Find distribution rules for this income item from this unit
                 const rules = distributionSettings.filter(
                     s => s.unitId === student.unitId && s.incomeItemId === detail.incomeItemId
@@ -52,7 +57,7 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
 
                 if (rules.length === 0) {
                     // No rules -> 100% stays at unit (unallocated expense item)
-                    if (targetUnitId) {
+                    if (targetUnitId === student.unitId) {
                         results.totalTarget += amount;
                         results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
                     }
