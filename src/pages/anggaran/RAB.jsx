@@ -746,11 +746,6 @@ export default function RAB() {
                                                                 <span className={`text-sm font-black ${(allocated - detail.total) < 0 ? 'text-rose-600' : 'text-blue-600'}`}>
                                                                     {formatRupiah(allocated - detail.total)}
                                                                 </span>
-                                                                {!isConsolidation && (
-                                                                    <span className="text-[9px] font-bold text-slate-400 mt-1 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                        Klik Nama Untuk Ubah
-                                                                    </span>
-                                                                )}
                                                             </div>
                                                         </td>
                                                     )}
