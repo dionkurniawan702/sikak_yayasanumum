@@ -667,10 +667,10 @@ export default function RAB() {
                     </div>
 
                     {activeTab !== 'REVIEW' ? (
-                        <div className="overflow-hidden border-2 border-slate-200 rounded-[2.5rem] shadow-xl bg-white relative">
+                        <div className="overflow-y-auto max-h-[600px] border-2 border-slate-200 rounded-[2.5rem] shadow-xl bg-white relative scrollbar-thin scrollbar-thumb-slate-200">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-white">
+                                    <tr className="sticky top-0 z-20 bg-[#cbdba6] text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-white shadow-sm">
                                         <th className="p-6">Item Anggaran</th>
                                         {activeTab === 'EXPENSE' && <th className="p-6">Sumber Dana</th>}
                                         <th className="p-6 text-right">
@@ -771,7 +771,7 @@ export default function RAB() {
                                         const sumSisa = sumAllocated - sumDraft;
 
                                         return (
-                                            <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
+                                            <tr className="sticky bottom-0 z-20 bg-slate-50 font-black border-t-2 border-slate-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                                                 <td className="p-6 text-[10px] uppercase tracking-widest text-slate-500" colSpan={activeTab === 'EXPENSE' ? 2 : 1}>
                                                     TOTAL TERFILTER
                                                 </td>
