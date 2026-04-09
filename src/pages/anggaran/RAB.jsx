@@ -755,6 +755,40 @@ export default function RAB() {
                                                 </tr>
                                             );
                                         })}
+                                    {(() => {
+                                        const items = (activeTab === 'INCOME' ? (filteredIncomeItems || []) : (filteredExpenseItems || []))
+                                            .filter(item => {
+                                                const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                                                const matchesFund = fundSourceFilter === 'all' || item.sourceOfFunds === fundSourceFilter;
+                                                return matchesSearch && matchesFund;
+                                            });
+                                        
+                                        const sumAllocated = items.reduce((s, item) => s + (rapData.itemAllocations[item.id] || 0), 0);
+                                        const sumDraft = items.reduce((s, item) => {
+                                            const detail = activePlan[activeTab.toLowerCase()][item.id] || { total: 0 };
+                                            return s + (detail.total || 0);
+                                        }, 0);
+                                        const sumSisa = sumAllocated - sumDraft;
+
+                                        return (
+                                            <tr className="bg-slate-50 font-black border-t-2 border-slate-200">
+                                                <td className="p-6 text-[10px] uppercase tracking-widest text-slate-500" colSpan={activeTab === 'EXPENSE' ? 2 : 1}>
+                                                    TOTAL TERFILTER
+                                                </td>
+                                                <td className="p-6 text-right text-sm text-slate-900">
+                                                    {formatRupiah(sumAllocated)}
+                                                </td>
+                                                <td className="p-6 text-right text-sm text-slate-900">
+                                                    {formatRupiah(sumDraft)}
+                                                </td>
+                                                {activeTab === 'EXPENSE' && (
+                                                    <td className="p-6 text-right text-sm text-blue-600">
+                                                        {formatRupiah(sumSisa)}
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        );
+                                    })()}
                                 </tbody>
                             </table>
                         </div>
