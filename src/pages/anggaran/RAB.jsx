@@ -51,7 +51,7 @@ export default function RAB() {
     // Filters & Selectors
     const [selectedYearId, setSelectedYearId] = useState('');
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
-    const [activeTab, setActiveTab] = useState('INCOME'); // INCOME | EXPENSE | REVIEW (for admin)
+    const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState(null);
     const [showStatusModal, setShowStatusModal] = useState(false);
@@ -502,19 +502,6 @@ export default function RAB() {
                 <div className="w-full md:w-80 bg-slate-50 border-r border-slate-100 p-8 space-y-4">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2 mb-6">Navigasi Anggaran</p>
                     
-                    <button 
-                        onClick={() => setActiveTab('INCOME')}
-                        className={`w-full flex items-center gap-4 p-5 rounded-3xl font-black text-sm tracking-tight transition-all ${
-                            activeTab === 'INCOME' 
-                            ? 'bg-white text-blue-600 shadow-xl shadow-blue-100/50 scale-[1.02]' 
-                            : 'text-slate-400 hover:bg-slate-100'
-                        }`}
-                    >
-                        <div className={`p-2 rounded-xl ${activeTab === 'INCOME' ? 'bg-blue-50' : 'bg-slate-100'}`}>
-                            <ArrowUpCircle size={20} />
-                        </div>
-                        Penerimaan (Plan)
-                    </button>
 
                     <button 
                         onClick={() => setActiveTab('EXPENSE')}
@@ -564,10 +551,10 @@ export default function RAB() {
                     <div className="flex items-center justify-between mb-10">
                         <div>
                             <h3 className="text-2xl font-black text-slate-900 tracking-tight italic">
-                                {activeTab === 'INCOME' ? 'Rencana Penerimaan Dana' : (activeTab === 'EXPENSE' ? 'Pagu Pengeluaran Operasional' : 'Review Draft Anggaran')}
+                                {activeTab === 'EXPENSE' ? 'Rencana Pengeluaran (RAB)' : 'Review Draft Anggaran'}
                             </h3>
                             <p className="text-slate-400 text-sm font-medium">
-                                {activeTab === 'REVIEW' ? 'Review pengajuan anggaran dari setiap unit dan bidang struktural.' : 'Input nilai estimasi kas masuk/keluar untuk satu periode tahun ajaran.'}
+                                {activeTab === 'REVIEW' ? 'Review pengajuan anggaran dari setiap unit dan bidang struktural.' : 'Input nilai rencana pengeluaran (belanja) untuk satu periode tahun ajaran.'}
                             </p>
                         </div>
                         <div className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-100 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
