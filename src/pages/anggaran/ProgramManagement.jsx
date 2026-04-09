@@ -139,6 +139,7 @@ export default function ProgramManagement() {
                             <tr className="bg-slate-50/50">
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Nama Program</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Unit/Bidang</th>
+                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Tipe</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -159,9 +160,14 @@ export default function ProgramManagement() {
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-bold text-slate-800">{unitObj ? unitObj.name : (fieldObj ? fieldObj.name : 'Shared / Global')}</span>
                                                 <span className="text-[10px] uppercase tracking-widest text-slate-400 font-black">
-                                                    Dibuat Oleh
+                                                    Penanggung Jawab
                                                 </span>
                                             </div>
+                                        </td>
+                                        <td className="px-8 py-5">
+                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${item.type === 'Expense' ? 'bg-orange-50 text-orange-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                {item.type === 'Expense' ? 'Belanja' : 'Donasi'}
+                                            </span>
                                         </td>
                                         <td className="px-8 py-5 max-w-xs truncate">
                                             {item.description || '-'}
@@ -175,7 +181,8 @@ export default function ProgramManagement() {
                                                             name: item.name, 
                                                             description: item.description || '',
                                                             unitId: item.unitId || '',
-                                                            fieldId: item.fieldId || ''
+                                                            fieldId: item.fieldId || '',
+                                                            type: item.type || 'Expense'
                                                         });
                                                         setIsModalOpen(true);
                                                     }}
@@ -274,6 +281,18 @@ export default function ProgramManagement() {
                                     </div>
                                 </div>
                             )}
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tipe Program</label>
+                                <select 
+                                    value={formData.type}
+                                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                                >
+                                    <option value="Expense">Belanja Pendidikan (Ekskul, Operasional, dsb)</option>
+                                    <option value="Donation">Donasi Yayasan (Masuk Laporan Program)</option>
+                                </select>
+                            </div>
 
                             <div className="flex gap-3 pt-4">
                                 <button 

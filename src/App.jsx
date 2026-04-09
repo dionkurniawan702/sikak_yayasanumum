@@ -41,7 +41,9 @@ import {
     Users2,
     Briefcase,
     UserCheck,
-    UserCircle
+    UserCircle,
+    RefreshCw,
+    Database
 } from 'lucide-react';
 
 // Placeholder untuk halaman yang belum dimigrasi
@@ -57,109 +59,143 @@ const Placeholder = ({ title }) => (
     </div>
 );
 
-// Private Route Guard
 function PrivateRoute({ children }) {
     const { state } = useApp();
     return state.currentUser ? children : <Navigate to="/login" />;
 }
 
+const SyncOverlay = ({ message }) => (
+    <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-500">
+        <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-[3rem] shadow-2xl flex flex-col items-center text-center max-w-sm w-full animate-in zoom-in-95 duration-500">
+            <div className="relative mb-8">
+                <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full animate-pulse" />
+                <div className="relative w-20 h-20 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40">
+                    <RefreshCw className="text-white animate-spin" size={40} />
+                </div>
+                <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-emerald-500 rounded-2xl flex items-center justify-center shadow-lg border-4 border-slate-900/20">
+                    <Database className="text-white" size={14} />
+                </div>
+            </div>
+            
+            <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Menyelaraskan Data</h3>
+            <p className="text-blue-100/70 font-medium text-sm leading-relaxed">
+                {message || 'Sedang memproses data dengan server pusat. Mohon tunggu sebentar...'}
+            </p>
+            
+            <div className="mt-8 flex gap-1">
+                {[...Array(3)].map((_, i) => (
+                    <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+                ))}
+            </div>
+        </div>
+    </div>
+);
+
+function AppContent() {
+    const { state } = useApp();
+    return (
+        <BrowserRouter>
+            {state.isSyncing && <SyncOverlay message={state.syncMessage} />}
+            <Routes>
+                <Route path="/login" element={<Login />} />
+                
+                <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="daftar-akun" element={<ChartOfAccounts />} />
+                    <Route path="jurnal" element={<JournalEntry />} />
+
+                    
+                    {/* Reports & Management (Placeholders for now) */}
+                    <Route path="profil" element={<Profile />} />
+                    <Route path="aset-tetap" element={<FixedAssets />} />
+                    <Route path="manajemen-program" element={<ProgramManagement />} />
+                    <Route path="manajemen-anggaran" element={<Budgeting />} />
+                    <Route path="buku-besar" element={<GeneralLedger />} />
+                    <Route path="neraca-saldo" element={<TrialBalance />} />
+                    <Route path="neraca" element={<BalanceSheet />} />
+                    <Route path="laporan-aktivitas" element={<ActivityReport />} />
+                    <Route path="arus-kas" element={<CashFlowStatement />} />
+                    <Route path="perubahan-dana" element={<StatementOfChangesInNetAssets />} />
+                    <Route path="laporan-program" element={<ProgramReport />} />
+                    <Route path="tutup-buku" element={<PeriodClosing />} />
+                    <Route path="manajemen-user" element={<UserManagement />} />
+                    <Route path="calk" element={<Placeholder title="Catatan Atas Laporan Keuangan" />} />
+                    
+                    <Route path="pengaturan/backup-restore" element={<BackupRestore />} />
+                    <Route path="pengaturan/audit-log" element={<AuditLog />} />
+                    <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
+
+                    {/* ANGGARAN & PELAPORAN ROUTES */}
+                    <Route path="pelaporan/dashboard" element={<BudgetDashboard />} />
+                    <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
+                    <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
+                    <Route path="pelaporan/saldo" element={<Placeholder title="Informasi Saldo Dana" />} />
+                    
+                    <Route path="anggaran/rab" element={<RAB />} />
+                    <Route path="anggaran/arsip-rab" element={<Placeholder title="Arsip RAB" />} />
+                    <Route path="anggaran/distribusi" element={<DistributionSettings />} />
+                    
+                    <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
+                    <Route path="pelaporan/arsip-permintaan" element={<Placeholder title="Arsip Permintaan Dana" />} />
+                    <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
+                    <Route path="pelaporan/arsip-laporan" element={<Placeholder title="Arsip Laporan Realisasi" />} />
+                    <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
+
+                    <Route path="anggaran/siswa" element={<StudentDatabase />} />
+                    <Route path="anggaran/kelas" element={<ClassManagement />} />
+
+                    <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
+                    <Route path="anggaran/tahun-ajaran" element={
+                        <GenericMasterManagement 
+                            title="Tahun Ajaran" 
+                            entity="academicYears" 
+                            actionPrefix="ACADEMIC_YEAR" 
+                            icon={Calendar} 
+                            description="Kelola periode tahun ajaran aktif dan mendatang"
+                        />
+                    } />
+                    <Route path="anggaran/set-jabatan" element={
+                        <GenericMasterManagement 
+                            title="Set Jabatan" 
+                            entity="positions" 
+                            actionPrefix="POSITION" 
+                            icon={Briefcase} 
+                            description="Master data jabatan struktural unit dan yayasan"
+                        />
+                    } />
+                    <Route path="anggaran/status-siswa" element={
+                        <GenericMasterManagement 
+                            title="Status Siswa" 
+                            entity="studentStatuses" 
+                            actionPrefix="STUDENT_STATUS" 
+                            icon={UserCheck} 
+                            description="Master status keberadaan siswa (Aktif, Mutasi, dsb)"
+                        />
+                    } />
+                    <Route path="anggaran/status-ortu" element={
+                        <GenericMasterManagement 
+                            title="Status Orang Tua" 
+                            entity="parentStatuses" 
+                            actionPrefix="PARENT_STATUS" 
+                            icon={UserCircle} 
+                            description="Master status ekonomi/sosial orang tua"
+                        />
+                    } />
+                    <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
+                    <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
+                    <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />
+                    <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
+                    <Route path="anggaran/sumber-dana" element={<IncomeItemManagement />} />
+                </Route>
+            </Routes>
+        </BrowserRouter>
+    );
+}
+
 export default function App() {
     return (
         <AppProvider>
-            <BrowserRouter>
-                <Routes>
-                    <Route path="/login" element={<Login />} />
-                    
-                    <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-                        <Route index element={<Dashboard />} />
-                        <Route path="daftar-akun" element={<ChartOfAccounts />} />
-                        <Route path="jurnal" element={<JournalEntry />} />
-
-                        
-                        {/* Reports & Management (Placeholders for now) */}
-                        <Route path="profil" element={<Profile />} />
-                        <Route path="aset-tetap" element={<FixedAssets />} />
-                        <Route path="manajemen-program" element={<ProgramManagement />} />
-                        <Route path="manajemen-anggaran" element={<Budgeting />} />
-                        <Route path="buku-besar" element={<GeneralLedger />} />
-                        <Route path="neraca-saldo" element={<TrialBalance />} />
-                        <Route path="neraca" element={<BalanceSheet />} />
-                        <Route path="laporan-aktivitas" element={<ActivityReport />} />
-                        <Route path="arus-kas" element={<CashFlowStatement />} />
-                        <Route path="perubahan-dana" element={<StatementOfChangesInNetAssets />} />
-                        <Route path="laporan-program" element={<ProgramReport />} />
-                        <Route path="tutup-buku" element={<PeriodClosing />} />
-                        <Route path="manajemen-user" element={<UserManagement />} />
-                        <Route path="calk" element={<Placeholder title="Catatan Atas Laporan Keuangan" />} />
-                        
-                        <Route path="pengaturan/backup-restore" element={<BackupRestore />} />
-                        <Route path="pengaturan/audit-log" element={<AuditLog />} />
-                        <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
-
-                        {/* ANGGARAN & PELAPORAN ROUTES */}
-                        <Route path="pelaporan/dashboard" element={<BudgetDashboard />} />
-                        <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
-                        <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
-                        <Route path="pelaporan/saldo" element={<Placeholder title="Informasi Saldo Dana" />} />
-                        
-                        <Route path="anggaran/rab" element={<RAB />} />
-                        <Route path="anggaran/arsip-rab" element={<Placeholder title="Arsip RAB" />} />
-                        <Route path="anggaran/distribusi" element={<DistributionSettings />} />
-                        
-                        <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
-                        <Route path="pelaporan/arsip-permintaan" element={<Placeholder title="Arsip Permintaan Dana" />} />
-                        <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
-                        <Route path="pelaporan/arsip-laporan" element={<Placeholder title="Arsip Laporan Realisasi" />} />
-                        <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
-
-                        <Route path="anggaran/siswa" element={<StudentDatabase />} />
-                        <Route path="anggaran/kelas" element={<ClassManagement />} />
-
-                        <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
-                        <Route path="anggaran/tahun-ajaran" element={
-                            <GenericMasterManagement 
-                                title="Tahun Ajaran" 
-                                entity="academicYears" 
-                                actionPrefix="ACADEMIC_YEAR" 
-                                icon={Calendar} 
-                                description="Kelola periode tahun ajaran aktif dan mendatang"
-                            />
-                        } />
-                        <Route path="anggaran/set-jabatan" element={
-                            <GenericMasterManagement 
-                                title="Set Jabatan" 
-                                entity="positions" 
-                                actionPrefix="POSITION" 
-                                icon={Briefcase} 
-                                description="Master data jabatan struktural unit dan yayasan"
-                            />
-                        } />
-                        <Route path="anggaran/status-siswa" element={
-                            <GenericMasterManagement 
-                                title="Status Siswa" 
-                                entity="studentStatuses" 
-                                actionPrefix="STUDENT_STATUS" 
-                                icon={UserCheck} 
-                                description="Master status keberadaan siswa (Aktif, Mutasi, dsb)"
-                            />
-                        } />
-                        <Route path="anggaran/status-ortu" element={
-                            <GenericMasterManagement 
-                                title="Status Orang Tua" 
-                                entity="parentStatuses" 
-                                actionPrefix="PARENT_STATUS" 
-                                icon={UserCircle} 
-                                description="Master status ekonomi/sosial orang tua"
-                            />
-                        } />
-                        <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
-                        <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
-                        <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />
-                        <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
-                        <Route path="anggaran/sumber-dana" element={<IncomeItemManagement />} />
-                    </Route>
-                </Routes>
-            </BrowserRouter>
+            <AppContent />
         </AppProvider>
     );
 }

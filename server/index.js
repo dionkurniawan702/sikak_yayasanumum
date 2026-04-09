@@ -180,54 +180,56 @@ app.post('/api/sync', async (req, res) => {
                     }
                 }
 
-                const safeUpsert = async (model, data) => {
-                    if (!data || !Array.isArray(data)) return;
-                    for (const item of data) {
-                        try {
-                            let cleanItem = { ...item };
-                            
-                            // Field filtering to prevent Prisma schema mismatch errors
-                            if (model === 'bosPos') {
-                                cleanItem = { id: item.id, name: item.name, isDeleted: item.isDeleted || false };
-                            } else if (model === 'bosStage') {
-                                cleanItem = { id: item.id, name: item.name, academicYearId: item.academicYearId || null, isDeleted: item.isDeleted || false };
-                            } else if (model === 'program') {
-                                cleanItem = { ...item, type: item.type || 'Donation' };
+                const batchUpsert = async (model, data) => {
+                    if (!data || !Array.isArray(data) || data.length === 0) return;
+                    
+                    if (isPurge) {
+                        const cleanData = data.map(item => {
+                            let clean = { 
+                                ...item, 
+                                isDeleted: !!item.isDeleted 
+                            };
+                            if (model === 'program') {
+                                const name = (item.name || '').toLowerCase();
+                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') || 
+                                                name.includes('rapat') || name.includes('operasional') || 
+                                                name.includes('belanja');
+                                // Force 'Expense' if name matches, otherwise use incoming type or default
+                                clean.type = isExpense ? 'Expense' : (item.type || 'Donation');
                             }
-
+                            if (model === 'bosPos') return { id: item.id, name: item.name, isDeleted: !!item.isDeleted };
+                            if (model === 'bosStage') return { id: item.id, name: item.name, academicYearId: item.academicYearId || null, isDeleted: !!item.isDeleted };
+                            return clean;
+                        });
+                        await tx[model].createMany({ data: cleanData, skipDuplicates: true });
+                    } else {
+                        for (const item of data) {
+                            let cleanItem = { 
+                                ...item, 
+                                isDeleted: !!item.isDeleted 
+                            };
+                            if (model === 'program') {
+                                const name = (item.name || '').toLowerCase();
+                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') || 
+                                                name.includes('rapat') || name.includes('operasional') || 
+                                                name.includes('belanja');
+                                cleanItem.type = isExpense ? 'Expense' : (item.type || 'Donation');
+                            }
                             await tx[model].upsert({
                                 where: { id: item.id },
                                 update: { ...cleanItem, id: undefined },
                                 create: { ...cleanItem }
                             });
-                        } catch (e) {
-                            if (e.code === 'P2002' && item.name) {
-                                console.log(`[Sync Info] Name conflict for ${model}: "${item.name}". Attempting merge.`);
-                                try {
-                                    let mergeData = { ...item, id: undefined };
-                                    if (model === 'bosPos') mergeData = { name: item.name, isDeleted: item.isDeleted || false };
-                                    else if (model === 'bosStage') mergeData = { name: item.name, academicYearId: item.academicYearId || null, isDeleted: item.isDeleted || false };
-
-                                    await tx[model].update({
-                                        where: { name: item.name },
-                                        data: mergeData
-                                    });
-                                } catch (innerE) {
-                                    console.error(`[Sync Fail] Could not merge ${model} "${item.name}": ${innerE.message}`);
-                                }
-                            } else {
-                                console.error(`[Sync Fail] ${model} ID ${item.id}: ${e.message}`);
-                            }
                         }
                     }
                 };
 
-                await safeUpsert('field', fields);
-                await safeUpsert('unit', units);
-                await safeUpsert('user', users);
-                await safeUpsert('academicYear', academicYears);
-                await safeUpsert('classGroup', classGroups);
-                await safeUpsert('account', accounts);
+                await batchUpsert('field', fields);
+                await batchUpsert('unit', units);
+                await batchUpsert('user', users);
+                await batchUpsert('academicYear', academicYears);
+                await batchUpsert('classGroup', classGroups);
+                await batchUpsert('account', accounts);
                 
                 if (journals && Array.isArray(journals)) {
                     for (const j of journals) {
@@ -244,17 +246,16 @@ app.post('/api/sync', async (req, res) => {
                     }
                 }
 
-                await safeUpsert('asset', assets);
-                await safeUpsert('program', programs);
+                await batchUpsert('asset', assets);
+                await batchUpsert('program', programs);
                 
-                // Explicitly sync classes to handle potential property mismatches
                 if (classes && Array.isArray(classes)) {
                     for (const c of classes) {
                         try {
                             await tx.class.upsert({
                                 where: { id: c.id },
-                                update: { name: c.name, unitId: c.unitId, isDeleted: c.isDeleted || false },
-                                create: { id: c.id, name: c.name, unitId: c.unitId, isDeleted: c.isDeleted || false }
+                                update: { name: c.name, unitId: c.unitId, isDeleted: !!c.isDeleted },
+                                create: { id: c.id, name: c.name, unitId: c.unitId, isDeleted: !!c.isDeleted }
                             });
                         } catch (ce) {
                             console.error(`[Sync Fail] Class ${c.id}: ${ce.message}`);
@@ -262,11 +263,11 @@ app.post('/api/sync', async (req, res) => {
                     }
                 }
 
-                await safeUpsert('position', positions);
-                await safeUpsert('studentStatus', studentStatuses);
-                await safeUpsert('parentStatus', parentStatuses);
-                await safeUpsert('incomeItem', incomeItems);
-                await safeUpsert('expenseItem', expenseItems);
+                await batchUpsert('position', positions);
+                await batchUpsert('studentStatus', studentStatuses);
+                await batchUpsert('parentStatus', parentStatuses);
+                await batchUpsert('incomeItem', incomeItems);
+                await batchUpsert('expenseItem', expenseItems);
 
                 if (students && Array.isArray(students)) {
                     for (const s of students) {
@@ -277,23 +278,25 @@ app.post('/api/sync', async (req, res) => {
                                     nis: s.nis, name: s.name, unitId: s.unitId, 
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                    isDeleted: s.isDeleted || false 
+                                    isDeleted: !!s.isDeleted 
                                 },
                                 create: { 
                                     id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                    isDeleted: s.isDeleted || false 
+                                    isDeleted: !!s.isDeleted 
                                 }
                             });
 
-                            if (s.incomeDetails && Array.isArray(s.incomeDetails)) {
+                            if (s.incomeDetails && Array.isArray(s.incomeDetails) && s.incomeDetails.length > 0) {
                                 await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
-                                for (const d of s.incomeDetails) {
-                                    await tx.studentIncomeDetail.create({
-                                        data: { studentId: s.id, incomeItemId: d.incomeItemId, amount: parseFloat(d.amount) || 0 }
-                                    });
-                                }
+                                await tx.studentIncomeDetail.createMany({
+                                    data: s.incomeDetails.map(d => ({
+                                        studentId: s.id,
+                                        incomeItemId: d.incomeItemId,
+                                        amount: parseFloat(d.amount) || 0
+                                    }))
+                                });
                             }
                         } catch (se) {
                             console.error(`[Sync Fail] Student ${s.id}: ${se.message}`);
@@ -301,19 +304,19 @@ app.post('/api/sync', async (req, res) => {
                     }
                 }
 
-                await safeUpsert('distributionSetting', distributionSettings);
-                await safeUpsert('rabPlan', rabPlans);
-                await safeUpsert('bosStage', bosStages);
-                await safeUpsert('bosPos', bosPosList);
+                await batchUpsert('distributionSetting', distributionSettings);
+                await batchUpsert('rabPlan', rabPlans);
+                await batchUpsert('bosStage', bosStages);
+                await batchUpsert('bosPos', bosPosList);
 
-                await safeUpsert('budgetAllocation', budgets);
-                await safeUpsert('budgetRequest', budgetRequests);
-                await safeUpsert('budgetReport', budgetReports);
+                await batchUpsert('budgetAllocation', budgets);
+                await batchUpsert('budgetRequest', budgetRequests);
+                await batchUpsert('budgetReport', budgetReports);
 
             } finally {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
             }
-        }, { timeout: 60000 });
+        }, { timeout: 120000 });
 
         res.json({ status: 'ok', message: 'Sync Successful 1.4.6' });
     } catch (error) {

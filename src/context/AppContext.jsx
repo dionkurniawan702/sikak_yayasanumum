@@ -33,6 +33,8 @@ const defaultState = {
     notifications: [], // { id, type, title, message, read: false, createdAt }
     lastAction: null,
     isInitialized: false,
+    isSyncing: false,
+    syncMessage: '',
     version: '1.3.0'
 };
 
@@ -386,7 +388,8 @@ function appReducer(state, action) {
         case 'CLEAR_NOTIFICATIONS': newState = { ...state, notifications: [] }; break;
 
 
-        
+        case 'SET_SYNCING': newState = { ...state, isSyncing: action.payload.status, syncMessage: action.payload.message || '' }; break;
+
         default:
             return state;
     }
@@ -402,10 +405,17 @@ export function AppProvider({ children }) {
         const isLoginPage = window.location.pathname === '/login';
         
         if (isRemote && token && !isLoginPage) {
+            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menghubungkan ke server...' } });
             api.fetchAllData().then(data => {
-                if (data) dispatch({ type: 'SET_ALL_DATA', payload: data });
-                else dispatch({ type: 'SET_ONLINE_STATUS', payload: false });
+                if (data) {
+                    dispatch({ type: 'SET_ALL_DATA', payload: data });
+                    dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+                } else {
+                    dispatch({ type: 'SET_ONLINE_STATUS', payload: false });
+                    dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+                }
             }).catch(err => {
+                dispatch({ type: 'SET_SYNCING', payload: { status: false } });
                 if (err.message === 'SESSION_EXPIRED') {
                     dispatch({ type: 'LOGOUT' });
                     window.location.href = '/login?expired=true';

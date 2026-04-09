@@ -107,6 +107,13 @@ export default function ProgramManagement() {
                                 </div>
                             </div>
                             <div>
+                                <label className="form-label">Tipe Program</label>
+                                <select className="form-select" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
+                                    <option value="Donation">Donasi Yayasan (Masuk Laporan Program)</option>
+                                    <option value="Expense">Belanja Pendidikan (Ekskul, Operasional, dsb)</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label className="form-label">Deskripsi</label>
                                 <textarea className="form-input h-32 resize-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Penjelasan singkat mengenai program..." />
                             </div>
@@ -148,6 +155,7 @@ export default function ProgramManagement() {
                                 <tr>
                                     <th className="px-8 py-6">ID / Nama Program</th>
                                     <th className="px-8 py-6">Kategori</th>
+                                    <th className="px-8 py-6">Tipe</th>
                                     <th className="px-8 py-6 text-right">Target</th>
                                     <th className="px-8 py-6 text-center">Status</th>
                                     <th className="px-8 py-6 text-center">Aksi</th>
@@ -162,6 +170,11 @@ export default function ProgramManagement() {
                                         </td>
                                         <td className="px-8 py-4">
                                             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">{p.category}</span>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${p.type === 'Expense' ? 'bg-orange-50 text-orange-600' : 'bg-indigo-50 text-indigo-600'}`}>
+                                                {p.type === 'Expense' ? 'Belanja' : 'Donasi'}
+                                            </span>
                                         </td>
                                         <td className="px-8 py-4 text-right font-black text-slate-900">
                                             {p.targetAmount ? <CurrencyDisplay value={p.targetAmount} /> : '-'}
