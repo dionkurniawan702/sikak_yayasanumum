@@ -66,7 +66,10 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
 
                 if (rules.length === 0) {
                     // No rules -> 100% stays at unit (unallocated expense item)
-                    if (targetUnitId === student.unitId) {
+                    // In Foundation mode, we count this towards 'unallocated'
+                    if (!targetUnitId && !targetFieldId) {
+                        results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
+                    } else if (targetUnitId === student.unitId) {
                         results.totalTarget += amount;
                         results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
                     }
@@ -76,13 +79,16 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                         const share = amount * (percent / 100);
                         if (share <= 0) return;
 
-                        if (rule.destType === 'unit' && targetUnitId === student.unitId) {
+                        const exId = rule.expenseItemId || 'unallocated';
+
+                        if (!targetUnitId && !targetFieldId) {
+                            // Foundation mode: everything counts for allocations
+                            results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
+                        } else if (rule.destType === 'unit' && targetUnitId === student.unitId) {
                             results.totalTarget += share;
-                            const exId = rule.expenseItemId || 'unallocated';
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
                         } else if (rule.destType === 'field' && targetFieldId === rule.destId) {
                             results.totalTarget += share;
-                            const exId = rule.expenseItemId || 'unallocated';
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
                         }
                     });
