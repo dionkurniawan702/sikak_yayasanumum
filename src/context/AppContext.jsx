@@ -32,12 +32,7 @@ const defaultState = {
     bosPosList: [],
     notifications: [], // { id, type, title, message, read: false, createdAt }
     lastAction: null,
-    students: initialStudents,
-    users: [
-        { id: 'USR-001', username: 'superadmin', password: 'admin123', role: 'superadmin', name: 'Super Administrator' }
-    ],
-    currentUser: null,
-    isOnline: true,
+    isInitialized: false,
     version: '1.3.0'
 };
 
@@ -207,6 +202,7 @@ function appReducer(state, action) {
                 users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
                 isOnline: true,
+                isInitialized: true,
                 notes: serverData.notes || state.notes || {}
             };
 
@@ -421,11 +417,12 @@ export function AppProvider({ children }) {
     }, []);
 
     useEffect(() => {
+        if (!state.isInitialized) return;
         saveState(state);
     }, [state]);
 
     useEffect(() => {
-        if (isRemote && state.lastAction) {
+        if (state.isInitialized && isRemote && state.lastAction) {
             api.pushAction(state.lastAction, state).catch(err => {
                 console.error(`[Sync Failed] Action: ${state.lastAction.type}`, err);
                 if (err.message === 'SESSION_EXPIRED') {

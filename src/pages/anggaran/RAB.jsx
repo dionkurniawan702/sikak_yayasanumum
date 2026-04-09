@@ -551,10 +551,21 @@ export default function RAB() {
                     <div className="relative z-10">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Target Penerimaan</p>
                         <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(rapData.totalTarget)}</h2>
-                        {((state.students || []).length === 0 || (state.academicYears || []).length === 0) && (
-                            <p className="text-[9px] font-bold mt-2 bg-black/10 px-3 py-1.5 rounded-2xl w-fit backdrop-blur-sm border border-white/10 flex items-center gap-2">
-                                <span className="animate-pulse">⚠️</span> Master Data Belum Lengkap
-                            </p>
+                        {((state.students || []).filter(s => !s.isDeleted).length === 0 || (state.academicYears || []).length === 0) && (
+                            <div className="mt-2 space-y-2">
+                                <p className="text-[9px] font-bold bg-black/10 px-3 py-1.5 rounded-2xl w-fit backdrop-blur-sm border border-white/10 flex items-center gap-2">
+                                    <span className="animate-pulse">⚠️</span> Terdeteksi {(state.students || []).filter(s => !s.isDeleted).length} Siswa | Master Data Belum Lengkap
+                                </p>
+                                <button 
+                                    onClick={() => {
+                                        localStorage.removeItem('sikak-yayasan-data');
+                                        window.location.reload();
+                                    }}
+                                    className="text-[8px] font-black uppercase tracking-widest bg-white/20 hover:bg-white/30 px-3 py-1 rounded-lg transition-all"
+                                >
+                                    🔄 Refresh Data dari Server
+                                </button>
+                            </div>
                         )}
                     </div>
                     <ArrowUpCircle className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform duration-700" />

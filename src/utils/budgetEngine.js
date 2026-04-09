@@ -25,6 +25,15 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
         return statusMatch && yearMatch;
     });
 
+    if (activeStudents.length === 0 && students.length > 0) {
+        console.warn(`[RAP Engine] All ${students.length} students filtered out. Reason:`, { 
+            foundYearId: yearId, 
+            foundStatusId: activeStatusId,
+            sampleStudentStatusId: students[0].statusId,
+            sampleStudentYearId: students[0].academicYearId
+        });
+    }
+
     // 3. Results structure
     const results = {
         totalTarget: 0,
