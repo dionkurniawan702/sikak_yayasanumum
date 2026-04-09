@@ -271,69 +271,114 @@ export default function StudentDatabase() {
                 </select>
             </div>
 
-            {/* Student List */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredStudents.length > 0 ? filteredStudents.map(student => (
-                    <div key={student.id} className="card p-6 group hover:border-blue-200 transition-all">
-                        <div className="flex justify-between items-start mb-4">
-                            <div className="w-14 h-14 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-2xl flex items-center justify-center text-xl font-black shadow-inner">
-                                {student.name.charAt(0)}
-                            </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button 
-                                    onClick={() => handleOpenStudentModal(student)}
-                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all disabled:opacity-30"
-                                    disabled={isBudgetLocked(student.unitId, student.academicYearId)}
-                                >
-                                    <Edit3 size={16} />
-                                </button>
-                                <button 
-                                    onClick={() => handleDeleteStudent(student.id)}
-                                    className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all disabled:opacity-30"
-                                    disabled={isBudgetLocked(student.unitId, student.academicYearId)}
-                                >
-                                    <Trash2 size={16} />
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <h3 className="font-black text-slate-900 text-lg mb-1">{student.name}</h3>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">NIS: {student.nis || '-'}</p>
-                        
-                        <div className="flex flex-wrap gap-2 mb-6">
-                            <span className="px-3 py-1 bg-blue-600 text-white rounded-full text-[10px] font-black uppercase tracking-wider">
-                                {units.find(u => u.id === student.unitId)?.name || 'Unknown Unit'}
-                            </span>
-                            {student.classId && (
-                                <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-indigo-100">
-                                    {state.classes?.find(c => c.id === student.classId)?.name}
-                                </span>
-                            )}
-                            {student.academicYearId && (
-                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100">
-                                    {state.academicYears?.find(y => y.id === student.academicYearId)?.name}
-                                </span>
-                            )}
-                        </div>
+            {/* Student List Table */}
+            <div className="overflow-y-auto max-h-[700px] border-2 border-slate-200 rounded-[2.5rem] shadow-xl bg-white relative scrollbar-thin scrollbar-thumb-slate-200">
+                <table className="w-full text-left border-collapse">
+                    <thead>
+                        <tr className="sticky top-0 z-20 bg-slate-100 text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-slate-200 shadow-sm">
+                            <th className="p-6">Data Siswa</th>
+                            <th className="p-6">Unit & Kelas</th>
+                            <th className="p-6 text-center">Tahun Ajaran</th>
+                            <th className="p-6 text-center">Status</th>
+                            <th className="p-6 text-right">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                        {filteredStudents.length > 0 ? filteredStudents.map(student => {
+                            const unit = units.find(u => u.id === student.unitId);
+                            const studentClass = state.classes?.find(c => c.id === student.classId);
+                            const academicYear = state.academicYears?.find(y => y.id === student.academicYearId);
+                            const status = state.studentStatuses?.find(s => s.id === student.statusId);
+                            const isLocked = isBudgetLocked(student.unitId, student.academicYearId);
 
-                        <button 
-                            onClick={() => handleOpenPaymentSettings(student)}
-                            className="w-full btn btn-secondary !py-2 !text-xs !rounded-xl border-dashed border-2 hover:border-blue-400 hover:text-blue-600 disabled:opacity-50 disabled:border-slate-200"
-                            disabled={isBudgetLocked(student.unitId, student.academicYearId)}
-                        >
-                            <Wallet size={14} />
-                            <span>Setting Pembayaran (Budget)</span>
-                        </button>
-                    </div>
-                )) : (
-                    <div className="col-span-full py-20 text-center">
-                        <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto mb-6 text-slate-300">
-                            <User size={40} />
-                        </div>
-                        <h3 className="text-xl font-bold text-slate-900 mb-2">Tidak ada data siswa</h3>
-                        <p className="text-slate-500">Silakan tambah siswa secara manual atau melalui fitur import masal.</p>
-                    </div>
-                )}
+                            return (
+                                <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
+                                    <td className="p-6">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-xl flex items-center justify-center text-sm font-black shadow-inner">
+                                                {student.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-black text-slate-900 text-sm leading-tight">{student.name}</h3>
+                                                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">NIS: {student.nis || '-'}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="p-6">
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-wider bg-blue-50 px-2 py-0.5 rounded-md w-fit">
+                                                {unit?.name || 'Unknown Unit'}
+                                            </span>
+                                            {studentClass && (
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                    Kelas {studentClass.name}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="p-6 text-center">
+                                        {academicYear ? (
+                                            <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black uppercase tracking-wider border border-emerald-100">
+                                                {academicYear.name}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-300">-</span>
+                                        )}
+                                    </td>
+                                    <td className="p-6 text-center">
+                                        {status ? (
+                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${
+                                                status.name === 'Aktif' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-100'
+                                            }`}>
+                                                {status.name}
+                                            </span>
+                                        ) : (
+                                            <span className="text-[10px] text-slate-300">-</span>
+                                        )}
+                                    </td>
+                                    <td className="p-6">
+                                        <div className="flex items-center justify-end gap-2">
+                                            <button 
+                                                onClick={() => handleOpenPaymentSettings(student)}
+                                                className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all disabled:opacity-30 group/btn relative"
+                                                disabled={isLocked}
+                                            >
+                                                <Wallet size={16} />
+                                                <span className="absolute bottom-full right-0 mb-2 px-2 py-1 bg-slate-900 text-white text-[8px] font-black uppercase rounded-lg opacity-0 group-hover/btn:opacity-100 transition-opacity whitespace-nowrap z-30">
+                                                    Setting Pembayaran
+                                                </span>
+                                            </button>
+                                            <button 
+                                                onClick={() => handleOpenStudentModal(student)}
+                                                className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all disabled:opacity-30"
+                                                disabled={isLocked}
+                                            >
+                                                <Edit3 size={16} />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteStudent(student.id)}
+                                                className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all disabled:opacity-30"
+                                                disabled={isLocked}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        }) : (
+                            <tr>
+                                <td colSpan={5} className="py-20 text-center">
+                                    <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-200">
+                                        <User size={32} />
+                                    </div>
+                                    <h3 className="text-sm font-bold text-slate-900 mb-1">Tidak ada data siswa</h3>
+                                    <p className="text-[11px] text-slate-400">Gunakan fitur import atau tambah manual</p>
+                                </td>
+                            </tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
 
             {/* Student Modal */}
