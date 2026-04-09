@@ -224,8 +224,27 @@ model AcademicYear {
   isDeleted Boolean  @default(false)
 
   students  Student[]
+  bosStages BosStage[]
 
   @@map("AcademicYear")
+}
+
+model BosStage {
+  id             String        @id @default(uuid())
+  name           String
+  academicYearId String?
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
+  isDeleted      Boolean       @default(false)
+
+  @@map("bos_stages")
+}
+
+model BosPos {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isDeleted Boolean  @default(false)
+
+  @@map("bos_pos")
 }
 
 model ClassGroup {

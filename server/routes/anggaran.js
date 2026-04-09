@@ -589,4 +589,92 @@ router.delete('/classes/:id', async (req, res) => {
     }
 });
 
+// --- BOS STAGES ---
+router.get('/bos-stages', async (req, res) => {
+    try {
+        const data = await getPrisma(req).bosStage.findMany({ 
+            where: { isDeleted: false }
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.post('/bos-stages', async (req, res) => {
+    try {
+        const item = await getPrisma(req).bosStage.create({ data: req.body });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.put('/bos-stages/:id', async (req, res) => {
+    try {
+        const item = await getPrisma(req).bosStage.upsert({
+            where: { id: req.params.id },
+            update: req.body,
+            create: { ...req.body, id: req.params.id }
+        });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.delete('/bos-stages/:id', async (req, res) => {
+    try {
+        await getPrisma(req).bosStage.upsert({
+            where: { id: req.params.id },
+            update: { isDeleted: true },
+            create: { id: req.params.id, name: 'Deleted BOS Stage', isDeleted: true }
+        });
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- BOS POS ---
+router.get('/bos-pos', async (req, res) => {
+    try {
+        const data = await getPrisma(req).bosPos.findMany({ 
+            where: { isDeleted: false }
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.post('/bos-pos', async (req, res) => {
+    try {
+        const item = await getPrisma(req).bosPos.create({ data: req.body });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.put('/bos-pos/:id', async (req, res) => {
+    try {
+        const item = await getPrisma(req).bosPos.upsert({
+            where: { id: req.params.id },
+            update: req.body,
+            create: { ...req.body, id: req.params.id }
+        });
+        res.json({ data: item });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+router.delete('/bos-pos/:id', async (req, res) => {
+    try {
+        await getPrisma(req).bosPos.upsert({
+            where: { id: req.params.id },
+            update: { isDeleted: true },
+            create: { id: req.params.id, name: 'Deleted BOS POS', isDeleted: true }
+        });
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
