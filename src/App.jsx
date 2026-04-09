@@ -154,7 +154,7 @@ export default function App() {
                         } />
                         <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
                         <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
-                        <Route path="anggaran/program-belanja" element={<BudgetProgramManagement />} />
+                        <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />
                         <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
                         <Route path="anggaran/sumber-dana" element={<IncomeItemManagement />} />
                     </Route>

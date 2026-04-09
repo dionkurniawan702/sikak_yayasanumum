@@ -80,6 +80,7 @@ model Program {
   endDate      DateTime?
   unitId       String?
   fieldId      String?
+  type         String?  @default("Donation") // Donation, Expense
   isDeleted    Boolean  @default(false)
 
   @@map("programs")

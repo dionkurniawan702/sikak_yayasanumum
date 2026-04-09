@@ -12,7 +12,7 @@ export default function ProgramReport() {
     const { state } = useApp();
     const journals = state.journals.filter(j => !j.isDeleted);
     const accounts = state.accounts.filter(a => !a.isDeleted);
-    const programs = state.programs.filter(p => !p.isDeleted);
+    const programs = state.programs.filter(p => !p.isDeleted && p.type !== 'Expense');
     const assets = state.assets.filter(a => !a.isDeleted);
     const reportRef = useRef(null);
 

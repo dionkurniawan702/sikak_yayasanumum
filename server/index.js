@@ -191,6 +191,8 @@ app.post('/api/sync', async (req, res) => {
                                 cleanItem = { id: item.id, name: item.name, isDeleted: item.isDeleted || false };
                             } else if (model === 'bosStage') {
                                 cleanItem = { id: item.id, name: item.name, academicYearId: item.academicYearId || null, isDeleted: item.isDeleted || false };
+                            } else if (model === 'program') {
+                                cleanItem = { ...item, type: item.type || 'Donation' };
                             }
 
                             await tx[model].upsert({

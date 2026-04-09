@@ -14,7 +14,7 @@ export default function ProgramManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({ name: '', description: '', unitId: '', fieldId: '' });
+    const [formData, setFormData] = useState({ name: '', description: '', unitId: '', fieldId: '', type: 'Expense' });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
@@ -23,7 +23,7 @@ export default function ProgramManagement() {
     const initialFieldId = currentUser?.role === 'admin_bidang' ? currentUser.fieldId : '';
 
     const filteredItems = programs.filter(item => {
-        if (item.isDeleted) return false;
+        if (item.isDeleted || item.type !== 'Expense') return false;
         
         // Removed unit/bidang filtering to make programs shared across the foundation
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -59,7 +59,7 @@ export default function ProgramManagement() {
             }
             setIsModalOpen(false);
             setEditingItem(null);
-            setFormData({ name: '', description: '', unitId: '', fieldId: '' });
+            setFormData({ name: '', description: '', unitId: '', fieldId: '', type: 'Expense' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -97,7 +97,7 @@ export default function ProgramManagement() {
                     <button 
                         onClick={() => {
                             setEditingItem(null);
-                            setFormData({ name: '', description: '', unitId: initialUnitId, fieldId: initialFieldId });
+                            setFormData({ name: '', description: '', unitId: initialUnitId, fieldId: initialFieldId, type: 'Expense' });
                             setIsModalOpen(true);
                         }}
                         className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-2xl font-bold transition-all shadow-lg shadow-indigo-200 active:scale-95"

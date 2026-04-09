@@ -6,10 +6,10 @@ import * as XLSX from 'xlsx';
 
 export default function ProgramManagement() {
     const { state, dispatch } = useApp();
-    const programs = state.programs.filter(p => !p.isDeleted);
+    const programs = state.programs.filter(p => !p.isDeleted && p.type !== 'Expense');
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
-    const defaultFormData = { name: '', category: 'Umum', description: '', targetAmount: '', status: 'Aktif', initialDonationBalance: '', initialResultBalance: '' };
+    const defaultFormData = { name: '', category: 'Umum', description: '', targetAmount: '', status: 'Aktif', initialDonationBalance: '', initialResultBalance: '', type: 'Donation' };
     const [formData, setFormData] = useState(defaultFormData);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -61,8 +61,8 @@ export default function ProgramManagement() {
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Manajemen Program</h2>
-                    <p className="text-slate-500 font-medium">Kelola daftar kegiatan dan alokasi dana yayasan</p>
+                    <h2 className="text-3xl font-black text-indigo-900 tracking-tight">Program Kegiatan & Donasi</h2>
+                    <p className="text-slate-500 font-medium text-sm">Kelola daftar kegiatan yayasan dan alokasi dana donasi</p>
                 </div>
                 {!isAdding && (
                     <div className="flex gap-4">
