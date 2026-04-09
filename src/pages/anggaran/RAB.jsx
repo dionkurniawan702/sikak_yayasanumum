@@ -108,7 +108,7 @@ export default function RAB() {
 
     // Calculate RAP for the selected context
     const rapData = useMemo(() => {
-        if (!selectedYearId || !selectedUnitId) return { totalTarget: 0, itemAllocations: {} };
+        if (!selectedYearId || !selectedUnitId) return { totalTarget: 0, incomeTotals: {}, itemAllocations: {} };
         
         let unitId = null;
         let fieldId = null;
@@ -606,7 +606,7 @@ export default function RAB() {
                                             };
                                             
                                             // Nominal target calculation (Automatic from Students)
-                                            const incomeTarget = rapData.incomeTotals[item.id] || 0;
+                                            const incomeTarget = (rapData?.incomeTotals || {})[item.id] || 0;
                                             
                                             // Allocated budget from calculation
                                             const allocated = rapData.itemAllocations[item.id] || 0;
@@ -723,16 +723,32 @@ export default function RAB() {
                                         </div>
                                     )}
                                     
-                                    <div className="grid grid-cols-2 gap-4 mt-4">
-                                        <div className="p-4 bg-white rounded-2xl border border-indigo-100">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Penerimaan</p>
-                                            <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.income || {}).reduce((s, v) => s + (v.total || 0), 0))}</p>
-                                        </div>
-                                        <div className="p-4 bg-white rounded-2xl border border-indigo-100">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Belanja</p>
-                                            <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.expense || {}).reduce((s, v) => s + (v.total || 0), 0))}</p>
-                                        </div>
-                                    </div>
+                                    {(() => {
+                                        const [yearId, ...unitParts] = plan.id.split('-');
+                                        const unitIdStr = unitParts.join('-');
+                                        const targetUnitId = unitIdStr.startsWith('FIELD-') ? null : unitIdStr;
+                                        const targetFieldId = unitIdStr.startsWith('FIELD-') ? unitIdStr.replace('FIELD-', '') : null;
+                                        const targetData = calculateRAP(state, yearId, targetUnitId, targetFieldId);
+
+                                        return (
+                                            <div className="grid grid-cols-2 gap-4 mt-4">
+                                                <div className="p-4 bg-white rounded-2xl border border-indigo-100 italic transition-transform hover:scale-[1.02]">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                                                        <TrendingUp size={12} className="text-emerald-500" />
+                                                        Target Penerimaan (DB)
+                                                    </p>
+                                                    <p className="font-black text-slate-900">{formatRupiah(targetData.totalTarget)}</p>
+                                                </div>
+                                                <div className="p-4 bg-white rounded-2xl border border-indigo-100 transition-transform hover:scale-[1.02]">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 flex items-center gap-2">
+                                                        <Wallet size={12} className="text-indigo-500" />
+                                                        Total Rencana Belanja
+                                                    </p>
+                                                    <p className="font-black text-slate-900">{formatRupiah(Object.values(plan.expense || {}).reduce((s, v) => s + (v.total || 0), 0))}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
                             ))}
 
