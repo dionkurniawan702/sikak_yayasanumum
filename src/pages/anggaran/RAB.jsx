@@ -65,6 +65,9 @@ export default function RAB() {
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [editingItem, setEditingItem] = useState(null); // { id, name, sourceOfFunds }
 
+    const isConsolidation = selectedUnitId === 'FOUNDATION';
+    const isLocked = activePlan.status === 'APPROVED' || activePlan.status === 'PENDING' || isConsolidation;
+
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
         income: {},
@@ -112,6 +115,67 @@ export default function RAB() {
             lastPlanIdRef.current = planId;
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
+
+    // Compute consolidated data if Yayasan is selected
+    const consolidatedPlan = useMemo(() => {
+        if (selectedUnitId !== 'FOUNDATION' || !selectedYearId) return null;
+        
+        const yearPlans = (rabPlans || []).filter(p => 
+            p.academicYearId === selectedYearId && 
+            p.unitId !== 'FOUNDATION'
+        );
+
+        const consolidated = {
+            income: {},
+            expense: {},
+            status: 'CONSOLIDATED',
+            rejectionReason: null
+        };
+
+        yearPlans.forEach(plan => {
+            // Merge Income
+            Object.entries(plan.income || {}).forEach(([itemId, data]) => {
+                if (!consolidated.income[itemId]) {
+                    consolidated.income[itemId] = JSON.parse(JSON.stringify(data));
+                } else {
+                    consolidated.income[itemId].total = (consolidated.income[itemId].total || 0) + (data.total || 0);
+                    if (data.months) {
+                        if (!consolidated.income[itemId].months) consolidated.income[itemId].months = {};
+                        Object.entries(data.months).forEach(([mId, mData]) => {
+                            const currentM = consolidated.income[itemId].months[mId] || { jumlah: 0, m: false };
+                            consolidated.income[itemId].months[mId] = {
+                                jumlah: (currentM.jumlah || 0) + (mData.jumlah || 0),
+                                m: currentM.m || mData.m
+                            };
+                        });
+                    }
+                }
+            });
+            // Merge Expense
+            Object.entries(plan.expense || {}).forEach(([itemId, data]) => {
+                if (!consolidated.expense[itemId]) {
+                    consolidated.expense[itemId] = JSON.parse(JSON.stringify(data));
+                } else {
+                    consolidated.expense[itemId].total = (consolidated.expense[itemId].total || 0) + (data.total || 0);
+                    if (data.months) {
+                        if (!consolidated.expense[itemId].months) consolidated.expense[itemId].months = {};
+                        Object.entries(data.months).forEach(([mId, mData]) => {
+                            const currentM = consolidated.expense[itemId].months[mId] || { jumlah: 0, m: false };
+                            consolidated.expense[itemId].months[mId] = {
+                                jumlah: (currentM.jumlah || 0) + (mData.jumlah || 0),
+                                m: currentM.m || mData.m
+                            };
+                        });
+                    }
+                }
+            });
+        });
+
+        return consolidated;
+    }, [rabPlans, selectedYearId, selectedUnitId]);
+
+    // Determine which plan data to display
+    const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : currentPlan;
 
     // Calculate RAP for the selected context
     const rapData = useMemo(() => {
@@ -164,7 +228,6 @@ export default function RAB() {
         return (expenseItems || []).filter(ei => activeIds.has(ei.id));
     }, [expenseItems, state.distributionSettings, selectedUnitId]);
 
-    const isLocked = currentPlan.status === 'PENDING' || (currentPlan.status === 'APPROVED' && currentUser?.role !== 'superadmin');
 
     const handleItemUpdate = (itemId, field, value) => {
         const type = activeTab.toLowerCase();
@@ -373,12 +436,12 @@ export default function RAB() {
     };
 
     const totalIncome = useMemo(() => 
-        Object.values(currentPlan.income).reduce((sum, val) => sum + (val.total || 0), 0)
-    , [currentPlan.income]);
+        Object.values(activePlan.income).reduce((sum, val) => sum + (val.total || 0), 0)
+    , [activePlan.income]);
 
     const totalExpense = useMemo(() => 
-        Object.values(currentPlan.expense).reduce((sum, val) => sum + (val.total || 0), 0)
-    , [currentPlan.expense]);
+        Object.values(activePlan.expense).reduce((sum, val) => sum + (val.total || 0), 0)
+    , [activePlan.expense]);
 
     const balance = totalIncome - totalExpense;
 
@@ -424,14 +487,14 @@ export default function RAB() {
                     <div className="flex items-center gap-3 ml-auto">
                         <button 
                             onClick={handleSave}
-                            disabled={isSaving || !selectedYearId || isLocked}
+                            disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
                             className="bg-white border border-slate-300 hover:border-slate-900 text-slate-900 px-6 py-3 rounded-lg font-black text-xs transition-all disabled:opacity-50 shadow-sm"
                         >
                             SIMPAN DRAFT
                         </button>
                         <button 
                             onClick={handleSubmitReview}
-                            disabled={isSaving || !selectedYearId || isLocked}
+                            disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-black text-xs transition-all shadow-md disabled:opacity-50"
                         >
                             KIRIM KE YAYASAN
@@ -442,8 +505,11 @@ export default function RAB() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</p>
-                        <p className={`font-black uppercase tracking-tight ${currentPlan.status === 'APPROVED' ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {currentPlan.status === 'APPROVED' ? 'Approved' : 'Not approved'}
+                        <p className={`font-black uppercase tracking-tight ${
+                            activePlan.status === 'APPROVED' ? 'text-emerald-600' : 
+                            (activePlan.status === 'CONSOLIDATED' ? 'text-blue-600' : 'text-rose-600')
+                        }`}>
+                            {activePlan.status === 'APPROVED' ? 'Approved' : (activePlan.status === 'CONSOLIDATED' ? 'KONSOLIDASI' : 'Not approved')}
                         </p>
                     </div>
                     <div className="space-y-1">
@@ -457,9 +523,9 @@ export default function RAB() {
                         <p className="font-black text-slate-400">-</p>
                     </div>
                     <div className="space-y-1">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
-                        <p className="font-black text-slate-700 italic">
-                            {currentPlan.status === 'DRAFT' ? 'Belum Diajukan' : 'Sudah Diajukan'}
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Mode Tampilan</p>
+                        <p className={`font-black tracking-tight ${isConsolidation ? 'text-indigo-600 italic' : 'text-slate-700'}`}>
+                            {isConsolidation ? 'KONSOLIDASI YAYASAN' : 'RIIL UNIT'}
                         </p>
                     </div>
                 </div>
@@ -595,7 +661,7 @@ export default function RAB() {
                                         })
                                         .map(item => {
                                             const type = activeTab.toLowerCase();
-                                            const detail = currentPlan[type][item.id] || { 
+                                            const detail = activePlan[type][item.id] || { 
                                                 volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {} 
                                             };
                                             
@@ -645,14 +711,17 @@ export default function RAB() {
                                                     {activeTab === 'EXPENSE' && (
                                                         <td className="p-6 text-center">
                                                             <button 
-                                                                onClick={() => setEditingItem(item)}
+                                                                onClick={() => !isConsolidation && setEditingItem(item)}
+                                                                disabled={isConsolidation}
                                                                 className={`px-4 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                                                                    hasData 
-                                                                    ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
-                                                                    : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                                                                    isConsolidation 
+                                                                    ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                                                                    : (hasData 
+                                                                        ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' 
+                                                                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200')
                                                                 }`}
                                                             >
-                                                                {hasData ? 'Ubah Rincian' : 'Isi Rincian'}
+                                                                {isConsolidation ? 'DETAIL GABUNGAN' : (hasData ? 'Ubah Rincian' : 'Isi Rincian')}
                                                             </button>
                                                         </td>
                                                     )}
