@@ -551,6 +551,11 @@ export default function RAB() {
                     <div className="relative z-10">
                         <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80 mb-1">Target Penerimaan</p>
                         <h2 className="text-3xl font-black tracking-tight italic">{formatRupiah(rapData.totalTarget)}</h2>
+                        {((state.students || []).length === 0 || (state.academicYears || []).length === 0) && (
+                            <p className="text-[9px] font-bold mt-2 bg-black/10 px-3 py-1.5 rounded-2xl w-fit backdrop-blur-sm border border-white/10 flex items-center gap-2">
+                                <span className="animate-pulse">⚠️</span> Master Data Belum Lengkap
+                            </p>
+                        )}
                     </div>
                     <ArrowUpCircle className="absolute -bottom-4 -right-4 w-32 h-32 opacity-10 group-hover:scale-110 transition-transform duration-700" />
                 </div>

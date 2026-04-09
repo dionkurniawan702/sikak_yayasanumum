@@ -13,11 +13,17 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
     // Note: Use provided year ID OR current active year if none specified
     const yearId = selectedYearId || state.academicYears?.find(y => y.isCurrent)?.id;
     
-    const activeStudents = students.filter(s => 
-        !s.isDeleted && 
-        s.statusId === activeStatusId && 
-        s.academicYearId === yearId
-    );
+    const activeStudents = students.filter(s => {
+        if (s.isDeleted) return false;
+        
+        // Match status (fallback to true if statusId is null or studentStatuses empty)
+        const statusMatch = !activeStatusId || s.statusId === activeStatusId;
+        
+        // Match year (fallback to true if yearId is null or academicYears empty)
+        const yearMatch = !yearId || s.academicYearId === yearId;
+        
+        return statusMatch && yearMatch;
+    });
 
     // 3. Results structure
     const results = {
