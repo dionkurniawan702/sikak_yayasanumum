@@ -78,9 +78,28 @@ model Program {
   targetAmount Decimal? @default(0) @db.Decimal(15, 2)
   startDate    DateTime?
   endDate      DateTime?
+  unitId       String?
+  fieldId      String?
   isDeleted    Boolean  @default(false)
 
   @@map("programs")
+}
+
+model BosStage {
+  id              String   @id @default(uuid())
+  name            String
+  academicYearId  String?
+  isDeleted       Boolean  @default(false)
+
+  @@map("bos_stages")
+}
+
+model BosPos {
+  id              String   @id @default(uuid())
+  name            String
+  isDeleted       Boolean  @default(false)
+
+  @@map("bos_pos")
 }
 
 model Budget {

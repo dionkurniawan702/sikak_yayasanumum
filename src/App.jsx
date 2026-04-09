@@ -31,6 +31,8 @@ import BudgetDashboard from './pages/pelaporan/BudgetDashboard';
 import FundAvailability from './pages/pelaporan/FundAvailability';
 import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
+import BudgetProgramManagement from './pages/anggaran/ProgramManagement';
+import BOSMasterManagement from './pages/anggaran/BOSMasterManagement';
 import ClassManagement from './pages/anggaran/ClassManagement';
 import RAB from './pages/anggaran/RAB';
 import GenericMasterManagement from './components/GenericMasterManagement';
@@ -152,7 +154,8 @@ export default function App() {
                         } />
                         <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
                         <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
-                        <Route path="anggaran/item-pengeluaran-bos" element={<Placeholder title="Master Item Pengeluaran BOS" />} />
+                        <Route path="anggaran/program-belanja" element={<BudgetProgramManagement />} />
+                        <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
                         <Route path="anggaran/sumber-dana" element={<IncomeItemManagement />} />
                     </Route>
                 </Routes>

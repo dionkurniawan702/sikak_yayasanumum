@@ -45,6 +45,9 @@ export default function RAB() {
         incomeItems = [], 
         expenseItems = [],
         rabPlans = [],
+        programs = [],
+        bosStages = [],
+        bosPosList = [],
         currentUser
     } = state;
 
@@ -855,47 +858,131 @@ export default function RAB() {
 
                         {/* Modal Body */}
                         <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-10">
-                            {/* Calculation Details */}
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
-                                    <input 
-                                        type="number"
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.volume || ''}
-                                        onChange={e => handleItemUpdate(editingItem.id, 'volume', e.target.value)}
-                                        placeholder="0"
-                                    />
+                            {/* Section 1: Basic Info & Program */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rincian / Keterangan Pengeluaran</label>
+                                        <textarea 
+                                            className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-medium text-slate-700 outline-none focus:border-blue-500 transition-all min-h-[100px]"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.keterangan || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'keterangan', e.target.value)}
+                                            placeholder="Tulis detail rincian belanja di sini..."
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
+                                            <select 
+                                                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.semester || '1'}
+                                                onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
+                                            >
+                                                <option value="1">Semester 1</option>
+                                                <option value="2">Semester 2</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Dana</label>
+                                            <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-3 h-3 rounded-full border-2 border-slate-300 animate-pulse" />}
+                                                {currentPlan.status === 'APPROVED' ? 'Sudah Cair' : 'Belum Cair'}
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
-                                    <input 
-                                        type="text"
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all uppercase"
-                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.satuan || ''}
-                                        onChange={e => handleItemUpdate(editingItem.id, 'satuan', e.target.value)}
-                                        placeholder="E.G. UNIT"
-                                    />
+
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja</label>
+                                        <select 
+                                            className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.programId || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'programId', e.target.value)}
+                                        >
+                                            <option value="">Pilih Program...</option>
+                                            {programs.filter(p => !p.isDeleted && (p.unitId === selectedUnitId || p.fieldId === selectedUnitId.replace('FIELD-', ''))).map(p => (
+                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {editingItem.sourceOfFunds === 'BOS' && (
+                                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-right duration-500">
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-emerald-600">POS Anggaran BOS</label>
+                                                <select 
+                                                    className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
+                                                    value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosPosId || ''}
+                                                    onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
+                                                >
+                                                    <option value="">Pilih POS...</option>
+                                                    {bosPosList.filter(p => !p.isDeleted).map(p => (
+                                                        <option key={p.id} value={p.id}>{p.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-emerald-600">Tahap BOS</label>
+                                                <select 
+                                                    className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
+                                                    value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosStageId || ''}
+                                                    onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
+                                                >
+                                                    <option value="">Pilih Tahap...</option>
+                                                    {bosStages.filter(s => !s.isDeleted && (s.academicYearId === selectedYearId || !s.academicYearId)).map(s => (
+                                                        <option key={s.id} value={s.id}>{s.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali (Freq)</label>
-                                    <input 
-                                        type="number"
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.kali || ''}
-                                        onChange={e => handleItemUpdate(editingItem.id, 'kali', e.target.value)}
-                                        placeholder="1"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
-                                    <input 
-                                        type="number"
-                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                        value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || ''}
-                                        onChange={e => handleItemUpdate(editingItem.id, 'harga', e.target.value)}
-                                        placeholder="0"
-                                    />
+                            </div>
+
+                            {/* Section 2: Calculation (Volume, Price, etc) */}
+                            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
+                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
+                                        <input 
+                                            type="number"
+                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.volume || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'volume', e.target.value)}
+                                            placeholder="0"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
+                                        <input 
+                                            type="text"
+                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all uppercase"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.satuan || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'satuan', e.target.value)}
+                                            placeholder="E.G. UNIT"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali (Freq)</label>
+                                        <input 
+                                            type="number"
+                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.kali || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'kali', e.target.value)}
+                                            placeholder="1"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
+                                        <input 
+                                            type="number"
+                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'harga', e.target.value)}
+                                            placeholder="0"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 

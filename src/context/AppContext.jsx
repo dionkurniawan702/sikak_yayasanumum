@@ -28,6 +28,8 @@ const defaultState = {
     financialYears: [],
     backupInfo: null,
     rabPlans: [],
+    bosStages: [],
+    bosPosList: [],
     notifications: [], // { id, type, title, message, read: false, createdAt }
     lastAction: null,
     students: initialStudents,
@@ -198,6 +200,8 @@ function appReducer(state, action) {
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
                 classes: serverData.classes || state.classes || [],
                 rabPlans: serverData.rabPlans || state.rabPlans || [],
+                bosStages: serverData.bosStages || state.bosStages || [],
+                bosPosList: serverData.bosPosList || state.bosPosList || [],
 
                 users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
@@ -372,6 +376,13 @@ function appReducer(state, action) {
         case 'SET_RAB_PLAN': 
             newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] }; 
             break;
+        case 'ADD_BOS_STAGE': newState = { ...state, bosStages: [...state.bosStages, action.payload] }; break;
+        case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
+        
+        case 'ADD_BOS_POS': newState = { ...state, bosPosList: [...state.bosPosList, action.payload] }; break;
+        case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
 
         case 'ADD_NOTIFICATION': newState = { ...state, notifications: [action.payload, ...state.notifications] }; break;
         case 'MARK_NOTIFICATION_READ': newState = { ...state, notifications: state.notifications.map(n => n.id === action.payload ? { ...n, read: true } : n) }; break;
