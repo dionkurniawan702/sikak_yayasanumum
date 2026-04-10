@@ -44,7 +44,8 @@ export default function GenericMasterManagement({
 
         try {
             if (editingItem) {
-                const updatedItem = { ...editingItem, name: formData.name };
+                const { startDate, endDate, ...cleanEditingItem } = editingItem;
+                const updatedItem = { ...cleanEditingItem, name: formData.name };
                 dispatch({ type: `EDIT_${actionPrefix}`, payload: updatedItem });
                 await api.pushAction({ type: `EDIT_${actionPrefix}`, payload: updatedItem }, state);
                 setMessage({ type: 'success', text: `${title} berhasil diperbarui` });
