@@ -13,18 +13,18 @@ async function main() {
         { id: '1-1101', code: '1-1101', name: 'Kas Yayasan (Tunai)', type: 'Aset', subType: 'Aset', parentId: '1-1100', level: 3 },
         { id: '1-1111', code: '1-1111', name: 'Bank Yayasan (BSI)', type: 'Aset', subType: 'Aset', parentId: '1-1100', level: 3 },
         { id: '1-1112', code: '1-1112', name: 'Bank Dana Terikat (Program)', type: 'Aset', subType: 'Aset', parentId: '1-1100', level: 3 },
-        
+
         { id: '1-1200', code: '1-1200', name: 'Piutang & Tagihan', type: 'Aset', subType: 'Aset', isParent: true, parentId: '1-1000', level: 2 },
         { id: '1-1201', code: '1-1201', name: 'Piutang Operasional (Pendidikan)', type: 'Aset', subType: 'Aset', parentId: '1-1200', level: 3 },
         { id: '1-1202', code: '1-1202', name: 'Piutang Karyawan', type: 'Aset', subType: 'Aset', parentId: '1-1200', level: 3 },
-        
+
         { id: '1-2000', code: '1-2000', name: 'Aset Tidak Lancar', type: 'Aset', subType: 'Aset', isParent: true, parentId: '1-0000', level: 1 },
         { id: '1-2100', code: '1-2100', name: 'Aset Tetap', type: 'Aset', subType: 'Aset', isParent: true, parentId: '1-2000', level: 2 },
         { id: '1-2101', code: '1-2101', name: 'Tanah', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
         { id: '1-2102', code: '1-2102', name: 'Bangunan & Renovasi', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
         { id: '1-2103', code: '1-2103', name: 'Peralatan Kantor & Mesin', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
         { id: '1-2104', code: '1-2104', name: 'Kendaraan Operasional', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
-        
+
         { id: '1-2900', code: '1-2900', name: 'Akumulasi Penyusutan', type: 'Aset', subType: 'Aset', isParent: true, parentId: '1-2000', level: 2 },
         { id: '1-2901', code: '1-2901', name: 'Akm. Penyusutan Bangunan', type: 'Aset', subType: 'Aset', parentId: '1-2900', level: 3 },
         { id: '1-2902', code: '1-2902', name: 'Akm. Penyusutan Peralatan', type: 'Aset', subType: 'Aset', parentId: '1-2900', level: 3 },
@@ -45,7 +45,7 @@ async function main() {
         { id: '3-2000', code: '3-2000', name: 'Aset Neto Dengan Pembatasan', type: 'Aset Neto', subType: 'Aset Neto', parentId: '3-0000', level: 1 },
         { id: '3-2101', code: '3-2101', name: 'Aset Neto Terikat Temporer', type: 'Aset Neto', subType: 'Aset Neto', parentId: '3-2000', level: 2 },
         { id: '3-2102', code: '3-2102', name: 'Aset Neto Terikat Permanen', type: 'Aset Neto', subType: 'Aset Neto', parentId: '3-2000', level: 2 },
-        
+
         // === 4. PENGHASILAN ===
         { id: '4-0000', code: '4-0000', name: 'PENGHASILAN', type: 'Pendapatan', subType: 'Penghasilan', isParent: true, level: 0 },
         { id: '4-1000', code: '4-1000', name: 'Penghasilan Tanpa Pembatasan', type: 'Pendapatan', subType: 'Penghasilan', parentId: '4-0000', level: 1 },
@@ -117,16 +117,16 @@ async function main() {
 
     // 4. DATA MASTER INCOME ITEMS (SUMBER DANA / PENERIMAAN)
     const incomeItems = [
-        'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian', 
-        'Operasional Bulanan', 'Pengembangan dan Pelatihan', 'Uang Makan', 
-        'Seragam', 'Kopiah', 'Paket 1 tahun', 'Kegiatan Kesiswaan', 
-        'Ekskul', 'Uang Ujian', 'Infaq Perpustakaan', 
-        'Buku komunikasi & Raport(LKPD)', 
-        'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah', 
-        'Buku Pelajaran', 'Buku Kontrol Tahfizh', 'Buku Tulis', 
-        'Uang Osis', 'Biaya Pramuka', 'Biaya UKS', 'Biaya Berobat', 
-        'Biaya Bus', 'Labor IPA', 'Labor Komputer', 'Outing Class', 
-        'Komite', 'Biaya Aplikasi', 'Biaya Try Out', 'Biaya Perpisahan', 
+        'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian',
+        'Operasional Bulanan', 'Pengembangan dan Pelatihan', 'Uang Makan',
+        'Seragam', 'Kopiah', 'Paket 1 tahun', 'Kegiatan Kesiswaan',
+        'Ekskul', 'Uang Ujian', 'Infaq Perpustakaan',
+        'Buku komunikasi & Raport(LKPD)',
+        'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah',
+        'Buku Pelajaran', 'Buku Kontrol Tahfizh', 'Buku Tulis',
+        'Uang Osis', 'Biaya Pramuka', 'Biaya UKS', 'Biaya Berobat',
+        'Biaya Bus', 'Labor IPA', 'Labor Komputer', 'Outing Class',
+        'Komite', 'Biaya Aplikasi', 'Biaya Try Out', 'Biaya Perpisahan',
         'Perawatan Sarpras dan Bangunan', 'Biaya Kompre', 'Sosial'
     ];
 
@@ -208,9 +208,7 @@ async function main() {
 
     // 7. PROGRAMS
     const programs = [
-        { id: 'prg-1', name: 'Beasiswa Pendidikan Dhuafa', category: 'Sosial', targetAmount: 50000000 },
-        { id: 'prg-2', name: 'Pembangunan Masjid Kampus', category: 'Dakwah', targetAmount: 500000000 },
-        { id: 'prg-3', name: 'Operasional Panti Asuhan', category: 'Sosial', targetAmount: 100000000 }
+        { id: 'PRG-GEN', name: 'Umum / Tanpa Program', category: 'Umum' }
     ];
     console.log('Seeding Programs...');
     for (const pr of programs) {

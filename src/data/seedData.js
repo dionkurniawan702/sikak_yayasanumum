@@ -11,18 +11,18 @@ export const initialAccounts = [
     { id: '1-1101', code: '1-1101', name: 'Kas Yayasan (Tunai)', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '1-1111', code: '1-1111', name: 'Bank Yayasan (BSI)', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '1-1112', code: '1-1112', name: 'Bank Dana Terikat (Program)', type: 'Aset', subType: 'Aset', fund: 'Dana Terikat', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
-    
+
     { id: '1-1200', code: '1-1200', name: 'Piutang & Tagihan', type: 'Aset', subType: 'Aset', fund: 'Umum', category: 'header', normalBalance: 'debit' },
     { id: '1-1201', code: '1-1201', name: 'Piutang Operasional (Pendidikan)', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '1-1202', code: '1-1202', name: 'Piutang Karyawan', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
-    
+
     { id: '1-2000', code: '1-2000', name: 'Aset Tidak Lancar', type: 'Aset', subType: 'Aset', fund: 'Umum', category: 'header', normalBalance: 'debit' },
     { id: '1-2100', code: '1-2100', name: 'Aset Tetap', type: 'Aset', subType: 'Aset', fund: 'Umum', category: 'header', normalBalance: 'debit' },
     { id: '1-2101', code: '1-2101', name: 'Tanah', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '1-2102', code: '1-2102', name: 'Bangunan & Renovasi', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '1-2103', code: '1-2103', name: 'Peralatan Kantor & Mesin', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '1-2104', code: '1-2104', name: 'Kendaraan Operasional', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
-    
+
     { id: '1-2900', code: '1-2900', name: 'Akumulasi Penyusutan', type: 'Aset', subType: 'Aset', fund: 'Umum', category: 'header', normalBalance: 'kredit' },
     { id: '1-2901', code: '1-2901', name: 'Akm. Penyusutan Bangunan', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
     { id: '1-2902', code: '1-2902', name: 'Akm. Penyusutan Peralatan', type: 'Aset', subType: 'Aset', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
@@ -50,7 +50,7 @@ export const initialAccounts = [
     { id: '4-1000', code: '4-1000', name: 'Penghasilan Tanpa Pembatasan', type: 'Pendapatan', subType: 'Penghasilan', fund: 'Dana Umum', category: 'header', normalBalance: 'kredit' },
     { id: '4-1100', code: '4-1100', name: 'Donasi & Infaq Umum', type: 'Pendapatan', subType: 'Penghasilan', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
     { id: '4-1200', code: '4-1200', name: 'Pendapatan Jasa Pendidikan', type: 'Pendapatan', subType: 'Penghasilan', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
-    
+
     { id: '4-2000', code: '4-2000', name: 'Penghasilan Dengan Pembatasan', type: 'Pendapatan', subType: 'Penghasilan', fund: 'Dana Terikat', category: 'header', normalBalance: 'kredit' },
     { id: '4-2101', code: '4-2101', name: 'Donasi Terikat (Sesuai Program)', type: 'Pendapatan', subType: 'Penghasilan', fund: 'Dana Terikat', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
 
@@ -59,7 +59,7 @@ export const initialAccounts = [
     { id: '5-1000', code: '5-1000', name: 'Beban Program (Sosial/Pendidikan)', type: 'Beban', subType: 'Beban', fund: 'Dana Terikat', category: 'header', normalBalance: 'debit' },
     { id: '5-1101', code: '5-1101', name: 'Beban Program Pendidikan', type: 'Beban', subType: 'Beban', fund: 'Dana Terikat', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '5-1102', code: '5-1102', name: 'Beban Program Kesehatan/Sosial', type: 'Beban', subType: 'Beban', fund: 'Dana Terikat', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
-    
+
     { id: '5-2000', code: '5-2000', name: 'Beban Umum & Administrasi', type: 'Beban', subType: 'Beban', fund: 'Dana Umum', category: 'header', normalBalance: 'debit' },
     { id: '5-2101', code: '5-2101', name: 'Beban Gaji & Honor (Umum)', type: 'Beban', subType: 'Beban', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
     { id: '5-2102', code: '5-2102', name: 'Beban Listrik, Air & Komunikasi', type: 'Beban', subType: 'Beban', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 },
@@ -69,9 +69,6 @@ export const initialAccounts = [
 
 // Daftar Program Yayasan
 export const initialPrograms = [
-    { id: 'prg-1', name: 'Beasiswa Pendidikan Dhuafa', category: 'Sosial', targetAmount: 50000000 },
-    { id: 'prg-2', name: 'Pembangunan Masjid Kampus', category: 'Dakwah', targetAmount: 500000000 },
-    { id: 'prg-3', name: 'Operasional Panti Asuhan', category: 'Sosial', targetAmount: 100000000 },
     { id: 'PRG-GEN', name: 'Umum / Tanpa Program', category: 'Umum' },
 ];
 
