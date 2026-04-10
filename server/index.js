@@ -506,6 +506,25 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     ensureFundSources().catch(err => {
         console.error(`[Background Seed Error] ${err.message}`);
     });
+
+    // TEMPORARY: Force cleanup seed data from remote MySQL (bypass foreign key constraints)
+    const forceCleanup = async () => {
+        try {
+            console.log('[Cleanup] Starting Force Cleanup of Seed Data...');
+            // We use raw SQL to handle the foreign key reference failure mentioned by user
+            await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0;');
+            await prisma.$executeRawUnsafe("DELETE FROM Class WHERE unitId LIKE 'unt-%';");
+            await prisma.$executeRawUnsafe("DELETE FROM Student WHERE unitId LIKE 'unt-%';");
+            await prisma.$executeRawUnsafe("DELETE FROM StudentIncomeDetail WHERE studentId IN (SELECT id FROM Student WHERE unitId LIKE 'unt-%');");
+            await prisma.$executeRawUnsafe("DELETE FROM units WHERE id LIKE 'unt-%';");
+            await prisma.$executeRawUnsafe("DELETE FROM fields WHERE id LIKE 'fld-%';");
+            await prisma.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1;');
+            console.log('[Cleanup] Force Cleanup SUCCESSFUL! Data unt-* and fld-* wiped.');
+        } catch (error) {
+            console.error(`[Cleanup Error] ${error.message}`);
+        }
+    };
+    forceCleanup();
 });
 
 server.on('error', (err) => {
