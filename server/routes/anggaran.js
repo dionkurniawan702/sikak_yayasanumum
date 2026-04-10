@@ -28,9 +28,11 @@ router.post('/fields', async (req, res) => {
 
 router.put('/fields/:id', async (req, res) => {
     try {
-        const field = await getPrisma(req).field.update({
-            where: { id: req.params.id },
-            data: req.body
+        const id = req.params.id;
+        const field = await getPrisma(req).field.upsert({
+            where: { id },
+            update: req.body,
+            create: { ...req.body, id }
         });
         res.json({ data: field });
     } catch (error) {
@@ -76,12 +78,17 @@ router.post('/units', async (req, res) => {
 
 router.put('/units/:id', async (req, res) => {
     try {
-        const unit = await getPrisma(req).unit.update({
-            where: { id: req.params.id },
-            data: req.body
+        const id = req.params.id;
+        console.log(`[API] Upserting Unit ${id}: ${JSON.stringify(req.body)}`);
+        const unit = await getPrisma(req).unit.upsert({
+            where: { id },
+            update: req.body,
+            create: { ...req.body, id }
         });
+        console.log(`[API] Unit upserted successfully: ${unit.id}`);
         res.json({ data: unit });
     } catch (error) {
+        console.error(`[API Error] Upsert Unit failed: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
