@@ -64,6 +64,18 @@ export default function Login() {
                 
                 if (res.ok && result.success) {
                     localStorage.setItem('jwt_token', result.data.token);
+                    
+                    // Fetch all data immediately after login success
+                    try {
+                        const { api } = await import('../services/api');
+                        const data = await api.fetchAllData();
+                        if (data) {
+                            dispatch({ type: 'SET_ALL_DATA', payload: data });
+                        }
+                    } catch (fetchErr) {
+                        console.error("Initial data fetch failed:", fetchErr);
+                    }
+
                     dispatch({ type: 'LOGIN', payload: result.data });
                     navigate('/');
                 } else {

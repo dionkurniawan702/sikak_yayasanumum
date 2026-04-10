@@ -416,9 +416,12 @@ export function AppProvider({ children }) {
     useEffect(() => {
         const token = localStorage.getItem('jwt_token');
         const isLoginPage = window.location.pathname === '/login';
+        
+        // Trigger fetch if we have a token AND (we are logged in OR we have no data)
+        const needsData = state.accounts.length <= 5 || state.units.length === 0;
 
-        if (isRemote && token && !isLoginPage) {
-            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menghubungkan ke server...' } });
+        if (isRemote && token && !isLoginPage && (needsData || !state.isInitialized)) {
+            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Sinkronisasi data...' } });
             api.fetchAllData().then(data => {
                 if (data) {
                     dispatch({ type: 'SET_ALL_DATA', payload: data });
@@ -437,7 +440,7 @@ export function AppProvider({ children }) {
                 }
             });
         }
-    }, []);
+    }, [isRemote, state.currentUser, state.isInitialized]);
 
     useEffect(() => {
         if (!state.isInitialized) return;
