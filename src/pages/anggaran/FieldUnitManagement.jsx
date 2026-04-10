@@ -17,6 +17,8 @@ export default function FieldUnitManagement() {
     const [selectedIncomeItems, setSelectedIncomeItems] = useState([]); // List of income item IDs
     const [unitDistributions, setUnitDistributions] = useState({}); // { incomeItemId: [rules] }
     const [isSaved, setIsSaved] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState(null);
 
     const handleOpenModal = (item = null) => {
         if (item) {
@@ -104,73 +106,80 @@ export default function FieldUnitManagement() {
         }));
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+        if (loading) return;
+        
+        setLoading(true);
+        setError(null);
+        
         const type = activeTab === 'fields' ? 'FIELD' : 'UNIT';
         const id = editingItem ? editingItem.id : crypto.randomUUID();
+        const payload = { id, ...formData };
         
-        // 1. Dispatch Main Data (Field / Unit)
-        dispatch({
-            type: editingItem ? `EDIT_${type}` : `ADD_${type}`,
-            payload: { id, ...formData }
-        });
+        try {
+            // 1. Individual push for the Unit/Field (MUST succeed)
+            await api.pushAction({ 
+                type: editingItem ? `EDIT_${type}` : `ADD_${type}`, 
+                payload: payload 
+            }, state);
 
-        // 2. Dispatch Financial Config if Unit
-        if (type === 'UNIT') {
-            // Flatten all rules into distributionSettings format
-            selectedIncomeItems.forEach(incomeId => {
-                const settings = unitDistributions[incomeId].map(rule => ({
-                    ...rule,
-                    unitId: id,
-                    incomeItemId: incomeId,
-                    // If destType is field, allow specific destId, defaulting to parent field
-                    destId: rule.destType === 'field' ? (rule.destId || formData.fieldId) : id,
-                    expenseItemId: rule.expenseItemId
-                }));
+            // 2. Dispatch to local state
+            dispatch({
+                type: editingItem ? `EDIT_${type}` : `ADD_${type}`,
+                payload: payload
+            });
 
-                dispatch({
-                    type: 'UPDATE_DISTRIBUTION_SETTINGS',
-                    payload: {
+            // 3. Dispatch Financial Config if Unit
+            if (type === 'UNIT') {
+                for (const incomeId of selectedIncomeItems) {
+                    const settings = (unitDistributions[incomeId] || []).map(rule => ({
+                        ...rule,
                         unitId: id,
                         incomeItemId: incomeId,
-                        settings: settings
-                    }
-                });
-            });
-        }
-        
-        // 3. Sync to Server immediately
-        const syncData = async () => {
-            try {
-                // Individual push for the Unit/Field
-                await api.pushAction({ 
-                    type: editingItem ? `EDIT_${type}` : `ADD_${type}`, 
-                    payload: { id, ...formData } 
-                }, state);
-                
-                // Final bulk sync to ensure distributions and local state are consistent on server
-                await api.syncWholeState({ ...state, [type.toLowerCase() + 's']: [...state[type.toLowerCase() + 's'], { id, ...formData }] });
-            } catch (err) {
-                console.error('Sync failed:', err.message);
+                        destId: rule.destType === 'field' ? (rule.destId || formData.fieldId) : id,
+                        expenseItemId: rule.expenseItemId
+                    }));
+
+                    dispatch({
+                        type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                        payload: { unitId: id, incomeItemId: incomeId, settings }
+                    });
+                }
             }
-        };
-        syncData();
-        
-        setIsSaved(true);
-        setTimeout(() => {
-            setIsSaved(false);
-            setShowModal(false);
-            setEditingItem(null);
-            setFormData({ name: '', fieldId: activeTab === 'units' ? (fields[0]?.id || '') : '' });
-            setSelectedIncomeItems([]);
-            setUnitDistributions({});
-        }, 1500);
+
+            // 4. Final bulk sync to ensure all changes are on server
+            await api.syncWholeState({ ...state, [type.toLowerCase() + 's']: [...state[type.toLowerCase() + 's'], payload] });
+
+            setIsSaved(true);
+            setTimeout(() => {
+                setIsSaved(false);
+                setShowModal(false);
+                setEditingItem(null);
+                setFormData({ name: '', fieldId: activeTab === 'units' ? (fields[0]?.id || '') : '' });
+                setSelectedIncomeItems([]);
+                setUnitDistributions({});
+            }, 1500);
+        } catch (err) {
+            console.error('Sync failed:', err.message);
+            setError(`Gagal menyimpan: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleDelete = (id) => {
-        if (window.confirm('Hapus data ini?')) {
-            const type = activeTab === 'fields' ? 'FIELD' : 'UNIT';
+    const handleDelete = async (id) => {
+        if (!window.confirm('Hapus data ini?')) return;
+        
+        const type = activeTab === 'fields' ? 'FIELD' : 'UNIT';
+        try {
             dispatch({ type: `DELETE_${type}`, payload: id });
+            await api.pushAction({ type: `DELETE_${type}`, payload: id }, state);
+            // Quick feedback
+            window.alert('Data sedang diarsip ke server...');
+        } catch (err) {
+            console.error('Delete failed:', err.message);
+            window.alert(`Gagal menghapus: ${err.message}`);
         }
     };
 
@@ -333,6 +342,12 @@ export default function FieldUnitManagement() {
 
                             {/* Modal Body */}
                             <div className="p-10 pt-6 overflow-y-auto max-h-[calc(90vh-300px)]">
+                                {error && (
+                                    <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in shake duration-500">
+                                        <AlertCircle size={20} />
+                                        <span className="font-bold">{error}</span>
+                                    </div>
+                                )}
                                 <form id="unit-form" onSubmit={handleSubmit} className="space-y-8">
                                     {modalTab === 'info' ? (
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-right-4">
@@ -531,13 +546,14 @@ export default function FieldUnitManagement() {
                                     <span>Klik simpan untuk menerapkan pengaturan dan konfigurasi dana</span>
                                 </div>
                                 <div className="flex gap-4 w-full md:w-auto">
-                                    <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary !rounded-[24px] flex-1 md:flex-none py-4 px-10">Tutup</button>
+                                    <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary !rounded-[24px] flex-1 md:flex-none py-4 px-10" disabled={loading}>Tutup</button>
                                     <button 
                                         form="unit-form"
                                         type="submit" 
-                                        className={`btn !rounded-[24px] flex-1 md:flex-none py-4 px-10 transition-all font-black ${isSaved ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/25' : 'btn-primary shadow-xl shadow-blue-500/25'}`}
+                                        disabled={loading || isSaved}
+                                        className={`btn !rounded-[24px] flex-1 md:flex-none py-4 px-10 transition-all font-black ${isSaved ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/25' : 'btn-primary shadow-xl shadow-blue-500/25'} ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
                                     >
-                                        {isSaved ? '✓ Tersimpan' : 'Simpan Perubahan'}
+                                        {isSaved ? '✓ Tersimpan' : (loading ? 'Menyimpan...' : 'Simpan Perubahan')}
                                     </button>
                                 </div>
                             </div>

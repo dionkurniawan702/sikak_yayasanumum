@@ -64,9 +64,12 @@ router.get('/units', async (req, res) => {
 
 router.post('/units', async (req, res) => {
     try {
+        console.log(`[API] Creating new Unit: ${JSON.stringify(req.body)}`);
         const unit = await getPrisma(req).unit.create({ data: req.body });
+        console.log(`[API] Unit created successfully: ${unit.id}`);
         res.json({ data: unit });
     } catch (error) {
+        console.error(`[API Error] Failed to create Unit: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
