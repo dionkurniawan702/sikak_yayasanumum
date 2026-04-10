@@ -27,7 +27,6 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
             { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
             { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
-            { path: '/manajemen-anggaran', label: 'Manajemen Anggaran', icon: Target },
 
             { section: 'LAPORAN KEUANGAN' },
             { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
