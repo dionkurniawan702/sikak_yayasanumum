@@ -131,6 +131,21 @@ export default function Sidebar({ isOpen, onClose }) {
             navigate('/login');
         }
     };
+
+    const handlePushAll = async () => {
+        if (!window.confirm('Kirim semua data dari PC ini ke Server? (Data di MySQL akan diperbarui sesuai PC ini)')) return;
+        
+        dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Mengunggah seluruh data...' } });
+        try {
+            await api.syncWholeState(state);
+            alert('Sinkronisasi Berhasil! Semua PC sekarang akan melihat data yang sama.');
+            dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+        } catch (err) {
+            console.error(err);
+            alert('Gagal Sinkronisasi: ' + err.message);
+            dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+        }
+    };
     
     return (
         <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
@@ -191,6 +206,16 @@ export default function Sidebar({ isOpen, onClose }) {
                     <LogOut size={16} />
                     <span>Keluar</span>
                 </button>
+                {isSuperAdmin && (
+                    <button
+                        className="w-full flex items-center gap-3 px-4 py-2.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-xl transition-all text-[11px] font-black tracking-widest uppercase border border-blue-500/20"
+                        onClick={handlePushAll}
+                        disabled={state.isSyncing}
+                    >
+                        {state.isSyncing ? <RefreshCw size={14} className="animate-spin" /> : <CloudUpload size={14} />}
+                        <span>{state.isSyncing ? 'Sinkron...' : 'Sync ke Server'}</span>
+                    </button>
+                )}
                 {isSuperAdmin && (
                     <button
                         className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
