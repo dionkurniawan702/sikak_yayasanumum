@@ -28,6 +28,11 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
             { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
 
+            { section: 'TRANSAKSI AKUNTANSI' },
+            { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
+            { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
+            { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock },
+
             { section: 'LAPORAN KEUANGAN' },
             { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
             { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
@@ -72,11 +77,6 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
             { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
             { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
-
-            { section: 'TRANSAKSI AKUNTANSI' },
-            { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
-            { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
-            { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock },
 
             { section: 'ADMINISTRASI SISTEM' },
             { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
