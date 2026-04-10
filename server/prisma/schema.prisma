@@ -75,9 +75,12 @@ model Program {
   name         String
   description  String?  @db.Text
   category     String?
-  targetAmount Decimal? @default(0) @db.Decimal(15, 2)
-  startDate    DateTime?
-  endDate      DateTime?
+  targetAmount           Decimal? @default(0) @db.Decimal(15, 2)
+  status                 String?  @default("Aktif")
+  initialDonationBalance Decimal? @default(0) @db.Decimal(15, 2)
+  initialResultBalance   Decimal? @default(0) @db.Decimal(15, 2)
+  startDate              DateTime?
+  endDate                DateTime?
   unitId       String?
   fieldId      String?
   type         String?  @default("Donation") // Donation, Expense
