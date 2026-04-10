@@ -185,8 +185,8 @@ function appReducer(state, action) {
                 programs: serverData.programs || state.programs || [],
                 expensePrograms: serverData.expensePrograms || state.expensePrograms || [],
                 budgets: serverData.budgets || state.budgets || [],
-                fields: serverData.fields || state.fields || [],
-                units: serverData.units || state.units || [],
+                fields: serverData.fields ?? state.fields ?? [],
+                units: serverData.units ?? state.units ?? [],
                 students: serverData.students || state.students || [],
                 incomeItems: serverData.incomeItems || state.incomeItems || [],
                 expenseItems: serverData.expenseItems || state.expenseItems || [],
@@ -445,7 +445,7 @@ export function AppProvider({ children }) {
     useEffect(() => {
         if (!isRemote || !state.currentUser || !state.isInitialized) return;
 
-        // Background poll every 60 seconds
+        // Background poll every 120 seconds
         const pollInterval = setInterval(() => {
             api.fetchAllData().then(data => {
                 if (data) {
@@ -454,7 +454,7 @@ export function AppProvider({ children }) {
             }).catch(err => {
                 console.warn('[Sync] Background poll failed:', err.message);
             });
-        }, 60000);
+        }, 120000);
 
         return () => clearInterval(pollInterval);
     }, [isRemote, state.currentUser, state.isInitialized]);
@@ -464,23 +464,8 @@ export function AppProvider({ children }) {
         saveState(state);
     }, [state]);
 
-    useEffect(() => {
-        if (state.isInitialized && isRemote && state.lastAction) {
-            api.pushAction(state.lastAction, state).catch(err => {
-                console.error(`[Sync Failed] Action: ${state.lastAction.type}`, err);
-                if (err.message === 'SESSION_EXPIRED') {
-                    const isLoginPage = window.location.pathname === '/login';
-                    dispatch({ type: 'LOGOUT' });
-                    if (!isLoginPage) {
-                        window.location.href = '/login?expired=true';
-                    }
-                } else {
-                    // Generic sync error alert for debugging
-                    console.error('Critical Sync Error:', err.message);
-                }
-            });
-        }
-    }, [state.lastAction]);
+    // Note: Explicit pushAction calls are now used in components
+    // to avoid redundant sync and race conditions.
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>

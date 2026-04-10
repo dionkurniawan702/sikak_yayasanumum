@@ -139,12 +139,29 @@ export default function FieldUnitManagement() {
             });
         }
         
+        // 3. Sync to Server immediately
+        const syncData = async () => {
+            try {
+                // Individual push for the Unit/Field
+                await api.pushAction({ 
+                    type: editingItem ? `EDIT_${type}` : `ADD_${type}`, 
+                    payload: { id, ...formData } 
+                }, state);
+                
+                // Final bulk sync to ensure distributions and local state are consistent on server
+                await api.syncWholeState({ ...state, [type.toLowerCase() + 's']: [...state[type.toLowerCase() + 's'], { id, ...formData }] });
+            } catch (err) {
+                console.error('Sync failed:', err.message);
+            }
+        };
+        syncData();
+        
         setIsSaved(true);
         setTimeout(() => {
             setIsSaved(false);
             setShowModal(false);
             setEditingItem(null);
-            setFormData({ name: '', fieldId: activeTab === 'units' ? fields[0]?.id || '' : '' });
+            setFormData({ name: '', fieldId: activeTab === 'units' ? (fields[0]?.id || '') : '' });
             setSelectedIncomeItems([]);
             setUnitDistributions({});
         }, 1500);
