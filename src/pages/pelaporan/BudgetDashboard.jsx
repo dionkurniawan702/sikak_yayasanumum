@@ -59,12 +59,17 @@ export default function BudgetDashboard() {
             fRAP[f.id] = { total: 0, items: {} };
         });
 
-        const activeStatusId = studentStatuses?.find(st => st.name === 'Aktif')?.id;
-        const activeStudents = students.filter(s => 
-            !s.isDeleted && 
-            s.statusId === activeStatusId &&
-            (activeAcademicYear ? s.academicYearId === activeAcademicYear.id : true)
-        );
+        const nonActiveStatusNames = ['alumni', 'pindah', 'dikeluarkan', 'cuti', 'non aktif'];
+        const activeStudents = students.filter(s => {
+            if (s.isDeleted) return false;
+            
+            // Check status name (case-insensitive)
+            const statusName = (s.status?.name || '').toLowerCase();
+            if (nonActiveStatusNames.includes(statusName)) return false;
+
+            // Matching Academic Year
+            return (activeAcademicYear ? s.academicYearId === activeAcademicYear.id : true);
+        });
 
         activeStudents.forEach(student => {
             if (!student.unitId || !uRAP[student.unitId]) return;
