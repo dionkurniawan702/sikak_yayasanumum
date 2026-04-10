@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, Plus, Edit2, Trash2, ChevronRight, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import api from '../../services/api';
+import { api } from '../../services/api';
 
 export default function FieldUnitManagement() {
     const { state, dispatch } = useApp();
@@ -115,7 +115,7 @@ export default function FieldUnitManagement() {
         setError(null);
         
         const type = activeTab === 'fields' ? 'FIELD' : 'UNIT';
-        const id = editingItem ? editingItem.id : crypto.randomUUID();
+        const id = editingItem ? editingItem.id : (Date.now().toString(36) + Math.random().toString(36).substr(2, 5));
         const payload = { id, ...formData };
         
         try {
