@@ -6,7 +6,7 @@ const getPrisma = (req) => req.app.get('prisma');
 // --- ACCOUNTS ---
 router.get('/accounts', async (req, res) => {
     try {
-        const data = await getPrisma(req).account.findMany({ 
+        const data = await getPrisma(req).account.findMany({
             where: { isDeleted: false },
             orderBy: { code: 'asc' }
         });
@@ -35,7 +35,7 @@ router.put('/accounts/:id', async (req, res) => {
     try {
         console.log(`[Account Update] ID: ${req.params.id}`);
         console.log(`[Account Update] Body:`, req.body);
-        
+
         const { code, name, category, type, subType, fund, initialBalance, isDeleted } = req.body;
         const data = await getPrisma(req).account.update({
             where: { id: req.params.id },
@@ -68,7 +68,7 @@ router.delete('/accounts/:id', async (req, res) => {
 // --- JOURNALS ---
 router.get('/journals', async (req, res) => {
     try {
-        const data = await getPrisma(req).journal.findMany({ 
+        const data = await getPrisma(req).journal.findMany({
             where: { isDeleted: false },
             orderBy: { date: 'desc' }
         });
@@ -83,9 +83,9 @@ router.post('/journals', async (req, res) => {
         const { id, date, name, description, entries, reference, programId, phoneNumber } = req.body;
         const data = await getPrisma(req).journal.create({
             data: {
-                id, 
+                id,
                 date: date ? new Date(date) : new Date(),
-                name, description, 
+                name, description,
                 entries: typeof entries === 'string' ? JSON.parse(entries) : entries,
                 reference, programId, phoneNumber
             }
@@ -149,6 +149,37 @@ router.post('/programs', async (req, res) => {
 router.put('/programs/:id', async (req, res) => {
     try {
         const data = await getPrisma(req).program.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- EXPENSE PROGRAMS ---
+router.get('/expense-programs', async (req, res) => {
+    try {
+        const data = await getPrisma(req).expenseProgram.findMany({ where: { isDeleted: false } });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/expense-programs', async (req, res) => {
+    try {
+        const data = await getPrisma(req).expenseProgram.create({ data: req.body });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/expense-programs/:id', async (req, res) => {
+    try {
+        const data = await getPrisma(req).expenseProgram.update({
             where: { id: req.params.id },
             data: req.body
         });

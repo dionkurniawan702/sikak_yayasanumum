@@ -139,11 +139,11 @@ app.post('/api/sync', async (req, res) => {
     try {
         const client = getPrisma();
         lastSyncError = null;
-        
-        const { 
-            accounts, journals, assets, programs, users, budgets,
+
+        const {
+            accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
-            academicYears, classGroups, positions, studentStatuses, parentStatuses, 
+            academicYears, classGroups, positions, studentStatuses, parentStatuses,
             budgetRequests, budgetReports, classes, rabPlans,
             bosStages, bosPosList,
             isPurge = false
@@ -155,20 +155,20 @@ app.post('/api/sync', async (req, res) => {
             classesCount: classes?.length || 0,
             payloadSize: JSON.stringify(req.body || {}).length
         };
-        
+
         console.log(`[Sync] Starting sync 1.4.5${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
-        
+
         await client.$transaction(async (tx) => {
             try {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-                
+
                 if (isPurge) {
                     console.log('[Sync] Purging existing database tables...');
                     const tablesToPurge = [
-                        'StudentIncomeDetail', 'Student', 'Class', 'AcademicYear', 
-                        'StudentStatus', 'ParentStatus', 'positions', 'distribution_settings', 
+                        'StudentIncomeDetail', 'Student', 'Class', 'AcademicYear',
+                        'StudentStatus', 'ParentStatus', 'positions', 'distribution_settings',
                         'expense_items', 'income_items', 'class_groups', 'bos_stages', 'bos_pos',
-                        'accounts', 'journals', 'assets', 'programs', 'budget_allocations',
+                        'accounts', 'journals', 'assets', 'programs', 'expense_programs', 'budget_allocations',
                         'budget_requests', 'budget_reports', 'rab_plans', 'users'
                     ];
                     for (const table of tablesToPurge) {
@@ -182,18 +182,18 @@ app.post('/api/sync', async (req, res) => {
 
                 const batchUpsert = async (model, data) => {
                     if (!data || !Array.isArray(data) || data.length === 0) return;
-                    
+
                     if (isPurge) {
                         const cleanData = data.map(item => {
-                            let clean = { 
-                                ...item, 
-                                isDeleted: !!item.isDeleted 
+                            let clean = {
+                                ...item,
+                                isDeleted: !!item.isDeleted
                             };
                             if (model === 'program') {
                                 const name = (item.name || '').toLowerCase();
-                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') || 
-                                                name.includes('rapat') || name.includes('operasional') || 
-                                                name.includes('belanja');
+                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') ||
+                                    name.includes('rapat') || name.includes('operasional') ||
+                                    name.includes('belanja');
                                 // Force 'Expense' if name matches, otherwise use incoming type or default
                                 clean.type = isExpense ? 'Expense' : (item.type || 'Donation');
                             }
@@ -204,15 +204,15 @@ app.post('/api/sync', async (req, res) => {
                         await tx[model].createMany({ data: cleanData, skipDuplicates: true });
                     } else {
                         for (const item of data) {
-                            let cleanItem = { 
-                                ...item, 
-                                isDeleted: !!item.isDeleted 
+                            let cleanItem = {
+                                ...item,
+                                isDeleted: !!item.isDeleted
                             };
                             if (model === 'program') {
                                 const name = (item.name || '').toLowerCase();
-                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') || 
-                                                name.includes('rapat') || name.includes('operasional') || 
-                                                name.includes('belanja');
+                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') ||
+                                    name.includes('rapat') || name.includes('operasional') ||
+                                    name.includes('belanja');
                                 cleanItem.type = isExpense ? 'Expense' : (item.type || 'Donation');
                             }
                             await tx[model].upsert({
@@ -230,7 +230,7 @@ app.post('/api/sync', async (req, res) => {
                 await batchUpsert('academicYear', academicYears);
                 await batchUpsert('classGroup', classGroups);
                 await batchUpsert('account', accounts);
-                
+
                 if (journals && Array.isArray(journals)) {
                     for (const j of journals) {
                         try {
@@ -248,7 +248,8 @@ app.post('/api/sync', async (req, res) => {
 
                 await batchUpsert('asset', assets);
                 await batchUpsert('program', programs);
-                
+                await batchUpsert('expenseProgram', expensePrograms);
+
                 if (classes && Array.isArray(classes)) {
                     for (const c of classes) {
                         try {
@@ -274,17 +275,17 @@ app.post('/api/sync', async (req, res) => {
                         try {
                             await tx.student.upsert({
                                 where: { id: s.id },
-                                update: { 
-                                    nis: s.nis, name: s.name, unitId: s.unitId, 
+                                update: {
+                                    nis: s.nis, name: s.name, unitId: s.unitId,
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                    isDeleted: !!s.isDeleted 
+                                    isDeleted: !!s.isDeleted
                                 },
-                                create: { 
-                                    id: s.id, nis: s.nis, name: s.name, unitId: s.unitId, 
+                                create: {
+                                    id: s.id, nis: s.nis, name: s.name, unitId: s.unitId,
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
-                                    isDeleted: !!s.isDeleted 
+                                    isDeleted: !!s.isDeleted
                                 }
                             });
 
@@ -334,7 +335,7 @@ app.get('/api/health', async (req, res) => {
     try {
         const rawTables = await client.$queryRaw`SHOW TABLES`;
         tables = rawTables.map(t => Object.values(t)[0]);
-        
+
         if (tables.some(t => t.toLowerCase() === 'student')) {
             const tbl = tables.find(t => t.toLowerCase() === 'student');
             studentStructure = await client.$queryRawUnsafe(`DESCRIBE ${tbl}`);
@@ -351,7 +352,7 @@ app.get('/api/health', async (req, res) => {
             units: await client.unit.count({ where: { isDeleted: false } }),
             rabPlans: await client.rabPlan.count()
         };
-        
+
         const sList = await client.student.findMany({ where: { isDeleted: false }, take: 5, select: { name: true } });
         dbContent = { students: sList.map(s => s.name) };
     } catch (e) {
@@ -370,7 +371,7 @@ app.get('/api/test-student', async (req, res) => {
         const client = getPrisma();
         // Insert a dummy student to test write permissions
         const testId = `test-${Date.now()}`;
-        
+
         // Find references for the test
         const anyUnit = await client.unit.findFirst();
         if (!anyUnit) return res.status(400).json({ error: 'No units exist. Create a unit first.' });
@@ -421,41 +422,41 @@ app.get('*', (req, res) => {
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error(`[Error] ${new Date().toISOString()} - ${err.message}`);
-    
+
     // Handle Prisma specific errors
     if (err.message.includes('Authentication failed')) {
-        return res.status(500).json({ 
-            error: 'Database Authentication Failed', 
-            details: 'Please check DATABASE_URL credentials in Easypanel Environment Variables.' 
-        });
-    }
-    
-    if (err.message.includes('Can not connect to database')) {
-        return res.status(500).json({ 
-            error: 'Database Connection Failed', 
-            details: 'Ensure the database container is running and accessible.' 
+        return res.status(500).json({
+            error: 'Database Authentication Failed',
+            details: 'Please check DATABASE_URL credentials in Easypanel Environment Variables.'
         });
     }
 
-    res.status(500).json({ 
-        error: 'Internal Server Error', 
-        message: err.message 
+    if (err.message.includes('Can not connect to database')) {
+        return res.status(500).json({
+            error: 'Database Connection Failed',
+            details: 'Ensure the database container is running and accessible.'
+        });
+    }
+
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: err.message
     });
 });
 
 // 5. Auto-Seed Function (Background)
 const ensureFundSources = async () => {
     const incomeItemsList = [
-        'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian', 
-        'Operasional Bulanan', 'Pengembangan dan Pelatihan', 'Uang Makan', 
-        'Seragam', 'Kopiah', 'Paket 1 tahun', 'Kegiatan Kesiswaan', 
-        'Ekskul', 'Uang Ujian', 'Infaq Perpustakaan', 
-        'Buku komunikasi & Raport(LKPD)', 
-        'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah', 
-        'Buku Pelajaran', 'Buku Kontrol Tahfizh', 'Buku Tulis', 
-        'Uang Osis', 'Biaya Pramuka', 'Biaya UKS', 'Biaya Berobat', 
-        'Biaya Bus', 'Labor IPA', 'Labor Komputer', 'Outing Class', 
-        'Komite', 'Biaya Aplikasi', 'Biaya Try Out', 'Biaya Perpisahan', 
+        'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian',
+        'Operasional Bulanan', 'Pengembangan dan Pelatihan', 'Uang Makan',
+        'Seragam', 'Kopiah', 'Paket 1 tahun', 'Kegiatan Kesiswaan',
+        'Ekskul', 'Uang Ujian', 'Infaq Perpustakaan',
+        'Buku komunikasi & Raport(LKPD)',
+        'Buku H.Doa, Pedoman Pendidikan dan T. Ibadah',
+        'Buku Pelajaran', 'Buku Kontrol Tahfizh', 'Buku Tulis',
+        'Uang Osis', 'Biaya Pramuka', 'Biaya UKS', 'Biaya Berobat',
+        'Biaya Bus', 'Labor IPA', 'Labor Komputer', 'Outing Class',
+        'Komite', 'Biaya Aplikasi', 'Biaya Try Out', 'Biaya Perpisahan',
         'Perawatan Sarpras dan Bangunan', 'Biaya Kompre', 'Sosial'
     ];
 
@@ -466,7 +467,7 @@ const ensureFundSources = async () => {
             const existing = await client.incomeItem.findFirst({
                 where: { name, isDeleted: false }
             });
-            
+
             if (!existing) {
                 await client.incomeItem.create({
                     data: { name }
@@ -488,7 +489,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Diagnostic] Time: ${new Date().toISOString()}`);
     console.log(`[Diagnostic] Health Check: http://0.0.0.0:${PORT}/health`);
     console.log(`************************************************\n\n`);
-    
+
     // Trigger background seeding WITHOUT blocking startup
     ensureFundSources().catch(err => {
         console.error(`[Background Seed Error] ${err.message}`);

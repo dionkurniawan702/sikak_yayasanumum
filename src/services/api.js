@@ -34,7 +34,7 @@ export const api = {
             };
 
             const [
-                accounts, journals, assets, programs, users, budgets,
+                accounts, journals, assets, programs, expensePrograms, users, budgets,
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
@@ -44,6 +44,7 @@ export const api = {
                 fetchEntity('journals'),
                 fetchEntity('assets'),
                 fetchEntity('programs'),
+                fetchEntity('expense-programs'),
                 fetchEntity('users'),
                 fetchEntity('budgets'),
                 fetchEntity('fields'),
@@ -75,13 +76,13 @@ export const api = {
                     ...j,
                     entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries
                 })),
-                assets, programs, users, 
+                assets, programs, expensePrograms, users,
                 budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 budgetRequests, budgetReports,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
                 rabPlans, bosStages, bosPosList: bosPos,
-                notes: {}, 
+                notes: {},
             };
         } catch (error) {
             console.error('Failed to load data from server:', error.message);
@@ -112,7 +113,7 @@ export const api = {
 
         const syncItem = async (entity, id, data, method = 'PUT') => {
             const url = id ? `${API_URL}/${entity}/${id}` : `${API_URL}/${entity}`;
-            
+
             const token = localStorage.getItem('jwt_token');
             const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -122,7 +123,7 @@ export const api = {
                 headers: headers,
                 body: JSON.stringify(data)
             });
-            
+
             if (response.status === 401 || response.status === 403) {
                 throw new Error('SESSION_EXPIRED');
             }
@@ -198,6 +199,16 @@ export const api = {
                 case 'DELETE_EXPENSE_ITEM':
                     await syncItem('expense-items', payload, { isDeleted: true }, 'DELETE');
                     break;
+
+                case 'ADD_BUDGET_PROGRAM':
+                    await syncItem('expense-programs', null, payload, 'POST');
+                    break;
+                case 'EDIT_BUDGET_PROGRAM':
+                    await syncItem('expense-programs', payload.id, payload);
+                    break;
+                case 'DELETE_BUDGET_PROGRAM':
+                    await syncItem('expense-programs', payload, { isDeleted: true }, 'DELETE');
+                    break;
                 case 'UPDATE_DISTRIBUTION_SETTINGS':
                     await syncItem('distribution-settings', null, payload, 'POST');
                     break;
@@ -216,7 +227,7 @@ export const api = {
                 case 'ADD_ACADEMIC_YEAR': await syncItem('academic-years', null, payload, 'POST'); break;
                 case 'EDIT_ACADEMIC_YEAR': await syncItem('academic-years', payload.id, payload); break;
                 case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', payload, { isDeleted: true }, 'DELETE'); break;
-                
+
                 case 'ADD_CLASS_GROUP': await syncItem('class-groups', null, payload, 'POST'); break;
                 case 'EDIT_CLASS_GROUP': await syncItem('class-groups', payload.id, payload); break;
                 case 'DELETE_CLASS_GROUP': await syncItem('class-groups', payload, { isDeleted: true }, 'DELETE'); break;
@@ -236,7 +247,7 @@ export const api = {
                 case 'ADD_CLASS': await syncItem('classes', null, payload, 'POST'); break;
                 case 'EDIT_CLASS': await syncItem('classes', payload.id, payload); break;
                 case 'DELETE_CLASS': await syncItem('classes', payload, { isDeleted: true }, 'DELETE'); break;
-                
+
                 case 'SET_RAB_PLAN':
                     await syncItem('rab-plans', payload.id, payload);
                     break;
@@ -278,6 +289,7 @@ export const api = {
                     journals: state.journals,
                     assets: state.assets,
                     programs: state.programs,
+                    expensePrograms: state.expensePrograms,
                     users: state.users,
                     budgets: state.budgets,
                     fields: state.fields,

@@ -10,6 +10,7 @@ const defaultState = {
     journals: initialJournals,
     assets: initialAssets,
     programs: initialPrograms,
+    expensePrograms: [],
     budgets: [],
     fields: [],
     units: [],
@@ -45,7 +46,7 @@ function loadState() {
         const saved = localStorage.getItem('sikak-yayasan-data');
         if (saved) {
             const data = JSON.parse(saved);
-            
+
             // Forced reset if version mismatch (important for ID synchronization)
             if (data.version !== CURRENT_VERSION) {
                 console.log('[Migration] Version mismatch, resetting local cache to initial state.');
@@ -54,7 +55,7 @@ function loadState() {
 
             // Ensure all new keys from defaultState are present
             const merged = { ...defaultState, ...data };
-            
+
             if (data.accounts) {
                 const currentSeedIds = new Set(initialAccounts.map(a => a.id));
                 merged.accounts = data.accounts.filter(a => {
@@ -87,7 +88,7 @@ function loadState() {
                     return acc;
                 });
             }
-            
+
             // Migration: Add specific field-only expense items
             if (merged.expenseItems) {
                 if (!merged.expenseItems.some(ex => ex.id === 'EXP-036' || ex.name === 'Aset' || ex.isFieldOnly)) {
@@ -95,7 +96,7 @@ function loadState() {
                     merged.expenseItems.push({ id: 'EXP-037', name: 'Pengembangan (umum)', sourceOfFunds: 'Persentase Konfigurasi', isFieldOnly: true });
                 }
             }
-            
+
             // Migration: Ensure Academic Years have valid dates (Fix for "Invalid Date" sync issue)
             if (merged.academicYears && Array.isArray(merged.academicYears)) {
                 const currentYear = new Date().getFullYear();
@@ -106,7 +107,7 @@ function loadState() {
                     isCurrent: ay.isCurrent || false
                 }));
             }
-            
+
             return merged;
         }
     } catch (e) { /* ignore */ }
@@ -181,6 +182,7 @@ function appReducer(state, action) {
                 journals: (serverData.journals || state.journals || []).map(j => ({ ...j, programId: j.programId || 'PRG-GEN' })),
                 assets: serverData.assets || state.assets || [],
                 programs: serverData.programs || state.programs || [],
+                expensePrograms: serverData.expensePrograms || state.expensePrograms || [],
                 budgets: serverData.budgets || state.budgets || [],
                 fields: serverData.fields || state.fields || [],
                 units: serverData.units || state.units || [],
@@ -268,6 +270,17 @@ function appReducer(state, action) {
         case 'DELETE_PROGRAM':
             newState = { ...state, programs: state.programs.map(p => p.id === action.payload ? { ...p, isDeleted: true } : p) };
             break;
+
+        case 'ADD_BUDGET_PROGRAM':
+            newState = { ...state, expensePrograms: [...state.expensePrograms, { ...action.payload }] };
+            break;
+        case 'EDIT_BUDGET_PROGRAM':
+            newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload.id ? action.payload : p) };
+            break;
+        case 'DELETE_BUDGET_PROGRAM':
+            newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload ? { ...p, isDeleted: true } : p) };
+            break;
+
         case 'SET_BUDGETS':
             newState = { ...state, budgets: action.payload };
             break;
@@ -347,7 +360,7 @@ function appReducer(state, action) {
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
             break;
-            
+
         case 'ADD_ACADEMIC_YEAR': newState = { ...state, academicYears: [...state.academicYears, action.payload] }; break;
         case 'EDIT_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.filter(i => i.id !== action.payload) }; break;
@@ -372,13 +385,13 @@ function appReducer(state, action) {
         case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
 
-        case 'SET_RAB_PLAN': 
-            newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] }; 
+        case 'SET_RAB_PLAN':
+            newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] };
             break;
         case 'ADD_BOS_STAGE': newState = { ...state, bosStages: [...state.bosStages, action.payload] }; break;
         case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
-        
+
         case 'ADD_BOS_POS': newState = { ...state, bosPosList: [...state.bosPosList, action.payload] }; break;
         case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
@@ -403,7 +416,7 @@ export function AppProvider({ children }) {
     useEffect(() => {
         const token = localStorage.getItem('jwt_token');
         const isLoginPage = window.location.pathname === '/login';
-        
+
         if (isRemote && token && !isLoginPage) {
             dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menghubungkan ke server...' } });
             api.fetchAllData().then(data => {

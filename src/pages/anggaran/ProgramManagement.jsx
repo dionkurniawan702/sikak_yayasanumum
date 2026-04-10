@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
-import { 
-    Plus, Search, Edit2, Trash2, Layout, ChevronRight, 
+import {
+    Plus, Search, Edit2, Trash2, Layout, ChevronRight,
     Layers, Filter, AlertCircle, CheckCircle2, Building2
 } from 'lucide-react';
 import { generateId } from '../../utils/format';
 
 export default function ProgramManagement() {
     const { state, dispatch } = useApp();
-    const { programs = [], units = [], fields = [], currentUser } = state;
+    const { expensePrograms = [], units = [], fields = [], currentUser } = state;
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -22,12 +22,12 @@ export default function ProgramManagement() {
     const initialUnitId = currentUser?.role === 'admin_unit' ? currentUser.unitId : '';
     const initialFieldId = currentUser?.role === 'admin_bidang' ? currentUser.fieldId : '';
 
-    const filteredItems = programs.filter(item => {
-        if (item.isDeleted || item.type !== 'Expense') return false;
-        
+    const filteredItems = expensePrograms.filter(item => {
+        if (item.isDeleted) return false;
+
         // Removed unit/bidang filtering to make programs shared across the foundation
         const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
+            (item.description || '').toLowerCase().includes(searchTerm.toLowerCase());
         return matchesSearch;
     });
 
@@ -45,16 +45,16 @@ export default function ProgramManagement() {
 
             if (editingItem) {
                 const updatedItem = { ...editingItem, ...dataToSave };
-                dispatch({ type: 'EDIT_PROGRAM', payload: updatedItem });
-                await api.pushAction({ type: 'EDIT_PROGRAM', payload: updatedItem }, state);
+                dispatch({ type: 'EDIT_BUDGET_PROGRAM', payload: updatedItem });
+                await api.pushAction({ type: 'EDIT_BUDGET_PROGRAM', payload: updatedItem }, state);
                 setMessage({ type: 'success', text: 'Program berhasil diperbarui' });
             } else {
                 const newItem = {
                     id: `PRG-${generateId()}`,
                     ...dataToSave
                 };
-                dispatch({ type: 'ADD_PROGRAM', payload: newItem });
-                await api.pushAction({ type: 'ADD_PROGRAM', payload: newItem }, state);
+                dispatch({ type: 'ADD_BUDGET_PROGRAM', payload: newItem });
+                await api.pushAction({ type: 'ADD_BUDGET_PROGRAM', payload: newItem }, state);
                 setMessage({ type: 'success', text: 'Program berhasil ditambahkan' });
             }
             setIsModalOpen(false);
@@ -71,8 +71,8 @@ export default function ProgramManagement() {
     const handleDelete = async (id) => {
         if (!window.confirm('Hapus program ini?')) return;
         try {
-            dispatch({ type: 'DELETE_PROGRAM', payload: id });
-            await api.pushAction({ type: 'DELETE_PROGRAM', payload: id }, state);
+            dispatch({ type: 'DELETE_BUDGET_PROGRAM', payload: id });
+            await api.pushAction({ type: 'DELETE_BUDGET_PROGRAM', payload: id }, state);
             setMessage({ type: 'success', text: 'Program berhasil dihapus' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
@@ -92,9 +92,9 @@ export default function ProgramManagement() {
                     </h1>
                     <p className="text-slate-500 mt-2 font-medium">Kelola daftar program kerja dan belanja untuk unit/bidang Anda</p>
                 </div>
-                
+
                 <div className="flex items-center gap-3">
-                    <button 
+                    <button
                         onClick={() => {
                             setEditingItem(null);
                             setFormData({ name: '', description: '', unitId: initialUnitId, fieldId: initialFieldId, type: 'Expense' });
@@ -110,9 +110,8 @@ export default function ProgramManagement() {
 
             {/* Alert Message */}
             {message && (
-                <div className={`p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top duration-300 ${
-                    message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
-                }`}>
+                <div className={`p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top duration-300 ${message.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-rose-50 text-rose-700 border border-rose-100'
+                    }`}>
                     {message.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
                     <p className="font-bold text-sm">{message.text}</p>
                 </div>
@@ -123,8 +122,8 @@ export default function ProgramManagement() {
                 <div className="p-6 lg:p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col lg:flex-row lg:items-center gap-4">
                     <div className="relative flex-1 group">
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-indigo-500" size={20} />
-                        <input 
-                            type="text" 
+                        <input
+                            type="text"
                             placeholder="Cari nama program..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -139,7 +138,6 @@ export default function ProgramManagement() {
                             <tr className="bg-slate-50/50">
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Nama Program</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Unit/Bidang</th>
-                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Tipe</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -164,21 +162,16 @@ export default function ProgramManagement() {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5">
-                                            <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${item.type === 'Expense' ? 'bg-orange-50 text-orange-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                                {item.type === 'Expense' ? 'Belanja' : 'Donasi'}
-                                            </span>
-                                        </td>
                                         <td className="px-8 py-5 max-w-xs truncate">
                                             {item.description || '-'}
                                         </td>
                                         <td className="px-8 py-5">
                                             <div className="flex items-center justify-end gap-2 text-slate-500">
-                                                <button 
+                                                <button
                                                     onClick={() => {
                                                         setEditingItem(item);
-                                                        setFormData({ 
-                                                            name: item.name, 
+                                                        setFormData({
+                                                            name: item.name,
                                                             description: item.description || '',
                                                             unitId: item.unitId || '',
                                                             fieldId: item.fieldId || '',
@@ -191,7 +184,7 @@ export default function ProgramManagement() {
                                                 >
                                                     <Edit2 size={18} />
                                                 </button>
-                                                <button 
+                                                <button
                                                     onClick={() => handleDelete(item.id)}
                                                     className="p-2.5 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
                                                     title="Hapus"
@@ -231,12 +224,12 @@ export default function ProgramManagement() {
                                 Definisikan program belanja unit/bidang Anda
                             </p>
                         </div>
-                        
+
                         <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama Program</label>
-                                <input 
-                                    type="text" 
+                                <input
+                                    type="text"
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
@@ -247,7 +240,7 @@ export default function ProgramManagement() {
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Keterangan</label>
-                                <textarea 
+                                <textarea
                                     value={formData.description}
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-medium text-slate-700 min-h-[100px]"
@@ -259,7 +252,7 @@ export default function ProgramManagement() {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit</label>
-                                        <select 
+                                        <select
                                             value={formData.unitId}
                                             onChange={(e) => setFormData({ ...formData, unitId: e.target.value, fieldId: '' })}
                                             className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-xs"
@@ -270,7 +263,7 @@ export default function ProgramManagement() {
                                     </div>
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Bidang</label>
-                                        <select 
+                                        <select
                                             value={formData.fieldId}
                                             onChange={(e) => setFormData({ ...formData, fieldId: e.target.value, unitId: '' })}
                                             className="w-full px-4 py-3 bg-slate-50 border-none rounded-xl font-bold text-xs"
@@ -282,27 +275,17 @@ export default function ProgramManagement() {
                                 </div>
                             )}
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tipe Program</label>
-                                <select 
-                                    value={formData.type}
-                                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
-                                >
-                                    <option value="Expense">Belanja Pendidikan (Ekskul, Operasional, dsb)</option>
-                                    <option value="Donation">Donasi Yayasan (Masuk Laporan Program)</option>
-                                </select>
-                            </div>
+
 
                             <div className="flex gap-3 pt-4">
-                                <button 
+                                <button
                                     type="button"
                                     onClick={() => setIsModalOpen(false)}
                                     className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition-all shadow-sm"
                                 >
                                     Batal
                                 </button>
-                                <button 
+                                <button
                                     type="submit"
                                     disabled={loading}
                                     className="flex-1 px-6 py-4 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold transition-all shadow-lg shadow-indigo-200"

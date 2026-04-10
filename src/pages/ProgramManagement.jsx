@@ -6,7 +6,7 @@ import * as XLSX from 'xlsx';
 
 export default function ProgramManagement() {
     const { state, dispatch } = useApp();
-    const programs = state.programs.filter(p => !p.isDeleted && p.type !== 'Expense');
+    const programs = state.programs.filter(p => !p.isDeleted);
     const [isAdding, setIsAdding] = useState(false);
     const [editingId, setEditingId] = useState(null);
     const defaultFormData = { name: '', category: 'Umum', description: '', targetAmount: '', status: 'Aktif', initialDonationBalance: '', initialResultBalance: '', type: 'Donation' };
@@ -28,8 +28,8 @@ export default function ProgramManagement() {
         XLSX.writeFile(wb, 'SIKAK-Yayasan-Programs.xlsx');
     };
 
-    const filteredPrograms = programs.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const filteredPrograms = programs.filter(p =>
+        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (p.description || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -80,18 +80,18 @@ export default function ProgramManagement() {
                 <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl animate-in mb-8">
                     <div className="flex justify-between items-center mb-8 pb-6 border-b border-slate-50">
                         <h3 className="text-xl font-black text-slate-900">{editingId ? 'Ubah Program' : 'Program Baru'}</h3>
-                        <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600"><X size={20}/></button>
+                        <button onClick={() => setIsAdding(false)} className="text-slate-400 hover:text-slate-600"><X size={20} /></button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-6">
                             <div>
                                 <label className="form-label">Nama Kegiatan / Program</label>
-                                <input className="form-input" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Pembangunan Masjid..." />
+                                <input className="form-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Pembangunan Masjid..." />
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="form-label">Kategori</label>
-                                    <select className="form-select" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                                    <select className="form-select" value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })}>
                                         <option value="Umum">Umum</option>
                                         <option value="Sosial">Sosial</option>
                                         <option value="Pendidikan">Pendidikan</option>
@@ -100,28 +100,22 @@ export default function ProgramManagement() {
                                 </div>
                                 <div>
                                     <label className="form-label">Status</label>
-                                    <select className="form-select" value={formData.status} onChange={e => setFormData({...formData, status: e.target.value})}>
+                                    <select className="form-select" value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })}>
                                         <option value="Aktif">Aktif</option>
                                         <option value="Selesai">Selesai</option>
                                     </select>
                                 </div>
                             </div>
-                            <div>
-                                <label className="form-label">Tipe Program</label>
-                                <select className="form-select" value={formData.type} onChange={e => setFormData({...formData, type: e.target.value})}>
-                                    <option value="Donation">Donasi Yayasan (Masuk Laporan Program)</option>
-                                    <option value="Expense">Belanja Pendidikan (Ekskul, Operasional, dsb)</option>
-                                </select>
-                            </div>
+
                             <div>
                                 <label className="form-label">Deskripsi</label>
-                                <textarea className="form-input h-32 resize-none" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} placeholder="Penjelasan singkat mengenai program..." />
+                                <textarea className="form-input h-32 resize-none" value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Penjelasan singkat mengenai program..." />
                             </div>
                         </div>
                         <div className="space-y-6">
                             <div>
                                 <label className="form-label">Target Pendanaan (Opsional)</label>
-                                <input type="number" className="form-input" value={formData.targetAmount} onChange={e => setFormData({...formData, targetAmount: e.target.value})} placeholder="0" />
+                                <input type="number" className="form-input" value={formData.targetAmount} onChange={e => setFormData({ ...formData, targetAmount: e.target.value })} placeholder="0" />
                             </div>
                             <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
                                 <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -129,7 +123,7 @@ export default function ProgramManagement() {
                                 </h4>
                                 <div>
                                     <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Saldo Kas/Bank</label>
-                                    <input type="number" className="form-input bg-white" value={formData.initialDonationBalance} onChange={e => setFormData({...formData, initialDonationBalance: e.target.value})} placeholder="0" />
+                                    <input type="number" className="form-input bg-white" value={formData.initialDonationBalance} onChange={e => setFormData({ ...formData, initialDonationBalance: e.target.value })} placeholder="0" />
                                 </div>
                                 <p className="text-[10px] text-slate-400 font-medium italic">* Saldo awal akan ditambahkan ke neraca saldo akun program terpilih.</p>
                             </div>
@@ -155,7 +149,6 @@ export default function ProgramManagement() {
                                 <tr>
                                     <th className="px-8 py-6">ID / Nama Program</th>
                                     <th className="px-8 py-6">Kategori</th>
-                                    <th className="px-8 py-6">Tipe</th>
                                     <th className="px-8 py-6 text-right">Target</th>
                                     <th className="px-8 py-6 text-center">Status</th>
                                     <th className="px-8 py-6 text-center">Aksi</th>
@@ -171,11 +164,6 @@ export default function ProgramManagement() {
                                         <td className="px-8 py-4">
                                             <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">{p.category}</span>
                                         </td>
-                                        <td className="px-8 py-4">
-                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${p.type === 'Expense' ? 'bg-orange-50 text-orange-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                                                {p.type === 'Expense' ? 'Belanja' : 'Donasi'}
-                                            </span>
-                                        </td>
                                         <td className="px-8 py-4 text-right font-black text-slate-900">
                                             {p.targetAmount ? <CurrencyDisplay value={p.targetAmount} /> : '-'}
                                         </td>
@@ -186,8 +174,8 @@ export default function ProgramManagement() {
                                         </td>
                                         <td className="px-8 py-4">
                                             <div className="flex justify-center gap-2">
-                                                <button onClick={() => handleEdit(p)} className="p-2 text-slate-300 hover:text-blue-600 transition-all"><Edit2 size={16}/></button>
-                                                <button onClick={() => handleDelete(p.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16}/></button>
+                                                <button onClick={() => handleEdit(p)} className="p-2 text-slate-300 hover:text-blue-600 transition-all"><Edit2 size={16} /></button>
+                                                <button onClick={() => handleDelete(p.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16} /></button>
                                             </div>
                                         </td>
                                     </tr>
