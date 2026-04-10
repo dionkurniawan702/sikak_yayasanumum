@@ -36,6 +36,15 @@ export const api = {
                 return json.data || [];
             };
 
+            const safeFetch = async (name) => {
+                try {
+                    return await fetchEntity(name);
+                } catch (e) {
+                    console.error(`[Fetch Failure] ${name}:`, e.message);
+                    return [];
+                }
+            };
+
             const [
                 accounts, journals, assets, programs, expensePrograms, users, budgets,
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
@@ -43,30 +52,30 @@ export const api = {
                 academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
                 rabPlans, bosStages, bosPos
             ] = await Promise.all([
-                fetchEntity('accounts'),
-                fetchEntity('journals'),
-                fetchEntity('assets'),
-                fetchEntity('programs'),
-                fetchEntity('expense-programs'),
-                fetchEntity('users'),
-                fetchEntity('budgets'),
-                fetchEntity('fields'),
-                fetchEntity('units'),
-                fetchEntity('students'),
-                fetchEntity('income-items'),
-                fetchEntity('expense-items'),
-                fetchEntity('distribution-settings'),
-                fetchEntity('budget-requests'),
-                fetchEntity('budget-reports'),
-                fetchEntity('academic-years'),
-                fetchEntity('class-groups'),
-                fetchEntity('positions'),
-                fetchEntity('student-statuses'),
-                fetchEntity('parent-statuses'),
-                fetchEntity('classes'),
-                fetchEntity('rab-plans'),
-                fetchEntity('bos-stages'),
-                fetchEntity('bos-pos')
+                safeFetch('accounts'),
+                safeFetch('journals'),
+                safeFetch('assets'),
+                safeFetch('programs'),
+                safeFetch('expense-programs'),
+                safeFetch('users'),
+                safeFetch('budgets'),
+                safeFetch('fields'),
+                safeFetch('units'),
+                safeFetch('students'),
+                safeFetch('income-items'),
+                safeFetch('expense-items'),
+                safeFetch('distribution-settings'),
+                safeFetch('budget-requests'),
+                safeFetch('budget-reports'),
+                safeFetch('academic-years'),
+                safeFetch('class-groups'),
+                safeFetch('positions'),
+                safeFetch('student-statuses'),
+                safeFetch('parent-statuses'),
+                safeFetch('classes'),
+                safeFetch('rab-plans'),
+                safeFetch('bos-stages'),
+                safeFetch('bos-pos')
             ]);
 
             return {
