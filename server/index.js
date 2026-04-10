@@ -217,8 +217,10 @@ app.post('/api/sync', async (req, res) => {
 
                                 // Fix Prisma Float mapping
                                 cleanItem.targetAmount = cleanItem.targetAmount ? parseFloat(cleanItem.targetAmount) : null;
-                                cleanItem.initialDonationBalance = cleanItem.initialDonationBalance ? parseFloat(cleanItem.initialDonationBalance) : null;
-                                cleanItem.initialResultBalance = cleanItem.initialResultBalance ? parseFloat(cleanItem.initialResultBalance) : null;
+
+                                // REMOVE non-schema fields (used only in frontend/accounts)
+                                delete cleanItem.initialDonationBalance;
+                                delete cleanItem.initialResultBalance;
                             }
                             await tx[model].upsert({
                                 where: { id: item.id },
