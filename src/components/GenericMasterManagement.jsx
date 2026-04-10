@@ -51,8 +51,6 @@ export default function GenericMasterManagement({
             } else {
                 const currentYear = new Date().getFullYear();
                 const defaultDates = actionPrefix === 'ACADEMIC_YEAR' ? {
-                    startDate: `${currentYear}-01-01`,
-                    endDate: `${currentYear}-12-31`,
                     isCurrent: false
                 } : {};
 
