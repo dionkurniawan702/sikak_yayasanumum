@@ -57,7 +57,11 @@ console.log(`[Diagnostic] PORT: ${PORT}`);
 console.log(`[Diagnostic] DATABASE_URL: ${maskedDBUrl}`);
 console.log(`[Diagnostic] __dirname: ${__dirname}`);
 
-app.use(cors());
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 

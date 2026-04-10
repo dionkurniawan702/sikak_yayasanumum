@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { LogIn, Key, User as UserIcon, AlertCircle, Clock, Eye, EyeOff } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -12,6 +12,27 @@ export default function Login() {
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
+    const [serverStatus, setServerStatus] = useState('checking'); // 'checking', 'online', 'offline'
+    
+    useEffect(() => {
+        const checkConnection = async () => {
+            let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            if (typeof window !== 'undefined') {
+                const { hostname, origin } = window.location;
+                if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+                    API_URL = `${origin}/api`;
+                }
+            }
+            try {
+                const res = await fetch(`${API_URL}/health`);
+                if (res.ok) setServerStatus('online');
+                else setServerStatus('offline');
+            } catch (err) {
+                setServerStatus('offline');
+            }
+        };
+        checkConnection();
+    }, []);
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -58,10 +79,8 @@ export default function Login() {
                 }
             }
         } catch (err) {
-            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-            const { origin } = window.location;
-            const targetUrl = (window.location.hostname !== 'localhost') ? `${origin}/api/login` : `${API_URL}/login`;
-            setError(`Gagal terhubung ke server (${targetUrl}). Pastikan server aktif dan port 5000 terbuka.`);
+            const currentUrl = (window.location.hostname !== 'localhost') ? `${window.location.origin}/api/login` : 'http://localhost:5000/api/login';
+            setError(`Gagal terhubung ke server (${currentUrl}). Pesan: ${err.message}. Pastikan internet aktif dan bukan blokir firewall.`);
             console.error(err);
         }
     };
@@ -158,6 +177,21 @@ export default function Login() {
                         Masuk Sekarang
                     </button>
                 </form>
+
+                <div style={{ marginTop: '24px', textAlign: 'center' }}>
+                    <div className="flex items-center justify-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${
+                            serverStatus === 'online' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
+                            serverStatus === 'offline' ? 'bg-rose-500' : 'bg-slate-300 animate-pulse'
+                        }`} />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Status Server: {
+                                serverStatus === 'online' ? 'Tersambung' : 
+                                serverStatus === 'offline' ? 'Terputus' : 'Mengecek...'
+                            }
+                        </span>
+                    </div>
+                </div>
 
                 <div style={{ marginTop: '32px', textAlign: 'center' }}>
                     <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
