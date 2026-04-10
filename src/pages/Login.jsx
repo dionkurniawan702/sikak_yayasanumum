@@ -24,7 +24,7 @@ export default function Login() {
                 let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
                 if (typeof window !== 'undefined') {
                     const { hostname, protocol, host } = window.location;
-                    if (hostname !== 'localhost' && hostname !== '127.0.0.1' && (API_URL.includes('localhost') || API_URL.includes('127.0.0.1'))) {
+                    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
                         API_URL = `${protocol}//${host}/api`;
                     }
                 }
