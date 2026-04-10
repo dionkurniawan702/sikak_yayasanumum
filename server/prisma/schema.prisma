@@ -97,24 +97,6 @@ model ExpenseProgram {
 
   @@map("expense_programs")
 }
-
-model BosStage {
-  id              String   @id @default(uuid())
-  name            String
-  academicYearId  String?
-  isDeleted       Boolean  @default(false)
-
-  @@map("bos_stages")
-}
-
-model BosPos {
-  id              String   @id @default(uuid())
-  name            String
-  isDeleted       Boolean  @default(false)
-
-  @@map("bos_pos")
-}
-
 model Budget {
   id        String   @id @default(uuid())
   accountId String
