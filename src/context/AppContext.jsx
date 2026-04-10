@@ -31,6 +31,7 @@ const defaultState = {
     rabPlans: [],
     bosStages: [],
     bosPosList: [],
+    users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
     lastAction: null,
     isInitialized: false,

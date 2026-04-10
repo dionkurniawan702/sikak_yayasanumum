@@ -38,7 +38,7 @@ export default function Login() {
         e.preventDefault();
         setError('');
 
-        const isRemote = import.meta.env.VITE_DATA_MODE === 'remote';
+        const isRemote = (import.meta.env.VITE_DATA_MODE === 'remote') || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
         
         try {
             if (isRemote) {

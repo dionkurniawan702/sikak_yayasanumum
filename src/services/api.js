@@ -9,9 +9,11 @@ if (typeof window !== 'undefined') {
     }
 }
 
-const DATA_MODE = import.meta.env.VITE_DATA_MODE || 'remote'; // Default to remote for SIKAK
+const DATA_MODE = import.meta.env.VITE_DATA_MODE || 'remote'; 
 
-export const isRemote = DATA_MODE === 'remote';
+// Force remote mode if not on localhost
+export const isRemote = (DATA_MODE === 'remote') || 
+    (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
 
 export const api = {
     async fetchAllData() {
