@@ -18,14 +18,20 @@ export default function BudgetDashboard() {
         academicYears = []
     } = state;
 
-    // Academic year selector
-    const currentYear = new Date().getFullYear();
-    const yearOptions = [];
-    for (let y = currentYear + 1; y >= currentYear - 3; y--) {
-        yearOptions.push(`${y - 1}/${y}`);
+    // Academic year selector using Database
+    const currentDbAy = academicYears.find(a => a.isCurrent && !a.isDeleted);
+    const fallbackYear = `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`;
+    const [selectedAcademicYear, setSelectedAcademicYear] = useState(currentDbAy ? currentDbAy.name : fallbackYear);
+    
+    const yearOptions = academicYears.filter(a => !a.isDeleted).map(a => a.name)
+        .sort((a, b) => b.localeCompare(a));
+    if (!yearOptions.includes(selectedAcademicYear)) {
+        yearOptions.push(selectedAcademicYear);
     }
-    const [selectedAcademicYear, setSelectedAcademicYear] = useState(`${currentYear - 1}/${currentYear}`);
-    const budgetYear = selectedAcademicYear.split('/')[1]; // e.g. "2026"
+
+    const activeAcademicYear = useMemo(() => {
+        return academicYears.find(y => y.name === selectedAcademicYear && !y.isDeleted);
+    }, [academicYears, selectedAcademicYear]);
 
     const [expandedUnits, setExpandedUnits] = useState({});
     const [expandedFields, setExpandedFields] = useState({});
@@ -54,7 +60,11 @@ export default function BudgetDashboard() {
         });
 
         const activeStatusId = studentStatuses?.find(st => st.name === 'Aktif')?.id;
-        const activeStudents = students.filter(s => !s.isDeleted && s.statusId === activeStatusId);
+        const activeStudents = students.filter(s => 
+            !s.isDeleted && 
+            s.statusId === activeStatusId &&
+            (activeAcademicYear ? s.academicYearId === activeAcademicYear.id : true)
+        );
 
         activeStudents.forEach(student => {
             if (!student.unitId || !uRAP[student.unitId]) return;
@@ -103,7 +113,7 @@ export default function BudgetDashboard() {
         });
 
         return { unitRAP: uRAP, fieldRAP: fRAP };
-    }, [students, units, fields, distributionSettings, studentStatuses, currentUser]);
+    }, [students, units, fields, distributionSettings, studentStatuses, currentUser, activeAcademicYear]);
 
     // ========== ENGINE: RAB (Rencana Anggaran Belanja) ==========
     // RAB = Budgeted expenses set by users in the Budgeting module
@@ -121,10 +131,20 @@ export default function BudgetDashboard() {
             fRAB[f.id] = { total: 0, items: {} };
         });
 
-        // Aggregate from budgetRequests that are APPROVED
-        const approvedRequests = (state.budgetRequests || []).filter(
-            r => r.status === 'APPROVED'
-        );
+        // Aggregate from budgetRequests that are APPROVED, filtered by Academic Year (July - June)
+        const startYear = parseInt(selectedAcademicYear.split('/')[0]);
+        const endYear = parseInt(selectedAcademicYear.split('/')[1]);
+
+        const approvedRequests = (state.budgetRequests || []).filter(r => {
+            if (r.status !== 'APPROVED') return false;
+            
+            const reqYear = parseInt(r.year);
+            const reqMonth = parseInt(r.month);
+            
+            if (reqYear === startYear && reqMonth >= 7) return true;
+            if (reqYear === endYear && reqMonth <= 6) return true;
+            return false;
+        });
 
         approvedRequests.forEach(req => {
             const amount = parseFloat(req.amount) || 0;
@@ -146,7 +166,7 @@ export default function BudgetDashboard() {
         });
 
         return { unitRAB: uRAB, fieldRAB: fRAB };
-    }, [state.budgetRequests, units, fields, currentUser]);
+    }, [state.budgetRequests, units, fields, currentUser, selectedAcademicYear]);
 
     // ========== Helpers ==========
     const getExpenseName = (id) => {
