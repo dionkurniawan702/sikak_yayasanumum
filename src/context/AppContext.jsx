@@ -201,7 +201,6 @@ function appReducer(state, action) {
                 rabPlans: serverData.rabPlans || state.rabPlans || [],
                 bosStages: serverData.bosStages || state.bosStages || [],
                 bosPosList: serverData.bosPosList || state.bosPosList || [],
-                programs: serverData.programs || state.programs || [],
 
                 users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
