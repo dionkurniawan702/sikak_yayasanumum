@@ -200,6 +200,16 @@ export const api = {
                     await syncItem('expense-items', payload, { isDeleted: true }, 'DELETE');
                     break;
 
+                case 'ADD_PROGRAM':
+                    await syncItem('programs', null, payload, 'POST');
+                    break;
+                case 'EDIT_PROGRAM':
+                    await syncItem('programs', payload.id, payload);
+                    break;
+                case 'DELETE_PROGRAM':
+                    await syncItem('programs', payload, { isDeleted: true }, 'DELETE');
+                    break;
+
                 case 'ADD_BUDGET_PROGRAM':
                     await syncItem('expense-programs', null, payload, 'POST');
                     break;

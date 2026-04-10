@@ -214,6 +214,11 @@ app.post('/api/sync', async (req, res) => {
                                     name.includes('rapat') || name.includes('operasional') ||
                                     name.includes('belanja');
                                 cleanItem.type = isExpense ? 'Expense' : (item.type || 'Donation');
+
+                                // Fix Prisma Float mapping
+                                cleanItem.targetAmount = cleanItem.targetAmount ? parseFloat(cleanItem.targetAmount) : null;
+                                cleanItem.initialDonationBalance = cleanItem.initialDonationBalance ? parseFloat(cleanItem.initialDonationBalance) : null;
+                                cleanItem.initialResultBalance = cleanItem.initialResultBalance ? parseFloat(cleanItem.initialResultBalance) : null;
                             }
                             await tx[model].upsert({
                                 where: { id: item.id },

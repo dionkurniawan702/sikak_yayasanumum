@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Edit2, Trash2, X, Check, Info, Search, List, FileSpreadsheet } from 'lucide-react';
+import { api } from '../services/api';
+import { generateId } from '../utils/format';
 import CurrencyDisplay from '../components/CurrencyDisplay';
 import * as XLSX from 'xlsx';
 
@@ -35,11 +37,22 @@ export default function ProgramManagement() {
 
     const handleSave = () => {
         if (!formData.name.trim()) return alert('Nama program wajib diisi');
+
+        const payloadToSave = {
+            ...formData,
+            targetAmount: formData.targetAmount ? parseFloat(formData.targetAmount) : null,
+            initialDonationBalance: formData.initialDonationBalance ? parseFloat(formData.initialDonationBalance) : 0,
+        };
+
         if (editingId) {
-            dispatch({ type: 'EDIT_PROGRAM', payload: { id: editingId, ...formData } });
+            const updatePayload = { id: editingId, ...payloadToSave };
+            dispatch({ type: 'EDIT_PROGRAM', payload: updatePayload });
+            api.pushAction({ type: 'EDIT_PROGRAM', payload: updatePayload }, state).catch(console.error);
             setEditingId(null);
         } else {
-            dispatch({ type: 'ADD_PROGRAM', payload: formData });
+            const newItem = { id: `PRG-${generateId()}`, ...payloadToSave };
+            dispatch({ type: 'ADD_PROGRAM', payload: newItem });
+            api.pushAction({ type: 'ADD_PROGRAM', payload: newItem }, state).catch(console.error);
         }
         setFormData(defaultFormData);
         setIsAdding(false);
@@ -54,6 +67,7 @@ export default function ProgramManagement() {
     const handleDelete = (id) => {
         if (window.confirm('Hapus program ini?')) {
             dispatch({ type: 'DELETE_PROGRAM', payload: id });
+            api.pushAction({ type: 'DELETE_PROGRAM', payload: id }, state).catch(console.error);
         }
     };
 
