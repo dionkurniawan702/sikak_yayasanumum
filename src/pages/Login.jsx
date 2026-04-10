@@ -23,13 +23,16 @@ export default function Login() {
             if (isRemote) {
                 let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
                 if (typeof window !== 'undefined') {
-                    const { hostname, protocol, host } = window.location;
+                    const { hostname, origin } = window.location;
                     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-                        API_URL = `${protocol}//${host}/api`;
+                        API_URL = `${origin}/api`;
                     }
                 }
                 
-                const res = await fetch(`${API_URL}/login`, {
+                // Track URL for debugging
+                const targetUrl = `${API_URL}/login`;
+                
+                const res = await fetch(targetUrl, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -54,7 +57,10 @@ export default function Login() {
                 }
             }
         } catch (err) {
-            setError('Gagal terhubung ke server backend.');
+            const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+            const { origin } = window.location;
+            const targetUrl = (window.location.hostname !== 'localhost') ? `${origin}/api/login` : `${API_URL}/login`;
+            setError(`Gagal terhubung ke server (${targetUrl}). Pastikan server aktif dan port 5000 terbuka.`);
             console.error(err);
         }
     };
