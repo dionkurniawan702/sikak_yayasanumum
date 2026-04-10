@@ -23,14 +23,15 @@ export default function Login() {
             if (isRemote) {
                 let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
                 if (typeof window !== 'undefined') {
-                    const { hostname, origin } = window.location;
+                    const { hostname } = window.location;
                     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-                        API_URL = `${origin}/api`;
+                        // Gunakan jalur relatif saja di produksi
+                        API_URL = '/api';
                     }
                 }
                 
                 // Track URL for debugging
-                const targetUrl = `${API_URL}/login`;
+                const targetUrl = API_URL.startsWith('http') ? `${API_URL}/login` : `${window.location.origin}${API_URL}/login`;
                 
                 const res = await fetch(targetUrl, {
                     method: 'POST',

@@ -2,10 +2,10 @@ let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 // Handle production hostnames/IPs (Other PCs)
 if (typeof window !== 'undefined') {
-    const { hostname, origin } = window.location;
-    // Jika tidak sedang di localhost, gunakan host yang sedang aktif dibuka di browser
+    const { hostname } = window.location;
+    // Gunakan jalur RELATIF agar lebih aman di lingkungan produksi/Easypanel
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        API_URL = `${origin}/api`;
+        API_URL = '/api';
     }
 }
 
