@@ -7,6 +7,13 @@ import { PrismaClient } from '@prisma/client';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
+// API Routes
+import anggaranRouter from './routes/anggaran.js';
+import coreRouter from './routes/core.js';
+import trashRouter from './routes/trash.js';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+
 // 1. Immediate Boot Log
 console.log(`[Diagnostic] ${new Date().toISOString()} - SIKAK Backend Process Starting...`);
 
@@ -84,11 +91,6 @@ app.use((req, res, next) => {
 app.set('prisma', getPrisma());
 
 // 4. API Routes
-import anggaranRouter from './routes/anggaran.js';
-import coreRouter from './routes/core.js';
-import trashRouter from './routes/trash.js';
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sikak-yayasan-umum-secret-2026';
 

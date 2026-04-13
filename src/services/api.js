@@ -1,7 +1,7 @@
 import { generateId } from '../utils/format';
 
 export const isRemote = true; 
-const API_URL = isRemote ? 'http://localhost:3001/api' : '';
+const API_URL = isRemote ? '/api' : '';
 
 export const api = {
     async fetchAllData() {

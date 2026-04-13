@@ -88,19 +88,6 @@ async function main() {
         await prisma.field.upsert({ where: { id: f.id }, update: f, create: f });
     }
 
-    // 2.1 DATA MASTER CLASSES
-    const classes = [
-        { id: 'cls-1', name: 'TK-A', unitId: 'unt-1' },
-        { id: 'cls-2', name: 'TK-B', unitId: 'unt-1' },
-        { id: 'cls-3', name: '1-A', unitId: 'unt-2' },
-        { id: 'cls-4', name: '7-A', unitId: 'unt-3' },
-        { id: 'cls-5', name: '10-IPA-1', unitId: 'unt-4' }
-    ];
-
-    console.log('Seeding Classes...');
-    for (const c of classes) {
-        await prisma.class.upsert({ where: { id: c.id }, update: c, create: c });
-    }
     const units = [
         { id: 'unt-1', name: 'Pendidikan Anak Usia Dini (PAUD)', fieldId: 'fld-1' },
         { id: 'unt-2', name: 'Sekolah Dasar (SD)', fieldId: 'fld-1' },
@@ -113,6 +100,20 @@ async function main() {
     console.log('Seeding Units...');
     for (const u of units) {
         await prisma.unit.upsert({ where: { id: u.id }, update: u, create: u });
+    }
+
+    // 2.1 DATA MASTER CLASSES
+    const classes = [
+        { id: 'cls-1', name: 'TK-A', unitId: 'unt-1' },
+        { id: 'cls-2', name: 'TK-B', unitId: 'unt-1' },
+        { id: 'cls-3', name: '1-A', unitId: 'unt-2' },
+        { id: 'cls-4', name: '7-A', unitId: 'unt-3' },
+        { id: 'cls-5', name: '10-IPA-1', unitId: 'unt-4' }
+    ];
+
+    console.log('Seeding Classes...');
+    for (const c of classes) {
+        await prisma.class.upsert({ where: { id: c.id }, update: c, create: c });
     }
 
     // 4. DATA MASTER INCOME ITEMS (SUMBER DANA / PENERIMAAN)

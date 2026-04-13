@@ -121,6 +121,8 @@ router.post('/assets', async (req, res) => {
 
 router.put('/assets/:id', async (req, res) => {
     try {
+        const data = await getPrisma(req).asset.update({
+            where: { id: req.params.id },
             data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
@@ -166,6 +168,8 @@ router.post('/programs', async (req, res) => {
 
 router.put('/programs/:id', async (req, res) => {
     try {
+        const data = await getPrisma(req).program.update({
+            where: { id: req.params.id },
             data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
@@ -211,6 +215,8 @@ router.post('/expense-programs', async (req, res) => {
 
 router.put('/expense-programs/:id', async (req, res) => {
     try {
+        const data = await getPrisma(req).expenseProgram.update({
+            where: { id: req.params.id },
             data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
@@ -256,6 +262,8 @@ router.post('/users', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
     try {
+        const data = await getPrisma(req).user.update({
+            where: { id: req.params.id },
             data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
