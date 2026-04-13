@@ -233,20 +233,17 @@ export default function BudgetDashboard() {
             const breakdown = [];
             allKeys.forEach(exId => {
                 const exItem = expenseItems.find(e => e.id === exId);
-                const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase();
                 
-                // FILTER: Hide Field-only items from Unit view
-                // We specifically hide 'Penggajian' and 'Pengembangan (umum)' as per user request
-                const isFieldOnlyItem = (
-                    (exItem && exItem.fieldId && !exItem.unitId) ||
-                    itemName.includes('penggajian') || 
-                    itemName === 'pengembangan (umum)'
-                );
-                
-                if (isFieldOnlyItem) return;
+                // FILTER: Hide items that belong specifically to a Field (Yayasan/Bidang)
+                // This ensures the Unit view only shows Unit-specific or Global categories
+                const isFieldOwned = exItem && exItem.fieldId && !exItem.unitId;
+                if (isFieldOwned) return;
 
                 const itemRAP = rawItems[exId] || 0;
                 const itemRAB = rawRabItems[exId] || 0;
+                
+                // Only show if there's actually a value
+                if (itemRAP === 0 && itemRAB === 0) return;
                 
                 breakdown.push({
                     id: exId,
