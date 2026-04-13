@@ -99,7 +99,7 @@ export const api = {
                     break;
                 case 'DELETE_ACCOUNT':
                     const accDel = currentState.accounts.find(a => a.id === payload);
-                    if (accDel) await syncItem('accounts', payload, { ...accDel, isDeleted: true });
+                    if (accDel) await syncItem('accounts', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_JOURNAL': {
@@ -115,7 +115,7 @@ export const api = {
                     await syncItem('fields', payload.id, payload);
                     break;
                 case 'DELETE_FIELD':
-                    await syncItem('fields', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('fields', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_UNIT':
@@ -125,7 +125,7 @@ export const api = {
                     await syncItem('units', payload.id, payload);
                     break;
                 case 'DELETE_UNIT':
-                    await syncItem('units', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('units', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_STUDENT':
@@ -135,7 +135,7 @@ export const api = {
                     await syncItem('students', payload.id, payload);
                     break;
                 case 'DELETE_STUDENT':
-                    await syncItem('students', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('students', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_INCOME_ITEM':
@@ -145,7 +145,7 @@ export const api = {
                     await syncItem('income-items', payload.id, payload);
                     break;
                 case 'DELETE_INCOME_ITEM':
-                    await syncItem('income-items', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('income-items', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_EXPENSE_ITEM':
@@ -155,7 +155,7 @@ export const api = {
                     await syncItem('expense-items', payload.id, payload);
                     break;
                 case 'DELETE_EXPENSE_ITEM':
-                    await syncItem('expense-items', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('expense-items', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_PROGRAM':
@@ -165,7 +165,7 @@ export const api = {
                     await syncItem('programs', payload.id, payload);
                     break;
                 case 'DELETE_PROGRAM':
-                    await syncItem('programs', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('programs', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'ADD_BUDGET_PROGRAM':
@@ -175,7 +175,7 @@ export const api = {
                     await syncItem('expense-programs', payload.id, payload);
                     break;
                 case 'DELETE_BUDGET_PROGRAM':
-                    await syncItem('expense-programs', payload, { isDeleted: true }, 'DELETE');
+                    await syncItem('expense-programs', payload, { permanent: true }, 'DELETE');
                     break;
 
                 case 'UPDATE_DISTRIBUTION_SETTINGS':
@@ -198,35 +198,35 @@ export const api = {
 
                 case 'ADD_ACADEMIC_YEAR': await syncItem('academic-years', null, payload, 'POST'); break;
                 case 'EDIT_ACADEMIC_YEAR': await syncItem('academic-years', payload.id, payload); break;
-                case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_CLASS_GROUP': await syncItem('class-groups', null, payload, 'POST'); break;
                 case 'EDIT_CLASS_GROUP': await syncItem('class-groups', payload.id, payload); break;
-                case 'DELETE_CLASS_GROUP': await syncItem('class-groups', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_CLASS_GROUP': await syncItem('class-groups', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_POSITION': await syncItem('positions', null, payload, 'POST'); break;
                 case 'EDIT_POSITION': await syncItem('positions', payload.id, payload); break;
-                case 'DELETE_POSITION': await syncItem('positions', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_POSITION': await syncItem('positions', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_STUDENT_STATUS': await syncItem('student-statuses', null, payload, 'POST'); break;
                 case 'EDIT_STUDENT_STATUS': await syncItem('student-statuses', payload.id, payload); break;
-                case 'DELETE_STUDENT_STATUS': await syncItem('student-statuses', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_STUDENT_STATUS': await syncItem('student-statuses', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_PARENT_STATUS': await syncItem('parent-statuses', null, payload, 'POST'); break;
                 case 'EDIT_PARENT_STATUS': await syncItem('parent-statuses', payload.id, payload); break;
-                case 'DELETE_PARENT_STATUS': await syncItem('parent-statuses', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_PARENT_STATUS': await syncItem('parent-statuses', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_CLASS': await syncItem('classes', null, payload, 'POST'); break;
                 case 'EDIT_CLASS': await syncItem('classes', payload.id, payload); break;
-                case 'DELETE_CLASS': await syncItem('classes', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_CLASS': await syncItem('classes', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_BOS_STAGE': await syncItem('bos-stages', null, payload, 'POST'); break;
                 case 'EDIT_BOS_STAGE': await syncItem('bos-stages', payload.id, payload); break;
-                case 'DELETE_BOS_STAGE': await syncItem('bos-stages', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_BOS_STAGE': await syncItem('bos-stages', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'ADD_BOS_POS': await syncItem('bos-pos', null, payload, 'POST'); break;
                 case 'EDIT_BOS_POS': await syncItem('bos-pos', payload.id, payload); break;
-                case 'DELETE_BOS_POS': await syncItem('bos-pos', payload, { isDeleted: true }, 'DELETE'); break;
+                case 'DELETE_BOS_POS': await syncItem('bos-pos', payload, { permanent: true }, 'DELETE'); break;
 
                 case 'RESTORE_FROM_TRASH': {
                     const { id, type: eType } = payload;

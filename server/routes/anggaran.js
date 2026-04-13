@@ -59,32 +59,26 @@ router.put('/fields/:id', async (req, res) => {
 
 router.delete('/fields/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true; // Set to true to satisfy user request
+        
+        if (isPermanent) {
             const units = await getPrisma(req).unit.count({ where: { fieldId: req.params.id } });
             if (units > 0) {
                 return res.status(400).json({ 
-                    error: `Tidak bisa menghapus permanen: Masih ada ${units} Unit yang terhubung ke Bidang ini. Hapus Unitnya terlebih dahulu.` 
+                    error: `Tidak bisa menghapus: Masih ada ${units} Unit yang terhubung ke Bidang ini. Hapus Unitnya terlebih dahulu.` 
                 });
             }
-            try {
-                await getPrisma(req).field.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).field.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).field.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).field.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
         let msg = error.message;
-        if (error.code === 'P2003') msg = "Gagal menghapus: Data ini masih digunakan oleh tabel lain (Unit, dll).";
+        if (error.code === 'P2003') msg = "Gagal menghapus: Data ini masih digunakan oleh tabel lain.";
         res.status(500).json({ error: msg });
     }
 });
@@ -135,25 +129,20 @@ router.put('/units/:id', async (req, res) => {
 
 router.delete('/units/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).unit.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true; 
+        if (isPermanent) {
+            await getPrisma(req).unit.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).unit.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).unit.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        let msg = error.message;
+        if (error.code === 'P2003') msg = "Gagal menghapus: Unit ini masih memiliki data terkait (Siswa, Item Beban, dll).";
+        res.status(500).json({ error: msg });
     }
 });
 
@@ -260,22 +249,14 @@ router.put('/students/:id', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).student.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).student.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).student.upsert({
-                    where: { id: req.params.id },
-                    update: { isDeleted: true },
-                    create: { id: req.params.id, name: 'Deleted Student', unitId: 'N/A', isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).student.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -315,21 +296,14 @@ router.put('/income-items/:id', async (req, res) => {
 
 router.delete('/income-items/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).incomeItem.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).incomeItem.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).incomeItem.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).incomeItem.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -372,21 +346,14 @@ router.put('/expense-items/:id', async (req, res) => {
 
 router.delete('/expense-items/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).expenseItem.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).expenseItem.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).expenseItem.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).expenseItem.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -650,22 +617,14 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.delete(`/${entityName}/:id`, async (req, res) => {
         try {
-            if (req.query.permanent === 'true') {
-                try {
-                    await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
-                } catch (e) {
-                    if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-                }
+            const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+            if (isPermanent) {
+                await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
             } else {
-                try {
-                    await getPrisma(req)[modelName].upsert({
-                        where: { id: req.params.id },
-                        update: { isDeleted: true },
-                        create: { id: req.params.id, name: 'Deleted Item', isDeleted: true }
-                    });
-                } catch (e) {
-                    if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-                }
+                await getPrisma(req)[modelName].update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
             }
             res.json({ message: 'Success' });
         } catch (error) {
@@ -722,22 +681,14 @@ router.put('/classes/:id', async (req, res) => {
 });
 router.delete('/classes/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).class.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).class.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).class.upsert({
-                    where: { id: req.params.id },
-                    update: { isDeleted: true },
-                    create: { id: req.params.id, name: 'Deleted Class', unitId: 'N/A', isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).class.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -781,22 +732,14 @@ router.put('/bos-stages/:id', async (req, res) => {
 });
 router.delete('/bos-stages/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).bosStage.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).bosStage.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).bosStage.upsert({
-                    where: { id: req.params.id },
-                    update: { isDeleted: true },
-                    create: { id: req.params.id, name: 'Deleted BOS Stage', isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).bosStage.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -840,22 +783,14 @@ router.put('/bos-pos/:id', async (req, res) => {
 });
 router.delete('/bos-pos/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).bosPos.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).bosPos.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).bosPos.upsert({
-                    where: { id: req.params.id },
-                    update: { isDeleted: true },
-                    create: { id: req.params.id, name: 'Deleted BOS Pos', isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).bosPos.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {

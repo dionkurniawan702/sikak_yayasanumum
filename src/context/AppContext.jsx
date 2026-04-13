@@ -241,7 +241,7 @@ function appReducer(state, action) {
         case 'DELETE_ACCOUNT':
             newState = {
                 ...state,
-                accounts: state.accounts.map(a => a.id === action.payload ? { ...a, isDeleted: true, deletedAt: new Date().toISOString() } : a)
+                accounts: state.accounts.filter(a => a.id !== action.payload)
             };
             break;
         case 'ADD_JOURNAL': {
@@ -254,8 +254,8 @@ function appReducer(state, action) {
         case 'DELETE_JOURNAL':
             newState = {
                 ...state,
-                journals: state.journals.map(j => j.id === action.payload ? { ...j, isDeleted: true, deletedAt: new Date().toISOString() } : j),
-                assets: state.assets.map(a => a.journalId === action.payload ? { ...a, isDeleted: true, deletedAt: new Date().toISOString() } : a)
+                journals: state.journals.filter(j => j.id !== action.payload),
+                assets: state.assets.filter(a => a.journalId !== action.payload)
             };
             break;
         case 'ADD_ASSET':
@@ -268,7 +268,7 @@ function appReducer(state, action) {
             newState = { ...state, programs: state.programs.map(p => p.id === action.payload.id ? action.payload : p) };
             break;
         case 'DELETE_PROGRAM':
-            newState = { ...state, programs: state.programs.map(p => p.id === action.payload ? { ...p, isDeleted: true, deletedAt: new Date().toISOString() } : p) };
+            newState = { ...state, programs: state.programs.filter(p => p.id !== action.payload) };
             break;
 
         case 'ADD_BUDGET_PROGRAM':
@@ -278,7 +278,7 @@ function appReducer(state, action) {
             newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload.id ? action.payload : p) };
             break;
         case 'DELETE_BUDGET_PROGRAM':
-            newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload ? { ...p, isDeleted: true, deletedAt: new Date().toISOString() } : p) };
+            newState = { ...state, expensePrograms: state.expensePrograms.filter(p => p.id !== action.payload) };
             break;
 
         case 'SET_BUDGETS':
@@ -298,7 +298,7 @@ function appReducer(state, action) {
             newState = { ...state, fields: state.fields.map(f => f.id === action.payload.id ? action.payload : f) };
             break;
         case 'DELETE_FIELD':
-            newState = { ...state, fields: state.fields.map(f => f.id === action.payload ? { ...f, isDeleted: true, deletedAt: new Date().toISOString() } : f) };
+            newState = { ...state, fields: state.fields.filter(f => f.id !== action.payload) };
             break;
         case 'ADD_UNIT':
             newState = { ...state, units: [...state.units, action.payload] };
@@ -307,7 +307,7 @@ function appReducer(state, action) {
             newState = { ...state, units: state.units.map(u => u.id === action.payload.id ? action.payload : u) };
             break;
         case 'DELETE_UNIT':
-            newState = { ...state, units: state.units.map(u => u.id === action.payload ? { ...u, isDeleted: true, deletedAt: new Date().toISOString() } : u) };
+            newState = { ...state, units: state.units.filter(u => u.id !== action.payload) };
             break;
         case 'ADD_STUDENT':
             newState = { ...state, students: [...state.students, action.payload] };
@@ -316,7 +316,7 @@ function appReducer(state, action) {
             newState = { ...state, students: state.students.map(s => s.id === action.payload.id ? action.payload : s) };
             break;
         case 'DELETE_STUDENT':
-            newState = { ...state, students: state.students.map(s => s.id === action.payload ? { ...s, isDeleted: true, deletedAt: new Date().toISOString() } : s) };
+            newState = { ...state, students: state.students.filter(s => s.id !== action.payload) };
             break;
         case 'ADD_USER':
             newState = { ...state, users: [...state.users, action.payload] };
@@ -346,7 +346,7 @@ function appReducer(state, action) {
             newState = { ...state, incomeItems: state.incomeItems.map(i => i.id === action.payload.id ? action.payload : i) };
             break;
         case 'DELETE_INCOME_ITEM':
-            newState = { ...state, incomeItems: state.incomeItems.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) };
+            newState = { ...state, incomeItems: state.incomeItems.filter(i => i.id !== action.payload) };
             break;
         case 'ADD_EXPENSE_ITEM':
             newState = { ...state, expenseItems: [action.payload, ...state.expenseItems] };
@@ -355,7 +355,7 @@ function appReducer(state, action) {
             newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i) };
             break;
         case 'DELETE_EXPENSE_ITEM':
-            newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) };
+            newState = { ...state, expenseItems: state.expenseItems.filter(i => i.id !== action.payload) };
             break;
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
@@ -383,18 +383,18 @@ function appReducer(state, action) {
 
         case 'ADD_CLASS': newState = { ...state, classes: [...state.classes, action.payload] }; break;
         case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
-        case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
+        case 'DELETE_CLASS': newState = { ...state, classes: state.classes.filter(i => i.id !== action.payload) }; break;
 
         case 'SET_RAB_PLAN':
             newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] };
             break;
         case 'ADD_BOS_STAGE': newState = { ...state, bosStages: [...state.bosStages, action.payload] }; break;
         case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? action.payload : i) }; break;
-        case 'DELETE_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
+        case 'DELETE_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.filter(i => i.id !== action.payload) }; break;
 
         case 'ADD_BOS_POS': newState = { ...state, bosPosList: [...state.bosPosList, action.payload] }; break;
         case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? action.payload : i) }; break;
-        case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
+        case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.filter(i => i.id !== action.payload) }; break;
 
         case 'ADD_NOTIFICATION': newState = { ...state, notifications: [action.payload, ...state.notifications] }; break;
         case 'MARK_NOTIFICATION_READ': newState = { ...state, notifications: state.notifications.map(n => n.id === action.payload ? { ...n, read: true } : n) }; break;

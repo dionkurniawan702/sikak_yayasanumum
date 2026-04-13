@@ -55,25 +55,20 @@ router.put('/accounts/:id', async (req, res) => {
 
 router.delete('/accounts/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).account.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).account.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).account.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).account.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        let msg = error.message;
+        if (error.code === 'P2003') msg = "Gagal menghapus: Akun ini masih memiliki transaksi atau data terhubung.";
+        res.status(500).json({ error: msg });
     }
 });
 
@@ -141,21 +136,14 @@ router.put('/assets/:id', async (req, res) => {
 
 router.delete('/assets/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).asset.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).asset.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).asset.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).asset.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -196,21 +184,14 @@ router.put('/programs/:id', async (req, res) => {
 
 router.delete('/programs/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
-            try {
-                await getPrisma(req).program.delete({ where: { id: req.params.id } });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
+            await getPrisma(req).program.delete({ where: { id: req.params.id } });
         } else {
-            try {
-                await getPrisma(req).program.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            } catch (e) {
-                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
-            }
+            await getPrisma(req).program.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -251,7 +232,8 @@ router.put('/expense-programs/:id', async (req, res) => {
 
 router.delete('/expense-programs/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
             await getPrisma(req).expenseProgram.delete({ where: { id: req.params.id } });
         } else {
             await getPrisma(req).expenseProgram.update({
@@ -298,7 +280,8 @@ router.put('/users/:id', async (req, res) => {
 
 router.delete('/users/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
             await getPrisma(req).user.delete({ where: { id: req.params.id } });
         } else {
             await getPrisma(req).user.update({
@@ -314,7 +297,8 @@ router.delete('/users/:id', async (req, res) => {
 
 router.delete('/journals/:id', async (req, res) => {
     try {
-        if (req.query.permanent === 'true') {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        if (isPermanent) {
             await getPrisma(req).journal.delete({ where: { id: req.params.id } });
         } else {
             await getPrisma(req).journal.update({
