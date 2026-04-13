@@ -6,7 +6,6 @@ import { api } from '../services/api';
 
 export default function TrashBin() {
     const { state, dispatch } = useApp();
-    const [activeTab, setActiveTab] = useState('all');
 
     const deletedJournals = (state.journals || []).filter(j => j.isDeleted);
     const deletedAccounts = (state.accounts || []).filter(a => a.isDeleted);
@@ -38,9 +37,7 @@ export default function TrashBin() {
 
     const totalCount = allDeletedItems.length;
 
-    const filteredItems = activeTab === 'all'
-        ? allDeletedItems
-        : allDeletedItems.filter(item => item._type === activeTab);
+    const filteredItems = allDeletedItems;
 
     const handleRestore = async (id, type) => {
         dispatch({ type: 'RESTORE_FROM_TRASH', payload: { id, type } });
@@ -150,19 +147,6 @@ export default function TrashBin() {
         }
     };
 
-    const tabs = [
-        { key: 'all', label: 'Semua', count: totalCount },
-        { key: 'journal', label: 'Jurnal', count: deletedJournals.length, icon: FileText },
-        { key: 'account', label: 'Akun', count: deletedAccounts.length, icon: BookOpen },
-        { key: 'asset', label: 'Aset', count: deletedAssets.length, icon: HardDrive },
-        { key: 'program', label: 'Program', count: deletedPrograms.length + deletedExpensePrograms.length, icon: List },
-        { key: 'user', label: 'Pengguna', count: deletedUsers.length, icon: User },
-        { key: 'unit', label: 'Unit', count: deletedUnits.length, icon: Building2 },
-        { key: 'field', label: 'Bidang', count: deletedFields.length, icon: Layers },
-        { key: 'income-item', label: 'Pendapatan', count: deletedIncomeItems.length, icon: Coins },
-        { key: 'expense-item', label: 'Beban', count: deletedExpenseItems.length, icon: Wallet },
-        { key: 'student', label: 'Siswa', count: deletedStudents.length, icon: GraduationCap },
-    ];
 
     return (
         <div className="p-8">
@@ -182,19 +166,6 @@ export default function TrashBin() {
                 )}
             </div>
 
-            <div className="flex gap-4 p-2 bg-slate-100 rounded-[24px] mb-8 overflow-x-auto print:hidden no-scrollbar">
-                {tabs.map(tab => (
-                    <button 
-                        key={tab.key} 
-                        onClick={() => setActiveTab(tab.key)} 
-                        className={`flex items-center gap-3 px-6 py-3 rounded-[20px] font-black text-xs uppercase tracking-widest transition-all whitespace-nowrap ${activeTab === tab.key ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        {tab.icon && <tab.icon size={16} />}
-                        {tab.label}
-                        <span className={`ml-2 px-2 py-0.5 rounded-full text-[10px] ${activeTab === tab.key ? 'bg-blue-50 text-blue-600' : 'bg-slate-200 text-slate-500'}`}>{tab.count}</span>
-                    </button>
-                ))}
-            </div>
 
             <div className="animate-in">
                 {filteredItems.length === 0 ? (
@@ -203,7 +174,7 @@ export default function TrashBin() {
                             <Archive size={48} />
                         </div>
                         <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter italic">Tempat Sampah Kosong</h3>
-                        <p className="text-sm font-medium text-slate-400 max-w-xs mt-2 italic">Belum ada data yang dihapus untuk kategori ini.</p>
+                        <p className="text-sm font-medium text-slate-400 max-w-xs mt-2 italic">Data yang Anda hapus akan muncul di sini.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

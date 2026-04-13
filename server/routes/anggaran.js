@@ -59,7 +59,7 @@ router.put('/fields/:id', async (req, res) => {
 
 router.delete('/fields/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true; // Set to true to satisfy user request
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         
         if (isPermanent) {
             const units = await getPrisma(req).unit.count({ where: { fieldId: req.params.id } });
@@ -72,7 +72,7 @@ router.delete('/fields/:id', async (req, res) => {
         } else {
             await getPrisma(req).field.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true }
+                data: { isDeleted: true, updatedBy: req.body?.updatedBy || 'System' }
             });
         }
         res.json({ message: 'Success' });
@@ -129,7 +129,7 @@ router.put('/units/:id', async (req, res) => {
 
 router.delete('/units/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true; 
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true; 
         if (isPermanent) {
             await getPrisma(req).unit.delete({ where: { id: req.params.id } });
         } else {
@@ -617,7 +617,15 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.delete(`/${entityName}/:id`, async (req, res) => {
         try {
-            await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
+            const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+            if (isPermanent) {
+                await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
+            } else {
+                await getPrisma(req)[modelName].update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            }
             res.json({ message: 'Success' });
         } catch (error) {
             if (error.code === 'P2003') {

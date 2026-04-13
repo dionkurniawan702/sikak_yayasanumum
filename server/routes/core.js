@@ -55,7 +55,7 @@ router.put('/accounts/:id', async (req, res) => {
 
 router.delete('/accounts/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).account.delete({ where: { id: req.params.id } });
         } else {
@@ -136,7 +136,7 @@ router.put('/assets/:id', async (req, res) => {
 
 router.delete('/assets/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).asset.delete({ where: { id: req.params.id } });
         } else {
@@ -184,7 +184,7 @@ router.put('/programs/:id', async (req, res) => {
 
 router.delete('/programs/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).program.delete({ where: { id: req.params.id } });
         } else {
@@ -232,7 +232,7 @@ router.put('/expense-programs/:id', async (req, res) => {
 
 router.delete('/expense-programs/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).expenseProgram.delete({ where: { id: req.params.id } });
         } else {
@@ -280,7 +280,7 @@ router.put('/users/:id', async (req, res) => {
 
 router.delete('/users/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).user.delete({ where: { id: req.params.id } });
         } else {
@@ -297,7 +297,7 @@ router.delete('/users/:id', async (req, res) => {
 
 router.delete('/journals/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).journal.delete({ where: { id: req.params.id } });
         } else {
