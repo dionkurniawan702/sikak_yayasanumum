@@ -1,101 +1,23 @@
-let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+import { generateId } from '../utils/format';
 
-// Handle production hostnames/IPs (Other PCs)
-if (typeof window !== 'undefined') {
-    const { hostname } = window.location;
-    // Gunakan jalur RELATIF agar lebih aman di lingkungan produksi/Easypanel
-    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
-        API_URL = '/api';
-    }
-}
-
-const DATA_MODE = import.meta.env.VITE_DATA_MODE || 'remote'; 
-
-// Force remote mode if not on localhost
-export const isRemote = (DATA_MODE === 'remote') || 
-    (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+const isRemote = true; 
+const API_URL = isRemote ? 'http://localhost:3001/api' : '';
 
 export const api = {
     async fetchAllData() {
         if (!isRemote) return null;
         try {
-            const fetchEntity = async (name) => {
-                const token = localStorage.getItem('jwt_token');
-                const headers = {};
-                if (token) headers['Authorization'] = `Bearer ${token}`;
+            const token = localStorage.getItem('jwt_token');
+            const headers = {};
+            if (token) headers['Authorization'] = `Bearer ${token}`;
 
-                const res = await fetch(`${API_URL}/${name}`, { headers });
-                if (res.status === 401 || res.status === 403) {
-                    throw new Error('SESSION_EXPIRED');
-                }
-                if (!res.ok) {
-                    const text = await res.text();
-                    throw new Error(`Fetch ${name} failed (${res.status}): ${text.substring(0, 100)}`);
-                }
-                const json = await res.json();
-                return json.data || [];
-            };
-
-            const safeFetch = async (name) => {
-                try {
-                    return await fetchEntity(name);
-                } catch (e) {
-                    console.error(`[Fetch Failure] ${name}:`, e.message);
-                    return [];
-                }
-            };
-
-            const [
-                accounts, journals, assets, programs, expensePrograms, users, budgets,
-                fields, units, students, incomeItems, expenseItems, distributionSettings,
-                budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
-                rabPlans, bosStages, bosPos
-            ] = await Promise.all([
-                safeFetch('accounts'),
-                safeFetch('journals'),
-                safeFetch('assets'),
-                safeFetch('programs'),
-                safeFetch('expense-programs'),
-                safeFetch('users'),
-                safeFetch('budgets'),
-                safeFetch('fields'),
-                safeFetch('units'),
-                safeFetch('students'),
-                safeFetch('income-items'),
-                safeFetch('expense-items'),
-                safeFetch('distribution-settings'),
-                safeFetch('budget-requests'),
-                safeFetch('budget-reports'),
-                safeFetch('academic-years'),
-                safeFetch('class-groups'),
-                safeFetch('positions'),
-                safeFetch('student-statuses'),
-                safeFetch('parent-statuses'),
-                safeFetch('classes'),
-                safeFetch('rab-plans'),
-                safeFetch('bos-stages'),
-                safeFetch('bos-pos')
-            ]);
-
-            return {
-                accounts: accounts.map(a => ({
-                    ...a,
-                    initialBalance: parseFloat(a.balance) || 0,
-                    normalBalance: ['Aset', 'Beban'].includes(a.type) ? 'debit' : 'kredit'
-                })),
-                journals: journals.map(j => ({
-                    ...j,
-                    entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries
-                })),
-                assets, programs, expensePrograms, users,
-                budgets: budgets.map(b => ({ ...b, amount: parseFloat(b.amount) || 0 })),
-                fields, units, students, incomeItems, expenseItems, distributionSettings,
-                budgetRequests, budgetReports,
-                academicYears, classGroups, positions, studentStatuses, parentStatuses, classes,
-                rabPlans, bosStages, bosPosList: bosPos,
-                notes: {},
-            };
+            const res = await fetch(`${API_URL}/all-data`, { headers });
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) throw new Error('SESSION_EXPIRED');
+                throw new Error('Fetch failed');
+            }
+            const json = await res.json();
+            return json.data;
         } catch (error) {
             console.error('Failed to load data from server:', error.message);
             return null;
@@ -161,11 +83,13 @@ export const api = {
                     const accDel = currentState.accounts.find(a => a.id === payload);
                     if (accDel) await syncItem('accounts', payload, { ...accDel, isDeleted: true });
                     break;
+
                 case 'ADD_JOURNAL': {
                     const latestJournal = currentState.journals[currentState.journals.length - 1];
                     await syncItem('journals', null, latestJournal, 'POST');
                     break;
                 }
+
                 case 'ADD_FIELD':
                     await syncItem('fields', null, payload, 'POST');
                     break;
@@ -175,6 +99,7 @@ export const api = {
                 case 'DELETE_FIELD':
                     await syncItem('fields', payload, { isDeleted: true }, 'DELETE');
                     break;
+
                 case 'ADD_UNIT':
                     await syncItem('units', null, payload, 'POST');
                     break;
@@ -184,6 +109,7 @@ export const api = {
                 case 'DELETE_UNIT':
                     await syncItem('units', payload, { isDeleted: true }, 'DELETE');
                     break;
+
                 case 'ADD_STUDENT':
                     await syncItem('students', null, payload, 'POST');
                     break;
@@ -193,6 +119,7 @@ export const api = {
                 case 'DELETE_STUDENT':
                     await syncItem('students', payload, { isDeleted: true }, 'DELETE');
                     break;
+
                 case 'ADD_INCOME_ITEM':
                     await syncItem('income-items', null, payload, 'POST');
                     break;
@@ -202,6 +129,7 @@ export const api = {
                 case 'DELETE_INCOME_ITEM':
                     await syncItem('income-items', payload, { isDeleted: true }, 'DELETE');
                     break;
+
                 case 'ADD_EXPENSE_ITEM':
                     await syncItem('expense-items', null, payload, 'POST');
                     break;
@@ -231,9 +159,11 @@ export const api = {
                 case 'DELETE_BUDGET_PROGRAM':
                     await syncItem('expense-programs', payload, { isDeleted: true }, 'DELETE');
                     break;
+
                 case 'UPDATE_DISTRIBUTION_SETTINGS':
                     await syncItem('distribution-settings', null, payload, 'POST');
                     break;
+
                 case 'ADD_BUDGET_REQUEST':
                     await syncItem('budget-requests', null, payload, 'POST');
                     break;
@@ -243,9 +173,11 @@ export const api = {
                 case 'ADD_BUDGET_REPORT':
                     await syncItem('budget-reports', null, payload, 'POST');
                     break;
+
                 case 'SET_BUDGETS':
                     await this.syncWholeState(currentState);
                     break;
+
                 case 'ADD_ACADEMIC_YEAR': await syncItem('academic-years', null, payload, 'POST'); break;
                 case 'EDIT_ACADEMIC_YEAR': await syncItem('academic-years', payload.id, payload); break;
                 case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', payload, { isDeleted: true }, 'DELETE'); break;
@@ -270,10 +202,6 @@ export const api = {
                 case 'EDIT_CLASS': await syncItem('classes', payload.id, payload); break;
                 case 'DELETE_CLASS': await syncItem('classes', payload, { isDeleted: true }, 'DELETE'); break;
 
-                case 'SET_RAB_PLAN':
-                    await syncItem('rab-plans', payload.id, payload);
-                    break;
-
                 case 'ADD_BOS_STAGE': await syncItem('bos-stages', null, payload, 'POST'); break;
                 case 'EDIT_BOS_STAGE': await syncItem('bos-stages', payload.id, payload); break;
                 case 'DELETE_BOS_STAGE': await syncItem('bos-stages', payload, { isDeleted: true }, 'DELETE'); break;
@@ -282,21 +210,73 @@ export const api = {
                 case 'EDIT_BOS_POS': await syncItem('bos-pos', payload.id, payload); break;
                 case 'DELETE_BOS_POS': await syncItem('bos-pos', payload, { isDeleted: true }, 'DELETE'); break;
 
-
-                default:
-                    if (type.includes('RESTORE') || type.includes('TRASH') || type.includes('IMPORT') || type.includes('BULK') || type.includes('DEPRECIATION') || type.includes('NOTES')) {
-                        await this.syncWholeState(currentState);
+                case 'RESTORE_FROM_TRASH': {
+                    const { id, type: eType } = payload;
+                    const mapping = {
+                        journal: 'journals',
+                        account: 'accounts',
+                        asset: 'assets',
+                        program: 'programs',
+                        user: 'users',
+                        unit: 'units',
+                        field: 'fields',
+                        student: 'students',
+                        class: 'classes',
+                        'income-item': 'income-items',
+                        'expense-item': 'expense-items'
+                    };
+                    const endpoint = mapping[eType];
+                    if (endpoint) {
+                        await syncItem(endpoint, id, { isDeleted: false, deletedAt: null });
                     }
                     break;
+                }
+                case 'PERMANENT_DELETE': {
+                    const { id, type: eType } = payload;
+                    const mapping = {
+                        journal: 'journals',
+                        account: 'accounts',
+                        asset: 'assets',
+                        program: 'programs',
+                        user: 'users',
+                        unit: 'units',
+                        field: 'fields',
+                        student: 'students',
+                        class: 'classes',
+                        'income-item': 'income-items',
+                        'expense-item': 'expense-items'
+                    };
+                    const endpoint = mapping[eType];
+                    if (endpoint) {
+                        await syncItem(`${endpoint}/${id}`, null, { permanent: true }, 'DELETE');
+                    }
+                    break;
+                }
+                case 'EMPTY_TRASH':
+                    await fetch(`${API_URL}/trash/empty`, { 
+                        method: 'DELETE',
+                        headers: { 
+                            'Authorization': `Bearer ${localStorage.getItem('jwt_token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    break;
+
+                case 'SET_SYNCING':
+                    // Local only
+                    break;
+
+                default:
+                    console.warn(`[API] Unhandled pushAction type: ${type}`);
             }
         } catch (error) {
-            console.error(`Sync Failed [${type}]:`, error.message);
+            console.error(`[API] Push action failed (${type}):`, error.message);
             throw error;
         }
     },
 
     async syncWholeState(state, isPurge = false) {
-        if (!isRemote) return { success: true };
+        if (!isRemote) return;
         try {
             const token = localStorage.getItem('jwt_token');
             const headers = { 'Content-Type': 'application/json' };

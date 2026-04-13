@@ -1,25 +1,40 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { Trash2, RotateCcw, AlertTriangle, Archive, FileText, BookOpen, HardDrive, List, User, X, Check } from 'lucide-react';
+import { Trash2, RotateCcw, AlertTriangle, Archive, FileText, BookOpen, HardDrive, List, User, X, Check, Building2, Layers, Coins, Wallet, Users, GraduationCap } from 'lucide-react';
+import { api } from '../services/api';
 
 export default function TrashBin() {
     const { state, dispatch } = useApp();
     const [activeTab, setActiveTab] = useState('all');
 
-    const deletedJournals = state.journals.filter(j => j.isDeleted);
-    const deletedAccounts = state.accounts.filter(a => a.isDeleted);
-    const deletedAssets = state.assets.filter(a => a.isDeleted && !a._deletedByJournal);
-    const deletedPrograms = state.programs.filter(p => p.isDeleted);
-    const deletedUsers = state.users.filter(u => u.isDeleted);
+    const deletedJournals = (state.journals || []).filter(j => j.isDeleted);
+    const deletedAccounts = (state.accounts || []).filter(a => a.isDeleted);
+    const deletedAssets = (state.assets || []).filter(a => a.isDeleted && !a._deletedByJournal);
+    const deletedPrograms = (state.programs || []).filter(p => p.isDeleted);
+    const deletedExpensePrograms = (state.expensePrograms || []).filter(p => p.isDeleted);
+    const deletedUsers = (state.users || []).filter(u => u.isDeleted);
+    const deletedUnits = (state.units || []).filter(u => u.isDeleted);
+    const deletedFields = (state.fields || []).filter(f => f.isDeleted);
+    const deletedIncomeItems = (state.incomeItems || []).filter(i => i.isDeleted);
+    const deletedExpenseItems = (state.expenseItems || []).filter(e => e.isDeleted);
+    const deletedStudents = (state.students || []).filter(s => s.isDeleted);
+    const deletedClasses = (state.classes || []).filter(c => c.isDeleted);
 
     const allDeletedItems = [
         ...deletedJournals.map(j => ({ ...j, _type: 'journal' })),
         ...deletedAccounts.map(a => ({ ...a, _type: 'account' })),
         ...deletedAssets.map(a => ({ ...a, _type: 'asset' })),
         ...deletedPrograms.map(p => ({ ...p, _type: 'program' })),
+        ...deletedExpensePrograms.map(p => ({ ...p, _type: 'program' })),
         ...deletedUsers.map(u => ({ ...u, _type: 'user' })),
-    ].sort((a, b) => new Date(b.deletedAt) - new Date(a.deletedAt));
+        ...deletedUnits.map(u => ({ ...u, _type: 'unit' })),
+        ...deletedFields.map(f => ({ ...f, _type: 'field' })),
+        ...deletedIncomeItems.map(i => ({ ...i, _type: 'income-item' })),
+        ...deletedExpenseItems.map(e => ({ ...e, _type: 'expense-item' })),
+        ...deletedStudents.map(s => ({ ...s, _type: 'student' })),
+        ...deletedClasses.map(c => ({ ...c, _type: 'class' })),
+    ].sort((a, b) => new Date(b.deletedAt || 0) - new Date(a.deletedAt || 0));
 
     const totalCount = allDeletedItems.length;
 
@@ -27,29 +42,56 @@ export default function TrashBin() {
         ? allDeletedItems
         : allDeletedItems.filter(item => item._type === activeTab);
 
-    const handleRestore = (id, type) => {
+    const handleRestore = async (id, type) => {
         dispatch({ type: 'RESTORE_FROM_TRASH', payload: { id, type } });
+        await api.pushAction({ type: 'RESTORE_FROM_TRASH', payload: { id, type } }, state);
     };
 
-    const handlePermanentDelete = (id, type) => {
+    const handlePermanentDelete = async (id, type) => {
         if (window.confirm('PERINGATAN: Data yang dihapus permanen tidak bisa dikembalikan. Lanjutkan?')) {
             dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
+            await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
         }
     };
 
-    const handleEmptyTrash = () => {
+    const handleEmptyTrash = async () => {
         if (window.confirm('PERINGATAN: Semua data di tempat sampah akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?')) {
             dispatch({ type: 'EMPTY_TRASH' });
+            await api.pushAction({ type: 'EMPTY_TRASH' }, state);
         }
     };
 
     const getItemLabel = (type) => {
-        const labels = { journal: 'Jurnal', account: 'Akun', asset: 'Aset', program: 'Program', user: 'User' };
+        const labels = { 
+            journal: 'Jurnal', 
+            account: 'Akun', 
+            asset: 'Aset', 
+            program: 'Program', 
+            user: 'User',
+            unit: 'Unit',
+            field: 'Bidang',
+            student: 'Siswa',
+            class: 'Kelas',
+            'income-item': 'Pendapatan',
+            'expense-item': 'Beban'
+        };
         return labels[type] || type;
     };
 
     const getItemIcon = (type) => {
-        const icons = { journal: FileText, account: BookOpen, asset: HardDrive, program: List, user: User };
+        const icons = { 
+            journal: FileText, 
+            account: BookOpen, 
+            asset: HardDrive, 
+            program: List, 
+            user: User,
+            unit: Building2,
+            field: Layers,
+            student: GraduationCap,
+            class: Users,
+            'income-item': Coins,
+            'expense-item': Wallet
+        };
         return icons[type] || Archive;
     };
 
@@ -60,11 +102,15 @@ export default function TrashBin() {
             case 'account':
                 return `${item.code} — ${item.name}`;
             case 'asset':
-                return item.name;
             case 'program':
-                return item.name;
             case 'user':
-                return `${item.name} (${item.username})`;
+            case 'unit':
+            case 'field':
+            case 'student':
+            case 'class':
+            case 'income-item':
+            case 'expense-item':
+                return item.name;
             default:
                 return item.id;
         }
@@ -84,6 +130,14 @@ export default function TrashBin() {
                 return item.description || 'Tanpa Deskripsi';
             case 'user':
                 return `Hak Akses: ${item.role}`;
+            case 'unit':
+                return `Unit ID: ${item.id}`;
+            case 'field':
+                return `Bidang ID: ${item.id}`;
+            case 'student':
+                return `NISN: ${item.nisn} | Kelas: ${item.classId}`;
+            case 'class':
+                return `Unit: ${item.unitId}`;
             default:
                 return '';
         }
@@ -94,8 +148,13 @@ export default function TrashBin() {
         { key: 'journal', label: 'Jurnal', count: deletedJournals.length, icon: FileText },
         { key: 'account', label: 'Akun', count: deletedAccounts.length, icon: BookOpen },
         { key: 'asset', label: 'Aset', count: deletedAssets.length, icon: HardDrive },
-        { key: 'program', label: 'Program', count: deletedPrograms.length, icon: List },
-        { key: 'user', label: 'User', count: deletedUsers.length, icon: User },
+        { key: 'program', label: 'Program', count: deletedPrograms.length + deletedExpensePrograms.length, icon: List },
+        { key: 'user', label: 'Pengguna', count: deletedUsers.length, icon: User },
+        { key: 'unit', label: 'Unit', count: deletedUnits.length, icon: Building2 },
+        { key: 'field', label: 'Bidang', count: deletedFields.length, icon: Layers },
+        { key: 'income-item', label: 'Pendapatan', count: deletedIncomeItems.length, icon: Coins },
+        { key: 'expense-item', label: 'Beban', count: deletedExpenseItems.length, icon: Wallet },
+        { key: 'student', label: 'Siswa', count: deletedStudents.length, icon: GraduationCap },
     ];
 
     return (

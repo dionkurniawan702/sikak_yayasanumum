@@ -5,7 +5,11 @@ import { api } from '../../services/api';
 
 export default function FieldUnitManagement() {
     const { state, dispatch } = useApp();
-    const { fields = [], units = [], incomeItems = [], expenseItems = [], distributionSettings = [] } = state;
+    const { fields: allFields = [], units: allUnits = [], incomeItems: allIncomeItems = [], expenseItems: allExpenseItems = [], distributionSettings = [] } = state;
+    const fields = allFields.filter(f => !f.isDeleted);
+    const units = allUnits.filter(u => !u.isDeleted);
+    const incomeItems = allIncomeItems.filter(i => !i.isDeleted);
+    const expenseItems = allExpenseItems.filter(e => !e.isDeleted);
 
     const [activeTab, setActiveTab] = useState('fields'); // 'fields' or 'units'
     const [showModal, setShowModal] = useState(false);

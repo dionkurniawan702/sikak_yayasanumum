@@ -9,7 +9,8 @@ import { generateId } from '../../utils/format';
 
 export default function ExpenseItemManagement() {
     const { state, dispatch } = useApp();
-    const { expenseItems, incomeItems } = state;
+    const { expenseItems = [], incomeItems: allIncomeItems = [] } = state;
+    const incomeItems = allIncomeItems.filter(i => !i.isDeleted);
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -18,9 +19,11 @@ export default function ExpenseItemManagement() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
-    const filteredItems = expenseItems.filter(item => 
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (item.sourceOfFunds || '').toLowerCase().includes(searchTerm.toLowerCase())
+    const filteredItems = (expenseItems || []).filter(item => 
+        !item.isDeleted && (
+            item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (item.sourceOfFunds || '').toLowerCase().includes(searchTerm.toLowerCase())
+        )
     );
 
     const handleSubmit = async (e) => {

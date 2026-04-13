@@ -268,7 +268,7 @@ function appReducer(state, action) {
             newState = { ...state, programs: state.programs.map(p => p.id === action.payload.id ? action.payload : p) };
             break;
         case 'DELETE_PROGRAM':
-            newState = { ...state, programs: state.programs.map(p => p.id === action.payload ? { ...p, isDeleted: true } : p) };
+            newState = { ...state, programs: state.programs.map(p => p.id === action.payload ? { ...p, isDeleted: true, deletedAt: new Date().toISOString() } : p) };
             break;
 
         case 'ADD_BUDGET_PROGRAM':
@@ -278,7 +278,7 @@ function appReducer(state, action) {
             newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload.id ? action.payload : p) };
             break;
         case 'DELETE_BUDGET_PROGRAM':
-            newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload ? { ...p, isDeleted: true } : p) };
+            newState = { ...state, expensePrograms: state.expensePrograms.map(p => p.id === action.payload ? { ...p, isDeleted: true, deletedAt: new Date().toISOString() } : p) };
             break;
 
         case 'SET_BUDGETS':
@@ -298,7 +298,7 @@ function appReducer(state, action) {
             newState = { ...state, fields: state.fields.map(f => f.id === action.payload.id ? action.payload : f) };
             break;
         case 'DELETE_FIELD':
-            newState = { ...state, fields: state.fields.map(f => f.id === action.payload ? { ...f, isDeleted: true } : f) };
+            newState = { ...state, fields: state.fields.map(f => f.id === action.payload ? { ...f, isDeleted: true, deletedAt: new Date().toISOString() } : f) };
             break;
         case 'ADD_UNIT':
             newState = { ...state, units: [...state.units, action.payload] };
@@ -307,7 +307,7 @@ function appReducer(state, action) {
             newState = { ...state, units: state.units.map(u => u.id === action.payload.id ? action.payload : u) };
             break;
         case 'DELETE_UNIT':
-            newState = { ...state, units: state.units.map(u => u.id === action.payload ? { ...u, isDeleted: true } : u) };
+            newState = { ...state, units: state.units.map(u => u.id === action.payload ? { ...u, isDeleted: true, deletedAt: new Date().toISOString() } : u) };
             break;
         case 'ADD_STUDENT':
             newState = { ...state, students: [...state.students, action.payload] };
@@ -316,7 +316,7 @@ function appReducer(state, action) {
             newState = { ...state, students: state.students.map(s => s.id === action.payload.id ? action.payload : s) };
             break;
         case 'DELETE_STUDENT':
-            newState = { ...state, students: state.students.map(s => s.id === action.payload ? { ...s, isDeleted: true } : s) };
+            newState = { ...state, students: state.students.map(s => s.id === action.payload ? { ...s, isDeleted: true, deletedAt: new Date().toISOString() } : s) };
             break;
         case 'ADD_USER':
             newState = { ...state, users: [...state.users, action.payload] };
@@ -325,7 +325,7 @@ function appReducer(state, action) {
             newState = { ...state, users: state.users.map(u => u.id === action.payload.id ? action.payload : u) };
             break;
         case 'DELETE_USER':
-            newState = { ...state, users: state.users.map(u => u.id === action.payload ? { ...u, isDeleted: true } : u) };
+            newState = { ...state, users: state.users.map(u => u.id === action.payload ? { ...u, isDeleted: true, deletedAt: new Date().toISOString() } : u) };
             break;
         case 'UPDATE_DISTRIBUTION_SETTINGS': {
             const { unitId, incomeItemId, settings } = action.payload;
@@ -346,7 +346,7 @@ function appReducer(state, action) {
             newState = { ...state, incomeItems: state.incomeItems.map(i => i.id === action.payload.id ? action.payload : i) };
             break;
         case 'DELETE_INCOME_ITEM':
-            newState = { ...state, incomeItems: state.incomeItems.filter(i => i.id !== action.payload) };
+            newState = { ...state, incomeItems: state.incomeItems.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) };
             break;
         case 'ADD_EXPENSE_ITEM':
             newState = { ...state, expenseItems: [action.payload, ...state.expenseItems] };
@@ -355,7 +355,7 @@ function appReducer(state, action) {
             newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload.id ? action.payload : i) };
             break;
         case 'DELETE_EXPENSE_ITEM':
-            newState = { ...state, expenseItems: state.expenseItems.filter(i => i.id !== action.payload) };
+            newState = { ...state, expenseItems: state.expenseItems.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) };
             break;
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
@@ -383,7 +383,7 @@ function appReducer(state, action) {
 
         case 'ADD_CLASS': newState = { ...state, classes: [...state.classes, action.payload] }; break;
         case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
-        case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
+        case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
         case 'SET_RAB_PLAN':
             newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] };
@@ -394,11 +394,72 @@ function appReducer(state, action) {
 
         case 'ADD_BOS_POS': newState = { ...state, bosPosList: [...state.bosPosList, action.payload] }; break;
         case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? action.payload : i) }; break;
-        case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true } : i) }; break;
+        case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
         case 'ADD_NOTIFICATION': newState = { ...state, notifications: [action.payload, ...state.notifications] }; break;
         case 'MARK_NOTIFICATION_READ': newState = { ...state, notifications: state.notifications.map(n => n.id === action.payload ? { ...n, read: true } : n) }; break;
         case 'CLEAR_NOTIFICATIONS': newState = { ...state, notifications: [] }; break;
+403: 
+404:         case 'RESTORE_FROM_TRASH': {
+405:             const { id, type } = action.payload;
+406:             const mapping = {
+407:                 journal: 'journals',
+408:                 account: 'accounts',
+409:                 asset: 'assets',
+410:                 program: 'programs',
+411:                 user: 'users',
+412:                 unit: 'units',
+413:                 field: 'fields',
+414:                 student: 'students',
+415:                 class: 'classes',
+416:                 'income-item': 'incomeItems',
+417:                 'expense-item': 'expenseItems'
+418:             };
+419:             const collection = mapping[type];
+420:             if (collection) {
+421:                 newState = { ...state, [collection]: state[collection].map(item => item.id === id ? { ...item, isDeleted: false, deletedAt: null } : item) };
+422:             }
+423:             break;
+424:         }
+425: 
+426:         case 'PERMANENT_DELETE': {
+427:             const { id, type } = action.payload;
+428:             const mapping = {
+429:                 journal: 'journals',
+430:                 account: 'accounts',
+431:                 asset: 'assets',
+432:                 program: 'programs',
+433:                 user: 'users',
+434:                 unit: 'units',
+435:                 field: 'fields',
+436:                 student: 'students',
+437:                 class: 'classes',
+438:                 'income-item': 'incomeItems',
+439:                 'expense-item': 'expenseItems'
+440:             };
+441:             const collection = mapping[type];
+442:             if (collection) {
+443:                 newState = { ...state, [collection]: state[collection].filter(item => item.id !== id) };
+444:             }
+445:             break;
+446:         }
+447: 
+448:         case 'EMPTY_TRASH':
+449:             newState = {
+450:                 ...state,
+451:                 journals: state.journals.filter(j => !j.isDeleted),
+452:                 accounts: state.accounts.filter(a => !a.isDeleted),
+453:                 assets: state.assets.filter(a => !a.isDeleted),
+454:                 programs: state.programs.filter(p => !p.isDeleted),
+455:                 users: state.users.filter(u => !u.isDeleted),
+456:                 units: state.units.filter(u => !u.isDeleted),
+457:                 fields: state.fields.filter(f => !f.isDeleted),
+458:                 students: state.students.filter(s => !s.isDeleted),
+459:                 classes: state.classes.filter(c => !c.isDeleted),
+460:                 incomeItems: state.incomeItems.filter(i => !i.isDeleted),
+461:                 expenseItems: state.expenseItems.filter(e => !e.isDeleted)
+462:             };
+463:             break;
 
 
         case 'SET_SYNCING': newState = { ...state, isSyncing: action.payload.status, syncMessage: action.payload.message || '' }; break;

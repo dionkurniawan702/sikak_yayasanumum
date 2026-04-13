@@ -86,6 +86,7 @@ app.set('prisma', getPrisma());
 // 4. API Routes
 import anggaranRouter from './routes/anggaran.js';
 import coreRouter from './routes/core.js';
+import trashRouter from './routes/trash.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -144,6 +145,7 @@ app.post('/api/login', async (req, res) => {
 
 app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
+app.use('/api/trash', trashRouter);
 
 // Global for debugging sync
 let lastSyncStats = null;

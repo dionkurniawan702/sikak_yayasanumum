@@ -42,7 +42,7 @@ router.put('/accounts/:id', async (req, res) => {
             data: {
                 code, name, category, type, subType, fund,
                 balance: initialBalance !== undefined ? parseFloat(initialBalance) : undefined,
-                isDeleted: isDeleted || false
+                isDeleted: isDeleted !== undefined ? isDeleted : undefined
             }
         });
         console.log(`[Account Update] Success: ${data.name}`);
@@ -55,10 +55,14 @@ router.put('/accounts/:id', async (req, res) => {
 
 router.delete('/accounts/:id', async (req, res) => {
     try {
-        await getPrisma(req).account.update({
-            where: { id: req.params.id },
-            data: { isDeleted: true }
-        });
+        if (req.query.permanent === 'true') {
+            await getPrisma(req).account.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).account.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+            });
+        }
         res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -117,11 +121,25 @@ router.post('/assets', async (req, res) => {
 
 router.put('/assets/:id', async (req, res) => {
     try {
-        const data = await getPrisma(req).asset.update({
-            where: { id: req.params.id },
-            data: req.body
+            data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/assets/:id', async (req, res) => {
+    try {
+        if (req.query.permanent === 'true') {
+            await getPrisma(req).asset.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).asset.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+            });
+        }
+        res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -148,11 +166,25 @@ router.post('/programs', async (req, res) => {
 
 router.put('/programs/:id', async (req, res) => {
     try {
-        const data = await getPrisma(req).program.update({
-            where: { id: req.params.id },
-            data: req.body
+            data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/programs/:id', async (req, res) => {
+    try {
+        if (req.query.permanent === 'true') {
+            await getPrisma(req).program.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).program.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+            });
+        }
+        res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -179,11 +211,25 @@ router.post('/expense-programs', async (req, res) => {
 
 router.put('/expense-programs/:id', async (req, res) => {
     try {
-        const data = await getPrisma(req).expenseProgram.update({
-            where: { id: req.params.id },
-            data: req.body
+            data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/expense-programs/:id', async (req, res) => {
+    try {
+        if (req.query.permanent === 'true') {
+            await getPrisma(req).expenseProgram.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).expenseProgram.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+            });
+        }
+        res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -210,11 +256,41 @@ router.post('/users', async (req, res) => {
 
 router.put('/users/:id', async (req, res) => {
     try {
-        const data = await getPrisma(req).user.update({
-            where: { id: req.params.id },
-            data: req.body
+            data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/users/:id', async (req, res) => {
+    try {
+        if (req.query.permanent === 'true') {
+            await getPrisma(req).user.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).user.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+            });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/journals/:id', async (req, res) => {
+    try {
+        if (req.query.permanent === 'true') {
+            await getPrisma(req).journal.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).journal.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+            });
+        }
+        res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
