@@ -126,7 +126,7 @@ model AuditLog {
 
 model Field {
   id        String   @id @default(uuid())
-  name      String
+  name      String   @unique
   isDeleted Boolean  @default(false)
   
   units        Unit[]
@@ -147,6 +147,7 @@ model Unit {
   classes      Class[]
 
   @@map("units")
+  @@unique([fieldId, name])
 }
 
 model Student {
@@ -181,6 +182,7 @@ model Class {
   students    Student[]
 
   @@map("Class")
+  @@unique([unitId, name])
 }
 
 model IncomeItem {

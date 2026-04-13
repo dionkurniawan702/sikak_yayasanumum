@@ -169,7 +169,9 @@ export default function FieldUnitManagement() {
             }, 1500);
         } catch (err) {
             console.error('Sync failed:', err.message);
-            setError(`Gagal menyimpan: ${err.message}`);
+            const errMsg = `Gagal menyimpan: ${err.message}`;
+            setError(errMsg);
+            window.alert(errMsg);
         } finally {
             setLoading(false);
         }

@@ -33,6 +33,7 @@ router.post('/fields', async (req, res) => {
         const field = await getPrisma(req).field.create({ data });
         res.json({ data: field });
     } catch (error) {
+        if (error.code === 'P2002') return res.status(400).json({ error: `Ops! Bidang dengan nama "${req.body.name}" sudah ada.` });
         res.status(500).json({ error: error.message });
     }
 });
@@ -51,6 +52,7 @@ router.put('/fields/:id', async (req, res) => {
         });
         res.json({ data: field });
     } catch (error) {
+        if (error.code === 'P2002') return res.status(400).json({ error: `Gagal memperbarui: Nama bidang "${req.body.name}" sudah ada.` });
         res.status(500).json({ error: error.message });
     }
 });
@@ -106,7 +108,7 @@ router.post('/units', async (req, res) => {
         console.log(`[API] Unit created successfully: ${unit.id}`);
         res.json({ data: unit });
     } catch (error) {
-        console.error(`[API Error] Failed to create Unit: ${error.message}`);
+        if (error.code === 'P2002') return res.status(400).json({ error: `Nama unit "${req.body.name}" sudah digunakan di bidang ini.` });
         res.status(500).json({ error: error.message });
     }
 });
@@ -621,6 +623,7 @@ const createGenericRoutes = (entityName, modelName) => {
             const item = await getPrisma(req)[modelName].create({ data });
             res.json({ data: item });
         } catch (error) {
+            if (error.code === 'P2002') return res.status(400).json({ error: `Nama ${entityName} ini sudah digunakan.` });
             res.status(500).json({ error: error.message });
         }
     });
@@ -640,6 +643,7 @@ const createGenericRoutes = (entityName, modelName) => {
             });
             res.json({ data: item });
         } catch (error) {
+            if (error.code === 'P2002') return res.status(400).json({ error: `Nama ${entityName} ini sudah digunakan oleh data lain.` });
             res.status(500).json({ error: error.message });
         }
     });
@@ -696,6 +700,7 @@ router.post('/classes', async (req, res) => {
         const item = await getPrisma(req).class.create({ data: req.body });
         res.json({ data: item });
     } catch (error) {
+        if (error.code === 'P2002') return res.status(400).json({ error: `Nama kelas "${req.body.name}" sudah digunakan di unit ini.` });
         res.status(500).json({ error: error.message });
     }
 });
@@ -711,6 +716,7 @@ router.put('/classes/:id', async (req, res) => {
         });
         res.json({ data: item });
     } catch (error) {
+        if (error.code === 'P2002') return res.status(400).json({ error: `Gagal memperbarui: Nama kelas "${req.body.name}" sudah digunakan di unit ini.` });
         res.status(500).json({ error: error.message });
     }
 });
