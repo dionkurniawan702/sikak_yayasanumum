@@ -541,6 +541,51 @@ app.use((err, req, res, next) => {
 });
 
 // 5. Auto-Seed Function (Background)
+const ensureSoftDeleteColumns = async () => {
+    const models = [
+        { name: 'AcademicYear', table: 'AcademicYear' },
+        { name: 'BosStage', table: 'bos_stages' },
+        { name: 'BosPos', table: 'bos_pos' },
+        { name: 'Class', table: 'Class' },
+        { name: 'Student', table: 'Student' },
+        { name: 'StudentStatus', table: 'StudentStatus' },
+        { name: 'ParentStatus', table: 'ParentStatus' },
+        { name: 'Position', table: 'positions' },
+        { name: 'ClassGroup', table: 'class_groups' },
+        { name: 'Unit', table: 'units' },
+        { name: 'Field', table: 'fields' },
+        { name: 'Account', table: 'accounts' },
+        { name: 'Asset', table: 'assets' },
+        { name: 'Program', table: 'programs' },
+        { name: 'ExpenseProgram', table: 'expense_programs' },
+        { name: 'IncomeItem', table: 'income_items' },
+        { name: 'ExpenseItem', table: 'expense_items' },
+        { name: 'Journal', table: 'journals' }
+    ];
+
+    try {
+        const client = getPrisma();
+        console.log(`[Self-Healing] Checking ${models.length} tables for isDeleted column...`);
+        for (const m of models) {
+            try {
+                const columns = await client.$queryRawUnsafe(`DESCRIBE \`${m.table}\``);
+                const hasIsDeleted = columns.some(c => c.Field === 'isDeleted' || c.field === 'isDeleted');
+
+                if (!hasIsDeleted) {
+                    console.log(`[Self-Healing] Table ${m.table} is missing isDeleted. Fixing...`);
+                    await client.$executeRawUnsafe(`ALTER TABLE \`${m.table}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
+                    console.log(`[Self-Healing] SUCCESS: Added isDeleted to ${m.table}`);
+                }
+            } catch (e) {
+                console.warn(`[Self-Healing Warn] Skipping ${m.table}: ${e.message}`);
+            }
+        }
+        console.log(`[Self-Healing] Database check complete.`);
+    } catch (error) {
+        console.error(`[Self-Healing Error] ${error.message}`);
+    }
+};
+
 const ensureFundSources = async () => {
     const incomeItemsList = [
         'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian',
@@ -586,10 +631,17 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Diagnostic] Health Check: http://0.0.0.0:${PORT}/health`);
     console.log(`************************************************\n\n`);
 
-    // Trigger background seeding WITHOUT blocking startup
-    ensureFundSources().catch(err => {
-        console.error(`[Background Seed Error] ${err.message}`);
-    });
+    // Trigger background seeding & healing WITHOUT blocking startup
+    const startBackgroundTasks = async () => {
+        try {
+            await ensureSoftDeleteColumns();
+            await ensureFundSources();
+        } catch (err) {
+            console.error(`[Background Tasks Error] ${err.message}`);
+        }
+    };
+    
+    startBackgroundTasks();
 });
 
 server.on('error', (err) => {
