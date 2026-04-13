@@ -617,17 +617,12 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.delete(`/${entityName}/:id`, async (req, res) => {
         try {
-            const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
-            if (isPermanent) {
-                await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
-            } else {
-                await getPrisma(req)[modelName].update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            }
+            await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
             res.json({ message: 'Success' });
         } catch (error) {
+            if (error.code === 'P2003') {
+                return res.status(400).json({ error: `Data ${entityName} tidak bisa dihapus karena masih digunakan oleh data lain (misal: Siswa atau data terkait).` });
+            }
             res.status(500).json({ error: error.message });
         }
     });

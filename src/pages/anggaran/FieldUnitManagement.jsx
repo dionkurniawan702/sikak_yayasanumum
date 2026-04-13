@@ -182,8 +182,8 @@ export default function FieldUnitManagement() {
         
         const type = activeTab === 'fields' ? 'FIELD' : 'UNIT';
         try {
-            dispatch({ type: `DELETE_${type}`, payload: id });
             await api.pushAction({ type: `DELETE_${type}`, payload: id }, state);
+            dispatch({ type: `DELETE_${type}`, payload: id });
             // Quick feedback
             window.alert(`Data ${type === 'FIELD' ? 'Bidang' : 'Unit'} berhasil dihapus dari database.`);
         } catch (err) {

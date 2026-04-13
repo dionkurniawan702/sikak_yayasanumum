@@ -78,8 +78,8 @@ export default function GenericMasterManagement({
     const handleDelete = async (id) => {
         if (!window.confirm(`Hapus ${title.toLowerCase()} ini?`)) return;
         try {
-            dispatch({ type: `DELETE_${actionPrefix}`, payload: id });
             await api.pushAction({ type: `DELETE_${actionPrefix}`, payload: id }, state);
+            dispatch({ type: `DELETE_${actionPrefix}`, payload: id });
             setMessage({ type: 'success', text: `${title} berhasil dihapus` });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });

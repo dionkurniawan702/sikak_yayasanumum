@@ -97,8 +97,8 @@ export default function StudentDatabase() {
     const handleDeleteStudent = async (id) => {
         if (window.confirm('Hapus data siswa ini?')) {
             try {
-                dispatch({ type: 'DELETE_STUDENT', payload: id });
                 await api.pushAction({ type: 'DELETE_STUDENT', payload: id }, state);
+                dispatch({ type: 'DELETE_STUDENT', payload: id });
                 window.alert('Data siswa berhasil dihapus permanen.');
             } catch (err) {
                 window.alert('Gagal menghapus siswa: ' + err.message);
