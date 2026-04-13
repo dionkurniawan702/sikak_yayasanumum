@@ -233,15 +233,6 @@ export default function TrashBin() {
                 )}
             </div>
 
-            <div className="mt-12 p-8 bg-blue-50 rounded-[32px] border border-blue-100 flex items-center gap-6 shadow-inner animate-in">
-                <div className="p-4 bg-white rounded-2xl text-blue-600 shadow-sm">
-                    <AlertTriangle size={24} />
-                </div>
-                <div>
-                    <h4 className="font-black text-blue-900 uppercase text-xs tracking-widest">Manajemen Penyimpanan Internal</h4>
-                    <p className="text-[10px] text-blue-700 font-bold leading-relaxed mt-1 uppercase italic tracking-wider">Data di tempat sampah masih memakan ruang memori. Hapus permanen secara berkala untuk optimalisasi performa basis data yayasan.</p>
-                </div>
-            </div>
             
             <div className="mt-20 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
                 SIKAK YAYASAN UMUM — INTERNAL DATA RECOVERY CONSOLE
