@@ -24,21 +24,39 @@ export const api = {
         }
     },
 
-    async fetchFundAvailability(unitId) {
-        if (!isRemote) return [];
+    async request(method, endpoint, data = null) {
+        if (!isRemote) return null;
         try {
             const token = localStorage.getItem('jwt_token');
-            const headers = {};
+            const headers = { 'Content-Type': 'application/json' };
             if (token) headers['Authorization'] = `Bearer ${token}`;
 
-            const res = await fetch(`${API_URL}/fund-availability/${unitId}`, { headers });
-            if (!res.ok) throw new Error('Fetch failed');
-            const json = await res.json();
-            return json.data || [];
+            const config = {
+                method,
+                headers,
+            };
+            if (data) config.body = JSON.stringify(data);
+
+            const res = await fetch(`${API_URL}${endpoint}`, config);
+            if (!res.ok) {
+                if (res.status === 401 || res.status === 403) throw new Error('SESSION_EXPIRED');
+                const errorData = await res.json().catch(() => ({ error: 'Server error' }));
+                throw new Error(errorData.error || `Error ${res.status}`);
+            }
+            return await res.json();
         } catch (error) {
-            console.error('Failed to fetch fund availability:', error);
-            return [];
+            console.error(`API ${method} ${endpoint} failed:`, error.message);
+            throw error;
         }
+    },
+
+    async post(endpoint, data = null) {
+        return this.request('POST', endpoint, data);
+    },
+
+    async fetchFundAvailability(unitId) {
+        const json = await this.request('GET', `/fund-availability/${unitId}`);
+        return json?.data || [];
     },
 
     async pushAction(action, currentState) {
