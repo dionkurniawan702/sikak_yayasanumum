@@ -21,6 +21,15 @@ router.post('/fields', async (req, res) => {
     try {
         const data = { ...req.body };
         delete data.fieldId;
+        
+        // Check for existing name to provide better error
+        const existing = await getPrisma(req).field.findFirst({
+            where: { name: data.name, isDeleted: false }
+        });
+        if (existing) {
+            return res.status(400).json({ error: `Bidang dengan nama "${data.name}" sudah ada.` });
+        }
+
         const field = await getPrisma(req).field.create({ data });
         res.json({ data: field });
     } catch (error) {
@@ -49,13 +58,25 @@ router.put('/fields/:id', async (req, res) => {
 router.delete('/fields/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
+            // Check for dependencies
+            const units = await getPrisma(req).unit.count({ where: { fieldId: req.params.id } });
+            if (units > 0) {
+                return res.status(400).json({ 
+                    error: `Tidak bisa menghapus permanen: Masih ada ${units} Unit yang terhubung ke Bidang ini. Hapus Unitnya terlebih dahulu.` 
+                });
+            }
             await getPrisma(req).field.delete({ where: { id: req.params.id } });
         } else {
+            await getPrisma(req).field.update({
+                where: { id: req.params.id },
                 data: { isDeleted: true }
+            });
         }
         res.json({ message: 'Success' });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        let msg = error.message;
+        if (error.code === 'P2003') msg = "Gagal menghapus: Data ini masih digunakan oleh tabel lain (Unit, dll).";
+        res.status(500).json({ error: msg });
     }
 });
 

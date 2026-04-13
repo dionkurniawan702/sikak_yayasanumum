@@ -49,8 +49,13 @@ export default function TrashBin() {
 
     const handlePermanentDelete = async (id, type) => {
         if (window.confirm('PERINGATAN: Data yang dihapus permanen tidak bisa dikembalikan. Lanjutkan?')) {
-            dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
-            await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
+            try {
+                dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
+                await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
+            } catch (err) {
+                console.error('Delete failed:', err.message);
+                window.alert(`Gagal menghapus permanen: ${err.message}. Pastikan data ini tidak memiliki ketergantungan (misal: Unit di dalam Bidang).`);
+            }
         }
     };
 
