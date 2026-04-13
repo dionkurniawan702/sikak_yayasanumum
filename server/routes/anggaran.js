@@ -577,9 +577,42 @@ const cleanDataForModel = (modelName, data) => {
 const createGenericRoutes = (entityName, modelName) => {
     router.get(`/${entityName}`, async (req, res) => {
         try {
-            const data = await getPrisma(req)[modelName].findMany({ where: { isDeleted: false } });
+            const prisma = getPrisma(req);
+            
+            // --- AGGRESSIVE HOT-FIX: Ensure isDeleted column exists ---
+            const tableMappings = {
+                'academicYear': 'AcademicYear',
+                'classGroup': 'class_groups',
+                'position': 'positions',
+                'studentStatus': 'StudentStatus',
+                'parentStatus': 'ParentStatus',
+                'bosStage': 'bos_stages',
+                'bosPos': 'bos_pos',
+                'field': 'fields',
+                'unit': 'units',
+                'class': 'Class',
+                'student': 'Student'
+            };
+            
+            const tableName = tableMappings[modelName] || (modelName.charAt(0).toUpperCase() + modelName.slice(1));
+            
+            try {
+                const columns = await prisma.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
+                const hasIsDeleted = columns.some(c => (c.Field === 'isDeleted' || c.field === 'isDeleted'));
+                
+                if (!hasIsDeleted) {
+                    console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
+                    await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
+                }
+            } catch (se) {
+                console.warn(`[Hot-Fix Warn] Schema check failed for ${tableName}: ${se.message}`);
+            }
+            // --- End Hot-Fix ---
+
+            const data = await prisma[modelName].findMany({ where: { isDeleted: false } });
             res.json({ data });
         } catch (error) {
+            console.error(`[Generic API Error] GET /${entityName}:`, error);
             res.status(500).json({ error: error.message });
         }
     });
