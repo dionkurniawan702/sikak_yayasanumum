@@ -221,7 +221,6 @@ export default function BudgetDashboard() {
     }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems]);
 
     const unitData = useMemo(() => {
-    const unitData = useMemo(() => {
         return units.filter(u => !u.isDeleted).map(u => {
             if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return null;
             
