@@ -200,6 +200,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         <span>Reset Data Lokal</span>
                     </button>
                 )}
+                <div className="mt-4 px-4 text-[9px] font-bold text-slate-700 uppercase tracking-widest text-center opacity-40">
+                    SIKAK v1.5.0-diag
+                </div>
             </div>
         </aside>
     );
