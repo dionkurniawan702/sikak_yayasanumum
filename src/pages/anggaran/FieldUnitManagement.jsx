@@ -275,7 +275,7 @@ export default function FieldUnitManagement() {
                     </thead>
                     <tbody className="divide-y divide-slate-50">
                         {activeTab === 'fields' ? (
-                            fields.length > 0 ? fields.map(field => (
+                            fields.filter(f => !f.isDeleted).length > 0 ? fields.filter(f => !f.isDeleted).map(field => (
                                 <tr key={field.id} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-4">
@@ -296,7 +296,7 @@ export default function FieldUnitManagement() {
                                 <tr><td colSpan="2" className="px-8 py-16 text-center text-slate-400 font-bold italic text-lg bg-slate-50/30">Belum ada data bidang.</td></tr>
                             )
                         ) : (
-                            units.length > 0 ? units.map(unit => {
+                            units.filter(u => !u.isDeleted).length > 0 ? units.filter(u => !u.isDeleted).map(unit => {
                                 const unitSettings = distributionSettings.filter(s => s.unitId === unit.id);
                                 const configuredItems = [...new Set(unitSettings.map(s => s.incomeItemId))].length;
 

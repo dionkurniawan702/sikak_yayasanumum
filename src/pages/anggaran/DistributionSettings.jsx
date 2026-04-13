@@ -11,7 +11,7 @@ export default function DistributionSettings() {
     
     // Find current settings for the selection
     const currentSettings = distributionSettings.filter(s => 
-        s.unitId === selectedUnit && s.incomeItemId === selectedIncomeItem
+        s.unitId === selectedUnit && s.incomeItemId === selectedIncomeItem && !s.isDeleted
     );
 
     const [tempSettings, setTempSettings] = useState(currentSettings);
@@ -97,7 +97,7 @@ export default function DistributionSettings() {
                             onChange={e => setSelectedUnit(e.target.value)}
                         >
                             <option value="">Pilih Unit</option>
-                            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            {units.filter(u => !u.isDeleted).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                         </select>
 
                         <label className="form-label">Item Penerimaan</label>
@@ -106,8 +106,8 @@ export default function DistributionSettings() {
                             value={selectedIncomeItem}
                             onChange={e => setSelectedIncomeItem(e.target.value)}
                         >
-                            <option value="">Pilih Penerimaan</option>
-                            {incomeItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                            <option value="">Pilih Item</option>
+                            {incomeItems.filter(i => !i.isDeleted).map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                         </select>
                         
                         <div className="mt-8 p-4 bg-blue-50 rounded-2xl border border-blue-100 italic text-xs text-blue-700 leading-relaxed">
@@ -147,16 +147,10 @@ export default function DistributionSettings() {
                                                 Bidang
                                             </button>
                                         </div>
-                                        <select 
-                                            className="form-select !py-2 !text-xs"
-                                            value={row.destId}
-                                            onChange={e => handleUpdateRow(row.id, 'destId', e.target.value)}
-                                        >
-                                            <option value="">Pilih Tujuan</option>
-                                            {row.destType === 'unit' 
-                                                ? units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)
-                                                : fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)
-                                            }
+                                        <select className="form-select" value={row.destId} onChange={e => handleUpdateRow(row.id, 'destId', e.target.value)}>
+                                            {(row.destType === 'unit' ? units.filter(u => !u.isDeleted) : fields.filter(f => !f.isDeleted)).map(d => (
+                                                <option key={d.id} value={d.id}>{d.name}</option>
+                                            ))}
                                         </select>
                                     </div>
 
