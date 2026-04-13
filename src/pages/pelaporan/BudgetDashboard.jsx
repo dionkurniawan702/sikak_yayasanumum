@@ -44,108 +44,84 @@ export default function BudgetDashboard() {
     };
 
     // ========== ENGINE: RAP (Rencana Anggaran Pendapatan) ==========
-    // RAP = Projected income from student distribution settings
     const { unitRAP, fieldRAP } = useMemo(() => {
-        const uRAP = {}; // unitId -> { total, items: { expenseItemId: amount } }
-        const fRAP = {}; // fieldId -> { total, items: { expenseItemId: { total, sources: { unitId: amount } } } }
-
-        units.filter(u => !u.isDeleted).forEach(u => {
-            if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return;
-            uRAP[u.id] = { total: 0, items: {} };
-        });
-
-        fields.filter(f => !f.isDeleted).forEach(f => {
-            if (currentUser?.role === 'admin_bidang' && f.id !== currentUser.fieldId) return;
-            fRAP[f.id] = { total: 0, items: {} };
-        });
+        const uRAP = {};
+        const fRAP = {};
+        units.filter(u => !u.isDeleted).forEach(u => uRAP[u.id] = { total: 0, items: {} });
+        fields.filter(f => !f.isDeleted).forEach(f => fRAP[f.id] = { total: 0, items: {} });
 
         const nonActiveStatusNames = ['alumni', 'pindah', 'dikeluarkan', 'cuti', 'non aktif'];
         const activeStudents = students.filter(s => {
             if (s.isDeleted) return false;
-            
-            // Check status name (case-insensitive)
             const statusName = (s.status?.name || '').toLowerCase();
             if (nonActiveStatusNames.includes(statusName)) return false;
-
-            // Matching Academic Year
             return (activeAcademicYear ? s.academicYearId === activeAcademicYear.id : true);
         });
 
         activeStudents.forEach(student => {
             if (!student.unitId || !uRAP[student.unitId]) return;
+            
+            student.incomeDetails?.forEach(detail => {
+                const amount = parseFloat(detail.amount) || 0;
+                if (amount <= 0) return;
 
-            if (student.incomeDetails && student.incomeDetails.length > 0) {
-                student.incomeDetails.forEach(detail => {
-                    const amount = parseFloat(detail.amount) || 0;
-                    if (amount <= 0) return;
+                const rules = distributionSettings.filter(
+                    s => s.unitId === student.unitId && s.incomeItemId === detail.incomeItemId
+                );
 
-                    const rules = distributionSettings.filter(
-                        s => s.unitId === student.unitId && s.incomeItemId === detail.incomeItemId
-                    );
+                if (rules.length === 0) {
+                    uRAP[student.unitId].total += amount;
+                    const exId = 'unallocated';
+                    uRAP[student.unitId].items[exId] = (uRAP[student.unitId].items[exId] || 0) + amount;
+                } else {
+                    rules.forEach(rule => {
+                        const percent = parseFloat(rule.percentage) || 0;
+                        const share = amount * (percent / 100);
+                        if (share <= 0) return;
 
-                    if (rules.length === 0) {
-                        // No distribution rule -> all stays at unit
-                        uRAP[student.unitId].total += amount;
-                        const exId = 'unallocated';
-                        uRAP[student.unitId].items[exId] = (uRAP[student.unitId].items[exId] || 0) + amount;
-                    } else {
-                        rules.forEach(rule => {
-                            const percent = parseFloat(rule.percentage) || 0;
-                            const share = amount * (percent / 100);
-                            if (share <= 0) return;
+                        const exItem = expenseItems.find(e => e.id === rule.expenseItemId);
+                        const isFieldOwned = exItem && exItem.fieldId && !exItem.unitId;
+                        const effectiveDestType = isFieldOwned ? 'field' : rule.destType;
+                        const targetFieldId = isFieldOwned ? exItem.fieldId : rule.destId;
 
-                            if (rule.destType === 'unit') {
-                                uRAP[student.unitId].total += share;
+                        if (effectiveDestType === 'unit') {
+                            uRAP[student.unitId].total += share;
+                            const exId = rule.expenseItemId || 'unallocated';
+                            uRAP[student.unitId].items[exId] = (uRAP[student.unitId].items[exId] || 0) + share;
+                        } else if (effectiveDestType === 'field') {
+                            if (targetFieldId && fRAP[targetFieldId]) {
+                                fRAP[targetFieldId].total += share;
                                 const exId = rule.expenseItemId || 'unallocated';
-                                uRAP[student.unitId].items[exId] = (uRAP[student.unitId].items[exId] || 0) + share;
-                            } else if (rule.destType === 'field') {
-                                const targetFieldId = rule.destId;
-                                if (targetFieldId && fRAP[targetFieldId]) {
-                                    fRAP[targetFieldId].total += share;
-                                    const exId = rule.expenseItemId || 'unallocated';
-                                    if (!fRAP[targetFieldId].items[exId]) {
-                                        fRAP[targetFieldId].items[exId] = { total: 0, sources: {} };
-                                    }
-                                    fRAP[targetFieldId].items[exId].total += share;
-                                    fRAP[targetFieldId].items[exId].sources[student.unitId] = 
-                                        (fRAP[targetFieldId].items[exId].sources[student.unitId] || 0) + share;
+                                if (!fRAP[targetFieldId].items[exId]) {
+                                    fRAP[targetFieldId].items[exId] = { total: 0, sources: {} };
                                 }
+                                fRAP[targetFieldId].items[exId].total += share;
+                                fRAP[targetFieldId].items[exId].sources[student.unitId] = 
+                                    (fRAP[targetFieldId].items[exId].sources[student.unitId] || 0) + share;
                             }
-                        });
-                    }
-                });
-            }
+                        }
+                    });
+                }
+            });
         });
 
         return { unitRAP: uRAP, fieldRAP: fRAP };
-    }, [students, units, fields, distributionSettings, studentStatuses, currentUser, activeAcademicYear]);
+    }, [students, units, fields, distributionSettings, studentStatuses, currentUser, activeAcademicYear, expenseItems]);
 
     // ========== ENGINE: RAB (Rencana Anggaran Belanja) ==========
-    // RAB = Budgeted expenses set by users in the Budgeting module
     const { unitRAB, fieldRAB } = useMemo(() => {
-        const uRAB = {}; // unitId -> { total, items: { expenseItemId: amount } }
-        const fRAB = {}; // fieldId -> { total, items: { expenseItemId: amount } }
+        const uRAB = {};
+        const fRAB = {};
+        units.filter(u => !u.isDeleted).forEach(u => uRAB[u.id] = { total: 0, items: {} });
+        fields.filter(f => !f.isDeleted).forEach(f => fRAB[f.id] = { total: 0, items: {} });
 
-        // Initialize
-        units.filter(u => !u.isDeleted).forEach(u => {
-            if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return;
-            uRAB[u.id] = { total: 0, items: {} };
-        });
-        fields.filter(f => !f.isDeleted).forEach(f => {
-            if (currentUser?.role === 'admin_bidang' && f.id !== currentUser.fieldId) return;
-            fRAB[f.id] = { total: 0, items: {} };
-        });
-
-        // Aggregate from budgetRequests that are APPROVED, filtered by Academic Year (July - June)
         const startYear = parseInt(selectedAcademicYear.split('/')[0]);
         const endYear = parseInt(selectedAcademicYear.split('/')[1]);
 
         const approvedRequests = (state.budgetRequests || []).filter(r => {
             if (r.status !== 'APPROVED') return false;
-            
             const reqYear = parseInt(r.year);
             const reqMonth = parseInt(r.month);
-            
             if (reqYear === startYear && reqMonth >= 7) return true;
             if (reqYear === endYear && reqMonth <= 6) return true;
             return false;
@@ -154,24 +130,31 @@ export default function BudgetDashboard() {
         approvedRequests.forEach(req => {
             const amount = parseFloat(req.amount) || 0;
             if (amount <= 0) return;
+            const exId = req.expenseItemId || 'other';
+            const exItem = expenseItems.find(e => e.id === exId);
 
-            // Check if this belongs to a unit
-            if (req.unitId && uRAB[req.unitId]) {
+            const isFieldOwned = exItem && exItem.fieldId && !exItem.unitId;
+            const targetFieldId = isFieldOwned ? exItem.fieldId : req.fieldId;
+            
+            if (!isFieldOwned && req.unitId && uRAB[req.unitId]) {
                 uRAB[req.unitId].total += amount;
-                const exId = req.expenseItemId || 'other';
                 uRAB[req.unitId].items[exId] = (uRAB[req.unitId].items[exId] || 0) + amount;
-            }
-
-            // Check if this belongs to a field
-            if (req.fieldId && fRAB[req.fieldId]) {
-                fRAB[req.fieldId].total += amount;
-                const exId = req.expenseItemId || 'other';
-                fRAB[req.fieldId].items[exId] = (fRAB[req.fieldId].items[exId] || 0) + amount;
+            } else if (targetFieldId && fRAB[targetFieldId]) {
+                fRAB[targetFieldId].total += amount;
+                if (!fRAB[targetFieldId].items[exId]) {
+                    fRAB[targetFieldId].items[exId] = { total: 0, sources: {} };
+                }
+                const fItem = fRAB[targetFieldId].items[exId];
+                fItem.total = (typeof fItem === 'number' ? fItem : fItem.total) + amount;
+                if (req.unitId) {
+                    fItem.sources = fItem.sources || {};
+                    fItem.sources[req.unitId] = (fItem.sources[req.unitId] || 0) + amount;
+                }
             }
         });
 
         return { unitRAB: uRAB, fieldRAB: fRAB };
-    }, [state.budgetRequests, units, fields, currentUser, selectedAcademicYear]);
+    }, [state.budgetRequests, units, fields, currentUser, selectedAcademicYear, expenseItems]);
 
     // ========== Helpers ==========
     const getExpenseName = (id) => {
@@ -191,7 +174,7 @@ export default function BudgetDashboard() {
         return `Rp. ${num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     };
 
-    // ========== Build Bidang Data ==========
+    // ========== Build Display Data ==========
     const bidangData = useMemo(() => {
         return fields.filter(f => !f.isDeleted).map(f => {
             if (currentUser?.role === 'admin_bidang' && f.id !== currentUser.fieldId) return null;
@@ -201,12 +184,13 @@ export default function BudgetDashboard() {
             const items = fieldRAP[f.id]?.items || {};
             const rabItems = fieldRAB[f.id]?.items || {};
             
-            // Merge all expense item keys
             const allKeys = new Set([...Object.keys(items), ...Object.keys(rabItems)]);
             const breakdown = [];
             allKeys.forEach(exId => {
                 const itemRAP = typeof items[exId] === 'object' ? items[exId].total : (items[exId] || 0);
-                const itemRAB = rabItems[exId] || 0;
+                const itemRAB = typeof rabItems[exId] === 'object' ? rabItems[exId].total : (rabItems[exId] || 0);
+                if (itemRAP === 0 && itemRAB === 0) return;
+
                 breakdown.push({
                     id: exId,
                     name: getExpenseName(exId),
@@ -219,32 +203,21 @@ export default function BudgetDashboard() {
 
             return { id: f.id, name: f.name, rap, rab, sisa, breakdown };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
-    }, [fields, fieldRAP, fieldRAB, currentUser]);
+    }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems]);
 
-    // ========== Build Unit Data ==========
     const unitData = useMemo(() => {
         return units.filter(u => !u.isDeleted).map(u => {
             if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return null;
+            const rapData = unitRAP[u.id] || { total: 0, items: {} };
+            const rabData = unitRAB[u.id] || { total: 0, items: {} };
             
-            const rawItems = unitRAP[u.id]?.items || {};
-            const rawRabItems = unitRAB[u.id]?.items || {};
-            const allKeys = new Set([...Object.keys(rawItems), ...Object.keys(rawRabItems)]);
-            
+            const allKeys = new Set([...Object.keys(rapData.items), ...Object.keys(rabData.items)]);
             const breakdown = [];
             allKeys.forEach(exId => {
-                const exItem = expenseItems.find(e => e.id === exId);
-                
-                // FILTER: Hide items that belong specifically to a Field (Yayasan/Bidang)
-                // This ensures the Unit view only shows Unit-specific or Global categories
-                const isFieldOwned = exItem && exItem.fieldId && !exItem.unitId;
-                if (isFieldOwned) return;
-
-                const itemRAP = rawItems[exId] || 0;
-                const itemRAB = rawRabItems[exId] || 0;
-                
-                // Only show if there's actually a value
+                const itemRAP = rapData.items[exId] || 0;
+                const itemRAB = rabData.items[exId] || 0;
                 if (itemRAP === 0 && itemRAB === 0) return;
-                
+
                 breakdown.push({
                     id: exId,
                     name: getExpenseName(exId),
@@ -254,12 +227,14 @@ export default function BudgetDashboard() {
                 });
             });
 
-            // Calculate Unit Totals based only on visible (unit-specific) items
-            const rap = breakdown.reduce((sum, item) => sum + item.rap, 0);
-            const rab = breakdown.reduce((sum, item) => sum + item.rab, 0);
-            const sisa = rap - rab;
-
-            return { id: u.id, name: u.name, rap, rab, sisa, breakdown };
+            return { 
+                id: u.id, 
+                name: u.name, 
+                rap: rapData.total, 
+                rab: rabData.total, 
+                sisa: rapData.total - rabData.total, 
+                breakdown 
+            };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
     }, [units, unitRAP, unitRAB, currentUser, expenseItems]);
 
