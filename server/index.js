@@ -240,6 +240,9 @@ app.post('/api/sync', async (req, res) => {
                                 delete cleanItem.initialDonationBalance;
                                 delete cleanItem.initialResultBalance;
                             }
+                            if (model === 'distributionSetting') {
+                                cleanItem.percentage = cleanItem.percentage ? parseFloat(cleanItem.percentage) : 0;
+                            }
                             await tx[model].upsert({
                                 where: { id: item.id },
                                 update: { ...cleanItem, id: undefined },
@@ -344,10 +347,61 @@ app.post('/api/sync', async (req, res) => {
             }
         }, { timeout: 120000 });
 
-        res.json({ status: 'ok', message: 'Sync Successful 1.4.6' });
+        res.json({ status: 'ok', message: 'Sync Successful 1.4.7' });
     } catch (error) {
         lastSyncError = error.message;
         console.error(`[Sync Error] ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- ALL DATA ENDPOINT ---
+app.get('/api/all-data', async (req, res) => {
+    try {
+        const client = getPrisma();
+        const [
+            accounts, journals, assets, programs, expensePrograms, users, budgets,
+            fields, units, students, incomeItems, expenseItems, distributionSettings,
+            academicYears, classGroups, positions, studentStatuses, parentStatuses,
+            budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList
+        ] = await Promise.all([
+            client.account.findMany({ where: { isDeleted: false }, orderBy: { code: 'asc' } }),
+            client.journal.findMany({ where: { isDeleted: false }, orderBy: { date: 'desc' }, take: 500 }),
+            client.asset.findMany({ where: { isDeleted: false } }),
+            client.program.findMany({ where: { isDeleted: false } }),
+            client.expenseProgram.findMany({ where: { isDeleted: false } }),
+            client.user.findMany({ where: { isDeleted: false } }),
+            client.budgetAllocation.findMany({ where: { isDeleted: false } }),
+            client.field.findMany({ where: { isDeleted: false } }),
+            client.unit.findMany({ where: { isDeleted: false } }),
+            client.student.findMany({ where: { isDeleted: false }, include: { incomeDetails: true } }),
+            client.incomeItem.findMany({ where: { isDeleted: false } }),
+            client.expenseItem.findMany({ where: { isDeleted: false } }),
+            client.distributionSetting.findMany({ where: { isDeleted: false } }),
+            client.academicYear.findMany({ where: { isDeleted: false } }),
+            client.classGroup.findMany({ where: { isDeleted: false } }),
+            client.position.findMany({ where: { isDeleted: false } }),
+            client.studentStatus.findMany({ where: { isDeleted: false } }),
+            client.parentStatus.findMany({ where: { isDeleted: false } }),
+            client.budgetRequest.findMany({ where: { isDeleted: false } }),
+            client.budgetReport.findMany({ where: { isDeleted: false } }),
+            client.class.findMany({ where: { isDeleted: false } }),
+            client.rabPlan.findMany(),
+            client.bosStage.findMany({ where: { isDeleted: false } }),
+            client.bosPos.findMany({ where: { isDeleted: false } })
+        ]);
+
+        res.json({
+            status: 'ok',
+            data: {
+                accounts, journals, assets, programs, expensePrograms, users, budgets,
+                fields, units, students, incomeItems, expenseItems, distributionSettings,
+                academicYears, classGroups, positions, studentStatuses, parentStatuses,
+                budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList
+            }
+        });
+    } catch (error) {
+        console.error(`[All Data Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
