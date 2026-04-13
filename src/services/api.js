@@ -82,17 +82,37 @@ export const api = {
             }
 
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ error: 'Server error' }));
+                const textBody = await response.text();
+                // Deep Diagnostic Log
+                console.error(`[API Diagnostic] Request Failed:`, {
+                    url: url,
+                    method: method,
+                    status: response.status,
+                    body: textBody
+                });
+
+                let errorData = { error: textBody };
+                try {
+                    if (textBody) errorData = JSON.parse(textBody);
+                } catch (e) {
+                    console.error('[API Diagnostic] Failed to parse error JSON:', textBody);
+                }
+
                 const detail = errorData.message || errorData.details || errorData.error || `Server error ${response.status}`;
                 throw new Error(detail);
             }
+
             const text = await response.text();
             if (!text) return {};
             try {
                 return JSON.parse(text);
             } catch (e) {
-                console.error('Failed to parse JSON response:', text);
-                throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}`);
+                console.error('[API Diagnostic] JSON Parse Failure:', {
+                    url: url,
+                    status: response.status,
+                    rawText: text
+                });
+                throw new Error(`Server returned invalid JSON (Body: ${text.substring(0, 50)}...)`);
             }
         };
 

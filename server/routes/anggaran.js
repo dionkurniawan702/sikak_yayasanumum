@@ -128,8 +128,11 @@ router.put('/units/:id', async (req, res) => {
 });
 
 router.delete('/units/:id', async (req, res) => {
+    console.log(`[Backend Trace] DELETE /units/${req.params.id} request received`);
     try {
         const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true; 
+        console.log(`[Backend Trace] Deletion Mode: ${isPermanent ? 'Permanent' : 'Soft-delete'}`);
+        
         if (isPermanent) {
             await getPrisma(req).unit.delete({ where: { id: req.params.id } });
         } else {
@@ -138,11 +141,13 @@ router.delete('/units/:id', async (req, res) => {
                 data: { isDeleted: true }
             });
         }
+        console.log(`[Backend Trace] Deletion successful for Unit ${req.params.id}`);
         res.json({ message: 'Success' });
     } catch (error) {
+        console.error(`[Backend Trace] Deletion FAILED for Unit ${req.params.id}:`, error);
         let msg = error.message;
         if (error.code === 'P2003') msg = "Gagal menghapus: Unit ini masih memiliki data terkait (Siswa, Item Beban, dll).";
-        res.status(500).json({ error: msg });
+        res.status(500).json({ error: msg, code: error.code });
     }
 });
 
