@@ -80,15 +80,18 @@ export default function BudgetDashboard() {
                         if (share <= 0) return;
 
                         const exItem = expenseItems.find(e => e.id === rule.expenseItemId);
-                        const itemName = (exItem?.name || getExpenseName(rule.expenseItemId) || '').toLowerCase();
+                        const itemName = (exItem?.name || getExpenseName(rule.expenseItemId) || '').toLowerCase().trim();
                         
-                        // SMART GUARD: Force Field-only items to Field table
-                        const isFieldOwned = (exItem && exItem.fieldId && !exItem.unitId) || 
+                        // SMART GUARD: Exclude Field-only keywords and explicit Field ownership
+                        const isFieldItem = (exItem && exItem.fieldId && !exItem.unitId) || 
                                            itemName.includes('penggajian') || 
-                                           itemName === 'pengembangan (umum)';
+                                           itemName.includes('pengembangan (umum)') ||
+                                           itemName.includes('honor') ||
+                                           itemName.includes('yayasan');
                                            
-                        const effectiveDestType = isFieldOwned ? 'field' : rule.destType;
-                        const targetFieldId = isFieldOwned ? (exItem?.fieldId || rule.destId) : rule.destId;
+                        const effectiveDestType = isFieldItem ? 'field' : rule.destType;
+                        // Use item's fieldId if it's a field item and rule.destId is not a field
+                        const targetFieldId = isFieldItem ? (exItem?.fieldId || (rule.destType === 'field' ? rule.destId : fields[0]?.id)) : rule.destId;
 
                         if (effectiveDestType === 'unit') {
                             uRAP[student.unitId].total += share;
@@ -138,16 +141,17 @@ export default function BudgetDashboard() {
             if (amount <= 0) return;
             const exId = req.expenseItemId || 'other';
             const exItem = expenseItems.find(e => e.id === exId);
-            const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase();
+            const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase().trim();
 
-            // SMART GUARD: Force Field-only items to Field table
-            const isFieldOwned = (exItem && exItem.fieldId && !exItem.unitId) || 
+            const isFieldItem = (exItem && exItem.fieldId && !exItem.unitId) || 
                                itemName.includes('penggajian') || 
-                               itemName === 'pengembangan (umum)';
+                               itemName.includes('pengembangan (umum)') ||
+                               itemName.includes('honor') ||
+                               itemName.includes('yayasan');
                                
-            const targetFieldId = isFieldOwned ? (exItem?.fieldId || req.fieldId) : req.fieldId;
+            const targetFieldId = isFieldItem ? (exItem?.fieldId || req.fieldId) : req.fieldId;
             
-            if (!isFieldOwned && req.unitId && uRAB[req.unitId]) {
+            if (!isFieldItem && req.unitId && uRAB[req.unitId]) {
                 uRAB[req.unitId].total += amount;
                 uRAB[req.unitId].items[exId] = (uRAB[req.unitId].items[exId] || 0) + amount;
             } else if (targetFieldId && fRAB[targetFieldId]) {
@@ -217,16 +221,30 @@ export default function BudgetDashboard() {
     }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems]);
 
     const unitData = useMemo(() => {
+    const unitData = useMemo(() => {
         return units.filter(u => !u.isDeleted).map(u => {
             if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return null;
-            const rapData = unitRAP[u.id] || { total: 0, items: {} };
-            const rabData = unitRAB[u.id] || { total: 0, items: {} };
             
-            const allKeys = new Set([...Object.keys(rapData.items), ...Object.keys(rabData.items)]);
+            const rawItems = unitRAP[u.id]?.items || {};
+            const rawRabItems = unitRAB[u.id]?.items || {};
+            const allKeys = new Set([...Object.keys(rawItems), ...Object.keys(rawRabItems)]);
+            
             const breakdown = [];
             allKeys.forEach(exId => {
-                const itemRAP = rapData.items[exId] || 0;
-                const itemRAB = rabData.items[exId] || 0;
+                const exItem = expenseItems.find(e => e.id === exId);
+                const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase().trim();
+                
+                // ULTIMATE FILTER: Strictly block Field items from Unit breakdown
+                const isFieldItem = (exItem && exItem.fieldId && !exItem.unitId) || 
+                                   itemName.includes('penggajian') || 
+                                   itemName.includes('pengembangan (umum)') ||
+                                   itemName.includes('honor') ||
+                                   itemName.includes('yayasan');
+                
+                if (isFieldItem) return;
+
+                const itemRAP = rawItems[exId] || 0;
+                const itemRAB = rawRabItems[exId] || 0;
                 if (itemRAP === 0 && itemRAB === 0) return;
 
                 breakdown.push({
@@ -238,16 +256,20 @@ export default function BudgetDashboard() {
                 });
             });
 
+            // Recalculate Totals based ONLY on visible breakdown items for consistency
+            const totalRAP = breakdown.reduce((sum, item) => sum + item.rap, 0);
+            const totalRAB = breakdown.reduce((sum, item) => sum + item.rab, 0);
+
             return { 
                 id: u.id, 
                 name: u.name, 
-                rap: rapData.total, 
-                rab: rabData.total, 
-                sisa: rapData.total - rabData.total, 
+                rap: totalRAP, 
+                rab: totalRAB, 
+                sisa: totalRAP - totalRAB, 
                 breakdown 
             };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
-    }, [units, unitRAP, unitRAB, currentUser, expenseItems]);
+    }, [units, unitRAP, unitRAB, currentUser, expenseItems, fields]);
 
     // ========== Totals ==========
     const totalBidangRAP = bidangData.reduce((s, d) => s + d.rap, 0);
