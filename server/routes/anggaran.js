@@ -664,8 +664,8 @@ const createGenericRoutes = (entityName, modelName) => {
             console.error(`[Generic API Error] DELETE /${entityName}/${req.params.id}:`, error);
             if (error.code === 'P2003') {
                 return res.status(400).json({ 
-                    error: "Gagal menghapus", 
-                    message: `Data ${entityName} masih digunakan oleh data lain.` 
+                    error: "Gagal menghapus permanen", 
+                    message: `Data ${entityName} ini masih digunakan oleh data lain (seperti Siswa, Transaksi, atau Relasi lainnya). Hapus atau pindahkan data terkait terlebih dahulu.` 
                 });
             }
             res.status(500).json({ 

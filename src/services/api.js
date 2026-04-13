@@ -199,7 +199,7 @@ export const api = {
 
                 case 'ADD_ACADEMIC_YEAR': await syncItem('academic-years', null, payload, 'POST'); break;
                 case 'EDIT_ACADEMIC_YEAR': await syncItem('academic-years', payload.id, payload); break;
-                case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', payload, null, 'DELETE'); break;
+                case 'DELETE_ACADEMIC_YEAR': await syncItem('academic-years', `${payload}?permanent=true`, null, 'DELETE'); break;
 
                 case 'ADD_CLASS_GROUP': await syncItem('class-groups', null, payload, 'POST'); break;
                 case 'EDIT_CLASS_GROUP': await syncItem('class-groups', payload.id, payload); break;

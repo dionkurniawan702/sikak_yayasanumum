@@ -19,6 +19,12 @@ export default function TrashBin() {
     const deletedExpenseItems = (state.expenseItems || []).filter(e => e.isDeleted);
     const deletedStudents = (state.students || []).filter(s => s.isDeleted);
     const deletedClasses = (state.classes || []).filter(c => c.isDeleted);
+    const deletedClassGroups = (state.classGroups || []).filter(g => g.isDeleted);
+    const deletedPositions = (state.positions || []).filter(p => p.isDeleted);
+    const deletedStudentStatuses = (state.studentStatuses || []).filter(s => s.isDeleted);
+    const deletedParentStatuses = (state.parentStatuses || []).filter(p => p.isDeleted);
+    const deletedBosStages = (state.bosStages || []).filter(b => b.isDeleted);
+    const deletedBosPos = (state.bosPosList || []).filter(b => b.isDeleted);
 
     const allDeletedItems = [
         ...deletedJournals.map(j => ({ ...j, _type: 'journal' })),
@@ -33,6 +39,12 @@ export default function TrashBin() {
         ...deletedExpenseItems.map(e => ({ ...e, _type: 'expense-item' })),
         ...deletedStudents.map(s => ({ ...s, _type: 'student' })),
         ...deletedClasses.map(c => ({ ...c, _type: 'class' })),
+        ...deletedClassGroups.map(g => ({ ...g, _type: 'class-group' })),
+        ...deletedPositions.map(p => ({ ...p, _type: 'position' })),
+        ...deletedStudentStatuses.map(s => ({ ...s, _type: 'student-status' })),
+        ...deletedParentStatuses.map(p => ({ ...p, _type: 'parent-status' })),
+        ...deletedBosStages.map(b => ({ ...b, _type: 'bos-stage' })),
+        ...deletedBosPos.map(b => ({ ...b, _type: 'bos-pos' })),
     ].sort((a, b) => new Date(b.deletedAt || 0) - new Date(a.deletedAt || 0));
 
     const totalCount = allDeletedItems.length;
@@ -77,7 +89,13 @@ export default function TrashBin() {
             student: 'Siswa',
             class: 'Kelas',
             'income-item': 'Pendapatan',
-            'expense-item': 'Beban'
+            'expense-item': 'Beban',
+            'class-group': 'Grup Kelas',
+            'position': 'Jabatan',
+            'student-status': 'Status Siswa',
+            'parent-status': 'Status Ortu',
+            'bos-stage': 'Tahap BOS',
+            'bos-pos': 'Pos BOS'
         };
         return labels[type] || type;
     };
@@ -94,7 +112,13 @@ export default function TrashBin() {
             student: GraduationCap,
             class: Users,
             'income-item': Coins,
-            'expense-item': Wallet
+            'expense-item': Wallet,
+            'class-group': Layers,
+            'position': Briefcase,
+            'student-status': UserCheck,
+            'parent-status': UserCircle,
+            'bos-stage': Calendar,
+            'bos-pos': List
         };
         return icons[type] || Archive;
     };
@@ -114,6 +138,12 @@ export default function TrashBin() {
             case 'class':
             case 'income-item':
             case 'expense-item':
+            case 'class-group':
+            case 'position':
+            case 'student-status':
+            case 'parent-status':
+            case 'bos-stage':
+            case 'bos-pos':
                 return item.name;
             default:
                 return item.id;

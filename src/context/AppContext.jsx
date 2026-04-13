@@ -362,7 +362,7 @@ function appReducer(state, action) {
 
         case 'ADD_ACADEMIC_YEAR': newState = { ...state, academicYears: [...state.academicYears, action.payload] }; break;
         case 'EDIT_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.map(i => i.id === action.payload.id ? action.payload : i) }; break;
-        case 'DELETE_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
+        case 'DELETE_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.filter(i => i.id !== action.payload) }; break;
 
         case 'ADD_CLASS_GROUP': newState = { ...state, classGroups: [...state.classGroups, action.payload] }; break;
         case 'EDIT_CLASS_GROUP': newState = { ...state, classGroups: state.classGroups.map(i => i.id === action.payload.id ? action.payload : i) }; break;
@@ -412,7 +412,13 @@ function appReducer(state, action) {
                 student: 'students',
                 class: 'classes',
                 'income-item': 'incomeItems',
-                'expense-item': 'expenseItems'
+                'expense-item': 'expenseItems',
+                'class-group': 'classGroups',
+                'position': 'positions',
+                'student-status': 'studentStatuses',
+                'parent-status': 'parentStatuses',
+                'bos-stage': 'bosStages',
+                'bos-pos': 'bosPosList'
             };
             const collection = mapping[type];
             if (collection) {
@@ -434,7 +440,13 @@ function appReducer(state, action) {
                 student: 'students',
                 class: 'classes',
                 'income-item': 'incomeItems',
-                'expense-item': 'expenseItems'
+                'expense-item': 'expenseItems',
+                'class-group': 'classGroups',
+                'position': 'positions',
+                'student-status': 'studentStatuses',
+                'parent-status': 'parentStatuses',
+                'bos-stage': 'bosStages',
+                'bos-pos': 'bosPosList'
             };
             const collection = mapping[type];
             if (collection) {
