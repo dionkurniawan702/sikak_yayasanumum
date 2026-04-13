@@ -525,6 +525,17 @@ router.get('/fund-availability/:unitId', async (req, res) => {
 });
 
 // --- MISC MASTER DATA ---
+const cleanDataForModel = (modelName, data) => {
+    const clean = { ...data };
+    if (modelName === 'academicYear') {
+        delete clean.startDate;
+        delete clean.endDate;
+    }
+    if (modelName === 'field') {
+        delete clean.fieldId;
+    }
+    return clean;
+};
 
 // Helper function to create generic CRUD routes
 const createGenericRoutes = (entityName, modelName) => {
@@ -539,7 +550,8 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.post(`/${entityName}`, async (req, res) => {
         try {
-            const item = await getPrisma(req)[modelName].create({ data: req.body });
+            const data = cleanDataForModel(modelName, req.body);
+            const item = await getPrisma(req)[modelName].create({ data });
             res.json({ data: item });
         } catch (error) {
             res.status(500).json({ error: error.message });
@@ -548,7 +560,9 @@ const createGenericRoutes = (entityName, modelName) => {
 
     router.put(`/${entityName}/:id`, async (req, res) => {
         try {
-            const data = { ...req.body, id: req.params.id };
+            const id = req.params.id;
+            const data = cleanDataForModel(modelName, { ...req.body, id });
+            
             // Ensure isDeleted is correctly handled
             if (req.body.isDeleted !== undefined) data.isDeleted = req.body.isDeleted;
             if (req.body.deletedAt !== undefined) data.deletedAt = req.body.deletedAt;

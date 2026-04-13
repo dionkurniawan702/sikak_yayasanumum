@@ -246,6 +246,10 @@ app.post('/api/sync', async (req, res) => {
                             if (model === 'field') {
                                 delete cleanItem.fieldId;
                             }
+                            if (model === 'academicYear') {
+                                delete cleanItem.startDate;
+                                delete cleanItem.endDate;
+                            }
                             await tx[model].upsert({
                                 where: { id: item.id },
                                 update: { ...cleanItem, id: undefined },
