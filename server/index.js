@@ -253,6 +253,9 @@ app.post('/api/sync', async (req, res) => {
                             if (model === 'classGroup') {
                                 delete cleanItem.unitId;
                             }
+                            if (model === 'account') {
+                                delete cleanItem.normalBalance;
+                            }
                             await tx[model].upsert({
                                 where: { id: item.id },
                                 update: { ...cleanItem, id: undefined },

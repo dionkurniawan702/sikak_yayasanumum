@@ -537,6 +537,9 @@ const cleanDataForModel = (modelName, data) => {
     if (modelName === 'classGroup') {
         delete clean.unitId;
     }
+    if (modelName === 'account') {
+        delete clean.normalBalance;
+    }
     return clean;
 };
 
