@@ -242,7 +242,13 @@ export const api = {
                         student: 'students',
                         class: 'classes',
                         'income-item': 'income-items',
-                        'expense-item': 'expense-items'
+                        'expense-item': 'expense-items',
+                        'class-group': 'class-groups',
+                        'position': 'positions',
+                        'student-status': 'student-statuses',
+                        'parent-status': 'parent-statuses',
+                        'bos-stage': 'bos-stages',
+                        'bos-pos': 'bos-pos'
                     };
                     const endpoint = mapping[eType];
                     if (endpoint) {
@@ -263,7 +269,13 @@ export const api = {
                         student: 'students',
                         class: 'classes',
                         'income-item': 'income-items',
-                        'expense-item': 'expense-items'
+                        'expense-item': 'expense-items',
+                        'class-group': 'class-groups',
+                        'position': 'positions',
+                        'student-status': 'student-statuses',
+                        'parent-status': 'parent-statuses',
+                        'bos-stage': 'bos-stages',
+                        'bos-pos': 'bos-pos'
                     };
                     const endpoint = mapping[eType];
                     if (endpoint) {

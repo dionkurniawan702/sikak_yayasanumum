@@ -567,17 +567,31 @@ const ensureSoftDeleteColumns = async () => {
         const client = getPrisma();
         console.log(`[Self-Healing] Checking ${models.length} tables for isDeleted column...`);
         for (const m of models) {
-            try {
-                const columns = await client.$queryRawUnsafe(`DESCRIBE \`${m.table}\``);
-                const hasIsDeleted = columns.some(c => c.Field === 'isDeleted' || c.field === 'isDeleted');
+            const tableVariations = [
+                m.table,
+                m.name,
+                m.name.charAt(0).toUpperCase() + m.name.slice(1),
+                m.name.toLowerCase()
+            ].filter((v, i, a) => v && a.indexOf(v) === i); // deduplicate
 
-                if (!hasIsDeleted) {
-                    console.log(`[Self-Healing] Table ${m.table} is missing isDeleted. Fixing...`);
-                    await client.$executeRawUnsafe(`ALTER TABLE \`${m.table}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
-                    console.log(`[Self-Healing] SUCCESS: Added isDeleted to ${m.table}`);
+            let success = false;
+            for (const tableName of tableVariations) {
+                try {
+                    const columns = await client.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
+                    const hasIsDeleted = columns.some(c => c.Field === 'isDeleted' || c.field === 'isDeleted');
+
+                    if (!hasIsDeleted) {
+                        console.log(`[Self-Healing] Adding isDeleted to ${tableName}...`);
+                        await client.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
+                    }
+                    success = true;
+                    break;
+                } catch (e) {
+                    // Try next variation
                 }
-            } catch (e) {
-                console.warn(`[Self-Healing Warn] Skipping ${m.table}: ${e.message}`);
+            }
+            if (!success) {
+                console.warn(`[Self-Healing Warn] Could not find/fix table for model ${m.name}`);
             }
         }
         console.log(`[Self-Healing] Database check complete.`);

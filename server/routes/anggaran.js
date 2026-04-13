@@ -594,20 +594,34 @@ const createGenericRoutes = (entityName, modelName) => {
                 'student': 'Student'
             };
             
-            const tableName = tableMappings[modelName] || (modelName.charAt(0).toUpperCase() + modelName.slice(1));
-            
-            try {
-                const columns = await prisma.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
-                const hasIsDeleted = columns.some(c => (c.Field === 'isDeleted' || c.field === 'isDeleted'));
-                
-                if (!hasIsDeleted) {
-                    console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
-                    await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
+            router.use(async (req, res, next) => {
+                const possibleTableNames = [
+                    tableMappings[modelName],
+                    modelName,
+                    modelName.charAt(0).toUpperCase() + modelName.slice(1),
+                    modelName.toLowerCase()
+                ].filter(Boolean);
+
+                let success = false;
+                for (const tableName of possibleTableNames) {
+                    try {
+                        const columns = await prisma.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
+                        const hasIsDeleted = columns.some(c => (c.Field === 'isDeleted' || c.field === 'isDeleted'));
+                        
+                        if (!hasIsDeleted) {
+                            console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
+                            await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
+                        }
+                        success = true;
+                        break; // Stop if we found and fixed the table
+                    } catch (e) {
+                        // Continue to next possible name
+                    }
                 }
-            } catch (se) {
-                console.warn(`[Hot-Fix Warn] Schema check failed for ${tableName}: ${se.message}`);
-            }
-            // --- End Hot-Fix ---
+                next();
+            });
+            
+
 
             const data = await prisma[modelName].findMany({ where: { isDeleted: false } });
             res.json({ data });
