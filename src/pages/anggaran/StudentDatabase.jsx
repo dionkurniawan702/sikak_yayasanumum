@@ -10,7 +10,12 @@ export default function StudentDatabase() {
     
     const [searchTerm, setSearchTerm] = useState('');
     const [unitFilter, setUnitFilter] = useState(isUnitAdmin ? currentUser.unitId : 'all');
-    const [academicYearFilter, setAcademicYearFilter] = useState('all');
+    
+    // Default to highest academic year
+    const sortedYearsCurrent = [...(state.academicYears || [])].filter(ay => !ay.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
+    const highestYearId = sortedYearsCurrent[0]?.id || 'all';
+    
+    const [academicYearFilter, setAcademicYearFilter] = useState(highestYearId);
     const [classFilter, setClassFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
     
@@ -74,7 +79,7 @@ export default function StudentDatabase() {
                 name: '', nis: '', 
                 unitId: isUnitAdmin ? currentUser.unitId : (units[0]?.id || ''),
                 classId: '',
-                academicYearId: state.academicYears?.find(y => y.isCurrent)?.id || '',
+                academicYearId: sortedYearsCurrent[0]?.id || state.academicYears?.find(y => y.isCurrent)?.id || '',
                 statusId: state.studentStatuses?.find(s => s.name === 'Aktif')?.id || '',
                 parentStatusId: '',
                 incomeDetails: []

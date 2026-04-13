@@ -18,14 +18,15 @@ export default function BudgetDashboard() {
         academicYears = []
     } = state;
 
-    // Academic year selector using Database
-    const currentDbAy = academicYears.find(a => a.isCurrent && !a.isDeleted);
+    // Academic year selector using Database (Default to highest year)
+    const sortedYears = [...academicYears].filter(a => !a.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
+    const highestDbAy = sortedYears[0];
     const fallbackYear = `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`;
-    const [selectedAcademicYear, setSelectedAcademicYear] = useState(currentDbAy ? currentDbAy.name : fallbackYear);
+    const [selectedAcademicYear, setSelectedAcademicYear] = useState(highestDbAy ? highestDbAy.name : fallbackYear);
     
     const yearOptions = academicYears.filter(a => !a.isDeleted).map(a => a.name)
         .sort((a, b) => b.localeCompare(a));
-    if (!yearOptions.includes(selectedAcademicYear)) {
+    if (selectedAcademicYear && !yearOptions.includes(selectedAcademicYear)) {
         yearOptions.push(selectedAcademicYear);
     }
 

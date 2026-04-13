@@ -74,10 +74,11 @@ export default function RAB() {
         rejectionReason: null
     });
 
-    // Set initial filters
+    // Set initial filters (Default to highest year)
     useEffect(() => {
-        const currentYear = academicYears.find(ay => ay.isCurrent) || (academicYears.length > 0 ? academicYears[0] : null);
-        if (currentYear) setSelectedYearId(currentYear.id);
+        const sortedYears = [...academicYears].filter(ay => !ay.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
+        const activeYear = sortedYears[0] || academicYears.find(ay => ay.isCurrent) || null;
+        if (activeYear) setSelectedYearId(activeYear.id);
         
         if (currentUser?.role === 'admin_unit') {
             setSelectedUnitId(currentUser.unitId);
