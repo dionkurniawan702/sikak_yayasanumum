@@ -1,6 +1,6 @@
 import { generateId } from '../utils/format';
 
-const isRemote = true; 
+export const isRemote = true; 
 const API_URL = isRemote ? 'http://localhost:3001/api' : '';
 
 export const api = {
