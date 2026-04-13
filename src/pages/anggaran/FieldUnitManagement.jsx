@@ -121,6 +121,8 @@ export default function FieldUnitManagement() {
         const type = activeTab === 'fields' ? 'FIELD' : 'UNIT';
         const id = editingItem ? editingItem.id : (Date.now().toString(36) + Math.random().toString(36).substr(2, 5));
         const payload = { id, ...formData };
+        if (activeTab === 'fields') delete payload.fieldId;
+
         
         try {
             // 1. Individual push for the Unit/Field (MUST succeed)

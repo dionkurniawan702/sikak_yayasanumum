@@ -243,6 +243,9 @@ app.post('/api/sync', async (req, res) => {
                             if (model === 'distributionSetting') {
                                 cleanItem.percentage = cleanItem.percentage ? parseFloat(cleanItem.percentage) : 0;
                             }
+                            if (model === 'field') {
+                                delete cleanItem.fieldId;
+                            }
                             await tx[model].upsert({
                                 where: { id: item.id },
                                 update: { ...cleanItem, id: undefined },
