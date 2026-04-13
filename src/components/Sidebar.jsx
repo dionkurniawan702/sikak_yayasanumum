@@ -59,7 +59,6 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
             { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
-            { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark },
 
             { section: 'DATABASE ANGGARAN' },
             { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
@@ -109,7 +108,6 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
             { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
-            { path: '/pelaporan/ketersediaan', label: 'Ketersediaan Dana', icon: Landmark },
 
             { section: 'PENGATURAN' },
             { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout }
