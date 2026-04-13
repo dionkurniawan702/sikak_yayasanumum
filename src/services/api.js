@@ -86,7 +86,14 @@ export const api = {
                 const detail = errorData.message || errorData.details || errorData.error || `Server error ${response.status}`;
                 throw new Error(detail);
             }
-            return response.json();
+            const text = await response.text();
+            if (!text) return {};
+            try {
+                return JSON.parse(text);
+            } catch (e) {
+                console.error('Failed to parse JSON response:', text);
+                throw new Error(`Server returned invalid JSON: ${text.substring(0, 100)}`);
+            }
         };
 
         try {
