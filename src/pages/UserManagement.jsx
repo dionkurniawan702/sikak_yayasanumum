@@ -74,6 +74,7 @@ export default function UserManagement() {
             try {
                 dispatch({ type: 'DELETE_USER', payload: id });
                 await api.pushAction({ type: 'DELETE_USER', payload: id }, state);
+                alert('User berhasil dihapus permanen.');
             } catch (error) {
                 alert('Gagal menghapus user: ' + error.message);
             }

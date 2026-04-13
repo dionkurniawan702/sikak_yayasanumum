@@ -52,6 +52,7 @@ export default function TrashBin() {
             try {
                 dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
                 await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
+                window.alert('Data berhasil dihapus permanen dari database.');
             } catch (err) {
                 console.error('Delete failed:', err.message);
                 window.alert(`Gagal menghapus permanen: ${err.message}. Pastikan data ini tidak memiliki ketergantungan (misal: Unit di dalam Bidang).`);
@@ -63,6 +64,7 @@ export default function TrashBin() {
         if (window.confirm('PERINGATAN: Semua data di tempat sampah akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?')) {
             dispatch({ type: 'EMPTY_TRASH' });
             await api.pushAction({ type: 'EMPTY_TRASH' }, state);
+            window.alert('Tempat sampah berhasil dikosongkan.');
         }
     };
 

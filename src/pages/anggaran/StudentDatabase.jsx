@@ -94,9 +94,15 @@ export default function StudentDatabase() {
         setShowStudentModal(false);
     };
 
-    const handleDeleteStudent = (id) => {
+    const handleDeleteStudent = async (id) => {
         if (window.confirm('Hapus data siswa ini?')) {
-            dispatch({ type: 'DELETE_STUDENT', payload: id });
+            try {
+                dispatch({ type: 'DELETE_STUDENT', payload: id });
+                await api.pushAction({ type: 'DELETE_STUDENT', payload: id }, state);
+                window.alert('Data siswa berhasil dihapus permanen.');
+            } catch (err) {
+                window.alert('Gagal menghapus siswa: ' + err.message);
+            }
         }
     };
 
