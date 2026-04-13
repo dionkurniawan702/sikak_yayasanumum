@@ -80,9 +80,15 @@ export default function BudgetDashboard() {
                         if (share <= 0) return;
 
                         const exItem = expenseItems.find(e => e.id === rule.expenseItemId);
-                        const isFieldOwned = exItem && exItem.fieldId && !exItem.unitId;
+                        const itemName = (exItem?.name || getExpenseName(rule.expenseItemId) || '').toLowerCase();
+                        
+                        // SMART GUARD: Force Field-only items to Field table
+                        const isFieldOwned = (exItem && exItem.fieldId && !exItem.unitId) || 
+                                           itemName.includes('penggajian') || 
+                                           itemName === 'pengembangan (umum)';
+                                           
                         const effectiveDestType = isFieldOwned ? 'field' : rule.destType;
-                        const targetFieldId = isFieldOwned ? exItem.fieldId : rule.destId;
+                        const targetFieldId = isFieldOwned ? (exItem?.fieldId || rule.destId) : rule.destId;
 
                         if (effectiveDestType === 'unit') {
                             uRAP[student.unitId].total += share;
@@ -132,9 +138,14 @@ export default function BudgetDashboard() {
             if (amount <= 0) return;
             const exId = req.expenseItemId || 'other';
             const exItem = expenseItems.find(e => e.id === exId);
+            const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase();
 
-            const isFieldOwned = exItem && exItem.fieldId && !exItem.unitId;
-            const targetFieldId = isFieldOwned ? exItem.fieldId : req.fieldId;
+            // SMART GUARD: Force Field-only items to Field table
+            const isFieldOwned = (exItem && exItem.fieldId && !exItem.unitId) || 
+                               itemName.includes('penggajian') || 
+                               itemName === 'pengembangan (umum)';
+                               
+            const targetFieldId = isFieldOwned ? (exItem?.fieldId || req.fieldId) : req.fieldId;
             
             if (!isFieldOwned && req.unitId && uRAB[req.unitId]) {
                 uRAB[req.unitId].total += amount;
