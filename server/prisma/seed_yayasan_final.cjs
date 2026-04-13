@@ -2,6 +2,19 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 async function main() {
+    console.log('🚀 --- CHECKING DATABASE STATE BEFORE SEEDING ---');
+
+    // CONDITIONAL SEEDING GUARD: 
+    // This prevents the script from restoring categories (like PAUD/SD) that the user intentionally deleted.
+    const unitCount = await prisma.unit.count();
+    const accountCount = await prisma.account.count();
+
+    if (unitCount > 0 || accountCount > 0) {
+        console.log('✅ Master data (Units/Accounts) already exists.');
+        console.log('⚠️  Skipping automatic seeding to preserve user deletions and customizations.');
+        return;
+    }
+
     console.log('🚀 --- STARTING COMPREHENSIVE SEEDING YAYASAN UMUM ---');
 
     // 1. DATA MASTER ACCOUNTS (PSAK 35)
