@@ -617,7 +617,7 @@ const createGenericRoutes = (entityName, modelName) => {
             }
             next(); // Table not found in variations? Let Prisma handle it normally
         } catch (error) {
-            console.error(`[Hot-Fix Error] ${modelName}:`, error.message);
+            console.error(`[Hot-Fix Critical Error] ${modelName}:`, error);
             next();
         }
     };
@@ -629,7 +629,12 @@ const createGenericRoutes = (entityName, modelName) => {
             res.json({ data });
         } catch (error) {
             console.error(`[Generic API Error] GET /${entityName}:`, error);
-            res.status(500).json({ error: error.message });
+            res.status(500).json({ 
+                error: `Gagal mengambil data ${entityName}`, 
+                message: error.message,
+                code: error.code,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            });
         }
     });
 
@@ -678,15 +683,26 @@ const createGenericRoutes = (entityName, modelName) => {
             res.json({ message: 'Success' });
         } catch (error) {
             console.error(`[Generic API Error] DELETE /${entityName}/${req.params.id}:`, error);
+            
             if (error.code === 'P2003') {
                 return res.status(400).json({ 
                     error: "Gagal menghapus permanen", 
                     message: `Data ${entityName} ini masih digunakan oleh data lain (seperti Siswa, Transaksi, atau Relasi lainnya). Hapus atau pindahkan data terkait terlebih dahulu.` 
                 });
             }
+            
+            if (error.code === 'P2025') {
+                return res.status(404).json({
+                    error: "Data tidak ditemukan",
+                    message: "Data yang ingin dihapus mungkin sudah dihapus sebelumnya."
+                });
+            }
+
             res.status(500).json({ 
-                error: `Gagal pada sistem ${entityName}`, 
-                message: error.message 
+                error: `Gagal menghapus ${entityName}`, 
+                message: error.message,
+                code: error.code,
+                stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
             });
         }
     });
