@@ -628,6 +628,7 @@ const createGenericRoutes = (entityName, modelName) => {
             }
             res.json({ message: 'Success' });
         } catch (error) {
+            console.error(`[Generic API Error] DELETE /${entityName}/${req.params.id}:`, error);
             if (error.code === 'P2003') {
                 return res.status(400).json({ error: `Data ${entityName} tidak bisa dihapus karena masih digunakan oleh data lain (misal: Siswa atau data terkait).` });
             }
@@ -684,7 +685,7 @@ router.put('/classes/:id', async (req, res) => {
 });
 router.delete('/classes/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).class.delete({ where: { id: req.params.id } });
         } else {
@@ -695,6 +696,7 @@ router.delete('/classes/:id', async (req, res) => {
         }
         res.json({ message: 'Success' });
     } catch (error) {
+        console.error(`[API Error] DELETE /classes/${req.params.id}:`, error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -735,7 +737,7 @@ router.put('/bos-stages/:id', async (req, res) => {
 });
 router.delete('/bos-stages/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).bosStage.delete({ where: { id: req.params.id } });
         } else {
@@ -746,6 +748,7 @@ router.delete('/bos-stages/:id', async (req, res) => {
         }
         res.json({ message: 'Success' });
     } catch (error) {
+        console.error(`[API Error] DELETE /bos-stages/${req.params.id}:`, error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -786,7 +789,7 @@ router.put('/bos-pos/:id', async (req, res) => {
 });
 router.delete('/bos-pos/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
             await getPrisma(req).bosPos.delete({ where: { id: req.params.id } });
         } else {
@@ -797,6 +800,7 @@ router.delete('/bos-pos/:id', async (req, res) => {
         }
         res.json({ message: 'Success' });
     } catch (error) {
+        console.error(`[API Error] DELETE /bos-pos/${req.params.id}:`, error);
         res.status(500).json({ error: error.message });
     }
 });
