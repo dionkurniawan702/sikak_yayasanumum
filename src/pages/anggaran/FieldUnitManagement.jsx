@@ -194,6 +194,23 @@ export default function FieldUnitManagement() {
         return (unitDistributions[incomeId] || []).reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
     };
 
+    const handleDeduplicate = async () => {
+        if (!window.confirm('Bersihkan semua data duplikat (Bidang/Unit dengan nama yang sama)? Proses ini akan menggabungkan data dan tidak bisa dibatalkan.')) return;
+        
+        setLoading(true);
+        try {
+            const response = await api.post('/repair/deduplicate');
+            window.alert(`${response.message}\n\nDetail:\n${response.details.join('\n')}`);
+            // Force refresh data
+            const freshData = await api.fetchAllData();
+            if (freshData) dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+        } catch (err) {
+            window.alert('Gagal membersihkan duplikat: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="p-8 animate-in">
             {/* Header */}
@@ -202,13 +219,23 @@ export default function FieldUnitManagement() {
                     <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-1">Struktur Yayasan</h1>
                     <p className="text-slate-500 font-medium">Manajemen Bidang dan Unit Pendidikan</p>
                 </div>
-                <button 
-                    onClick={() => handleOpenModal()}
-                    className="btn btn-primary shadow-blue-500/25 !rounded-2xl"
-                >
-                    <Plus size={20} />
-                    <span>Tambah {activeTab === 'fields' ? 'Bidang' : 'Unit'}</span>
-                </button>
+                <div className="flex items-center gap-3">
+                    <button 
+                        onClick={handleDeduplicate}
+                        disabled={loading}
+                        className="flex items-center gap-3 px-6 py-3 bg-amber-50 text-amber-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-amber-100 transition-all border border-amber-200 disabled:opacity-50"
+                    >
+                        <AlertCircle size={18} />
+                        <span>Bersihkan Duplikat</span>
+                    </button>
+                    <button 
+                        onClick={() => handleOpenModal()}
+                        className="btn btn-primary shadow-blue-500/25 !rounded-2xl"
+                    >
+                        <Plus size={20} />
+                        <span>Tambah {activeTab === 'fields' ? 'Bidang' : 'Unit'}</span>
+                    </button>
+                </div>
             </div>
 
             {/* Tabs Main */}

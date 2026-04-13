@@ -857,4 +857,94 @@ router.delete('/bos-pos/:id', async (req, res) => {
     }
 });
 
+// --- REPAIR & DEDUPLICATION ---
+router.post('/repair/deduplicate', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const results = [];
+
+        await prisma.$transaction(async (tx) => {
+            // 1. Deduplicate Fields
+            const allFields = await tx.field.findMany();
+            const fieldGroups = {};
+            allFields.forEach(f => {
+                const nameKey = f.name.trim().toLowerCase();
+                if (!fieldGroups[nameKey]) fieldGroups[nameKey] = [];
+                fieldGroups[nameKey].push(f);
+            });
+
+            for (const name in fieldGroups) {
+                const group = fieldGroups[name];
+                if (group.length > 1) {
+                    const master = group[0];
+                    const duplicates = group.slice(1);
+                    for (const dup of duplicates) {
+                        // Move dependencies
+                        await tx.unit.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
+                        await tx.expenseItem.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
+                        await tx.program.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
+                        await tx.expenseProgram.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
+                        // Delete duplicate
+                        await tx.field.delete({ where: { id: dup.id } });
+                    }
+                    results.push(`Merged ${group.length} fields named "${group[0].name}"`);
+                }
+            }
+
+            // 2. Deduplicate Units (within each field)
+            const allUnits = await tx.unit.findMany();
+            const unitGroups = {};
+            allUnits.forEach(u => {
+                const key = `${u.fieldId}-${u.name.trim().toLowerCase()}`;
+                if (!unitGroups[key]) unitGroups[key] = [];
+                unitGroups[key].push(u);
+            });
+
+            for (const key in unitGroups) {
+                const group = unitGroups[key];
+                if (group.length > 1) {
+                    const master = group[0];
+                    const duplicates = group.slice(1);
+                    for (const dup of duplicates) {
+                        await tx.student.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
+                        await tx.class.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
+                        await tx.expenseItem.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
+                        await tx.program.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
+                        await tx.expenseProgram.updateMany({ where: { unitId: dup.id }, data: { fieldId: master.id } });
+                        await tx.unit.delete({ where: { id: dup.id } });
+                    }
+                    results.push(`Merged ${group.length} units named "${group[0].name}"`);
+                }
+            }
+
+            // 3. Deduplicate Classes (within each unit)
+            const allClasses = await tx.class.findMany();
+            const classGroups = {};
+            allClasses.forEach(c => {
+                const key = `${c.unitId}-${c.name.trim().toLowerCase()}`;
+                if (!classGroups[key]) classGroups[key] = [];
+                classGroups[key].push(c);
+            });
+
+            for (const key in classGroups) {
+                const group = classGroups[key];
+                if (group.length > 1) {
+                    const master = group[0];
+                    const duplicates = group.slice(1);
+                    for (const dup of duplicates) {
+                        await tx.student.updateMany({ where: { classId: dup.id }, data: { classId: master.id } });
+                        await tx.class.delete({ where: { id: dup.id } });
+                    }
+                    results.push(`Merged ${group.length} classes named "${group[0].name}"`);
+                }
+            }
+        });
+
+        res.json({ message: 'Pembersihan selesai', details: results });
+    } catch (error) {
+        console.error('Deduplication error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
