@@ -250,6 +250,9 @@ app.post('/api/sync', async (req, res) => {
                                 delete cleanItem.startDate;
                                 delete cleanItem.endDate;
                             }
+                            if (model === 'classGroup') {
+                                delete cleanItem.unitId;
+                            }
                             await tx[model].upsert({
                                 where: { id: item.id },
                                 update: { ...cleanItem, id: undefined },

@@ -534,6 +534,9 @@ const cleanDataForModel = (modelName, data) => {
     if (modelName === 'field') {
         delete clean.fieldId;
     }
+    if (modelName === 'classGroup') {
+        delete clean.unitId;
+    }
     return clean;
 };
 
