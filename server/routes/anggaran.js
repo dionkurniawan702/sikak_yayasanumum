@@ -575,51 +575,57 @@ const cleanDataForModel = (modelName, data) => {
 
 // Helper function to create generic CRUD routes
 const createGenericRoutes = (entityName, modelName) => {
-    router.get(`/${entityName}`, async (req, res) => {
+    // Table mappings for Hot-Fix and Self-Healing
+    const tableMappings = {
+        'academicYear': 'AcademicYear',
+        'classGroup': 'class_groups',
+        'position': 'positions',
+        'studentStatus': 'StudentStatus',
+        'parentStatus': 'ParentStatus',
+        'bosStage': 'bos_stages',
+        'bosPos': 'bos_pos',
+        'field': 'fields',
+        'unit': 'units',
+        'class': 'Class',
+        'student': 'Student'
+    };
+
+    // Middleware to ensure isDeleted column exists for this specific generic model
+    const ensureIsDeleted = async (req, res, next) => {
         try {
             const prisma = getPrisma(req);
-            
-            // --- AGGRESSIVE HOT-FIX: Ensure isDeleted column exists ---
-            const tableMappings = {
-                'academicYear': 'AcademicYear',
-                'classGroup': 'class_groups',
-                'position': 'positions',
-                'studentStatus': 'StudentStatus',
-                'parentStatus': 'ParentStatus',
-                'bosStage': 'bos_stages',
-                'bosPos': 'bos_pos',
-                'field': 'fields',
-                'unit': 'units',
-                'class': 'Class',
-                'student': 'Student'
-            };
-            
-            router.use(async (req, res, next) => {
-                const possibleTableNames = [
-                    tableMappings[modelName],
-                    modelName,
-                    modelName.charAt(0).toUpperCase() + modelName.slice(1),
-                    modelName.toLowerCase()
-                ].filter(Boolean);
+            const possibleTableNames = [
+                tableMappings[modelName],
+                modelName,
+                modelName.charAt(0).toUpperCase() + modelName.slice(1),
+                modelName.toLowerCase()
+            ].filter(Boolean);
 
-                let success = false;
-                for (const tableName of possibleTableNames) {
-                    try {
-                        const columns = await prisma.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
-                        const hasIsDeleted = columns.some(c => (c.Field === 'isDeleted' || c.field === 'isDeleted'));
-                        
-                        if (!hasIsDeleted) {
-                            console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
-                            await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
-                        }
-                        success = true;
-                        break; // Stop if we found and fixed the table
-                    } catch (e) {
-                        // Continue to next possible name
+            for (const tableName of possibleTableNames) {
+                try {
+                    const columns = await prisma.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
+                    const hasIsDeleted = columns.some(c => (c.Field === 'isDeleted' || c.field === 'isDeleted'));
+                    
+                    if (!hasIsDeleted) {
+                        console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
+                        await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
                     }
+                    return next(); // Column exists or was added, proceed
+                } catch (e) {
+                    // Try next possible table name
                 }
-                next();
-            });
+            }
+            next(); // Table not found in variations? Let Prisma handle it normally
+        } catch (error) {
+            console.error(`[Hot-Fix Error] ${modelName}:`, error.message);
+            next();
+        }
+    };
+
+    router.get(`/${entityName}`, ensureIsDeleted, async (req, res) => {
+        try {
+            const prisma = getPrisma(req);
+            const data = await prisma[modelName].findMany({ where: { isDeleted: false } });
             
 
 
@@ -631,7 +637,7 @@ const createGenericRoutes = (entityName, modelName) => {
         }
     });
 
-    router.post(`/${entityName}`, async (req, res) => {
+    router.post(`/${entityName}`, ensureIsDeleted, async (req, res) => {
         try {
             const data = cleanDataForModel(modelName, req.body);
             const item = await getPrisma(req)[modelName].create({ data });
@@ -642,7 +648,7 @@ const createGenericRoutes = (entityName, modelName) => {
         }
     });
 
-    router.put(`/${entityName}/:id`, async (req, res) => {
+    router.put(`/${entityName}/:id`, ensureIsDeleted, async (req, res) => {
         try {
             const id = req.params.id;
             const data = cleanDataForModel(modelName, { ...req.body, id });
@@ -662,7 +668,7 @@ const createGenericRoutes = (entityName, modelName) => {
         }
     });
 
-    router.delete(`/${entityName}/:id`, async (req, res) => {
+    router.delete(`/${entityName}/:id`, ensureIsDeleted, async (req, res) => {
         try {
             const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
             if (isPermanent) {
