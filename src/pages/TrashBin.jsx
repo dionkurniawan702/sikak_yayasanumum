@@ -172,8 +172,12 @@ export default function TrashBin() {
                     <p className="text-slate-500 font-medium">Data yang baru saja dihapus dapat dipulihkan di sini</p>
                 </div>
                 {totalCount > 0 && (
-                    <button onClick={handleEmptyTrash} className="btn-icon p-4 bg-rose-50 text-rose-500 rounded-2xl hover:bg-rose-500 hover:text-white transition-all shadow-sm">
-                        <Trash2 size={24} />
+                    <button 
+                        onClick={handleEmptyTrash} 
+                        className="flex items-center gap-3 px-6 py-4 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95 group font-black text-xs uppercase tracking-widest"
+                    >
+                        <Trash2 size={18} className="group-hover:rotate-12 transition-transform" />
+                        <span>Hapus Semua Permanen</span>
                     </button>
                 )}
             </div>

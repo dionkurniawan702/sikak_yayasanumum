@@ -188,7 +188,7 @@ export default function FieldUnitManagement() {
             window.alert(`Data ${type === 'FIELD' ? 'Bidang' : 'Unit'} berhasil dihapus dari database.`);
         } catch (err) {
             console.error('Delete failed:', err.message);
-            window.alert(`Gagal menghapus: ${err.message}`);
+            window.alert(err.message);
         }
     };
 
