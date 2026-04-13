@@ -864,56 +864,67 @@ router.post('/repair/deduplicate', async (req, res) => {
         const results = [];
 
         await prisma.$transaction(async (tx) => {
-            // 1. Deduplicate Fields
-            const allFields = await tx.field.findMany();
-            const fieldGroups = {};
-            allFields.forEach(f => {
-                const nameKey = f.name.trim().toLowerCase();
-                if (!fieldGroups[nameKey]) fieldGroups[nameKey] = [];
-                fieldGroups[nameKey].push(f);
-            });
+            // Helper function for simple master model deduplication (merging by Name)
+            // Note: Relations must be handled manually due to varying field names
+            const dedupeByField = async (modelName, fieldName = 'name', relUpdateTasks = []) => {
+                const items = await tx[modelName].findMany();
+                const groups = {};
+                items.forEach(item => {
+                    const key = item[fieldName]?.toString().trim().toLowerCase();
+                    if (!key) return;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(item);
+                });
 
-            for (const name in fieldGroups) {
-                const group = fieldGroups[name];
-                if (group.length > 1) {
-                    const master = group[0];
-                    const duplicates = group.slice(1);
-                    for (const dup of duplicates) {
-                        // Move dependencies
-                        await tx.unit.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
-                        await tx.expenseItem.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
-                        await tx.program.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
-                        await tx.expenseProgram.updateMany({ where: { fieldId: dup.id }, data: { fieldId: master.id } });
-                        // Delete duplicate
-                        await tx.field.delete({ where: { id: dup.id } });
+                for (const key in groups) {
+                    const group = groups[key];
+                    if (group.length > 1) {
+                        const master = group.find(i => !i.isDeleted) || group[0];
+                        const duplicates = group.filter(i => i.id !== master.id);
+                        for (const dup of duplicates) {
+                            // Run relationship updates
+                            for (const task of relUpdateTasks) {
+                                await tx[task.model].updateMany({
+                                    where: { [task.fk]: dup.id },
+                                    data: { [task.fk]: master.id }
+                                });
+                            }
+                            // Delete duplicate
+                            await tx[modelName].delete({ where: { id: dup.id } });
+                        }
+                        results.push(`Merged ${group.length} ${modelName} named "${master[fieldName]}"`);
                     }
-                    results.push(`Merged ${group.length} fields named "${group[0].name}"`);
                 }
-            }
+            };
+
+            // 1. Deduplicate Fields
+            await dedupeByField('field', 'name', [
+                { model: 'unit', fk: 'fieldId' },
+                { model: 'expenseItem', fk: 'fieldId' },
+                { model: 'program', fk: 'fieldId' },
+                { model: 'expenseProgram', fk: 'fieldId' }
+            ]);
 
             // 2. Deduplicate Units (within each field)
-            const allUnits = await tx.unit.findMany();
+            const allUnits = await tx.unit.findMany(); // Manual due to scope (fieldId)
             const unitGroups = {};
             allUnits.forEach(u => {
                 const key = `${u.fieldId}-${u.name.trim().toLowerCase()}`;
                 if (!unitGroups[key]) unitGroups[key] = [];
                 unitGroups[key].push(u);
             });
-
             for (const key in unitGroups) {
                 const group = unitGroups[key];
                 if (group.length > 1) {
-                    const master = group[0];
-                    const duplicates = group.slice(1);
-                    for (const dup of duplicates) {
+                    const master = group.find(i => !i.isDeleted) || group[0];
+                    const dups = group.filter(i => i.id !== master.id);
+                    for (const dup of dups) {
                         await tx.student.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
                         await tx.class.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
                         await tx.expenseItem.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
-                        await tx.program.updateMany({ where: { unitId: dup.id }, data: { unitId: master.id } });
-                        await tx.expenseProgram.updateMany({ where: { unitId: dup.id }, data: { fieldId: master.id } });
                         await tx.unit.delete({ where: { id: dup.id } });
                     }
-                    results.push(`Merged ${group.length} units named "${group[0].name}"`);
+                    results.push(`Merged ${group.length} units named "${master.name}"`);
                 }
             }
 
@@ -925,22 +936,44 @@ router.post('/repair/deduplicate', async (req, res) => {
                 if (!classGroups[key]) classGroups[key] = [];
                 classGroups[key].push(c);
             });
-
             for (const key in classGroups) {
                 const group = classGroups[key];
                 if (group.length > 1) {
-                    const master = group[0];
-                    const duplicates = group.slice(1);
-                    for (const dup of duplicates) {
+                    const master = group.find(i => !i.isDeleted) || group[0];
+                    const dups = group.filter(i => i.id !== master.id);
+                    for (const dup of dups) {
                         await tx.student.updateMany({ where: { classId: dup.id }, data: { classId: master.id } });
                         await tx.class.delete({ where: { id: dup.id } });
                     }
-                    results.push(`Merged ${group.length} classes named "${group[0].name}"`);
+                    results.push(`Merged ${group.length} classes named "${master.name}"`);
                 }
             }
+
+            // 4. Academic Years
+            await dedupeByField('academicYear', 'name', [
+                { model: 'student', fk: 'academicYearId' },
+                { model: 'bosStage', fk: 'academicYearId' }
+            ]);
+
+            // 5. Student Statuses
+            await dedupeByField('studentStatus', 'name', [
+                { model: 'student', fk: 'statusId' }
+            ]);
+
+            // 6. Parent Statuses
+            await dedupeByField('parentStatus', 'name', [
+                { model: 'student', fk: 'parentStatusId' }
+            ]);
+
+            // 7. Positions (Jabatan)
+            await dedupeByField('position', 'name', []);
+
+            // 8. BOS Pos & Class Groups
+            await dedupeByField('bosPos', 'name', []);
+            await dedupeByField('classGroup', 'name', []);
         });
 
-        res.json({ message: 'Pembersihan selesai', details: results });
+        res.json({ message: 'Pembersihan total selesai', details: results });
     } catch (error) {
         console.error('Deduplication error:', error);
         res.status(500).json({ error: error.message });
