@@ -223,25 +223,32 @@ export default function RAB() {
     }, [incomeItems, state.distributionSettings, selectedUnitId]);
 
     const filteredExpenseItems = useMemo(() => {
-        if (selectedUnitId === 'FOUNDATION') return expenseItems;
+        if (selectedUnitId === 'FOUNDATION') return expenseItems.filter(ei => !ei.isDeleted);
         
         const distributionSettings = state.distributionSettings || [];
         const isField = selectedUnitId.startsWith('FIELD-');
-        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
+        const unitId = !isField && selectedUnitId !== 'FOUNDATION' ? selectedUnitId : null;
         
-        const activeIds = new Set(
-            distributionSettings
-                .filter(s => s.destId === (isField ? fieldId : selectedUnitId))
-                .map(s => s.expenseItemId)
-        );
+        const activeIds = new Set();
+
+        // Include items where this unit/field is the distribution destination
+        distributionSettings
+            .filter(s => {
+                if (isField) return s.destId === fieldId;
+                return s.destId === unitId || s.destId === selectedUnitId;
+            })
+            .forEach(s => { if (s.expenseItemId) activeIds.add(s.expenseItemId); });
         
-        // Also include items explicitly linked in the model
+        // Also include items explicitly linked to this unit
         (expenseItems || []).forEach(ei => {
-            if (ei.unitId === selectedUnitId) activeIds.add(ei.id);
-            if (isField && ei.fieldId === fieldId) activeIds.add(ei.id);
+            if (!ei.isDeleted) {
+                if (unitId && ei.unitId === unitId) activeIds.add(ei.id);
+                if (fieldId && ei.fieldId === fieldId) activeIds.add(ei.id);
+            }
         });
         
-        return (expenseItems || []).filter(ei => activeIds.has(ei.id));
+        return (expenseItems || []).filter(ei => !ei.isDeleted && activeIds.has(ei.id));
     }, [expenseItems, state.distributionSettings, selectedUnitId]);
 
 
@@ -375,12 +382,14 @@ export default function RAB() {
             updatedBy: currentUser?.username
         };
 
-        // Strict Validation: Prevent saving if any item exceeds allocation
-        const overBudgetItem = (activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems).find(item => {
-            const detail = newPlan[activeTab.toLowerCase()][item.id] || { total: 0 };
+        // Strict Validation: Prevent saving if any item exceeds allocation (only for EXPENSE tab, and only if allocation exists)
+        const overBudgetItem = activeTab === 'EXPENSE' ? filteredExpenseItems.find(item => {
+            const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
+            // Only validate if there IS an allocation set (avoid blocking units without RAP)
+            if (allocated === 0) return false;
             return detail.total > (allocated + 100); // Allow 100 rupiah tolerance
-        });
+        }) : null;
 
         if (overBudgetItem) {
             setMessage({ 
@@ -421,17 +430,18 @@ export default function RAB() {
             updatedBy: currentUser?.username
         };
 
-        // Strict Validation for submission
-        const overBudgetItem = (activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems).find(item => {
-            const detail = submittedPlan[activeTab.toLowerCase()][item.id] || { total: 0 };
+        // Strict Validation for submission (only check expense items with existing allocations)
+        const overBudgetItemSubmit = filteredExpenseItems.find(item => {
+            const detail = submittedPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
+            if (allocated === 0) return false;
             return detail.total > (allocated + 100);
         });
 
-        if (overBudgetItem) {
+        if (overBudgetItemSubmit) {
             setMessage({ 
                 type: 'error', 
-                text: `PENGAJUAN DITOLAK: Item "${overBudgetItem.name}" melebihi limit. Harap diperbaiki sebelum dikirim ke Yayasan.` 
+                text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit. Harap diperbaiki sebelum dikirim ke Yayasan.` 
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -500,15 +510,26 @@ export default function RAB() {
             {/* Top Toolbar */}
             <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-4 flex-wrap">
-                    <select 
-                        className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
-                        value={selectedUnitId}
-                        onChange={e => setSelectedUnitId(e.target.value)}
-                        disabled={currentUser?.role !== 'superadmin'}
-                    >
-                        <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
-                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                    </select>
+                    {currentUser?.role === 'superadmin' ? (
+                        <select 
+                            className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
+                            value={selectedUnitId}
+                            onChange={e => setSelectedUnitId(e.target.value)}
+                        >
+                            <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
+                            {units.filter(u => !u.isDeleted).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                    ) : (
+                        <div className="flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm min-w-[200px]">
+                            <Building2 size={16} className="text-blue-500 shrink-0" />
+                            <span className="font-bold text-blue-800 text-sm">
+                                {currentUser?.role === 'admin_unit'
+                                    ? (units.find(u => u.id === currentUser.unitId)?.name || 'Unit Saya')
+                                    : (fields.find(f => f.id === currentUser.fieldId)?.name || 'Bidang Saya')
+                                }
+                            </span>
+                        </div>
+                    )}
 
                     <select 
                         className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"

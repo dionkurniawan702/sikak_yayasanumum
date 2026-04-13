@@ -64,6 +64,16 @@ function PrivateRoute({ children }) {
     return state.currentUser ? children : <Navigate to="/login" />;
 }
 
+// Redirect non-superadmin users to the budget dashboard
+function RoleBasedIndex() {
+    const { state } = useApp();
+    const role = state.currentUser?.role;
+    if (role === 'admin_unit' || role === 'admin_bidang') {
+        return <Navigate to="/pelaporan/dashboard" replace />;
+    }
+    return <Dashboard />;
+}
+
 const SyncOverlay = ({ message }) => (
     <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-500">
         <div className="bg-white/10 backdrop-blur-xl border border-white/20 p-10 rounded-[3rem] shadow-2xl flex flex-col items-center text-center max-w-sm w-full animate-in zoom-in-95 duration-500">
@@ -100,7 +110,7 @@ function AppContent() {
                 <Route path="/login" element={<Login />} />
                 
                 <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-                    <Route index element={<Dashboard />} />
+                    <Route index element={<RoleBasedIndex />} />
                     <Route path="daftar-akun" element={<ChartOfAccounts />} />
                     <Route path="jurnal" element={<JournalEntry />} />
 
