@@ -60,7 +60,7 @@ router.delete('/accounts/:id', async (req, res) => {
         } else {
             await getPrisma(req).account.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+                data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
@@ -138,7 +138,7 @@ router.delete('/assets/:id', async (req, res) => {
         } else {
             await getPrisma(req).asset.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+                data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
@@ -185,7 +185,7 @@ router.delete('/programs/:id', async (req, res) => {
         } else {
             await getPrisma(req).program.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+                data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
@@ -232,7 +232,7 @@ router.delete('/expense-programs/:id', async (req, res) => {
         } else {
             await getPrisma(req).expenseProgram.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+                data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
@@ -279,7 +279,7 @@ router.delete('/users/:id', async (req, res) => {
         } else {
             await getPrisma(req).user.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+                data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
@@ -295,7 +295,7 @@ router.delete('/journals/:id', async (req, res) => {
         } else {
             await getPrisma(req).journal.update({
                 where: { id: req.params.id },
-                data: { isDeleted: true, deletedAt: new Date().toISOString() }
+                data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
