@@ -538,6 +538,10 @@ const cleanDataForModel = (modelName, data) => {
         delete clean.unitId;
     }
     if (modelName === 'account') {
+        if (clean.initialBalance !== undefined) {
+            clean.balance = parseFloat(clean.initialBalance) || 0;
+        }
+        delete clean.initialBalance;
         delete clean.normalBalance;
     }
     return clean;

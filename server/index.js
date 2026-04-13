@@ -254,6 +254,10 @@ app.post('/api/sync', async (req, res) => {
                                 delete cleanItem.unitId;
                             }
                             if (model === 'account') {
+                                if (cleanItem.initialBalance !== undefined) {
+                                    cleanItem.balance = parseFloat(cleanItem.initialBalance) || 0;
+                                }
+                                delete cleanItem.initialBalance;
                                 delete cleanItem.normalBalance;
                             }
                             await tx[model].upsert({
