@@ -232,11 +232,18 @@ export default function BudgetDashboard() {
             
             const breakdown = [];
             allKeys.forEach(exId => {
-                // Filter out items that are technically "Field" items
                 const exItem = expenseItems.find(e => e.id === exId);
-                const isFieldItem = exItem && exItem.fieldId && !exItem.unitId;
+                const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase();
                 
-                if (isFieldItem) return;
+                // FILTER: Hide Field-only items from Unit view
+                // We specifically hide 'Penggajian' and 'Pengembangan (umum)' as per user request
+                const isFieldOnlyItem = (
+                    (exItem && exItem.fieldId && !exItem.unitId) ||
+                    itemName.includes('penggajian') || 
+                    itemName === 'pengembangan (umum)'
+                );
+                
+                if (isFieldOnlyItem) return;
 
                 const itemRAP = rawItems[exId] || 0;
                 const itemRAB = rawRabItems[exId] || 0;
@@ -250,7 +257,7 @@ export default function BudgetDashboard() {
                 });
             });
 
-            // Calculate Unit Totals based on filtered breakdown (Unit-specific only)
+            // Calculate Unit Totals based only on visible (unit-specific) items
             const rap = breakdown.reduce((sum, item) => sum + item.rap, 0);
             const rab = breakdown.reduce((sum, item) => sum + item.rab, 0);
             const sisa = rap - rab;
