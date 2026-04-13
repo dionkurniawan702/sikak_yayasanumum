@@ -19,7 +19,9 @@ router.get('/fields', async (req, res) => {
 
 router.post('/fields', async (req, res) => {
     try {
-        const field = await getPrisma(req).field.create({ data: req.body });
+        const data = { ...req.body };
+        delete data.fieldId;
+        const field = await getPrisma(req).field.create({ data });
         res.json({ data: field });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -30,6 +32,7 @@ router.put('/fields/:id', async (req, res) => {
     try {
         const id = req.params.id;
         const data = { ...req.body, id };
+        delete data.fieldId;
         if (req.body.isDeleted !== undefined) data.isDeleted = req.body.isDeleted;
 
         const field = await getPrisma(req).field.upsert({
