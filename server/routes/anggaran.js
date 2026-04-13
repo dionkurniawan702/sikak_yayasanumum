@@ -626,10 +626,6 @@ const createGenericRoutes = (entityName, modelName) => {
         try {
             const prisma = getPrisma(req);
             const data = await prisma[modelName].findMany({ where: { isDeleted: false } });
-            
-
-
-            const data = await prisma[modelName].findMany({ where: { isDeleted: false } });
             res.json({ data });
         } catch (error) {
             console.error(`[Generic API Error] GET /${entityName}:`, error);
