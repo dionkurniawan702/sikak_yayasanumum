@@ -34,7 +34,6 @@ export default function GenericMasterManagement({
     const [message, setMessage] = useState(null);
 
     const filteredItems = items.filter(item => 
-        !item.isDeleted && 
         (item.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
 
