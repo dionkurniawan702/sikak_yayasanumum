@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal } from '../utils/format';
-import { Trash2, RotateCcw, AlertTriangle, Archive, FileText, BookOpen, HardDrive, List, User, X, Check, Building2, Layers, Coins, Wallet, Users, GraduationCap } from 'lucide-react';
+import { Trash2, RotateCcw, AlertTriangle, Archive, FileText, BookOpen, HardDrive, List, User, X, Check, Building2, Layers, Coins, Wallet, Users, GraduationCap, Briefcase, UserCheck, UserCircle, Calendar } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function TrashBin() {

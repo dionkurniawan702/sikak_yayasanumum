@@ -468,7 +468,14 @@ function appReducer(state, action) {
                 students: state.students.filter(s => !s.isDeleted),
                 classes: state.classes.filter(c => !c.isDeleted),
                 incomeItems: state.incomeItems.filter(i => !i.isDeleted),
-                expenseItems: state.expenseItems.filter(e => !e.isDeleted)
+                expenseItems: state.expenseItems.filter(e => !e.isDeleted),
+                academicYears: state.academicYears.filter(ay => !ay.isDeleted),
+                classGroups: state.classGroups.filter(cg => !cg.isDeleted),
+                positions: state.positions.filter(p => !p.isDeleted),
+                studentStatuses: state.studentStatuses.filter(s => !s.isDeleted),
+                parentStatuses: state.parentStatuses.filter(ps => !ps.isDeleted),
+                bosStages: state.bosStages.filter(bs => !bs.isDeleted),
+                bosPosList: state.bosPosList.filter(bp => !bp.isDeleted)
             };
             break;
 
