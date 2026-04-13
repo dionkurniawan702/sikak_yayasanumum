@@ -83,7 +83,8 @@ export const api = {
 
             if (!response.ok) {
                 const errorData = await response.json().catch(() => ({ error: 'Server error' }));
-                throw new Error(errorData.error || `Server error ${response.status}`);
+                const detail = errorData.message || errorData.details || errorData.error || `Server error ${response.status}`;
+                throw new Error(detail);
             }
             return response.json();
         };

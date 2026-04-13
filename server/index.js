@@ -46,8 +46,25 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 3. Early Health Check (Before anything else)
 
-app.get('/health', (req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/health', async (req, res) => {
+    let dbStatus = 'disconnected';
+    let dbError = null;
+    try {
+        const client = getPrisma();
+        await client.$queryRaw`SELECT 1`;
+        dbStatus = 'connected';
+    } catch (e) {
+        dbError = e.message;
+        console.error(`[Health Check Error] Database: ${e.message}`);
+    }
+
+    res.status(dbStatus === 'connected' ? 200 : 500).json({ 
+        status: dbStatus === 'connected' ? 'ok' : 'error',
+        database: dbStatus,
+        dbError: dbError,
+        timestamp: new Date().toISOString(),
+        version: '1.4.4-diag'
+    });
 });
 
 // Lazy Prisma Initialization
@@ -517,26 +534,35 @@ app.get('*', (req, res) => {
 
 // Global Error Handler
 app.use((err, req, res, next) => {
-    console.error(`[Error] ${new Date().toISOString()} - ${err.message}`);
+    console.error(`[Global Error Handler] ${new Date().toISOString()} - ${err.message}`);
 
-    // Handle Prisma specific errors
+    // Robust identification of connection issues
+    const isConnError = 
+        err.message.includes('Can not connect to database') || 
+        err.message.includes('reach database server') ||
+        err.message.includes('ECONNREFUSED');
+    
     if (err.message.includes('Authentication failed')) {
         return res.status(500).json({
             error: 'Database Authentication Failed',
-            details: 'Please check DATABASE_URL credentials in Easypanel Environment Variables.'
+            message: 'Kredensial database tidak valid. Periksa DATABASE_URL di Environment Variables.',
+            details: err.message
         });
     }
 
-    if (err.message.includes('Can not connect to database')) {
+    if (isConnError) {
         return res.status(500).json({
             error: 'Database Connection Failed',
-            details: 'Ensure the database container is running and accessible.'
+            message: 'Server tidak bisa terhubung ke database. Pastikan kontainer database sedang berjalan.',
+            details: err.message,
+            host_attempted: process.env.DATABASE_URL?.split('@')[1]
         });
     }
 
     res.status(500).json({
-        error: 'Internal Server Error',
-        message: err.message
+        error: 'Sistem Error',
+        message: err.message,
+        stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
 
