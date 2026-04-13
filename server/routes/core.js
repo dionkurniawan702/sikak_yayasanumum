@@ -56,12 +56,20 @@ router.put('/accounts/:id', async (req, res) => {
 router.delete('/accounts/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).account.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).account.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).account.update({
-                where: { id: req.params.id },
-                data: { isDeleted: true }
-            });
+            try {
+                await getPrisma(req).account.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -134,12 +142,20 @@ router.put('/assets/:id', async (req, res) => {
 router.delete('/assets/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).asset.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).asset.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).asset.update({
-                where: { id: req.params.id },
-                data: { isDeleted: true }
-            });
+            try {
+                await getPrisma(req).asset.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -181,12 +197,20 @@ router.put('/programs/:id', async (req, res) => {
 router.delete('/programs/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).program.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).program.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).program.update({
-                where: { id: req.params.id },
-                data: { isDeleted: true }
-            });
+            try {
+                await getPrisma(req).program.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {

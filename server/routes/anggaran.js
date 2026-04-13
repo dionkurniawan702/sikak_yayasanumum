@@ -58,19 +58,26 @@ router.put('/fields/:id', async (req, res) => {
 router.delete('/fields/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            // Check for dependencies
             const units = await getPrisma(req).unit.count({ where: { fieldId: req.params.id } });
             if (units > 0) {
                 return res.status(400).json({ 
                     error: `Tidak bisa menghapus permanen: Masih ada ${units} Unit yang terhubung ke Bidang ini. Hapus Unitnya terlebih dahulu.` 
                 });
             }
-            await getPrisma(req).field.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).field.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).field.update({
-                where: { id: req.params.id },
-                data: { isDeleted: true }
-            });
+            try {
+                await getPrisma(req).field.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -127,9 +134,20 @@ router.put('/units/:id', async (req, res) => {
 router.delete('/units/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).unit.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).unit.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-                data: { isDeleted: true }
+            try {
+                await getPrisma(req).unit.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -241,13 +259,21 @@ router.put('/students/:id', async (req, res) => {
 router.delete('/students/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).student.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).student.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).student.upsert({
-                where: { id: req.params.id },
-                update: { isDeleted: true },
-                create: { id: req.params.id, name: 'Deleted Student', unitId: 'N/A', isDeleted: true }
-            });
+            try {
+                await getPrisma(req).student.upsert({
+                    where: { id: req.params.id },
+                    update: { isDeleted: true },
+                    create: { id: req.params.id, name: 'Deleted Student', unitId: 'N/A', isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -288,9 +314,20 @@ router.put('/income-items/:id', async (req, res) => {
 router.delete('/income-items/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).incomeItem.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).incomeItem.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-                data: { isDeleted: true }
+            try {
+                await getPrisma(req).incomeItem.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -334,9 +371,20 @@ router.put('/expense-items/:id', async (req, res) => {
 router.delete('/expense-items/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).expenseItem.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).expenseItem.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-                data: { isDeleted: true }
+            try {
+                await getPrisma(req).expenseItem.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -599,13 +647,21 @@ const createGenericRoutes = (entityName, modelName) => {
     router.delete(`/${entityName}/:id`, async (req, res) => {
         try {
             if (req.query.permanent === 'true') {
-                await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
+                try {
+                    await getPrisma(req)[modelName].delete({ where: { id: req.params.id } });
+                } catch (e) {
+                    if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+                }
             } else {
-                await getPrisma(req)[modelName].upsert({
-                    where: { id: req.params.id },
-                    update: { isDeleted: true },
-                    create: { id: req.params.id, name: 'Deleted Item', isDeleted: true }
-                });
+                try {
+                    await getPrisma(req)[modelName].upsert({
+                        where: { id: req.params.id },
+                        update: { isDeleted: true },
+                        create: { id: req.params.id, name: 'Deleted Item', isDeleted: true }
+                    });
+                } catch (e) {
+                    if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+                }
             }
             res.json({ message: 'Success' });
         } catch (error) {
@@ -661,13 +717,21 @@ router.put('/classes/:id', async (req, res) => {
 router.delete('/classes/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).class.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).class.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).class.upsert({
-                where: { id: req.params.id },
-                update: { isDeleted: true },
-                create: { id: req.params.id, name: 'Deleted Class', unitId: 'N/A', isDeleted: true }
-            });
+            try {
+                await getPrisma(req).class.upsert({
+                    where: { id: req.params.id },
+                    update: { isDeleted: true },
+                    create: { id: req.params.id, name: 'Deleted Class', unitId: 'N/A', isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -712,13 +776,21 @@ router.put('/bos-stages/:id', async (req, res) => {
 router.delete('/bos-stages/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).bosStage.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).bosStage.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).bosStage.upsert({
-                where: { id: req.params.id },
-                update: { isDeleted: true },
-                create: { id: req.params.id, name: 'Deleted BOS Stage', isDeleted: true }
-            });
+            try {
+                await getPrisma(req).bosStage.upsert({
+                    where: { id: req.params.id },
+                    update: { isDeleted: true },
+                    create: { id: req.params.id, name: 'Deleted BOS Stage', isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
@@ -763,13 +835,21 @@ router.put('/bos-pos/:id', async (req, res) => {
 router.delete('/bos-pos/:id', async (req, res) => {
     try {
         if (req.query.permanent === 'true') {
-            await getPrisma(req).bosPos.delete({ where: { id: req.params.id } });
+            try {
+                await getPrisma(req).bosPos.delete({ where: { id: req.params.id } });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         } else {
-            await getPrisma(req).bosPos.upsert({
-                where: { id: req.params.id },
-                update: { isDeleted: true },
-                create: { id: req.params.id, name: 'Deleted BOS Pos', isDeleted: true }
-            });
+            try {
+                await getPrisma(req).bosPos.upsert({
+                    where: { id: req.params.id },
+                    update: { isDeleted: true },
+                    create: { id: req.params.id, name: 'Deleted BOS Pos', isDeleted: true }
+                });
+            } catch (e) {
+                if (e.code !== 'P2025' && e.code !== 'P2016') throw e;
+            }
         }
         res.json({ message: 'Success' });
     } catch (error) {
