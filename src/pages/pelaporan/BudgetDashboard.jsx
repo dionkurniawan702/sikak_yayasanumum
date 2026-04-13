@@ -225,17 +225,22 @@ export default function BudgetDashboard() {
     const unitData = useMemo(() => {
         return units.filter(u => !u.isDeleted).map(u => {
             if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return null;
-            const rap = unitRAP[u.id]?.total || 0;
-            const rab = unitRAB[u.id]?.total || 0;
-            const sisa = rap - rab;
-            const items = unitRAP[u.id]?.items || {};
-            const rabItems = unitRAB[u.id]?.items || {};
-
-            const allKeys = new Set([...Object.keys(items), ...Object.keys(rabItems)]);
+            
+            const rawItems = unitRAP[u.id]?.items || {};
+            const rawRabItems = unitRAB[u.id]?.items || {};
+            const allKeys = new Set([...Object.keys(rawItems), ...Object.keys(rawRabItems)]);
+            
             const breakdown = [];
             allKeys.forEach(exId => {
-                const itemRAP = items[exId] || 0;
-                const itemRAB = rabItems[exId] || 0;
+                // Filter out items that are technically "Field" items
+                const exItem = expenseItems.find(e => e.id === exId);
+                const isFieldItem = exItem && exItem.fieldId && !exItem.unitId;
+                
+                if (isFieldItem) return;
+
+                const itemRAP = rawItems[exId] || 0;
+                const itemRAB = rawRabItems[exId] || 0;
+                
                 breakdown.push({
                     id: exId,
                     name: getExpenseName(exId),
@@ -245,9 +250,14 @@ export default function BudgetDashboard() {
                 });
             });
 
+            // Calculate Unit Totals based on filtered breakdown (Unit-specific only)
+            const rap = breakdown.reduce((sum, item) => sum + item.rap, 0);
+            const rab = breakdown.reduce((sum, item) => sum + item.rab, 0);
+            const sisa = rap - rab;
+
             return { id: u.id, name: u.name, rap, rab, sisa, breakdown };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
-    }, [units, unitRAP, unitRAB, currentUser]);
+    }, [units, unitRAP, unitRAB, currentUser, expenseItems]);
 
     // ========== Totals ==========
     const totalBidangRAP = bidangData.reduce((s, d) => s + d.rap, 0);
