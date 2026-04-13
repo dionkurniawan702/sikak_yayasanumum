@@ -41,7 +41,8 @@ export const api = {
             if (!res.ok) {
                 if (res.status === 401 || res.status === 403) throw new Error('SESSION_EXPIRED');
                 const errorData = await res.json().catch(() => ({ error: 'Server error' }));
-                throw new Error(errorData.error || `Error ${res.status}`);
+                const detail = errorData.message ? `: ${errorData.message}` : '';
+                throw new Error(`${errorData.error || 'Terjadi kesalahan'}${detail}`);
             }
             return await res.json();
         } catch (error) {
