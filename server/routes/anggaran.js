@@ -379,6 +379,7 @@ router.get('/distribution-settings', async (req, res) => {
 router.post('/distribution-settings', async (req, res) => {
     try {
         const { unitId, incomeItemId, settings } = req.body;
+        console.log(`[Sync] Updating distributions for Unit ${unitId}, Item ${incomeItemId}. Rules: ${settings?.length}. Sample:`, settings?.[0]);
         
         await getPrisma(req).$transaction([
             getPrisma(req).distributionSetting.deleteMany({

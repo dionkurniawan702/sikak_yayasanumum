@@ -573,6 +573,41 @@ app.use((err, req, res, next) => {
 });
 
 // 5. Auto-Seed Function (Background)
+const ensureDistributionColumns = async () => {
+    try {
+        const client = getPrisma();
+        console.log(`[Self-Healing] Checking distribution_settings for destType/destId columns...`);
+        
+        const tableNames = ['distribution_settings', 'DistributionSetting'];
+        let targetTable = null;
+
+        for (const name of tableNames) {
+            try {
+                await client.$queryRawUnsafe(`DESCRIBE \`${name}\``);
+                targetTable = name;
+                break;
+            } catch (e) {}
+        }
+
+        if (targetTable) {
+            const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+            const hasDestType = columns.some(c => c.Field === 'destType' || c.field === 'destType');
+            const hasDestId = columns.some(c => c.Field === 'destId' || c.field === 'destId');
+
+            if (!hasDestType) {
+                console.log(`[Self-Healing] Adding destType to ${targetTable}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN destType VARCHAR(50) DEFAULT 'unit'`);
+            }
+            if (!hasDestId) {
+                console.log(`[Self-Healing] Adding destId to ${targetTable}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN destId VARCHAR(255)`);
+            }
+        }
+    } catch (error) {
+        console.error(`[Self-Healing Error] Distribution columns: ${error.message}`);
+    }
+};
+
 const ensureSoftDeleteColumns = async () => {
     const models = [
         { name: 'AcademicYear', table: 'AcademicYear' },
@@ -682,6 +717,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
         try {
             await ensureSoftDeleteColumns();
             await ensureFundSources();
+            await ensureDistributionColumns();
         } catch (err) {
             console.error(`[Background Tasks Error] ${err.message}`);
         }
