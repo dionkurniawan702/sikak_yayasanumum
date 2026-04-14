@@ -596,6 +596,7 @@ const ensureDistributionColumns = async () => {
             const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
             const hasDestType = columns.some(c => c.Field === 'destType' || c.field === 'destType');
             const hasDestId = columns.some(c => c.Field === 'destId' || c.field === 'destId');
+            const hasDestName = columns.some(c => c.Field === 'destName' || c.field === 'destName');
 
             if (!hasDestType) {
                 console.log(`[Self-Healing] Adding destType to ${targetTable}...`);
@@ -604,6 +605,10 @@ const ensureDistributionColumns = async () => {
             if (!hasDestId) {
                 console.log(`[Self-Healing] Adding destId to ${targetTable}...`);
                 await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN destId VARCHAR(255)`);
+            }
+            if (!hasDestName) {
+                console.log(`[Self-Healing] Adding destName to ${targetTable}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN destName VARCHAR(255)`);
             }
         }
     } catch (error) {

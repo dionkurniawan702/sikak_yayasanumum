@@ -140,13 +140,22 @@ export default function FieldUnitManagement() {
             // 3. Save Financial Config if Unit
             if (type === 'UNIT') {
                 for (const incomeId of selectedIncomeItems) {
-                    const settings = (unitDistributions[incomeId] || []).map(rule => ({
-                        ...rule,
-                        unitId: id,
-                        incomeItemId: incomeId,
-                        destId: rule.destType === 'field' ? (rule.destId || formData.fieldId) : id,
-                        expenseItemId: rule.expenseItemId
-                    }));
+                    const settings = (unitDistributions[incomeId] || []).map(rule => {
+                        const ruleDestId = rule.destType === 'field' ? (rule.destId || formData.fieldId) : id;
+                        // Find descriptive name for phpMyAdmin/audit
+                        const destName = rule.destType === 'unit' 
+                            ? (units.find(u => u.id === ruleDestId)?.name || 'Direct Unit')
+                            : (fields.find(f => f.id === ruleDestId)?.name || 'Parent Field');
+
+                        return {
+                            ...rule,
+                            unitId: id,
+                            incomeItemId: incomeId,
+                            destId: ruleDestId,
+                            destName: destName,
+                            expenseItemId: rule.expenseItemId
+                        };
+                    });
 
                     // Push to server explicitly
                     await api.pushAction({

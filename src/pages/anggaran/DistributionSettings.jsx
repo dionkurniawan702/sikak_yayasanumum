@@ -59,13 +59,21 @@ export default function DistributionSettings() {
         }
         
         try {
+            const settingsWithNames = tempSettings.map(s => {
+                const destId = s.destType === 'unit' ? (s.destId || selectedUnit) : s.destId;
+                const destName = s.destType === 'unit'
+                    ? (units.find(u => u.id === destId)?.name || 'Unit')
+                    : (fields.find(f => f.id === destId)?.name || 'Field');
+                return { ...s, destId, destName };
+            });
+
             // Push to server
             await api.pushAction({
                 type: 'UPDATE_DISTRIBUTION_SETTINGS',
                 payload: {
                     unitId: selectedUnit,
                     incomeItemId: selectedIncomeItem,
-                    settings: tempSettings
+                    settings: settingsWithNames
                 }
             }, state);
 
@@ -75,7 +83,7 @@ export default function DistributionSettings() {
                 payload: {
                     unitId: selectedUnit,
                     incomeItemId: selectedIncomeItem,
-                    settings: tempSettings
+                    settings: settingsWithNames
                 }
             });
 
