@@ -87,14 +87,19 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                         if (share <= 0) return;
 
                         const exId = rule.expenseItemId || 'unallocated';
+                        const exItem = state.expenseItems?.find(ei => ei.id == exId);
+                        
+                        // Fallback: If destId/destType is missing, derive from expenseItem
+                        const destId = rule.destId || exItem?.unitId || exItem?.fieldId;
+                        const destType = rule.destType || (exItem?.unitId ? 'unit' : (exItem?.fieldId ? 'field' : null));
 
                         if (!targetUnitId && !targetFieldId) {
                             // Foundation mode: everything counts for allocations
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
-                        } else if (rule.destType === 'unit' && targetUnitId === rule.destId) {
+                        } else if (destType === 'unit' && targetUnitId == destId) {
                             results.totalTarget += share;
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
-                        } else if (rule.destType === 'field' && targetFieldId === rule.destId) {
+                        } else if (destType === 'field' && targetFieldId == destId) {
                             results.totalTarget += share;
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
                         }
@@ -103,6 +108,14 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
             });
         }
     });
+
+    // Final Diagnostic for 0 income
+    if (targetUnitId && results.totalTarget === 0 && activeStudents.length > 0) {
+        console.warn(`[RAP Engine] Target income Rp 0 untuk Unit ${targetUnitId} meskipun ada siswa aktif.`, {
+            activeStudents: activeStudents.length,
+            sampleStudentIncome: activeStudents[0]?.incomeDetails
+        });
+    }
 
     return results;
 };

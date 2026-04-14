@@ -389,7 +389,9 @@ router.post('/distribution-settings', async (req, res) => {
                     unitId: s.unitId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
-                    percentage: s.percentage
+                    percentage: parseFloat(s.percentage) || 0,
+                    destId: s.destId,
+                    destType: s.destType
                 }))
             })
         ]);
