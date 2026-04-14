@@ -4,7 +4,7 @@ import {
     ArrowUpCircle, ArrowDownCircle, Info, ChevronRight,
     TrendingUp, Wallet, ShieldCheck, Download, Filter, 
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
-    Edit3, PlusCircle
+    Edit3, PlusCircle, Database
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
