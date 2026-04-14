@@ -308,6 +308,20 @@ export default function RAB() {
         return balances;
     }, [filteredIncomeItems, state.distributionSettings, currentPlan.expense, selectedUnitId]);
 
+    // NEW: Calculate spending per unit for field-allocated items
+    const rabUnitBreakdown = useMemo(() => {
+        const breakdown = {}; // { [expenseItemId]: { [unitId]: totalAmount } }
+        
+        Object.entries(currentPlan.expense || {}).forEach(([itemId, detail]) => {
+            if (!detail.targetUnitId || !detail.total) return;
+            
+            if (!breakdown[itemId]) breakdown[itemId] = {};
+            breakdown[itemId][detail.targetUnitId] = (breakdown[itemId][detail.targetUnitId] || 0) + detail.total;
+        });
+        
+        return breakdown;
+    }, [currentPlan.expense]);
+
     const handleCloseModal = () => {
         setEditingItem(null);
         setMessage({ type: 'success', text: 'Rincian sementara disimpan ke draft. Klik "SIMPAN DRAFT" di atas untuk menyimpan ke database!' });
@@ -839,40 +853,58 @@ export default function RAB() {
 
                                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                                 {targetItems.map(item => {
-                                                    const breakdown = rapData.itemSourceBreakdown?.[item.id] || {};
+                                                    const rapBreakdown = rapData.itemSourceBreakdown?.[item.id] || {};
+                                                    const rabBreakdown = rabUnitBreakdown[item.id] || {};
                                                     const totalAllocated = rapData.itemAllocations?.[item.id] || 0;
                                                     
                                                     if (totalAllocated === 0) return null;
 
+                                                    // Combine all units that either have RAP or RAB for this item
+                                                    const allUnitIds = Array.from(new Set([
+                                                        ...Object.keys(rapBreakdown),
+                                                        ...Object.keys(rabBreakdown)
+                                                    ]));
+
                                                     return (
                                                         <div key={item.id} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 hover:bg-white/20 transition-all group">
-                                                            <div className="flex justify-between items-start mb-4">
+                                                            <div className="flex justify-between items-start mb-6">
                                                                 <h5 className="font-black text-sm uppercase tracking-tight text-blue-100">{item.name}</h5>
-                                                                <span className="text-[10px] font-black bg-blue-500/50 px-3 py-1 rounded-full">{formatRupiah(totalAllocated)}</span>
+                                                                <div className="text-right">
+                                                                    <p className="text-[10px] font-black opacity-50 uppercase tracking-widest">Total Alokasi (RAP)</p>
+                                                                    <span className="text-xs font-black bg-blue-500/50 px-3 py-1 rounded-full">{formatRupiah(totalAllocated)}</span>
+                                                                </div>
                                                             </div>
                                                             
-                                                            <div className="space-y-2 mt-4 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar-mini">
-                                                                {Object.entries(breakdown).length > 0 ? (
-                                                                    Object.entries(breakdown).map(([uId, amount]) => (
-                                                                        <div key={uId} className="flex justify-between items-center text-[11px]">
-                                                                            <span className="font-medium opacity-60">
-                                                                                {units.find(u => u.id === uId)?.name || uId}
-                                                                            </span>
-                                                                            <span className="font-black tracking-tighter">{formatRupiah(amount)}</span>
-                                                                        </div>
-                                                                    ))
+                                                            <div className="space-y-4 mt-4 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar-mini">
+                                                                <div className="grid grid-cols-4 text-[9px] font-black uppercase tracking-widest opacity-40 mb-2 border-b border-white/10 pb-2">
+                                                                    <div className="col-span-1">Unit</div>
+                                                                    <div className="text-right">Setoran</div>
+                                                                    <div className="text-right">Rencana</div>
+                                                                    <div className="text-right">Sisa</div>
+                                                                </div>
+                                                                
+                                                                {allUnitIds.length > 0 ? (
+                                                                    allUnitIds.map(uId => {
+                                                                        const rapAmount = rapBreakdown[uId] || 0;
+                                                                        const rabAmount = rabBreakdown[uId] || 0;
+                                                                        const unitBalance = rapAmount - rabAmount;
+                                                                        
+                                                                        return (
+                                                                            <div key={uId} className="grid grid-cols-4 items-center text-[10px] py-1 border-b border-white/5 last:border-0">
+                                                                                <div className="font-bold truncate" title={units.find(u => u.id === uId)?.name || uId}>
+                                                                                    {units.find(u => u.id === uId)?.name || uId}
+                                                                                </div>
+                                                                                <div className="text-right font-medium opacity-80">{formatRupiah(rapAmount)}</div>
+                                                                                <div className="text-right font-black text-emerald-300">{formatRupiah(rabAmount)}</div>
+                                                                                <div className={`text-right font-black ${unitBalance < 0 ? 'text-rose-400 animate-pulse' : 'text-blue-200'}`}>
+                                                                                    {formatRupiah(unitBalance)}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })
                                                                 ) : (
                                                                     <p className="text-[10px] italic opacity-50">Tidak ada rincian unit...</p>
                                                                 )}
-                                                            </div>
-
-                                                            <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-end">
-                                                                <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
-                                                                    <div 
-                                                                        className="h-full bg-emerald-400" 
-                                                                        style={{ width: '100%' }}
-                                                                    />
-                                                                </div>
                                                             </div>
                                                         </div>
                                                     );
@@ -1341,6 +1373,29 @@ export default function RAB() {
                                                     ))}
                                                 </select>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Unit Peruntukan Selector (For Specialized Field Items) */}
+                                    {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
+                                        <div className="space-y-2 pt-2 animate-in slide-in-from-bottom-2">
+                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                <Building2 size={12} />
+                                                Unit Peruntukan Belanja (Penting)
+                                            </label>
+                                            <select 
+                                                className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.targetUnitId || ''}
+                                                onChange={e => handleItemUpdate(editingItem.id, 'targetUnitId', e.target.value)}
+                                            >
+                                                <option value="">Pilih Unit Penerima Manfaat...</option>
+                                                {units.filter(u => !u.isDeleted && (u.fieldId === selectedUnitId.replace('FIELD-', '') || !u.fieldId)).map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                            <p className="text-[9px] font-medium text-slate-400 px-2 italic">
+                                                * Gunakan ini agar sistem bisa memantau "kekuatan" masing-masing unit terhadap rencana belanja bidang.
+                                            </p>
                                         </div>
                                     )}
                                 </div>
