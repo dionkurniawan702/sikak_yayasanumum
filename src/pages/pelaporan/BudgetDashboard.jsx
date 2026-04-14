@@ -44,6 +44,12 @@ export default function BudgetDashboard() {
         setExpandedFields(prev => ({ ...prev, [id]: !prev[id] }));
     };
 
+    const [expandedDetailItems, setExpandedDetailItems] = useState({}); // Stores fieldId-exId
+    const toggleDetailItem = (parentId, itemId) => {
+        const key = `${parentId}-${itemId}`;
+        setExpandedDetailItems(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
     // ========== ENGINE: RAP (Rencana Anggaran Pendapatan) ==========
     const { unitRAP, fieldRAP } = useMemo(() => {
         const uRAP = {};
@@ -291,6 +297,16 @@ export default function BudgetDashboard() {
                 bidangRows.push({ Nama: b.name, RAP: b.rap, RAB: b.rab, 'Sisa Anggaran': b.sisa });
                 b.breakdown.forEach(item => {
                     bidangRows.push({ Nama: `  └ ${item.name}`, RAP: item.rap, RAB: item.rab, 'Sisa Anggaran': item.sisa });
+                    if (item.sources && Object.keys(item.sources).length > 0) {
+                        Object.entries(item.sources).forEach(([unitId, amount]) => {
+                            bidangRows.push({ 
+                                Nama: `    • ${getUnitName(unitId)}`, 
+                                RAP: amount, 
+                                RAB: '', 
+                                'Sisa Anggaran': '' 
+                            });
+                        });
+                    }
                 });
             });
             bidangRows.push({ Nama: 'TOTAL', RAP: totalBidangRAP, RAB: totalBidangRAB, 'Sisa Anggaran': totalBidangSisa });
@@ -325,7 +341,7 @@ export default function BudgetDashboard() {
                 <td className="budget-cell budget-cell-name">
                     <div className="flex items-center gap-2">
                         <span className="expand-icon">
-                            {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                            {isExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                         </span>
                         <span className="font-semibold text-slate-800">{data.name}</span>
                     </div>
@@ -342,24 +358,60 @@ export default function BudgetDashboard() {
                     </span>
                 </td>
             </tr>
-            {isExpanded && data.breakdown.map(item => (
-                <tr key={item.id} className="budget-row-detail">
-                    <td className="budget-cell budget-cell-name" style={{ paddingLeft: '48px' }}>
-                        <span className="text-slate-500 text-[13px]">└ {item.name}</span>
-                    </td>
-                    <td className="budget-cell budget-cell-number">
-                        <span className="text-slate-500 text-[13px]">{formatCurrency(item.rap)}</span>
-                    </td>
-                    <td className="budget-cell budget-cell-number">
-                        <span className="text-slate-500 text-[13px]">{formatCurrency(item.rab)}</span>
-                    </td>
-                    <td className="budget-cell budget-cell-number budget-cell-sisa">
-                        <span className={`text-[13px] ${item.sisa < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
-                            {formatCurrency(item.sisa)}
-                        </span>
-                    </td>
-                </tr>
-            ))}
+            {isExpanded && data.breakdown.map(item => {
+                const hasSources = item.sources && Object.keys(item.sources).length > 0;
+                const isDetailExpanded = !!expandedDetailItems[`${data.id}-${item.id}`];
+
+                return (
+                    <React.Fragment key={item.id}>
+                        <tr 
+                            className={`budget-row-detail group ${hasSources ? 'cursor-pointer hover:bg-indigo-50/50' : ''}`}
+                            onClick={() => hasSources && toggleDetailItem(data.id, item.id)}
+                        >
+                            <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }}>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400/50">└</span>
+                                    {hasSources && (
+                                        <span className="text-indigo-400 group-hover:text-indigo-600">
+                                            {isDetailExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                                        </span>
+                                    )}
+                                    <span className={`${hasSources ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px]`}>
+                                        {item.name}
+                                    </span>
+                                </div>
+                            </td>
+                            <td className="budget-cell budget-cell-number text-slate-500 text-[12px]">
+                                {formatCurrency(item.rap)}
+                            </td>
+                            <td className="budget-cell budget-cell-number text-slate-500 text-[12px]">
+                                {formatCurrency(item.rab)}
+                            </td>
+                            <td className={`budget-cell budget-cell-number budget-cell-sisa text-[12px] ${item.sisa < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
+                                {formatCurrency(item.sisa)}
+                            </td>
+                        </tr>
+                        {isDetailExpanded && hasSources && Object.entries(item.sources).map(([unitId, amount]) => (
+                            <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300">
+                                <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
+                                    <div className="flex items-center gap-1.5 py-0.5">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                            {getUnitName(unitId)}
+                                        </span>
+                                    </div>
+                                </td>
+                                <td className="budget-cell budget-cell-number">
+                                    <span className="text-[11px] font-black text-indigo-400/80">
+                                        {formatCurrency(amount)}
+                                    </span>
+                                </td>
+                                <td colSpan="2" className="budget-cell" />
+                            </tr>
+                        ))}
+                    </React.Fragment>
+                );
+            })}
         </>
     );
 
