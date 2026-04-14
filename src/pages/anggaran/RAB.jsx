@@ -65,6 +65,8 @@ export default function RAB() {
     const [searchTerm, setSearchTerm] = useState('');
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [editingItem, setEditingItem] = useState(null); // { id, name, sourceOfFunds }
+    const [isAddingItem, setIsAddingItem] = useState(false);
+    const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '' });
 
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
@@ -364,6 +366,73 @@ export default function RAB() {
         return generateMonths(selectedYear?.name);
     }, [selectedYearId, academicYears]);
 
+    const handleAddItem = async () => {
+        if (!newItemData.name || !newItemData.incomeItemId || !selectedUnitId) return;
+        setIsSaving(true);
+        
+        const isField = selectedUnitId.startsWith('FIELD-');
+        const unitId = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
+        
+        const incomeItem = incomeItems.find(ii => ii.id === newItemData.incomeItemId);
+        const expenseItemId = `EXP-${Date.now().toString(36).toUpperCase()}`;
+
+        const newExpenseItem = {
+            id: expenseItemId,
+            name: newItemData.name,
+            unitId: unitId,
+            fieldId: fieldId,
+            sourceOfFunds: incomeItem?.name || 'Umum',
+            isDeleted: false
+        };
+
+        // Create 100% distribution rule automatically
+        const distributionRule = {
+            id: `DIST-${Date.now().toString(36).toUpperCase()}`,
+            unitId: isField ? (state.units.find(u => u.fieldId === fieldId)?.id || 'FOUNDATION') : selectedUnitId,
+            incomeItemId: newItemData.incomeItemId,
+            expenseItemId: expenseItemId,
+            percentage: 100,
+            destType: isField ? 'field' : 'unit',
+            destId: isField ? fieldId : selectedUnitId,
+            isDeleted: false
+        };
+
+        try {
+            // 1. Add Expense Item
+            dispatch({ type: 'ADD_EXPENSE_ITEM', payload: newExpenseItem });
+            await api.pushAction({ type: 'ADD_EXPENSE_ITEM', payload: newExpenseItem }, state);
+
+            // 2. Update Distribution Settings
+            // Note: UPDATE_DISTRIBUTION_SETTINGS usually takes an array of settings for a specific unit-income pair
+            // But we just want to add one. For simplicity and to avoid wiping others, we'll use the existing state.
+            const existingSettings = state.distributionSettings.filter(s => 
+                s.unitId === distributionRule.unitId && s.incomeItemId === distributionRule.incomeItemId
+            );
+            const updatedSettings = [...existingSettings, distributionRule];
+            
+            dispatch({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
+                unitId: distributionRule.unitId, 
+                incomeItemId: distributionRule.incomeItemId, 
+                settings: updatedSettings 
+            }});
+            await api.pushAction({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
+                unitId: distributionRule.unitId, 
+                incomeItemId: distributionRule.incomeItemId, 
+                settings: updatedSettings 
+            }}, state);
+
+            setMessage({ type: 'success', text: `Item "${newItemData.name}" berhasil ditambahkan ke RAB.` });
+            setIsAddingItem(false);
+            setNewItemData({ name: '', incomeItemId: '' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Gagal menambah item: ' + error.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 5000);
+        }
+    };
+
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
@@ -570,6 +639,15 @@ export default function RAB() {
                         >
                             KIRIM KE YAYASAN
                         </button>
+                        {!isConsolidation && !isLocked && (rapData.totalTarget - totalExpense) > 100 && (
+                            <button 
+                                onClick={() => setIsAddingItem(true)}
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-black text-xs transition-all shadow-md flex items-center gap-2"
+                            >
+                                <PlusCircle size={14} />
+                                TAMBAH ITEM RAB
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -1280,6 +1358,59 @@ export default function RAB() {
                             >
                                 SIMPAN RINCIAN
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Add Item Modal */}
+            {isAddingItem && (
+                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsAddingItem(false)} />
+                    <div className="bg-white rounded-[3rem] w-full max-w-md relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300">
+                        <div className="p-8 border-b border-slate-100 bg-slate-50">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tambah Item Belanja Baru</h2>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                                Sisa Dana: {formatRupiah(rapData.totalTarget - totalExpense)}
+                            </p>
+                        </div>
+                        <div className="p-8 space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama Item Belanja</label>
+                                <input 
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                                    placeholder="Contoh: ATK Kantor, Biaya Lomba..."
+                                    value={newItemData.name}
+                                    onChange={e => setNewItemData({ ...newItemData, name: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Sumber Pendapatan</label>
+                                <select 
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
+                                    value={newItemData.incomeItemId}
+                                    onChange={e => setNewItemData({ ...newItemData, incomeItemId: e.target.value })}
+                                >
+                                    <option value="">Pilih Sumber Dana...</option>
+                                    {filteredIncomeItems.map(ii => (
+                                        <option key={ii.id} value={ii.id}>{ii.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex gap-4 pt-4">
+                                <button 
+                                    onClick={() => setIsAddingItem(false)}
+                                    className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase"
+                                >
+                                    Batal
+                                </button>
+                                <button 
+                                    onClick={handleAddItem}
+                                    disabled={isSaving || !newItemData.name || !newItemData.incomeItemId}
+                                    className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg shadow-indigo-100 disabled:opacity-50"
+                                >
+                                    {isSaving ? 'Menyimpan...' : 'Tambahkan Ke RAB'}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
