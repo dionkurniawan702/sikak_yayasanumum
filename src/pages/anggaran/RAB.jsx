@@ -639,9 +639,16 @@ export default function RAB() {
                         >
                             KIRIM KE YAYASAN
                         </button>
-                        {!isConsolidation && !isLocked && (rapData.totalTarget - totalExpense) > 100 && (
+                        {!isConsolidation && !isLocked && (
                             <button 
-                                onClick={() => setIsAddingItem(true)}
+                                onClick={() => {
+                                    const availableFunds = rapData.totalTarget - totalExpense;
+                                    if (availableFunds <= 100) {
+                                        window.alert(`Anggaran/Dana tidak tersedia untuk penambahan item baru.\nSisa saldo saat ini: ${formatRupiah(availableFunds)}`);
+                                    } else {
+                                        setIsAddingItem(true);
+                                    }
+                                }}
                                 className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-black text-xs transition-all shadow-md flex items-center gap-2"
                             >
                                 <PlusCircle size={14} />
@@ -907,10 +914,12 @@ export default function RAB() {
                                                             return (
                                                                 <button 
                                                                     onClick={() => setEditingItem(item)}
-                                                                    className={`p-2 rounded-xl transition-all shadow-sm ${btnClass} ${isConsolidation ? 'opacity-30 cursor-not-allowed' : ''}`}
+                                                                    className={`px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-2 ${btnClass} ${isConsolidation ? 'opacity-30 cursor-not-allowed' : ''}`}
                                                                     disabled={isConsolidation}
+                                                                    title={isOver ? 'Melebihi Limit Anggaran' : 'Edit Detail'}
                                                                 >
                                                                     {icon}
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest">Detail RAB</span>
                                                                 </button>
                                                             );
                                                         })()}

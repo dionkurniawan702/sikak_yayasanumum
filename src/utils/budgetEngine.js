@@ -4,10 +4,12 @@
  */
 
 export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId) => {
-    const { students = [], distributionSettings = [], studentStatuses = [] } = state;
+    const { students = [], distributionSettings = [], studentStatuses = [], incomeItems = [] } = state;
     
-    // 1. Get active status ID
-    const activeStatusId = studentStatuses?.find(st => st.name === 'Aktif')?.id;
+    // 1. Get active status ID (Case insensitive & trimmed)
+    const activeStatusId = studentStatuses?.find(st => 
+        st.name?.trim().toLowerCase() === 'aktif'
+    )?.id;
     
     // 2. Filter students by status and academic year
     // Note: Use provided year ID OR current active year if none specified
@@ -16,21 +18,21 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
     const activeStudents = students.filter(s => {
         if (s.isDeleted) return false;
         
-        // Match status (fallback to true if statusId is null or studentStatuses empty)
-        const statusMatch = !activeStatusId || s.statusId === activeStatusId;
+        // Match status (Using == for safety with mixed types)
+        const statusMatch = !activeStatusId || s.statusId == activeStatusId;
         
-        // Match year (fallback to true if yearId is null or academicYears empty)
-        const yearMatch = !yearId || s.academicYearId === yearId;
+        // Match year (Using == for safety)
+        const yearMatch = !yearId || s.academicYearId == yearId;
         
         return statusMatch && yearMatch;
     });
 
-    if (activeStudents.length === 0 && students.length > 0) {
-        console.warn(`[RAP Engine] All ${students.length} students filtered out. Reason:`, { 
-            foundYearId: yearId, 
-            foundStatusId: activeStatusId,
-            sampleStudentStatusId: students[0].statusId,
-            sampleStudentYearId: students[0].academicYearId
+    // Diagnostic Log
+    if (students.length > 0 && activeStudents.length === 0) {
+        console.warn(`[RAP Engine] Semua siswa (${students.length}) terfilter keluar.`, {
+            searchYearId: yearId,
+            searchStatusId: activeStatusId,
+            sampleStudent: students[0]
         });
     }
 
@@ -44,32 +46,37 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
     // 4. Calculate distributions
     activeStudents.forEach(student => {
         // If calculating for a specific unit, skip other units
-        if (targetUnitId && student.unitId !== targetUnitId) return;
+        if (targetUnitId && student.unitId != targetUnitId) return;
 
         if (student.incomeDetails && student.incomeDetails.length > 0) {
             student.incomeDetails.forEach(detail => {
                 const amount = parseFloat(detail.amount) || 0;
                 if (amount <= 0) return;
 
-                // Track income item total
-                results.incomeTotals[detail.incomeItemId] = (results.incomeTotals[detail.incomeItemId] || 0) + amount;
+                 // Track income item total
+                 // Robust lookup: if incomeItemId is not found by ID, it might be a name (from old seeds)
+                 const incomeItem = incomeItems.find(ii => ii.id == detail.incomeItemId || ii.name == detail.incomeItemId);
+                 const incomeId = incomeItem?.id || detail.incomeItemId;
 
-                // SPECIAL: If in Foundation mode (no targetUnit/targetField), sum everything
-                if (!targetUnitId && !targetFieldId) {
-                    results.totalTarget += amount;
-                }
-
-                // Find distribution rules for this income item from this unit
-                const rules = distributionSettings.filter(
-                    s => s.unitId === student.unitId && s.incomeItemId === detail.incomeItemId
-                );
+                 results.incomeTotals[incomeId] = (results.incomeTotals[incomeId] || 0) + amount;
+ 
+                 // SPECIAL: If in Foundation mode (no targetUnit/targetField), sum everything
+                 if (!targetUnitId && !targetFieldId) {
+                     results.totalTarget += amount;
+                 }
+ 
+                 // Find distribution rules for this income item from this unit
+                 // Again, match by ID or Name for robustness
+                 const rules = distributionSettings.filter(
+                     s => s.unitId == student.unitId && (s.incomeItemId == detail.incomeItemId || s.incomeItemId == incomeId)
+                 );
 
                 if (rules.length === 0) {
                     // No rules -> 100% stays at unit (unallocated expense item)
                     // In Foundation mode, we count this towards 'unallocated'
                     if (!targetUnitId && !targetFieldId) {
                         results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
-                    } else if (targetUnitId === student.unitId) {
+                    } else if (targetUnitId && targetUnitId == student.unitId) {
                         results.totalTarget += amount;
                         results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
                     }
@@ -84,7 +91,7 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                         if (!targetUnitId && !targetFieldId) {
                             // Foundation mode: everything counts for allocations
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
-                        } else if (rule.destType === 'unit' && targetUnitId === student.unitId) {
+                        } else if (rule.destType === 'unit' && targetUnitId === rule.destId) {
                             results.totalTarget += share;
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
                         } else if (rule.destType === 'field' && targetFieldId === rule.destId) {
