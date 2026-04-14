@@ -204,7 +204,7 @@ export const api = {
                     await syncItem('expense-items', payload, null, 'DELETE');
                     break;
                 case 'UPDATE_DISTRIBUTION_SETTINGS':
-                    await this.post('/distribution/update', payload);
+                    await this.post('/distribution-settings', payload);
                     break;
                 case 'ADD_BUDGET_REQUEST':
                     await syncItem('budget-requests', null, payload, 'POST');

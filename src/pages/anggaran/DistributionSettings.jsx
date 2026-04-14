@@ -52,20 +52,36 @@ export default function DistributionSettings() {
 
     const totalPercentage = tempSettings.reduce((sum, s) => sum + (parseFloat(s.percentage) || 0), 0);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (totalPercentage !== 100) {
             alert('Total persentase harus 100%!');
             return;
         }
         
-        dispatch({
-            type: 'UPDATE_DISTRIBUTION_SETTINGS',
-            payload: {
-                unitId: selectedUnit,
-                incomeItemId: selectedIncomeItem,
-                settings: tempSettings
-            }
-        });
+        try {
+            // Push to server
+            await api.pushAction({
+                type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                payload: {
+                    unitId: selectedUnit,
+                    incomeItemId: selectedIncomeItem,
+                    settings: tempSettings
+                }
+            }, state);
+
+            // Update local state
+            dispatch({
+                type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                payload: {
+                    unitId: selectedUnit,
+                    incomeItemId: selectedIncomeItem,
+                    settings: tempSettings
+                }
+            });
+            alert('Pengaturan berhasil disimpan ke database!');
+        } catch (err) {
+            alert('Gagal menyimpan: ' + err.message);
+        }
     };
 
     return (

@@ -137,7 +137,7 @@ export default function FieldUnitManagement() {
                 payload: payload
             });
 
-            // 3. Dispatch Financial Config if Unit
+            // 3. Save Financial Config if Unit
             if (type === 'UNIT') {
                 for (const incomeId of selectedIncomeItems) {
                     const settings = (unitDistributions[incomeId] || []).map(rule => ({
@@ -148,15 +148,19 @@ export default function FieldUnitManagement() {
                         expenseItemId: rule.expenseItemId
                     }));
 
+                    // Push to server explicitly
+                    await api.pushAction({
+                        type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                        payload: { unitId: id, incomeItemId: incomeId, settings }
+                    }, state);
+
+                    // Update local state
                     dispatch({
                         type: 'UPDATE_DISTRIBUTION_SETTINGS',
                         payload: { unitId: id, incomeItemId: incomeId, settings }
                     });
                 }
             }
-
-            // 4. Final bulk sync to ensure all changes are on server
-            await api.syncWholeState({ ...state, [type.toLowerCase() + 's']: [...state[type.toLowerCase() + 's'], payload] });
 
             setIsSaved(true);
             setTimeout(() => {
