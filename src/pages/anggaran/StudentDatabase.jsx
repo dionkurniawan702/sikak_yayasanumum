@@ -88,15 +88,20 @@ export default function StudentDatabase() {
         setShowStudentModal(true);
     };
 
-    const handleStudentSubmit = (e) => {
+    const handleStudentSubmit = async (e) => {
         e.preventDefault();
         const actionType = editingStudent ? 'EDIT_STUDENT' : 'ADD_STUDENT';
         const payload = editingStudent 
             ? { ...editingStudent, ...studentForm }
             : { id: crypto.randomUUID(), ...studentForm };
         
-        dispatch({ type: actionType, payload });
-        setShowStudentModal(false);
+        try {
+            await api.pushAction({ type: actionType, payload }, state);
+            dispatch({ type: actionType, payload });
+            setShowStudentModal(false);
+        } catch (err) {
+            window.alert('Gagal menyimpan data siswa: ' + err.message);
+        }
     };
 
     const handleDeleteStudent = async (id) => {
@@ -119,13 +124,18 @@ export default function StudentDatabase() {
         }));
     };
 
-    const handlePaymentSubmit = () => {
+    const handlePaymentSubmit = async () => {
         const updatedStudent = {
             ...showPaymentSettings,
             incomeDetails: paymentForm.map(p => ({ incomeItemId: p.incomeItemId, amount: parseFloat(p.amount) || 0 }))
         };
-        dispatch({ type: 'EDIT_STUDENT', payload: updatedStudent });
-        setShowPaymentSettings(null);
+        try {
+            await api.pushAction({ type: 'EDIT_STUDENT', payload: updatedStudent }, state);
+            dispatch({ type: 'EDIT_STUDENT', payload: updatedStudent });
+            setShowPaymentSettings(null);
+        } catch (err) {
+            window.alert('Gagal menyimpan setting pembayaran: ' + err.message);
+        }
     };
 
     const handleFileUpload = (e) => {

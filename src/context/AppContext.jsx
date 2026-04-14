@@ -523,7 +523,7 @@ export function AppProvider({ children }) {
     useEffect(() => {
         if (!isRemote || !state.currentUser || !state.isInitialized) return;
 
-        // Background poll every 120 seconds
+        // Background poll every 30 seconds for better responsiveness
         const pollInterval = setInterval(() => {
             api.fetchAllData().then(data => {
                 if (data) {
@@ -532,7 +532,7 @@ export function AppProvider({ children }) {
             }).catch(err => {
                 console.warn('[Sync] Background poll failed:', err.message);
             });
-        }, 120000);
+        }, 30000);
 
         return () => clearInterval(pollInterval);
     }, [isRemote, state.currentUser, state.isInitialized]);
