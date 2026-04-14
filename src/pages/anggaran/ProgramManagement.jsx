@@ -137,7 +137,9 @@ export default function ProgramManagement() {
                         <thead>
                             <tr className="bg-slate-50/50">
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Nama Program</th>
-                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Dibuat Oleh</th>
+                                {currentUser?.role === 'superadmin' && (
+                                    <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Dibuat Oleh</th>
+                                )}
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -154,14 +156,16 @@ export default function ProgramManagement() {
                                                 <span className="text-slate-900 font-bold group-hover:text-indigo-600 transition-colors">{item.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-8 py-5">
-                                            <div className="flex flex-col">
-                                                <span className="text-xs font-bold text-slate-800">{unitObj ? unitObj.name : (fieldObj ? fieldObj.name : 'Shared / Global')}</span>
-                                                <span className="text-[10px] uppercase tracking-widest text-slate-400 font-black">
-                                                    CREATED
-                                                </span>
-                                            </div>
-                                        </td>
+                                        {currentUser?.role === 'superadmin' && (
+                                            <td className="px-8 py-5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-bold text-slate-800">{unitObj ? unitObj.name : (fieldObj ? fieldObj.name : 'Shared / Global')}</span>
+                                                    <span className="text-[10px] uppercase tracking-widest text-slate-400 font-black">
+                                                        CREATED
+                                                    </span>
+                                                </div>
+                                            </td>
+                                        )}
                                         <td className="px-8 py-5 max-w-xs truncate">
                                             {item.description || '-'}
                                         </td>
@@ -198,7 +202,7 @@ export default function ProgramManagement() {
                             })}
                             {filteredItems.length === 0 && (
                                 <tr>
-                                    <td colSpan="4" className="px-8 py-20 text-center text-slate-400 font-medium">
+                                    <td colSpan={currentUser?.role === 'superadmin' ? "4" : "3"} className="px-8 py-20 text-center text-slate-400 font-medium">
                                         Tidak ada program belanja yang ditemukan
                                     </td>
                                 </tr>
