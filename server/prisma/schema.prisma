@@ -317,6 +317,7 @@ model DistributionSetting {
   percentage     Decimal     @db.Decimal(5, 2)
   destType       String?     @default("unit")
   destId         String?
+  destName       String?
   isDeleted      Boolean     @default(false)
 
   @@map("distribution_settings")
