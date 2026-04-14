@@ -137,7 +137,7 @@ export default function ProgramManagement() {
                         <thead>
                             <tr className="bg-slate-50/50">
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Nama Program</th>
-                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Unit/Bidang</th>
+                                <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Dibuat Oleh</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">Keterangan</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -158,7 +158,7 @@ export default function ProgramManagement() {
                                             <div className="flex flex-col">
                                                 <span className="text-xs font-bold text-slate-800">{unitObj ? unitObj.name : (fieldObj ? fieldObj.name : 'Shared / Global')}</span>
                                                 <span className="text-[10px] uppercase tracking-widest text-slate-400 font-black">
-                                                    Penanggung Jawab
+                                                    CREATED
                                                 </span>
                                             </div>
                                         </td>
