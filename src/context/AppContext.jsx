@@ -498,8 +498,9 @@ export function AppProvider({ children }) {
         // Trigger fetch if we have a token AND (we are logged in OR we have no data)
         const needsData = state.accounts.length <= 5 || state.units.length === 0;
 
-        if (isRemote && token && !isLoginPage && (needsData || !state.isInitialized)) {
-            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Sinkronisasi data...' } });
+        // ALWAYS fetch fresh data on mount if we have a token and are in remote mode
+        if (isRemote && token && !isLoginPage) {
+            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
             api.fetchAllData().then(data => {
                 if (data) {
                     dispatch({ type: 'SET_ALL_DATA', payload: data });
@@ -518,12 +519,12 @@ export function AppProvider({ children }) {
                 }
             });
         }
-    }, [isRemote, state.currentUser, state.isInitialized]);
+    }, [isRemote, state.currentUser]); // Trigger on mount or user change
 
     useEffect(() => {
         if (!isRemote || !state.currentUser || !state.isInitialized) return;
 
-        // Background poll every 30 seconds for better responsiveness
+        // Background poll every 20 seconds for near real-time updates
         const pollInterval = setInterval(() => {
             api.fetchAllData().then(data => {
                 if (data) {
@@ -532,7 +533,7 @@ export function AppProvider({ children }) {
             }).catch(err => {
                 console.warn('[Sync] Background poll failed:', err.message);
             });
-        }, 30000);
+        }, 20000);
 
         return () => clearInterval(pollInterval);
     }, [isRemote, state.currentUser, state.isInitialized]);
