@@ -48,6 +48,7 @@ export default function RAB() {
         expenseItems = [],
         rabPlans = [],
         programs = [],
+        expensePrograms = [],
         bosStages = [],
         bosPosList = [],
         currentUser
@@ -1228,8 +1229,8 @@ export default function RAB() {
                                             value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.programId || ''}
                                             onChange={e => handleItemUpdate(editingItem.id, 'programId', e.target.value)}
                                         >
-                                            <option value="">Pilih Program...</option>
-                                            {programs?.filter(p => !p?.isDeleted)?.map(p => (
+                                            <option value="">Pilih Program Belanja...</option>
+                                            {expensePrograms?.filter(p => !p?.isDeleted)?.map(p => (
                                                 <option key={p.id} value={p.id}>{p.name}</option>
                                             )) || <option disabled>Tidak ada program tersedia</option>}
                                         </select>
