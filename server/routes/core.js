@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 const router = express.Router();
 
 const getPrisma = (req) => req.app.get('prisma');
@@ -259,21 +260,53 @@ router.get('/users', async (req, res) => {
 
 router.post('/users', async (req, res) => {
     try {
-        const data = await getPrisma(req).user.create({ data: req.body });
+        const { username, password, name, role, unitId, fieldId, id } = req.body;
+        
+        // Secure Password Hashing
+        const hashedPassword = await bcrypt.hash(password || 'sikak123', 10);
+        
+        const data = await getPrisma(req).user.create({ 
+            data: { 
+                id, 
+                username, 
+                name, 
+                role, 
+                unitId: unitId || null, 
+                fieldId: fieldId || null,
+                password: hashedPassword
+            } 
+        });
         res.json({ data });
     } catch (error) {
+        console.error(`[Add User Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
 
 router.put('/users/:id', async (req, res) => {
     try {
+        const updateData = { ...req.body };
+        
+        // Remove password if empty to prevent overwriting with blank
+        if (updateData.password) {
+            updateData.password = await bcrypt.hash(updateData.password, 10);
+        } else {
+            delete updateData.password;
+        }
+
+        // Clean up ID tracking
+        delete updateData.id;
+
         const data = await getPrisma(req).user.update({
             where: { id: req.params.id },
-            data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
+            data: { 
+                ...updateData, 
+                isDeleted: updateData.isDeleted !== undefined ? updateData.isDeleted : undefined 
+            }
         });
         res.json({ data });
     } catch (error) {
+        console.error(`[Update User Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });

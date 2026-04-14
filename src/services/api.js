@@ -290,6 +290,15 @@ export const api = {
                 case 'DELETE_BOS_POS':
                     await syncItem('bos-pos', payload, null, 'DELETE');
                     break;
+                case 'ADD_USER':
+                    await syncItem('users', null, payload, 'POST');
+                    break;
+                case 'EDIT_USER':
+                    await syncItem('users', payload.id, payload);
+                    break;
+                case 'DELETE_USER':
+                    await syncItem('users', payload, null, 'DELETE');
+                    break;
                 case 'RESTORE_FROM_TRASH': {
                     const { id, type } = payload;
                     const mapping = {
