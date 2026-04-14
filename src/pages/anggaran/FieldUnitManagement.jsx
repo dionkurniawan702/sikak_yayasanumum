@@ -142,10 +142,15 @@ export default function FieldUnitManagement() {
                 for (const incomeId of selectedIncomeItems) {
                     const settings = (unitDistributions[incomeId] || []).map(rule => {
                         const ruleDestId = rule.destType === 'field' ? (rule.destId || formData.fieldId) : id;
+                        
                         // Find descriptive name for phpMyAdmin/audit
-                        const destName = rule.destType === 'unit' 
-                            ? (units.find(u => u.id === ruleDestId)?.name || 'Direct Unit')
-                            : (fields.find(f => f.id === ruleDestId)?.name || 'Parent Field');
+                        let destName = '';
+                        if (rule.destType === 'unit') {
+                            // If it matches the unit we are currently editing/adding, use the name from the form
+                            destName = ruleDestId === id ? formData.name : (units.find(u => u.id === ruleDestId)?.name || 'Unit');
+                        } else {
+                            destName = fields.find(f => f.id === ruleDestId)?.name || 'Bidang';
+                        }
 
                         return {
                             ...rule,
