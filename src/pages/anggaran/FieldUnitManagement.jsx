@@ -160,6 +160,14 @@ export default function FieldUnitManagement() {
                         payload: { unitId: id, incomeItemId: incomeId, settings }
                     });
                 }
+
+                // 4. IMPORTANT: Fetch fresh data from server and refresh state
+                // This ensures that the local state matches exactly what is in the DB,
+                // preventing the "reverting to unit" bug caused by stale background sync.
+                const freshData = await api.fetchAllData();
+                if (freshData) {
+                    dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+                }
             }
 
             setIsSaved(true);

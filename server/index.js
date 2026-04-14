@@ -265,6 +265,9 @@ app.post('/api/sync', async (req, res) => {
                             }
                             if (model === 'distributionSetting') {
                                 cleanItem.percentage = cleanItem.percentage ? parseFloat(cleanItem.percentage) : 0;
+                                // Preserve or default distribution columns
+                                cleanItem.destType = cleanItem.destType || 'unit';
+                                cleanItem.destId = cleanItem.destId || null;
                             }
                             if (model === 'field') {
                                 delete cleanItem.fieldId;

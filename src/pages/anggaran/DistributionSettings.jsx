@@ -78,6 +78,13 @@ export default function DistributionSettings() {
                     settings: tempSettings
                 }
             });
+
+            // 3. Fetch fresh data from server and refresh state
+            const freshData = await api.fetchAllData();
+            if (freshData) {
+                dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+            }
+
             alert('Pengaturan berhasil disimpan ke database!');
         } catch (err) {
             alert('Gagal menyimpan: ' + err.message);
