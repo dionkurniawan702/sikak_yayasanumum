@@ -809,6 +809,83 @@ export default function RAB() {
                         </div>
                     </div>
 
+                    {/* Field-Specific Allocation Reference Panel (Special for SDM, Pembangunan, Sarpras) */}
+                    {activeTab === 'EXPENSE' && selectedUnitId.startsWith('FIELD-') && (
+                        <div className="mb-8 space-y-4 animate-in slide-in-from-top-4 duration-500">
+                            {(() => {
+                                const targetItemNames = ['Penggajian', 'Gedung', 'Perawatan Sarpras dan Bangunan'];
+                                const targetItems = filteredExpenseItems.filter(ei => 
+                                    targetItemNames.some(tn => ei.name.toLowerCase().includes(tn.toLowerCase()))
+                                );
+
+                                if (targetItems.length === 0) return null;
+
+                                return (
+                                    <div className="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden ring-4 ring-blue-100/20">
+                                        <div className="absolute top-0 right-0 p-8 opacity-10">
+                                            <Database size={120} />
+                                        </div>
+                                        
+                                        <div className="relative z-10">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="p-2 bg-white/20 rounded-xl backdrop-blur-md">
+                                                    <Info size={18} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-lg font-black tracking-tight uppercase italic">Referensi Alokasi Sumber Dana</h4>
+                                                    <p className="text-[10px] font-bold opacity-70 uppercase tracking-widest">Transparansi kontribusi unit untuk anggaran terpusat</p>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                                {targetItems.map(item => {
+                                                    const breakdown = rapData.itemSourceBreakdown?.[item.id] || {};
+                                                    const totalAllocated = rapData.itemAllocations?.[item.id] || 0;
+                                                    
+                                                    if (totalAllocated === 0) return null;
+
+                                                    return (
+                                                        <div key={item.id} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 hover:bg-white/20 transition-all group">
+                                                            <div className="flex justify-between items-start mb-4">
+                                                                <h5 className="font-black text-sm uppercase tracking-tight text-blue-100">{item.name}</h5>
+                                                                <span className="text-[10px] font-black bg-blue-500/50 px-3 py-1 rounded-full">{formatRupiah(totalAllocated)}</span>
+                                                            </div>
+                                                            
+                                                            <div className="space-y-2 mt-4 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar-mini">
+                                                                {Object.entries(breakdown).length > 0 ? (
+                                                                    Object.entries(breakdown).map(([uId, amount]) => (
+                                                                        <div key={uId} className="flex justify-between items-center text-[11px]">
+                                                                            <span className="font-medium opacity-60">
+                                                                                {units.find(u => u.id === uId)?.name || uId}
+                                                                            </span>
+                                                                            <span className="font-black tracking-tighter">{formatRupiah(amount)}</span>
+                                                                        </div>
+                                                                    ))
+                                                                ) : (
+                                                                    <p className="text-[10px] italic opacity-50">Tidak ada rincian unit...</p>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="mt-4 pt-4 border-t border-white/10 flex justify-between items-end">
+                                                                <div className="w-full bg-white/10 h-1 rounded-full overflow-hidden">
+                                                                    <div 
+                                                                        className="h-full bg-emerald-400" 
+                                                                        style={{ width: '100%' }}
+                                                                    />
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    )}
+
+
                     {activeTab !== 'REVIEW' ? (
                         <div className="overflow-y-auto max-h-[600px] border-2 border-slate-200 rounded-[2.5rem] shadow-xl bg-white relative scrollbar-thin scrollbar-thumb-slate-200">
                             <table className="w-full text-left border-collapse">

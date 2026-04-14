@@ -40,7 +40,8 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
     const results = {
         totalTarget: 0,
         incomeTotals: {}, // incomeItemId -> amount
-        itemAllocations: {} // expenseItemId -> amount
+        itemAllocations: {}, // expenseItemId -> amount
+        itemSourceBreakdown: {} // NEW: { [expenseItemId]: { [unitId]: amount } }
     };
 
     // 4. Calculate distributions
@@ -73,12 +74,16 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
 
                 if (rules.length === 0) {
                     // No rules -> 100% stays at unit (unallocated expense item)
-                    // In Foundation mode, we count this towards 'unallocated'
+                    const exId = 'unallocated';
+
                     if (!targetUnitId && !targetFieldId) {
-                        results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
+                        results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + amount;
                     } else if (targetUnitId && targetUnitId == student.unitId) {
                         results.totalTarget += amount;
-                        results.itemAllocations['unallocated'] = (results.itemAllocations['unallocated'] || 0) + amount;
+                        results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + amount;
+                        // Track breakdown
+                        if (!results.itemSourceBreakdown[exId]) results.itemSourceBreakdown[exId] = {};
+                        results.itemSourceBreakdown[exId][student.unitId] = (results.itemSourceBreakdown[exId][student.unitId] || 0) + amount;
                     }
                 } else {
                     rules.forEach(rule => {
@@ -99,9 +104,18 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                         } else if (destType === 'unit' && targetUnitId == destId) {
                             results.totalTarget += share;
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
+                            
+                            // Track breakdown
+                            if (!results.itemSourceBreakdown[exId]) results.itemSourceBreakdown[exId] = {};
+                            results.itemSourceBreakdown[exId][student.unitId] = (results.itemSourceBreakdown[exId][student.unitId] || 0) + share;
+
                         } else if (destType === 'field' && targetFieldId == destId) {
                             results.totalTarget += share;
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
+
+                            // Track breakdown
+                            if (!results.itemSourceBreakdown[exId]) results.itemSourceBreakdown[exId] = {};
+                            results.itemSourceBreakdown[exId][student.unitId] = (results.itemSourceBreakdown[exId][student.unitId] || 0) + share;
                         }
                     });
                 }
