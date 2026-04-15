@@ -1389,7 +1389,14 @@ export default function RAB() {
                                                 onChange={e => handleItemUpdate(editingItem.id, 'targetUnitId', e.target.value)}
                                             >
                                                 <option value="">Pilih Unit Penerima Manfaat...</option>
-                                                {units.filter(u => !u.isDeleted && (u.fieldId === selectedUnitId.replace('FIELD-', '') || !u.fieldId)).map(u => (
+                                                {(() => {
+                                                    const fieldId = selectedUnitId.replace('FIELD-', '');
+                                                    // First try units that belong to this field
+                                                    const fieldUnits = units.filter(u => !u.isDeleted && u.fieldId === fieldId);
+                                                    // Fallback: show all active units if no units are linked to this field
+                                                    const displayUnits = fieldUnits.length > 0 ? fieldUnits : units.filter(u => !u.isDeleted);
+                                                    return displayUnits;
+                                                })().map(u => (
                                                     <option key={u.id} value={u.id}>{u.name}</option>
                                                 ))}
                                             </select>
