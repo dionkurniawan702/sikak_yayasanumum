@@ -1437,7 +1437,7 @@ export default function RAB() {
 
                             {/* Section 2: Calculation (Volume, Price, etc) */}
                             <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
                                         <input 
@@ -1471,12 +1471,24 @@ export default function RAB() {
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
                                         <input 
-                                            type="number"
+                                            type="text"
+                                            inputMode="numeric"
                                             className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'harga', e.target.value)}
+                                            value={(() => {
+                                                const raw = currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || 0;
+                                                return raw ? Number(raw).toLocaleString('id-ID') : '';
+                                            })()}
+                                            onChange={e => {
+                                                const numeric = e.target.value.replace(/\D/g, '');
+                                                handleItemUpdate(editingItem.id, 'harga', numeric ? parseFloat(numeric) : 0);
+                                            }}
                                             placeholder="0"
                                         />
+                                        {(currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || 0) > 0 && (
+                                            <p className="text-[9px] font-bold text-emerald-600 px-1">
+                                                Rp {Number(currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || 0).toLocaleString('id-ID')}
+                                            </p>
+                                        )}
                                     </div>
                                 </div>
                             </div>
@@ -1497,10 +1509,17 @@ export default function RAB() {
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                     {months.map(m => {
                                         const mData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
+                                        const jumlahVal = parseFloat(mData.jumlah) || 0;
                                         return (
-                                            <div key={m.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex flex-col gap-3">
+                                            <div key={m.id} className={`p-4 rounded-2xl border flex flex-col gap-3 transition-all ${
+                                                jumlahVal > 0 
+                                                    ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                                                    : 'bg-slate-50 border-slate-100'
+                                            }`}>
                                                 <div className="flex items-center justify-between">
-                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.label}</span>
+                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                        jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
+                                                    }`}>{m.label}</span>
                                                     <input 
                                                         type="checkbox"
                                                         checked={mData.m}
@@ -1508,17 +1527,63 @@ export default function RAB() {
                                                         className="w-4 h-4 rounded text-blue-600"
                                                     />
                                                 </div>
+                                                {/* Formatted rupiah input */}
                                                 <input 
-                                                    type="number"
-                                                    className="w-full bg-transparent font-black text-slate-700 outline-none border-b border-dashed border-slate-200 focus:border-blue-500 pb-1"
-                                                    value={mData.jumlah || ''}
-                                                    onChange={e => handleMonthlyUpdate(editingItem.id, m.id, 'jumlah', parseFloat(e.target.value) || 0)}
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    className={`w-full bg-transparent font-black text-slate-800 outline-none border-b-2 border-dashed pb-1 transition-all text-right ${
+                                                        jumlahVal > 0 
+                                                            ? 'border-blue-400 text-blue-800' 
+                                                            : 'border-slate-200 focus:border-blue-500'
+                                                    }`}
+                                                    value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
+                                                    onChange={e => {
+                                                        const numeric = e.target.value.replace(/\D/g, '');
+                                                        handleMonthlyUpdate(editingItem.id, m.id, 'jumlah', numeric ? parseFloat(numeric) : 0);
+                                                    }}
                                                     placeholder="0"
                                                 />
+                                                {/* Per-month formatted hint */}
+                                                {jumlahVal > 0 && (
+                                                    <span className="text-[9px] font-bold text-blue-500 text-right">
+                                                        Rp {jumlahVal.toLocaleString('id-ID')}
+                                                    </span>
+                                                )}
                                             </div>
                                         );
                                     })}
                                 </div>
+
+                                {/* Live Running Total */}
+                                {(() => {
+                                    const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
+                                    const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (parseFloat(m?.jumlah) || 0), 0);
+                                    const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0).length;
+                                    const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
+                                    return (
+                                        <div className={`flex items-center justify-between px-6 py-4 rounded-2xl ${
+                                            monthlyTotal > 0 ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-slate-100 border border-dashed border-slate-300'
+                                        }`}>
+                                            <div className="flex items-center gap-3">
+                                                <div className={`w-2 h-2 rounded-full ${ monthlyTotal > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400' }`} />
+                                                <div>
+                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Rincian Bulan</p>
+                                                    <p className="text-[10px] text-slate-400">{activeMonths} bulan diisi</p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right">
+                                                <p className={`text-xl font-black tabular-nums ${ monthlyTotal > 0 ? 'text-emerald-700' : 'text-slate-400' }`}>
+                                                    Rp {monthlyTotal.toLocaleString('id-ID')}
+                                                </p>
+                                                {itemTotal > 0 && monthlyTotal !== itemTotal && (
+                                                    <p className="text-[9px] font-bold text-amber-600">
+                                                        ⚠ Beda {formatRupiah(Math.abs(itemTotal - monthlyTotal))} dari total item
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
 
