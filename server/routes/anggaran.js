@@ -722,7 +722,87 @@ createGenericRoutes('class-groups', 'classGroup');
 createGenericRoutes('positions', 'position');
 createGenericRoutes('student-statuses', 'studentStatus');
 createGenericRoutes('parent-statuses', 'parentStatus');
-createGenericRoutes('rab-plans', 'rabPlan');
+// --- RAB PLANS (Custom upsert - DO NOT use createGenericRoutes which only uses .create()) ---
+router.get('/rab-plans', async (req, res) => {
+    try {
+        const data = await getPrisma(req).rabPlan.findMany();
+        res.json({ data });
+    } catch (error) {
+        console.error('[RAB Plans GET Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/rab-plans', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const payload = req.body;
+
+        if (!payload.id) {
+            return res.status(400).json({ error: 'RAB Plan harus memiliki ID.' });
+        }
+
+        // Sanitize JSON fields
+        const cleanPayload = {
+            id:             payload.id,
+            academicYearId: payload.academicYearId || null,
+            unitId:         payload.unitId || null,
+            fieldId:        payload.fieldId || null,
+            income:         typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
+            expense:        typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
+            status:         payload.status || 'DRAFT',
+            rejectionReason: payload.rejectionReason || null,
+            notified:       payload.notified ?? false,
+            updatedAt:      payload.updatedAt ? new Date(payload.updatedAt) : new Date(),
+            updatedBy:      payload.updatedBy || null,
+        };
+
+        const item = await prisma.rabPlan.upsert({
+            where:  { id: cleanPayload.id },
+            update: { ...cleanPayload, id: undefined },
+            create: cleanPayload,
+        });
+
+        console.log(`[RAB Plan UPSERT] ID: ${item.id} | Status: ${item.status}`);
+        res.json({ data: item });
+    } catch (error) {
+        console.error('[RAB Plans POST/Upsert Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/rab-plans/:id', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const id = req.params.id;
+        const payload = req.body;
+
+        const cleanPayload = {
+            id,
+            academicYearId: payload.academicYearId || null,
+            unitId:         payload.unitId || null,
+            fieldId:        payload.fieldId || null,
+            income:         typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
+            expense:        typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
+            status:         payload.status || 'DRAFT',
+            rejectionReason: payload.rejectionReason || null,
+            notified:       payload.notified ?? false,
+            updatedAt:      payload.updatedAt ? new Date(payload.updatedAt) : new Date(),
+            updatedBy:      payload.updatedBy || null,
+        };
+
+        const item = await prisma.rabPlan.upsert({
+            where:  { id },
+            update: { ...cleanPayload, id: undefined },
+            create: cleanPayload,
+        });
+
+        res.json({ data: item });
+    } catch (error) {
+        console.error('[RAB Plans PUT Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
 createGenericRoutes('bos-stages', 'bosStage');
 createGenericRoutes('bos-pos', 'bosPos');
 
