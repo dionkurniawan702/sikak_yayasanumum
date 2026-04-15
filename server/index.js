@@ -711,6 +711,31 @@ const ensureFundSources = async () => {
     }
 };
 
+const ensureAcademicYears = async () => {
+    const requiredYears = [
+        { name: '2023/2024', isCurrent: false },
+        { name: '2024/2025', isCurrent: false },
+        { name: '2025/2026', isCurrent: false },
+        { name: '2026/2027', isCurrent: false },
+        { name: '2027/2028', isCurrent: false },
+    ];
+
+    try {
+        const client = getPrisma();
+        console.log('[Seed] Ensuring academic years exist...');
+        for (const y of requiredYears) {
+            await client.academicYear.upsert({
+                where: { name: y.name },
+                update: {},  // don't overwrite isCurrent if user changed it
+                create: { name: y.name, isCurrent: y.isCurrent }
+            });
+        }
+        console.log('[Seed] Academic years check complete.');
+    } catch (error) {
+        console.error(`[Seed Error] Academic years: ${error.message}`);
+    }
+};
+
 // Server Listening with Robust Error Handling
 const ensureRabPlansColumns = async () => {
     try {
@@ -769,6 +794,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
         try {
             await ensureSoftDeleteColumns();
             await ensureFundSources();
+            await ensureAcademicYears();
             await ensureDistributionColumns();
             await ensureRabPlansColumns();
         } catch (err) {

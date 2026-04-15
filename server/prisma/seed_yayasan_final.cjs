@@ -152,8 +152,10 @@ async function main() {
     // 5. DATA MASTER SUPPORT (YEARS, GROUPS, POSITIONS)
     const academicYears = [
         { name: '2023/2024', isCurrent: false },
-        { name: '2024/2025', isCurrent: true },
-        { name: '2025/2026', isCurrent: false }
+        { name: '2024/2025', isCurrent: false },
+        { name: '2025/2026', isCurrent: false },
+        { name: '2026/2027', isCurrent: true },
+        { name: '2027/2028', isCurrent: false }
     ];
     console.log('Seeding Academic Years...');
     for (const y of academicYears) {
