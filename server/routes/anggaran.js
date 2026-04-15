@@ -738,24 +738,39 @@ router.post('/rab-plans', async (req, res) => {
         const prisma = getPrisma(req);
         const payload = req.body;
 
+        console.log('[RAB Plan POST] Received payload:', JSON.stringify({
+            id: payload.id,
+            academicYearId: payload.academicYearId,
+            unitId: payload.unitId,
+            fieldId: payload.fieldId,
+            status: payload.status,
+            hasIncome: !!payload.income,
+            hasExpense: !!payload.expense,
+        }));
+
         if (!payload.id) {
             return res.status(400).json({ error: 'RAB Plan harus memiliki ID.' });
         }
 
-        // Sanitize JSON fields
+        if (!payload.academicYearId) {
+            return res.status(400).json({ error: 'RAB Plan harus memiliki academicYearId.' });
+        }
+
+        // Sanitize - note: updatedAt is omitted here because Prisma handles it via @updatedAt
         const cleanPayload = {
-            id:             payload.id,
-            academicYearId: payload.academicYearId || null,
-            unitId:         payload.unitId || null,
-            fieldId:        payload.fieldId || null,
-            income:         typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
-            expense:        typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
-            status:         payload.status || 'DRAFT',
+            id:              payload.id,
+            academicYearId:  payload.academicYearId, // required, NOT null
+            unitId:          payload.unitId  || null,
+            fieldId:         payload.fieldId || null,
+            income:          typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
+            expense:         typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
+            status:          payload.status || 'DRAFT',
             rejectionReason: payload.rejectionReason || null,
-            notified:       payload.notified ?? false,
-            updatedAt:      payload.updatedAt ? new Date(payload.updatedAt) : new Date(),
-            updatedBy:      payload.updatedBy || null,
+            notified:        payload.notified ?? false,
+            updatedBy:       payload.updatedBy || null,
         };
+
+        console.log('[RAB Plan POST] Clean payload to upsert:', JSON.stringify(cleanPayload));
 
         const item = await prisma.rabPlan.upsert({
             where:  { id: cleanPayload.id },
@@ -763,11 +778,11 @@ router.post('/rab-plans', async (req, res) => {
             create: cleanPayload,
         });
 
-        console.log(`[RAB Plan UPSERT] ID: ${item.id} | Status: ${item.status}`);
+        console.log(`[RAB Plan UPSERT SUCCESS] ID: ${item.id} | Status: ${item.status}`);
         res.json({ data: item });
     } catch (error) {
-        console.error('[RAB Plans POST/Upsert Error]', error.message);
-        res.status(500).json({ error: error.message });
+        console.error('[RAB Plans POST/Upsert Error]', error.message, error.code);
+        res.status(500).json({ error: error.message, code: error.code });
     }
 });
 
@@ -777,18 +792,21 @@ router.put('/rab-plans/:id', async (req, res) => {
         const id = req.params.id;
         const payload = req.body;
 
+        if (!payload.academicYearId) {
+            return res.status(400).json({ error: 'RAB Plan harus memiliki academicYearId.' });
+        }
+
         const cleanPayload = {
             id,
-            academicYearId: payload.academicYearId || null,
-            unitId:         payload.unitId || null,
-            fieldId:        payload.fieldId || null,
-            income:         typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
-            expense:        typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
-            status:         payload.status || 'DRAFT',
+            academicYearId:  payload.academicYearId,
+            unitId:          payload.unitId  || null,
+            fieldId:         payload.fieldId || null,
+            income:          typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
+            expense:         typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
+            status:          payload.status || 'DRAFT',
             rejectionReason: payload.rejectionReason || null,
-            notified:       payload.notified ?? false,
-            updatedAt:      payload.updatedAt ? new Date(payload.updatedAt) : new Date(),
-            updatedBy:      payload.updatedBy || null,
+            notified:        payload.notified ?? false,
+            updatedBy:       payload.updatedBy || null,
         };
 
         const item = await prisma.rabPlan.upsert({
@@ -797,10 +815,11 @@ router.put('/rab-plans/:id', async (req, res) => {
             create: cleanPayload,
         });
 
+        console.log(`[RAB Plan PUT SUCCESS] ID: ${item.id}`);
         res.json({ data: item });
     } catch (error) {
-        console.error('[RAB Plans PUT Error]', error.message);
-        res.status(500).json({ error: error.message });
+        console.error('[RAB Plans PUT Error]', error.message, error.code);
+        res.status(500).json({ error: error.message, code: error.code });
     }
 });
 createGenericRoutes('bos-stages', 'bosStage');

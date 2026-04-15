@@ -712,6 +712,50 @@ const ensureFundSources = async () => {
 };
 
 // Server Listening with Robust Error Handling
+const ensureRabPlansColumns = async () => {
+    try {
+        const client = getPrisma();
+        const tableVariations = ['rab_plans', 'RabPlan', 'rabplan'];
+        let targetTable = null;
+
+        for (const t of tableVariations) {
+            try {
+                await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
+                targetTable = t;
+                break;
+            } catch (e) {}
+        }
+
+        if (!targetTable) {
+            console.warn('[Self-Healing] rab_plans table not found, will rely on prisma db push.');
+            return;
+        }
+
+        const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+        const hasCol = (name) => columns.some(c => (c.Field || c.field) === name);
+
+        const toAdd = [
+            { name: 'notified',        sql: `ADD COLUMN notified BOOLEAN NOT NULL DEFAULT FALSE` },
+            { name: 'updatedBy',       sql: `ADD COLUMN updatedBy VARCHAR(255)` },
+            { name: 'rejectionReason', sql: `ADD COLUMN rejectionReason TEXT` },
+            { name: 'fieldId',         sql: `ADD COLUMN fieldId VARCHAR(255)` },
+            { name: 'unitId',          sql: `ADD COLUMN unitId VARCHAR(255)` },
+            { name: 'status',          sql: `ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'` },
+        ];
+
+        for (const col of toAdd) {
+            if (!hasCol(col.name)) {
+                console.log(`[Self-Healing] Adding ${col.name} column to ${targetTable}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ${col.sql}`);
+            }
+        }
+
+        console.log(`[Self-Healing] rab_plans columns verified.`);
+    } catch (error) {
+        console.error(`[Self-Healing Error] rab_plans columns: ${error.message}`);
+    }
+};
+
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n\n************************************************`);
     console.log(`[SUCCESS] SIKAK Yayasan Backend is now ACTIVE!`);
@@ -726,6 +770,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureSoftDeleteColumns();
             await ensureFundSources();
             await ensureDistributionColumns();
+            await ensureRabPlansColumns();
         } catch (err) {
             console.error(`[Background Tasks Error] ${err.message}`);
         }
