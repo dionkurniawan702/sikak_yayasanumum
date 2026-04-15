@@ -851,7 +851,7 @@ export default function RAB() {
                                                 </div>
                                             </div>
 
-                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                            <div className="grid grid-cols-1 gap-5">
                                                 {targetItems.map(item => {
                                                     const rapBreakdown = rapData.itemSourceBreakdown?.[item.id] || {};
                                                     const rabBreakdown = rabUnitBreakdown[item.id] || {};
@@ -866,45 +866,72 @@ export default function RAB() {
                                                     ]));
 
                                                     return (
-                                                        <div key={item.id} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 hover:bg-white/20 transition-all group">
-                                                            <div className="flex justify-between items-start mb-6">
-                                                                <h5 className="font-black text-sm uppercase tracking-tight text-blue-100">{item.name}</h5>
-                                                                <div className="text-right">
-                                                                    <p className="text-[10px] font-black opacity-50 uppercase tracking-widest">Total Alokasi (RAP)</p>
-                                                                    <span className="text-xs font-black bg-blue-500/50 px-3 py-1 rounded-full">{formatRupiah(totalAllocated)}</span>
+                                                        <div key={item.id} className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 hover:bg-white/20 transition-all">
+                                                            {/* Item Header */}
+                                                            <div className="flex justify-between items-center mb-5">
+                                                                <h5 className="font-black text-base uppercase tracking-tight text-white">{item.name}</h5>
+                                                                <div className="flex items-center gap-3">
+                                                                    <span className="text-[10px] font-black opacity-50 uppercase tracking-widest">Total Alokasi RAP:</span>
+                                                                    <span className="text-sm font-black bg-blue-500/50 px-4 py-1.5 rounded-full whitespace-nowrap">{formatRupiah(totalAllocated)}</span>
                                                                 </div>
                                                             </div>
                                                             
-                                                            <div className="space-y-4 mt-4 max-h-[180px] overflow-y-auto pr-2 custom-scrollbar-mini">
-                                                                <div className="grid grid-cols-4 text-[9px] font-black uppercase tracking-widest opacity-40 mb-2 border-b border-white/10 pb-2">
-                                                                    <div className="col-span-1">Unit</div>
-                                                                    <div className="text-right">Setoran</div>
-                                                                    <div className="text-right">Rencana</div>
-                                                                    <div className="text-right">Sisa</div>
-                                                                </div>
-                                                                
-                                                                {allUnitIds.length > 0 ? (
-                                                                    allUnitIds.map(uId => {
-                                                                        const rapAmount = rapBreakdown[uId] || 0;
-                                                                        const rabAmount = rabBreakdown[uId] || 0;
-                                                                        const unitBalance = rapAmount - rabAmount;
-                                                                        
-                                                                        return (
-                                                                            <div key={uId} className="grid grid-cols-4 items-center text-[10px] py-1 border-b border-white/5 last:border-0">
-                                                                                <div className="font-bold truncate" title={units.find(u => u.id === uId)?.name || uId}>
-                                                                                    {units.find(u => u.id === uId)?.name || uId}
-                                                                                </div>
-                                                                                <div className="text-right font-medium opacity-80">{formatRupiah(rapAmount)}</div>
-                                                                                <div className="text-right font-black text-emerald-300">{formatRupiah(rabAmount)}</div>
-                                                                                <div className={`text-right font-black ${unitBalance < 0 ? 'text-rose-400 animate-pulse' : 'text-blue-200'}`}>
-                                                                                    {formatRupiah(unitBalance)}
-                                                                                </div>
-                                                                            </div>
-                                                                        );
-                                                                    })
-                                                                ) : (
-                                                                    <p className="text-[10px] italic opacity-50">Tidak ada rincian unit...</p>
-                                                                )}
+                                                            {/* Table */}
+                                                            <div className="overflow-hidden rounded-2xl border border-white/10">
+                                                                <table className="w-full text-sm">
+                                                                    <thead>
+                                                                        <tr className="border-b border-white/10 text-[10px] font-black uppercase tracking-widest opacity-50">
+                                                                            <th className="text-left px-4 py-3 w-1/4">Unit</th>
+                                                                            <th className="text-right px-4 py-3">Setoran (RAP)</th>
+                                                                            <th className="text-right px-4 py-3">Rencana (RAB)</th>
+                                                                            <th className="text-right px-4 py-3">Sisa</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {allUnitIds.length > 0 ? (
+                                                                            allUnitIds.map(uId => {
+                                                                                const rapAmount = rapBreakdown[uId] || 0;
+                                                                                const rabAmount = rabBreakdown[uId] || 0;
+                                                                                const unitBalance = rapAmount - rabAmount;
+                                                                                const unitName = units.find(u => u.id === uId)?.name || uId;
+                                                                                
+                                                                                return (
+                                                                                    <tr key={uId} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
+                                                                                        <td className="px-4 py-3 font-bold text-white/90 whitespace-nowrap">{unitName}</td>
+                                                                                        <td className="px-4 py-3 text-right font-semibold text-white/70 whitespace-nowrap tabular-nums">{formatRupiah(rapAmount)}</td>
+                                                                                        <td className="px-4 py-3 text-right font-black text-emerald-300 whitespace-nowrap tabular-nums">{formatRupiah(rabAmount)}</td>
+                                                                                        <td className={`px-4 py-3 text-right font-black whitespace-nowrap tabular-nums ${unitBalance < 0 ? 'text-rose-400 animate-pulse' : 'text-blue-200'}`}>
+                                                                                            {formatRupiah(unitBalance)}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                );
+                                                                            })
+                                                                        ) : (
+                                                                            <tr>
+                                                                                <td colSpan={4} className="px-4 py-6 text-center text-sm italic opacity-50">Tidak ada rincian unit...</td>
+                                                                            </tr>
+                                                                        )}
+                                                                    </tbody>
+                                                                    {allUnitIds.length > 0 && (
+                                                                        <tfoot>
+                                                                            <tr className="border-t border-white/20 bg-white/5">
+                                                                                <td className="px-4 py-3 text-[10px] font-black uppercase tracking-widest opacity-50">Total</td>
+                                                                                <td className="px-4 py-3 text-right font-black text-white whitespace-nowrap tabular-nums">
+                                                                                    {formatRupiah(allUnitIds.reduce((s, uId) => s + (rapBreakdown[uId] || 0), 0))}
+                                                                                </td>
+                                                                                <td className="px-4 py-3 text-right font-black text-emerald-300 whitespace-nowrap tabular-nums">
+                                                                                    {formatRupiah(allUnitIds.reduce((s, uId) => s + (rabBreakdown[uId] || 0), 0))}
+                                                                                </td>
+                                                                                <td className={`px-4 py-3 text-right font-black whitespace-nowrap tabular-nums ${
+                                                                                    totalAllocated - allUnitIds.reduce((s, uId) => s + (rabBreakdown[uId] || 0), 0) < 0 
+                                                                                    ? 'text-rose-400' : 'text-blue-200'
+                                                                                }`}>
+                                                                                    {formatRupiah(totalAllocated - allUnitIds.reduce((s, uId) => s + (rabBreakdown[uId] || 0), 0))}
+                                                                                </td>
+                                                                            </tr>
+                                                                        </tfoot>
+                                                                    )}
+                                                                </table>
                                                             </div>
                                                         </div>
                                                     );
