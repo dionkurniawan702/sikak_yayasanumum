@@ -69,7 +69,7 @@ export default function RAB() {
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [editingItem, setEditingItem] = useState(null); // { id, name, sourceOfFunds }
     const [isAddingItem, setIsAddingItem] = useState(false);
-    const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '' });
+    const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
 
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
@@ -215,9 +215,15 @@ export default function RAB() {
         if (selectedUnitId === 'FOUNDATION') return incomeItems;
         
         const distributionSettings = state.distributionSettings || [];
+        const isField = selectedUnitId.startsWith('FIELD-');
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
+
         const activeIds = new Set(
             distributionSettings
-                .filter(s => s.unitId === selectedUnitId)
+                .filter(s => {
+                    if (isField) return s.destId === fieldId;
+                    return s.unitId === selectedUnitId;
+                })
                 .map(s => s.incomeItemId)
         );
         return (incomeItems || []).filter(ii => activeIds.has(ii.id));
@@ -395,7 +401,7 @@ export default function RAB() {
             name: newItemData.name,
             unitId: unitId,
             fieldId: fieldId,
-            sourceOfFunds: incomeItem?.name || 'Umum',
+            sourceOfFunds: newItemData.sourceOfFunds,
             isDeleted: false
         };
 
@@ -1674,15 +1680,40 @@ export default function RAB() {
                                     onChange={e => setNewItemData({ ...newItemData, name: e.target.value })}
                                 />
                             </div>
+                            <div className="space-y-4">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Sumber Dana</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <button 
+                                        onClick={() => setNewItemData(prev => ({ ...prev, sourceOfFunds: 'Yayasan' }))}
+                                        className={`p-4 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
+                                            newItemData.sourceOfFunds === 'Yayasan' ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        Yayasan
+                                    </button>
+                                    <button 
+                                        onClick={() => setNewItemData(prev => ({ ...prev, sourceOfFunds: 'BOS' }))}
+                                        className={`p-4 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
+                                            newItemData.sourceOfFunds === 'BOS' ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'
+                                        }`}
+                                    >
+                                        BOS
+                                    </button>
+                                </div>
+                            </div>
+
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Sumber Pendapatan</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Kaitan Pendapatan</label>
                                 <select 
                                     className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
                                     value={newItemData.incomeItemId}
                                     onChange={e => setNewItemData({ ...newItemData, incomeItemId: e.target.value })}
                                 >
-                                    <option value="">Pilih Sumber Dana...</option>
-                                    {filteredIncomeItems.map(ii => (
+                                    <option value="">Pilih Sumber...</option>
+                                    {filteredIncomeItems.filter(ii => {
+                                        if (newItemData.sourceOfFunds === 'BOS') return ii.name.toUpperCase().includes('BOS');
+                                        return !ii.name.toUpperCase().includes('BOS');
+                                    }).map(ii => (
                                         <option key={ii.id} value={ii.id}>{ii.name}</option>
                                     ))}
                                 </select>
