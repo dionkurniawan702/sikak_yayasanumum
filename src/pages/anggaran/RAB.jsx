@@ -605,7 +605,7 @@ export default function RAB() {
                             <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
                             <optgroup label="UNIT">
                                 {units.filter(u => !u.isDeleted).map(u => {
-                                    const isPending = rabPlans.some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                    const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
                                     return (
                                         <option key={u.id} value={u.id}>
                                             {u.name} {isPending ? '🔴' : ''}
@@ -615,7 +615,7 @@ export default function RAB() {
                             </optgroup>
                             <optgroup label="BIDANG / LAPANGAN">
                                 {fields.map(f => {
-                                    const isPending = rabPlans.some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                    const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
                                     return (
                                         <option key={f.id} value={`FIELD-${f.id}`}>
                                             {f.name} {isPending ? '🔴' : ''}

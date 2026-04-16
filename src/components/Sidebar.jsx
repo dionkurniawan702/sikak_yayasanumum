@@ -16,6 +16,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
     let menuItems = [];
 
+    const isSuperAdmin = currentUser?.role === 'superadmin';
     const isAdminField = currentUser?.role === 'admin_bidang';
     const isAdminUnit = currentUser?.role === 'admin_unit';
 
