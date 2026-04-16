@@ -15,7 +15,8 @@ export default function BudgetDashboard() {
         distributionSettings = [], 
         studentStatuses = [],
         budgets = [],
-        academicYears = []
+        academicYears = [],
+        rabPlans = []
     } = state;
 
     // Global Academic Year Persistence (ID-based)
@@ -127,11 +128,52 @@ export default function BudgetDashboard() {
         units.filter(u => !u.isDeleted).forEach(u => uRAB[u.id] = { total: 0, items: {} });
         fields.filter(f => !f.isDeleted).forEach(f => fRAB[f.id] = { total: 0, items: {} });
 
+        // 1. Process Consolidated RAB Plans (The main annual budget)
+        rabPlans.filter(p => p.status === 'APPROVED' && p.academicYearId === selectedAcademicYearId).forEach(plan => {
+            Object.entries(plan.expense || {}).forEach(([exId, detail]) => {
+                const amount = parseFloat(detail.total) || 0;
+                if (amount <= 0) return;
+
+                const exItem = expenseItems.find(e => e.id === exId);
+                const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase().trim();
+
+                const isFieldItem = (exItem && exItem.fieldId && !exItem.unitId) || 
+                                   itemName.includes('penggajian') || 
+                                   itemName.includes('pengembangan (umum)') ||
+                                   itemName.includes('honor') ||
+                                   itemName.includes('yayasan');
+
+                const targetFieldId = isFieldItem ? (exItem?.fieldId || plan.fieldId || fields[0]?.id) : plan.fieldId;
+
+                if (!isFieldItem && plan.unitId && uRAB[plan.unitId]) {
+                    uRAB[plan.unitId].total += amount;
+                    uRAB[plan.unitId].items[exId] = (uRAB[plan.unitId].items[exId] || 0) + amount;
+                } else if (targetFieldId && fRAB[targetFieldId]) {
+                    fRAB[targetFieldId].total += amount;
+                    if (!fRAB[targetFieldId].items[exId]) {
+                        fRAB[targetFieldId].items[exId] = { total: 0, sources: {} };
+                    }
+                    const fItem = fRAB[targetFieldId].items[exId];
+                    if (typeof fItem === 'number') {
+                        fRAB[targetFieldId].items[exId] = { total: fItem + amount, sources: {} };
+                    } else {
+                        fItem.total += amount;
+                        if (plan.unitId) {
+                            fItem.sources[plan.unitId] = (fItem.sources[plan.unitId] || 0) + amount;
+                        }
+                    }
+                }
+            });
+        });
+
+        // 2. Process Individual Budget Requests (Extra/Implementation requests)
         const startYear = parseInt(selectedAcademicYearName.split('-')[0]);
         const endYear = parseInt(selectedAcademicYearName.split('-')[1]);
 
         const approvedRequests = (state.budgetRequests || []).filter(r => {
             if (r.status !== 'APPROVED') return false;
+            // Only include if not already part of a plan (to avoid double counting if they are separate)
+            // For now, we'll keep them as cumulative unless the user says otherwise.
             const reqYear = parseInt(r.year);
             const reqMonth = parseInt(r.month);
             if (reqYear === startYear && reqMonth >= 7) return true;
@@ -172,7 +214,7 @@ export default function BudgetDashboard() {
         });
 
         return { unitRAB: uRAB, fieldRAB: fRAB };
-    }, [state.budgetRequests, units, fields, currentUser, selectedAcademicYearId, expenseItems]);
+    }, [state.budgetRequests, rabPlans, units, fields, currentUser, selectedAcademicYearId, expenseItems, selectedAcademicYearName]);
 
     // ========== Helpers ==========
     const getExpenseName = (id) => {
