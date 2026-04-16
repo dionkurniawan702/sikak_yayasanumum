@@ -57,6 +57,7 @@ export default function RAB() {
     // Filters & Selectors
     const [selectedYearId, setSelectedYearId] = useState('');
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
+    const [showAllYears, setShowAllYears] = useState(false);
     const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -624,6 +625,24 @@ export default function RAB() {
                         <option value="Yayasan">Yayasan</option>
                         <option value="BOS">BOS</option>
                     </select>
+
+                    <div className="flex flex-col gap-1">
+                        <select 
+                            className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
+                            value={selectedYearId}
+                            onChange={e => setSelectedYearId(e.target.value)}
+                        >
+                            {academicYears?.filter(y => y.isActive || y.id === selectedYearId || showAllYears).map(y => (
+                                <option key={y.id} value={y.id}>TA {y.name}</option>
+                            ))}
+                        </select>
+                        <button 
+                            onClick={() => setShowAllYears(!showAllYears)}
+                            className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-right mr-2 hover:underline"
+                        >
+                            {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
+                        </button>
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4">

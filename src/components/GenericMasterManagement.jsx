@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { api } from '../services/api';
 import { 
     Plus, Search, Edit2, Trash2, ChevronRight, 
-    AlertCircle, CheckCircle2 
+    AlertCircle, CheckCircle2, Eye, EyeOff, Star
 } from 'lucide-react';
 import { generateId } from '../utils/format';
 
@@ -86,6 +86,24 @@ export default function GenericMasterManagement({
         }
     };
 
+    const handleToggleActive = async (item) => {
+        if (item.isCurrent && item.isActive) {
+            setMessage({ type: 'error', text: 'Tahun ajaran aktif saat ini tidak dapat dinonaktifkan' });
+            setTimeout(() => setMessage(null), 3000);
+            return;
+        }
+
+        const updatedItem = { ...item, isActive: !item.isActive };
+        try {
+            dispatch({ type: `EDIT_${actionPrefix}`, payload: updatedItem });
+            await api.pushAction({ type: `EDIT_${actionPrefix}`, payload: updatedItem }, state);
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message });
+            // Rollback on failure
+            dispatch({ type: `EDIT_${actionPrefix}`, payload: item });
+        }
+    };
+
     return (
         <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">
             {/* Header Section */}
@@ -146,6 +164,9 @@ export default function GenericMasterManagement({
                             <tr className="bg-slate-50/50">
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider w-24">ID</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">{title}</th>
+                                {entity === 'academicYears' && (
+                                    <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                )}
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
                         </thead>
@@ -160,9 +181,33 @@ export default function GenericMasterManagement({
                                     <td className="px-8 py-5">
                                         <div className="flex items-center gap-3">
                                             <div className="w-2 h-2 rounded-full bg-blue-400 opacity-40 group-hover:opacity-100 transition-opacity" />
-                                            <span className="text-slate-900 font-bold group-hover:text-blue-600 transition-colors">{item.name}</span>
+                                            <div className="flex flex-col">
+                                                <span className="text-slate-900 font-bold group-hover:text-blue-600 transition-colors">{item.name}</span>
+                                                {item.isCurrent && (
+                                                    <span className="text-[10px] text-blue-600 font-black uppercase tracking-widest mt-0.5 flex items-center gap-1">
+                                                        <Star size={10} fill="currentColor" /> Tahun Berjalan
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
+                                    {entity === 'academicYears' && (
+                                        <td className="px-8 py-5">
+                                            <div className="flex justify-center">
+                                                <button 
+                                                    onClick={() => handleToggleActive(item)}
+                                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                                                        item.isActive 
+                                                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                                                            : 'bg-slate-50 text-slate-400 border border-slate-200'
+                                                    }`}
+                                                >
+                                                    {item.isActive ? <Eye size={12} /> : <EyeOff size={12} />}
+                                                    {item.isActive ? 'Aktif' : 'Non-Aktif'}
+                                                </button>
+                                            </div>
+                                        </td>
+                                    )}
                                     <td className="px-8 py-5">
                                         <div className="flex items-center justify-end gap-2">
                                             <button 

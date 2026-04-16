@@ -161,9 +161,9 @@ export const initialExpenseItems = [
 
 // Tahun Ajaran Awal
 export const initialAcademicYears = [
-    { id: 'AY-2024-2025', name: '2024-2025', startDate: '2024-07-01', endDate: '2025-06-30', isCurrent: false },
-    { id: 'AY-2025-2026', name: '2025-2026', startDate: '2025-07-01', endDate: '2026-06-30', isCurrent: true },
-    { id: 'AY-2026-2027', name: '2026-2027', startDate: '2026-07-01', endDate: '2027-06-30', isCurrent: false },
+    { id: 'AY-2024-2025', name: '2024-2025', startDate: '2024-07-01', endDate: '2025-06-30', isCurrent: false, isActive: true },
+    { id: 'AY-2025-2026', name: '2025-2026', startDate: '2025-07-01', endDate: '2026-06-30', isCurrent: true, isActive: true },
+    { id: 'AY-2026-2027', name: '2026-2027', startDate: '2026-07-01', endDate: '2027-06-30', isCurrent: false, isActive: true },
 ];
 
 // Status Siswa

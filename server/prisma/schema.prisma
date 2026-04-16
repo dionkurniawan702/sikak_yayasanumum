@@ -220,6 +220,7 @@ model AcademicYear {
   id        String   @id @default(uuid())
   name      String   @unique // e.g., 2023/2024
   isCurrent Boolean  @default(false)
+  isActive  Boolean  @default(true)
   isDeleted Boolean  @default(false)
 
   students  Student[]

@@ -8,7 +8,11 @@ export default function Budgeting() {
     const accounts = state.accounts.filter(a => !a.isDeleted);
     const budgets = state.budgets || [];
     
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const sortedYearsCurrent = [...(state.academicYears || [])].filter(ay => !ay.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
+    const initialYear = sortedYearsCurrent[0]?.name || new Date().getFullYear().toString();
+    
+    const [selectedYear, setSelectedYear] = useState(initialYear);
+    const [showAllYears, setShowAllYears] = useState(false);
     const [search, setSearch] = useState('');
     const [budgetData, setBudgetData] = useState({});
     const [isSaving, setIsSaving] = useState(false);
@@ -76,11 +80,23 @@ export default function Budgeting() {
                 </div>
                 <div className="flex items-center gap-4 bg-slate-50 px-6 py-3 rounded-2xl border border-slate-100 italic font-black text-xs text-slate-400">
                     TAHUN ANGGARAN:
-                    <select className="bg-transparent border-none text-blue-600 font-black focus:ring-0 cursor-pointer" value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                        <option value="2024">2024</option>
-                    </select>
+                    <div className="flex flex-col gap-1">
+                        <select 
+                            className="bg-transparent border-none text-blue-600 font-black focus:ring-0 cursor-pointer" 
+                            value={selectedYear} 
+                            onChange={e => setSelectedYear(e.target.value)}
+                        >
+                            {state.academicYears?.filter(y => y.isActive || y.name === selectedYear || showAllYears).map(y => (
+                                <option key={y.id} value={y.name}>{y.name}</option>
+                            ))}
+                        </select>
+                        <button 
+                            onClick={() => setShowAllYears(!showAllYears)}
+                            className="text-[8px] font-black text-blue-600 uppercase tracking-widest text-right hover:underline"
+                        >
+                            {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
+                        </button>
+                    </div>
                 </div>
             </div>
 

@@ -23,12 +23,10 @@ export default function BudgetDashboard() {
     const highestDbAy = sortedYears[0];
     const fallbackYear = `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`;
     const [selectedAcademicYear, setSelectedAcademicYear] = useState(highestDbAy ? highestDbAy.name : fallbackYear);
+    const [showAllYears, setShowAllYears] = useState(false);
     
-    const yearOptions = academicYears.filter(a => !a.isDeleted).map(a => a.name)
+    const yearOptions = academicYears.filter(a => !a.isDeleted && (a.isActive || a.name === selectedAcademicYear || showAllYears)).map(a => a.name)
         .sort((a, b) => b.localeCompare(a));
-    if (selectedAcademicYear && !yearOptions.includes(selectedAcademicYear)) {
-        yearOptions.push(selectedAcademicYear);
-    }
 
     const activeAcademicYear = useMemo(() => {
         return academicYears.find(y => y.name === selectedAcademicYear && !y.isDeleted);
@@ -424,15 +422,23 @@ export default function BudgetDashboard() {
                     <p className="text-slate-500 font-medium text-sm mt-1">Ringkasan Rencana Anggaran Pendapatan (RAP) vs Rencana Anggaran Belanja (RAB)</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <select
-                        className="budget-select"
-                        value={selectedAcademicYear}
-                        onChange={e => setSelectedAcademicYear(e.target.value)}
-                    >
-                        {yearOptions.map(y => (
-                            <option key={y} value={y}>{y}</option>
-                        ))}
-                    </select>
+                    <div className="flex flex-col gap-1">
+                        <select
+                            className="budget-select"
+                            value={selectedAcademicYear}
+                            onChange={e => setSelectedAcademicYear(e.target.value)}
+                        >
+                            {yearOptions.map(y => (
+                                <option key={y} value={y}>{y}</option>
+                            ))}
+                        </select>
+                        <button 
+                            onClick={() => setShowAllYears(!showAllYears)}
+                            className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-right mr-2 hover:underline"
+                        >
+                            {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
+                        </button>
+                    </div>
                     <button
                         onClick={exportToExcel}
                         className="budget-export-btn"

@@ -111,7 +111,8 @@ function loadState() {
                         name: newName,
                         startDate: (ay.startDate && !isNaN(new Date(ay.startDate))) ? ay.startDate : `${currentYear}-01-01`,
                         endDate: (ay.endDate && !isNaN(new Date(ay.endDate))) ? ay.endDate : `${currentYear}-12-31`,
-                        isCurrent: ay.isCurrent || false
+                        isCurrent: ay.isCurrent || false,
+                        isActive: ay.isActive !== undefined ? ay.isActive : true
                     };
                 });
             }
@@ -236,11 +237,11 @@ function appReducer(state, action) {
             }
 
             // Server Data Migration: Replace slash (/) with dash (-) in academic year names/IDs
-            if (newState.academicYears && Array.isArray(newState.academicYears)) {
                 newState.academicYears = newState.academicYears.map(ay => ({
                     ...ay,
                     id: ay.id ? ay.id.replace(/\//g, '-') : ay.id,
                     name: ay.name ? ay.name.replace(/\//g, '-') : ay.name,
+                    isActive: ay.isActive !== undefined ? ay.isActive : true
                 }));
             }
             if (newState.students && Array.isArray(newState.students)) {

@@ -635,7 +635,8 @@ const ensureSoftDeleteColumns = async () => {
         { name: 'ExpenseProgram', table: 'expense_programs' },
         { name: 'IncomeItem', table: 'income_items' },
         { name: 'ExpenseItem', table: 'expense_items' },
-        { name: 'Journal', table: 'journals' }
+        { name: 'Journal', table: 'journals' },
+        { name: 'AcademicYear', table: 'AcademicYear', columns: ['isActive'] }
     ];
 
     try {
@@ -658,6 +659,19 @@ const ensureSoftDeleteColumns = async () => {
                     if (!hasIsDeleted) {
                         console.log(`[Self-Healing] Adding isDeleted to ${tableName}...`);
                         await client.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
+                    }
+
+                    // Specific column checks for certain tables
+                    if (m.columns) {
+                        for (const colName of m.columns) {
+                            const hasCol = columns.some(c => c.Field === colName || c.field === colName);
+                            if (!hasCol) {
+                                console.log(`[Self-Healing] Adding ${colName} to ${tableName}...`);
+                                if (colName === 'isActive') {
+                                    await client.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isActive BOOLEAN DEFAULT TRUE`);
+                                }
+                            }
+                        }
                     }
                     success = true;
                     break;
@@ -726,8 +740,8 @@ const ensureAcademicYears = async () => {
         for (const y of requiredYears) {
             await client.academicYear.upsert({
                 where: { name: y.name },
-                update: {},  // don't overwrite isCurrent if user changed it
-                create: { name: y.name, isCurrent: y.isCurrent }
+                update: {},  // don't overwrite user settings
+                create: { name: y.name, isCurrent: y.isCurrent, isActive: true }
             });
         }
         console.log('[Seed] Academic years check complete.');

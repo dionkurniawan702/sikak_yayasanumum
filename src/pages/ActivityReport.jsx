@@ -91,8 +91,9 @@ export default function ActivityReport() {
                 </div>
                 <div className="flex gap-4 items-center">
                     <select className="form-select rounded-2xl border-slate-200 text-xs font-bold" value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-                        <option value="2026">Tahun 2026</option>
-                        <option value="2025">Tahun 2025</option>
+                        {state.academicYears?.filter(y => !y.isDeleted).map(y => (
+                            <option key={y.id} value={y.name}>Tahun {y.name}</option>
+                        ))}
                     </select>
                     <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
                         <FileSpreadsheet size={18} /> Export Excel
