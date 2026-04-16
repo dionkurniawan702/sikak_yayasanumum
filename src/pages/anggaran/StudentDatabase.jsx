@@ -19,6 +19,9 @@ export default function StudentDatabase() {
     const [statusFilter, setStatusFilter] = useState('all');
     const [showAllYears, setShowAllYears] = useState(false);
     
+    // Help calculate defaults for modal
+    const sortedYearsCurrent = [...(state.academicYears || [])].filter(ay => !ay.isDeleted).sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+    
     // Budget Locking Logic
     const getBudgetStatus = (unitId, yearId) => {
         if (!unitId || !yearId) return 'DRAFT';

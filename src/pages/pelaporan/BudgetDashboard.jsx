@@ -5,7 +5,7 @@ import { formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
 
 export default function BudgetDashboard() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const { 
         currentUser, 
         students = [], 

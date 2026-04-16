@@ -233,7 +233,7 @@ function appReducer(state, action) {
 
             // Initialize global year if not set
             if (!newState.globalAcademicYearId && newState.academicYears?.length > 0) {
-                const sorted = [...newState.academicYears].filter(y => !y.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
+                const sorted = [...newState.academicYears].filter(y => !y.isDeleted).sort((a, b) => (b.name || '').localeCompare(a.name || ''));
                 newState.globalAcademicYearId = sorted[0]?.id || newState.academicYears.find(y => y.isCurrent)?.id;
             }
 
