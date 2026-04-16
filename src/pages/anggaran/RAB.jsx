@@ -590,6 +590,231 @@ export default function RAB() {
         setShowStatusModal(false);
     };
 
+    const renderReviewView = () => (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                <div className="flex items-center gap-4 mb-6">
+                    <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+                        <ShieldCheck size={20} />
+                    </div>
+                    <div>
+                        <h4 className="font-black text-slate-900 uppercase tracking-tight italic">Review Pengajuan Unit</h4>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Daftar unit yang telah mengirimkan rancangan anggaran</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+                    {rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId).length === 0 ? (
+                        <div className="p-12 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                            <CheckCircle2 size={40} className="mx-auto text-emerald-400 mb-4 opacity-50" />
+                            <p className="font-black text-slate-400 text-xs uppercase tracking-widest italic">Tidak ada pengajuan yang perlu di-review!</p>
+                        </div>
+                    ) : (
+                        rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId).map(plan => {
+                            const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
+                            const total = Object.values(plan.expense || {}).reduce((sum, v) => sum + (v.total || 0), 0);
+                            return (
+                                <div key={plan.id} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex items-center justify-between hover:border-indigo-200 transition-all cursor-pointer">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-3 bg-white rounded-xl shadow-sm text-slate-400">
+                                            {plan.fieldId ? <Layers size={18} /> : <Building2 size={18} />}
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-slate-900 text-sm tracking-tight">{unit?.name}</p>
+                                            <p className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full inline-block mt-1">
+                                                TOTAL: {formatRupiah(total)}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleApproval(plan.id, 'APPROVED');
+                                            }}
+                                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 hover:scale-105 active:scale-95 transition-all"
+                                        >
+                                            SETUJUI (ACC)
+                                        </button>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setShowRejectionInput(plan.id);
+                                            }}
+                                            className="px-6 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-rose-100 hover:scale-105 active:scale-95 transition-all"
+                                        >
+                                            TOLAK / REVISI
+                                        </button>
+                                        <button 
+                                            onClick={() => {
+                                                setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION'));
+                                                setActiveTab('EXPENSE');
+                                                setShowDashboard(false);
+                                            }}
+                                            className="p-3 bg-white text-slate-400 border border-slate-200 rounded-xl hover:text-indigo-600 transition-all"
+                                        >
+                                            <ChevronRight size={18} />
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            </div>
+            
+            {showRejectionInput && (
+                <div className="bg-rose-50 p-8 rounded-[2rem] border border-rose-100 animate-in slide-in-from-top-4 duration-500">
+                    <div className="flex items-start gap-4 mb-6">
+                        <div className="p-3 bg-rose-100 rounded-2xl text-rose-600"><AlertCircle size={20} /></div>
+                        <div>
+                            <h4 className="font-black text-rose-900 uppercase tracking-tight italic">Alasan Penolakan</h4>
+                            <p className="text-rose-400 text-[10px] font-black uppercase tracking-widest mt-1">Sertilkan masukan anda agar unit dapat memperbaiki anggaran</p>
+                        </div>
+                    </div>
+                    <textarea 
+                        className="w-full p-5 bg-white border border-rose-200 rounded-2xl font-medium text-rose-800 outline-none focus:ring-4 focus:ring-rose-100 transition-all min-h-[120px]"
+                        placeholder="Tuliskan catatan revisi di sini..."
+                        value={rejectionReason}
+                        onChange={e => setRejectionReason(e.target.value)}
+                    />
+                    <div className="flex gap-4 mt-6 justify-end">
+                        <button 
+                            onClick={() => setShowRejectionInput(null)}
+                            className="px-6 py-3 text-rose-400 font-black text-xs uppercase"
+                        >
+                            Batal
+                        </button>
+                        <button 
+                            onClick={() => handleApproval(showRejectionInput, 'REJECTED', rejectionReason)}
+                            disabled={!rejectionReason.trim()}
+                            className="bg-rose-600 text-white px-10 py-3 rounded-xl font-black text-xs uppercase shadow-xl shadow-rose-200 disabled:opacity-50"
+                        >
+                            KIRIM PENOLAKAN
+                        </button>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+
+    const renderBudgetTable = () => (
+        <div className="overflow-x-auto">
+            <table className="w-full border-separate border-spacing-y-4">
+                <thead>
+                    <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                        <th className="px-6 py-2 text-left w-12">#</th>
+                        <th className="px-6 py-2 text-left">Item Belanja / Rincian</th>
+                        <th className="px-6 py-2 text-center">Semester</th>
+                        <th className="px-6 py-2 text-right">Limit</th>
+                        <th className="px-6 py-2 text-right">Draft RAB</th>
+                        <th className="px-6 py-2 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {filteredExpenseItems.filter(item => {
+                        if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                        return true;
+                    }).filter(item => {
+                        if (fundSourceFilter === 'Yayasan') return item.sourceOfFunds === 'Yayasan';
+                        if (fundSourceFilter === 'BOS') return item.sourceOfFunds === 'BOS';
+                        return true;
+                    }).map((item, index) => {
+                        const detail = activePlan.expense[item.id] || { total: 0, semester: '1' };
+                        const allocated = rapData.itemAllocations[item.id] || 0;
+                        const isOver = detail.total > (allocated + 100);
+                        const progress = allocated > 0 ? (detail.total / allocated * 100) : 0;
+                        
+                        return (
+                            <tr key={item.id} className="group bg-white hover:bg-slate-50 transition-all duration-300">
+                                <td className="px-6 py-8 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
+                                    {(index + 1).toString().padStart(2, '0')}
+                                </td>
+                                <td className="px-6 py-8 border-y border-slate-100">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${detail.total > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>
+                                            <TrendingUp size={18} />
+                                        </div>
+                                        <div>
+                                            <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{item.name}</p>
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{item.sourceOfFunds || 'Yayasan'}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td className="px-6 py-8 border-y border-slate-100 text-center">
+                                    <span className="px-3 py-1 bg-slate-50 rounded-full font-black text-[9px] text-slate-400">SMT {detail.semester || '1'}</span>
+                                </td>
+                                <td className="px-6 py-8 border-y border-slate-100 text-right">
+                                    <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>
+                                </td>
+                                <td className="px-6 py-8 border-y border-slate-100 text-right">
+                                    <div className="flex flex-col items-end gap-1">
+                                        <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (detail.total > 0 ? 'text-indigo-600' : 'text-slate-300')}`}>
+                                            {formatRupiah(detail.total)}
+                                        </p>
+                                        {allocated > 0 && (
+                                            <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                                <div className={`h-full transition-all ${isOver ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(progress, 100)}%` }} />
+                                            </div>
+                                        )}
+                                    </div>
+                                </td>
+                                <td className="px-6 py-8 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
+                                    <button 
+                                        onClick={() => setEditingItem(item)}
+                                        disabled={isLocked && !isSuperAdmin}
+                                        className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+                                            isLocked && !isSuperAdmin 
+                                            ? 'bg-slate-100 text-slate-300 shadow-none' 
+                                            : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-slate-900 group-hover:shadow-indigo-200'
+                                        }`}
+                                    >
+                                        {isLocked && !isSuperAdmin ? 'TERKUNCI' : 'ATUR BUDGET'}
+                                    </button>
+                                </td>
+                            </tr>
+                        );
+                    })}
+                </tbody>
+            </table>
+
+            {/* Sticky Table Footer / Save Bar */}
+            <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                    <Save size={160} />
+                </div>
+                <div className="relative z-10 flex items-center gap-10">
+                    <div className="flex flex-col">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Entitas</span>
+                        <h4 className="text-3xl font-black italic">{formatRupiah(totalExpense)}</h4>
+                    </div>
+                    {!isConsolidation && (
+                        <div className={`px-8 py-3 rounded-2xl border-2 flex items-center gap-3 ${balance < 0 ? 'bg-rose-500/20 border-rose-500/50 text-rose-300' : 'bg-white/10 border-white/20 text-blue-300'}`}>
+                            {balance < 0 ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Sisa Kapasitas</span>
+                                <span className="font-black text-sm italic">{formatRupiah(balance)}</span>
+                            </div>
+                        </div>
+                    )}
+                </div>
+                {!isLocked && !isConsolidation && (
+                    <div className="relative z-10">
+                        <button 
+                            onClick={handleSave}
+                            disabled={isSaving}
+                            className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
+                        >
+                            <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
+                            {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
+                        </button>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+
     const totalIncome = useMemo(() => 
         Object.values(activePlan?.income || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
     , [activePlan?.income]);
@@ -979,50 +1204,7 @@ export default function RAB() {
 
                         {/* Content Area */}
                         <div className="flex-1 p-8 lg:p-12">
-                <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={handleAcknowledgeStatus} />
-                    <div className={`bg-white rounded-[3rem] w-full max-w-lg relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-b-[12px] ${
-                        currentPlan.status === 'APPROVED' ? 'border-emerald-500' : 'border-rose-500'
-                    }`}>
-                        <div className="p-10 text-center">
-                            <div className={`w-24 h-24 mx-auto mb-6 rounded-[2rem] flex items-center justify-center shadow-2xl ${
-                                currentPlan.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
-                            }`}>
-                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={48} strokeWidth={2.5} /> : <AlertCircle size={48} strokeWidth={2.5} />}
-                            </div>
-
-                            <h2 className="text-3xl font-black text-slate-900 mb-2 font-display">
-                                Anggaran {currentPlan.status === 'APPROVED' ? 'Telah Di-ACC!' : 'Perlu Revisi'}
-                            </h2>
-                            <p className="text-slate-500 font-medium mb-8">
-                                {currentPlan.status === 'APPROVED' 
-                                    ? `Alhamdulillah, rencana anggaran unit Anda untuk periode ${academicYears.find(ay => ay.id === selectedYearId)?.name} telah disetujui oleh Yayasan.`
-                                    : 'Mohon maaf, rencana anggaran Anda belum dapat disetujui dan memerlukan beberapa perbaikan.'
-                                }
-                            </p>
-
-                            {currentPlan.status === 'REJECTED' && currentPlan.rejectionReason && (
-                                <div className="mb-8 p-6 bg-rose-50 rounded-3xl border border-rose-100 text-left">
-                                    <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                        <MessageSquare size={14} />
-                                        Alasan Penolakan:
-                                    </p>
-                                    <p className="text-sm font-bold text-rose-800 leading-relaxed italic">
-                                        "{currentPlan.rejectionReason}"
-                                    </p>
-                                </div>
-                            )}
-
-                            <button 
-                                onClick={handleAcknowledgeStatus}
-                                className={`w-full py-5 rounded-2xl font-black text-sm tracking-tight transition-all shadow-xl active:scale-95 ${
-                                    currentPlan.status === 'APPROVED' 
-                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200' 
-                                        : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
-                                }`}
-                            >
-                                SAYA MENGERTI
-                            </button>
+                            {activeTab === 'REVIEW' ? renderReviewView() : renderBudgetTable()}
                         </div>
                     </div>
                 </div>
@@ -1479,7 +1661,56 @@ export default function RAB() {
                     </div>
                 </div>
             )}
-            {/* No floating bar here, moved to table summary row */}
+            {/* Status Feedback Modal */}
+            {showStatusModal && (
+                <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={handleAcknowledgeStatus} />
+                    <div className={`bg-white rounded-[3rem] w-full max-w-lg relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-b-[12px] ${
+                        currentPlan.status === 'APPROVED' ? 'border-emerald-500' : 'border-rose-500'
+                    }`}>
+                        <div className="p-10 text-center">
+                            <div className={`w-24 h-24 mx-auto mb-6 rounded-[2rem] flex items-center justify-center shadow-2xl ${
+                                currentPlan.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                            }`}>
+                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={48} strokeWidth={2.5} /> : <AlertCircle size={48} strokeWidth={2.5} />}
+                            </div>
+
+                            <h2 className="text-3xl font-black text-slate-900 mb-2 font-display">
+                                Anggaran {currentPlan.status === 'APPROVED' ? 'Telah Di-ACC!' : 'Perlu Revisi'}
+                            </h2>
+                            <p className="text-slate-500 font-medium mb-8">
+                                {currentPlan.status === 'APPROVED' 
+                                    ? `Alhamdulillah, rencana anggaran unit Anda untuk periode ${academicYears.find(ay => ay.id === selectedYearId)?.name} telah disetujui oleh Yayasan.`
+                                    : 'Mohon maaf, rencana anggaran Anda belum dapat disetujui dan memerlukan beberapa perbaikan.'
+                                }
+                            </p>
+
+                            {currentPlan.status === 'REJECTED' && currentPlan.rejectionReason && (
+                                <div className="mb-8 p-6 bg-rose-50 rounded-3xl border border-rose-100 text-left">
+                                    <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <MessageSquare size={14} />
+                                        Alasan Penolakan:
+                                    </p>
+                                    <p className="text-sm font-bold text-rose-800 leading-relaxed italic">
+                                        "{currentPlan.rejectionReason}"
+                                    </p>
+                                </div>
+                            )}
+
+                            <button 
+                                onClick={handleAcknowledgeStatus}
+                                className={`w-full py-5 rounded-2xl font-black text-sm tracking-tight transition-all shadow-xl active:scale-95 ${
+                                    currentPlan.status === 'APPROVED' 
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200' 
+                                        : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
+                                }`}
+                            >
+                                SAYA MENGERTI
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
