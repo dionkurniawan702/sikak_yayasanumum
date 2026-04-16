@@ -657,13 +657,6 @@ export default function RAB() {
                     
                     <div className="flex items-center gap-3 ml-auto">
                         <button 
-                            onClick={handleSave}
-                            disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
-                            className="bg-white border border-slate-300 hover:border-slate-900 text-slate-900 px-6 py-3 rounded-lg font-black text-xs transition-all disabled:opacity-50 shadow-sm"
-                        >
-                            SIMPAN DRAFT
-                        </button>
-                        <button 
                             onClick={handleSubmitReview}
                             disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-black text-xs transition-all shadow-md disabled:opacity-50"
@@ -1700,6 +1693,25 @@ export default function RAB() {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Floating Action Bar (Sticky Footer) */}
+            {activeTab !== 'REVIEW' && selectedYearId && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-lg px-4 animate-in slide-in-from-bottom-10 duration-700">
+                    <div className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[32px] p-4 flex items-center justify-between gap-6 ring-1 ring-slate-900/5">
+                        <div className="flex flex-col pl-4">
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Terhitung</span>
+                            <span className="text-xl font-black text-blue-600 italic tracking-tight">{formatRupiah(totalExpense)}</span>
+                        </div>
+                        <button 
+                            onClick={handleSave}
+                            disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
+                            className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-200 disabled:opacity-50 flex items-center gap-2 group"
+                        >
+                            <Save size={16} className="group-hover:scale-110 transition-transform" />
+                            SIMPAN DRAFT
+                        </button>
                     </div>
                 </div>
             )}
