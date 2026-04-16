@@ -237,6 +237,7 @@ function appReducer(state, action) {
             }
 
             // Server Data Migration: Replace slash (/) with dash (-) in academic year names/IDs
+            if (newState.academicYears && Array.isArray(newState.academicYears)) {
                 newState.academicYears = newState.academicYears.map(ay => ({
                     ...ay,
                     id: ay.id ? ay.id.replace(/\//g, '-') : ay.id,
@@ -244,6 +245,7 @@ function appReducer(state, action) {
                     isActive: ay.isActive !== undefined ? ay.isActive : true
                 }));
             }
+
             if (newState.students && Array.isArray(newState.students)) {
                 newState.students = newState.students.map(s => ({
                     ...s,
