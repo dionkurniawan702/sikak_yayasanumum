@@ -936,7 +936,6 @@ export default function RAB() {
                             </button>
                         )}
                     </div>
-                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
                     <div className="space-y-1">
