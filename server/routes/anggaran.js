@@ -749,10 +749,12 @@ router.post('/rab-plans', async (req, res) => {
         }));
 
         if (!payload.id) {
+            console.warn('[RAB Plan POST] Rejected: Missing ID');
             return res.status(400).json({ error: 'RAB Plan harus memiliki ID.' });
         }
 
         if (!payload.academicYearId) {
+            console.warn('[RAB Plan POST] Rejected: Missing academicYearId');
             return res.status(400).json({ error: 'RAB Plan harus memiliki academicYearId.' });
         }
 
@@ -770,7 +772,12 @@ router.post('/rab-plans', async (req, res) => {
             updatedBy:       payload.updatedBy || null,
         };
 
-        console.log('[RAB Plan POST] Clean payload to upsert:', JSON.stringify(cleanPayload));
+        console.log('[RAB Plan POST] Clean payload to upsert:', JSON.stringify({
+            id: cleanPayload.id,
+            year: cleanPayload.academicYearId,
+            unit: cleanPayload.unitId,
+            field: cleanPayload.fieldId
+        }));
 
         const item = await prisma.rabPlan.upsert({
             where:  { id: cleanPayload.id },
@@ -781,7 +788,7 @@ router.post('/rab-plans', async (req, res) => {
         console.log(`[RAB Plan UPSERT SUCCESS] ID: ${item.id} | Status: ${item.status}`);
         res.json({ data: item });
     } catch (error) {
-        console.error('[RAB Plans POST/Upsert Error]', error.message, error.code);
+        console.error('[RAB Plans POST/Upsert Error] FAILED:', error.message, error.code);
         res.status(500).json({ error: error.message, code: error.code });
     }
 });

@@ -393,7 +393,7 @@ export const api = {
                 bosStages: state.bosStages || [],
                 bosPosList: state.bosPosList || []
             };
-            await this.post('/sync/whole-state', syncData);
+            await this.post('/sync', syncData);
         } catch (error) {
             console.error('Whole state sync failed:', error.message);
         }

@@ -137,11 +137,12 @@ function loadState() {
             Object.entries(migrationMap).forEach(([key, fixId]) => {
                 if (merged[key] && Array.isArray(merged[key])) {
                     merged[key] = merged[key].map(item => {
+                        if (!item) return item;
                         const updated = { ...item };
-                        if (item.academicYearId) {
+                        if (item.academicYearId && typeof item.academicYearId === 'string') {
                             updated.academicYearId = item.academicYearId.replace(/\//g, '-');
                         }
-                        if (fixId && item.id) {
+                        if (fixId && item.id && typeof item.id === 'string') {
                             updated.id = item.id.replace(/\//g, '-');
                         }
                         return updated;
@@ -290,16 +291,32 @@ function appReducer(state, action) {
 
             Object.entries(migrationMap).forEach(([key, fixId]) => {
                 if (newState[key] && Array.isArray(newState[key])) {
-                    newState[key] = newState[key].map(item => {
+                    const migrated = newState[key].map(item => {
+                        if (!item) return item;
                         const updated = { ...item };
-                        if (item.academicYearId) {
+                        if (item.academicYearId && typeof item.academicYearId === 'string') {
                             updated.academicYearId = item.academicYearId.replace(/\//g, '-');
                         }
-                        if (fixId && item.id) {
+                        if (fixId && item.id && typeof item.id === 'string') {
                             updated.id = item.id.replace(/\//g, '-');
                         }
                         return updated;
                     });
+                    
+                    // Deduplicate if we fixed IDs (keep the most recently updated one)
+                    if (fixId) {
+                        const uniqueMap = new Map();
+                        migrated.forEach(item => {
+                            if (!item.id) return;
+                            const existing = uniqueMap.get(item.id);
+                            if (!existing || new Date(item.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+                                uniqueMap.set(item.id, item);
+                            }
+                        });
+                        newState[key] = Array.from(uniqueMap.values());
+                    } else {
+                        newState[key] = migrated;
+                    }
                 }
             });
             break;
