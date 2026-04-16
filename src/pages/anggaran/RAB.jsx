@@ -474,8 +474,8 @@ export default function RAB() {
         const overBudgetItem = activeTab === 'EXPENSE' ? filteredExpenseItems.find(item => {
             const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
-            // Only validate if there IS an allocation set (avoid blocking units without RAP)
-            if (allocated === 0) return false;
+            // Only validate items that have data (> 0) and have an allocation set
+            if (detail.total <= 0 || allocated === 0) return false;
             return detail.total > (allocated + 100); // Allow 100 rupiah tolerance
         }) : null;
 
@@ -520,7 +520,8 @@ export default function RAB() {
         const overBudgetItemSubmit = filteredExpenseItems.find(item => {
             const detail = submittedPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
-            if (allocated === 0) return false;
+            // Only validate items that have data (> 0) and have an allocation set
+            if (detail.total <= 0 || allocated === 0) return false;
             return detail.total > (allocated + 100);
         });
 
