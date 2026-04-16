@@ -1576,46 +1576,77 @@ export default function RAB() {
                                     const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (parseFloat(m?.jumlah) || 0), 0);
                                     const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0).length;
                                     const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
+                                    const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
+
                                     return (
+                                        <>
                                         <div className={`flex items-center justify-between px-6 py-4 rounded-2xl ${
-                                            monthlyTotal > 0 ? 'bg-emerald-50 border-2 border-emerald-200' : 'bg-slate-100 border border-dashed border-slate-300'
+                                            monthlyTotal > 0 ? (isMismatch ? 'bg-amber-50 border-2 border-amber-200' : 'bg-emerald-50 border-2 border-emerald-200') : 'bg-slate-100 border border-dashed border-slate-300'
                                         }`}>
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-2 h-2 rounded-full ${ monthlyTotal > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400' }`} />
+                                                <div className={`w-2 h-2 rounded-full ${ monthlyTotal > 0 ? (isMismatch ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-400' }`} />
                                                 <div>
                                                     <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Rincian Bulan</p>
                                                     <p className="text-[10px] text-slate-400">{activeMonths} bulan diisi</p>
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <p className={`text-xl font-black tabular-nums ${ monthlyTotal > 0 ? 'text-emerald-700' : 'text-slate-400' }`}>
+                                                <p className={`text-xl font-black tabular-nums ${ monthlyTotal > 0 ? (isMismatch ? 'text-amber-700' : 'text-emerald-700') : 'text-slate-400' }`}>
                                                     Rp {monthlyTotal.toLocaleString('id-ID')}
                                                 </p>
-                                                {itemTotal > 0 && monthlyTotal !== itemTotal && (
+                                                {isMismatch && (
                                                     <p className="text-[9px] font-bold text-amber-600">
                                                         ⚠ Beda {formatRupiah(Math.abs(itemTotal - monthlyTotal))} dari total item
                                                     </p>
                                                 )}
                                             </div>
                                         </div>
+                                        {isMismatch && (
+                                            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
+                                                <AlertCircle size={14} className="shrink-0" />
+                                                <p className="text-[10px] font-black uppercase tracking-tight">Rincian bulanan wajib sama dengan Total Terhitung agar bisa disimpan.</p>
+                                            </div>
+                                        )}
+                                        </>
                                     );
                                 })()}
                             </div>
                         </div>
 
                         {/* Modal Footer */}
-                        <div className="p-8 bg-slate-900 flex items-center justify-between text-white">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Terhitung</span>
-                                <h3 className="text-3xl font-black italic">{formatRupiah(currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0)}</h3>
-                            </div>
-                            <button 
-                                onClick={handleCloseModal}
-                                className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emerald-400 hover:text-white transition-all shadow-xl shadow-black/20"
-                            >
-                                SIMPAN RINCIAN
-                            </button>
-                        </div>
+                        {(() => {
+                            const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
+                            const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (parseFloat(m?.jumlah) || 0), 0);
+                            const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
+                            const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
+
+                            return (
+                                <div className="p-8 bg-slate-900 flex items-center justify-between text-white">
+                                    <div className="flex flex-col">
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Terhitung</span>
+                                        <h3 className="text-3xl font-black italic">{formatRupiah(itemTotal)}</h3>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                        <button 
+                                            onClick={handleCloseModal}
+                                            disabled={isMismatch}
+                                            className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-black/20 ${
+                                                isMismatch 
+                                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50' 
+                                                    : 'bg-white text-slate-900 hover:bg-emerald-400 hover:text-white'
+                                            }`}
+                                        >
+                                            {isMismatch ? 'CEK LAGI TOTALNYA' : 'SIMPAN RINCIAN'}
+                                        </button>
+                                        {isMismatch && (
+                                            <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest animate-pulse">
+                                                Wajib sama dengan rincian bulan
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
