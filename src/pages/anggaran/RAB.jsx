@@ -598,12 +598,31 @@ export default function RAB() {
                 <div className="flex items-center gap-4 flex-wrap">
                     {currentUser?.role === 'superadmin' ? (
                         <select 
-                            className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
+                            className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[250px] shadow-sm"
                             value={selectedUnitId}
                             onChange={e => setSelectedUnitId(e.target.value)}
                         >
                             <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
-                            {units.filter(u => !u.isDeleted).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            <optgroup label="UNIT">
+                                {units.filter(u => !u.isDeleted).map(u => {
+                                    const isPending = rabPlans.some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                    return (
+                                        <option key={u.id} value={u.id}>
+                                            {u.name} {isPending ? '🔴' : ''}
+                                        </option>
+                                    );
+                                })}
+                            </optgroup>
+                            <optgroup label="BIDANG / LAPANGAN">
+                                {fields.map(f => {
+                                    const isPending = rabPlans.some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                    return (
+                                        <option key={f.id} value={`FIELD-${f.id}`}>
+                                            {f.name} {isPending ? '🔴' : ''}
+                                        </option>
+                                    );
+                                })}
+                            </optgroup>
                         </select>
                     ) : (
                         <div className="flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm min-w-[200px]">

@@ -16,9 +16,24 @@ export default function Sidebar({ isOpen, onClose }) {
 
     let menuItems = [];
 
-    const isSuperAdmin = currentUser?.role === 'superadmin';
     const isAdminField = currentUser?.role === 'admin_bidang';
     const isAdminUnit = currentUser?.role === 'admin_unit';
+
+    // Calculate Notifications for RAB
+    const pendingRabCount = React.useMemo(() => {
+        if (!state.rabPlans) return 0;
+        if (isSuperAdmin) {
+            return state.rabPlans.filter(p => p.status === 'PENDING').length;
+        }
+        if (isAdminUnit || isAdminField) {
+            return state.rabPlans.filter(p => {
+                const isMine = (isAdminUnit && p.unitId === currentUser.unitId) || 
+                             (isAdminField && p.fieldId === currentUser.fieldId);
+                return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified;
+            }).length;
+        }
+        return 0;
+    }, [state.rabPlans, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
 
     if (isSuperAdmin) {
         menuItems = [
@@ -175,7 +190,12 @@ export default function Sidebar({ isOpen, onClose }) {
                             end={item.path === '/'}
                         >
                             {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
-                            <span className="text-sm font-medium">{item.label}</span>
+                            <span className="text-sm font-medium flex-1">{item.label}</span>
+                            {item.label === 'RAB' && pendingRabCount > 0 && (
+                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                    {pendingRabCount}
+                                </span>
+                            )}
                         </NavLink>
                     );
                 })}
