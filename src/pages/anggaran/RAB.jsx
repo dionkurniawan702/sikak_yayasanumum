@@ -1002,7 +1002,7 @@ export default function RAB() {
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 <div className="space-y-2">
-                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Unit</p>
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Penerimaan</p>
                                     <h3 className="text-2xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                                 </div>
                                 <div className="space-y-2">
