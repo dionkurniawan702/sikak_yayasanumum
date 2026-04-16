@@ -908,18 +908,6 @@ export default function RAB() {
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4">
-                    <input 
-                        type="text"
-                        placeholder="Cari Program Belanja..."
-                        className="p-3 bg-white border border-slate-300 rounded-lg font-medium text-slate-700 w-full max-w-[300px] shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                        value={searchTerm}
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                    
-                    <button className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-lg font-black text-xs transition-all shadow-md">
-                        Cari
-                    </button>
                     
                     <div className="flex items-center gap-3 ml-auto">
                         {!isConsolidation && (
