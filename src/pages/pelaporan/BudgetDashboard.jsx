@@ -18,19 +18,17 @@ export default function BudgetDashboard() {
         academicYears = []
     } = state;
 
-    // Academic year selector using Database (Default to highest year)
-    const sortedYears = [...academicYears].filter(a => !a.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
-    const highestDbAy = sortedYears[0];
-    const fallbackYear = `${new Date().getFullYear() - 1}/${new Date().getFullYear()}`;
-    const [selectedAcademicYear, setSelectedAcademicYear] = useState(highestDbAy ? highestDbAy.name : fallbackYear);
+    // Global Academic Year Persistence (ID-based)
+    const selectedAcademicYearId = state.globalAcademicYearId || '';
+    const setSelectedAcademicYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const [showAllYears, setShowAllYears] = useState(false);
     
-    const yearOptions = academicYears.filter(a => !a.isDeleted && (a.isActive || a.name === selectedAcademicYear || showAllYears)).map(a => a.name)
-        .sort((a, b) => b.localeCompare(a));
-
     const activeAcademicYear = useMemo(() => {
-        return academicYears.find(y => y.name === selectedAcademicYear && !y.isDeleted);
-    }, [academicYears, selectedAcademicYear]);
+        return academicYears.find(y => y.id === selectedAcademicYearId && !y.isDeleted);
+    }, [academicYears, selectedAcademicYearId]);
+    
+    // For display/logic compatibility
+    const selectedAcademicYearName = activeAcademicYear?.name || '';
 
     const [expandedUnits, setExpandedUnits] = useState({});
     const [expandedFields, setExpandedFields] = useState({});
@@ -129,8 +127,8 @@ export default function BudgetDashboard() {
         units.filter(u => !u.isDeleted).forEach(u => uRAB[u.id] = { total: 0, items: {} });
         fields.filter(f => !f.isDeleted).forEach(f => fRAB[f.id] = { total: 0, items: {} });
 
-        const startYear = parseInt(selectedAcademicYear.split('/')[0]);
-        const endYear = parseInt(selectedAcademicYear.split('/')[1]);
+        const startYear = parseInt(selectedAcademicYearName.split('-')[0]);
+        const endYear = parseInt(selectedAcademicYearName.split('-')[1]);
 
         const approvedRequests = (state.budgetRequests || []).filter(r => {
             if (r.status !== 'APPROVED') return false;
@@ -326,7 +324,7 @@ export default function BudgetDashboard() {
             XLSX.utils.book_append_sheet(wb, ws2, 'Unit');
         }
 
-        XLSX.writeFile(wb, `Dashboard-Anggaran-${selectedAcademicYear.replace('/', '-')}.xlsx`);
+        XLSX.writeFile(wb, `Dashboard-Anggaran-${selectedAcademicYearName}.xlsx`);
     };
 
     // ========== Table Row Component ==========
@@ -425,12 +423,14 @@ export default function BudgetDashboard() {
                     <div className="flex flex-col gap-1">
                         <select
                             className="budget-select"
-                            value={selectedAcademicYear}
-                            onChange={e => setSelectedAcademicYear(e.target.value)}
+                            value={selectedAcademicYearId}
+                            onChange={e => setSelectedAcademicYearId(e.target.value)}
                         >
-                            {yearOptions.map(y => (
-                                <option key={y} value={y}>{y}</option>
-                            ))}
+                            {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId || showAllYears))
+                                .sort((a, b) => b.name.localeCompare(a.name))
+                                .map(y => (
+                                    <option key={y.id} value={y.id}>{y.name}</option>
+                                ))}
                         </select>
                         <button 
                             onClick={() => setShowAllYears(!showAllYears)}

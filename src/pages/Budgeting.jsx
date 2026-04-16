@@ -8,10 +8,12 @@ export default function Budgeting() {
     const accounts = state.accounts.filter(a => !a.isDeleted);
     const budgets = state.budgets || [];
     
-    const sortedYearsCurrent = [...(state.academicYears || [])].filter(ay => !ay.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
-    const initialYear = sortedYearsCurrent[0]?.name || new Date().getFullYear().toString();
+    // Sync with Global Academic Year (ID-based, but used as Name for data)
+    const selectedYearId = state.globalAcademicYearId || '';
+    const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     
-    const [selectedYear, setSelectedYear] = useState(initialYear);
+    // Derived selectedYear (name) for data filtering
+    const selectedYear = state.academicYears?.find(y => y.id === selectedYearId)?.name || '';
     const [showAllYears, setShowAllYears] = useState(false);
     const [search, setSearch] = useState('');
     const [budgetData, setBudgetData] = useState({});
@@ -83,11 +85,11 @@ export default function Budgeting() {
                     <div className="flex flex-col gap-1">
                         <select 
                             className="bg-transparent border-none text-blue-600 font-black focus:ring-0 cursor-pointer" 
-                            value={selectedYear} 
-                            onChange={e => setSelectedYear(e.target.value)}
+                            value={selectedYearId} 
+                            onChange={e => setSelectedYearId(e.target.value)}
                         >
-                            {state.academicYears?.filter(y => y.isActive || y.name === selectedYear || showAllYears).map(y => (
-                                <option key={y.id} value={y.name}>{y.name}</option>
+                            {state.academicYears?.filter(y => y.isActive || y.id === selectedYearId || showAllYears).map(y => (
+                                <option key={y.id} value={y.id}>{y.name}</option>
                             ))}
                         </select>
                         <button 

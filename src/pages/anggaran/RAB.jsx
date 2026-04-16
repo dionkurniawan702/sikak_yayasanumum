@@ -55,7 +55,8 @@ export default function RAB() {
     } = state;
 
     // Filters & Selectors
-    const [selectedYearId, setSelectedYearId] = useState('');
+    const selectedYearId = state.globalAcademicYearId || '';
+    const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
     const [showAllYears, setShowAllYears] = useState(false);
     const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
@@ -78,18 +79,14 @@ export default function RAB() {
         rejectionReason: null
     });
 
-    // Set initial filters (Default to highest year)
+    // Set initial filters
     useEffect(() => {
-        const sortedYears = [...academicYears].filter(ay => !ay.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
-        const activeYear = sortedYears[0] || academicYears.find(ay => ay.isCurrent) || null;
-        if (activeYear) setSelectedYearId(activeYear.id);
-        
         if (currentUser?.role === 'admin_unit') {
             setSelectedUnitId(currentUser.unitId);
         } else if (currentUser?.role === 'admin_bidang') {
             setSelectedUnitId(`FIELD-${currentUser.fieldId}`);
         }
-    }, [academicYears, currentUser]);
+    }, [currentUser]);
 
     // Load existing plan when filters change
     useEffect(() => {

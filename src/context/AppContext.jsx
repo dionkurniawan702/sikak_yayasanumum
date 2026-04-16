@@ -33,6 +33,7 @@ const defaultState = {
     bosPosList: [],
     users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
+    globalAcademicYearId: null, // Persisted globally
     lastAction: null,
     isInitialized: false,
     isSyncing: false,
@@ -188,6 +189,9 @@ function appReducer(state, action) {
         case 'LOGIN':
             newState = { ...state, currentUser: action.payload };
             break;
+        case 'SET_GLOBAL_YEAR':
+            newState = { ...state, globalAcademicYearId: action.payload };
+            break;
         case 'SET_ONLINE_STATUS':
             newState = { ...state, isOnline: action.payload };
             break;
@@ -223,8 +227,15 @@ function appReducer(state, action) {
                 currentUser: state.currentUser,
                 isOnline: true,
                 isInitialized: true,
-                notes: serverData.notes || state.notes || {}
+                notes: serverData.notes || state.notes || {},
+                globalAcademicYearId: state.globalAcademicYearId
             };
+
+            // Initialize global year if not set
+            if (!newState.globalAcademicYearId && newState.academicYears?.length > 0) {
+                const sorted = [...newState.academicYears].filter(y => !y.isDeleted).sort((a, b) => b.name.localeCompare(a.name));
+                newState.globalAcademicYearId = sorted[0]?.id || newState.academicYears.find(y => y.isCurrent)?.id;
+            }
 
             // Server Data Migration: account type rename
             if (newState.accounts) {
