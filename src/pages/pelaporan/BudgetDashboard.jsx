@@ -172,7 +172,7 @@ export default function BudgetDashboard() {
         });
 
         return { unitRAB: uRAB, fieldRAB: fRAB };
-    }, [state.budgetRequests, units, fields, currentUser, selectedAcademicYear, expenseItems]);
+    }, [state.budgetRequests, units, fields, currentUser, selectedAcademicYearId, expenseItems]);
 
     // ========== Helpers ==========
     const getExpenseName = (id) => {
