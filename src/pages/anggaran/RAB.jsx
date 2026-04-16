@@ -54,10 +54,14 @@ export default function RAB() {
         currentUser
     } = state;
 
+    // Role helpers
+    const isSuperAdmin = currentUser?.role === 'superadmin';
+
     // Filters & Selectors
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
+    const [showDashboard, setShowDashboard] = useState(isSuperAdmin); 
     const [showAllYears, setShowAllYears] = useState(false);
     const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
     const [isSaving, setIsSaving] = useState(false);
@@ -83,10 +87,14 @@ export default function RAB() {
     useEffect(() => {
         if (currentUser?.role === 'admin_unit') {
             setSelectedUnitId(currentUser.unitId);
+            setShowDashboard(false);
         } else if (currentUser?.role === 'admin_bidang') {
             setSelectedUnitId(`FIELD-${currentUser.fieldId}`);
+            setShowDashboard(false);
+        } else if (isSuperAdmin && selectedUnitId === 'FOUNDATION') {
+            setShowDashboard(true);
         }
-    }, [currentUser]);
+    }, [currentUser, isSuperAdmin]);
 
     // Load existing plan when filters change
     useEffect(() => {
@@ -597,34 +605,51 @@ export default function RAB() {
             {/* Top Toolbar */}
             <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-4 flex-wrap">
-                    {currentUser?.role === 'superadmin' ? (
-                        <select 
-                            className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[250px] shadow-sm"
-                            value={selectedUnitId}
-                            onChange={e => setSelectedUnitId(e.target.value)}
-                        >
-                            <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
-                            <optgroup label="UNIT">
-                                {units.filter(u => !u.isDeleted).map(u => {
-                                    const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
-                                    return (
-                                        <option key={u.id} value={u.id}>
-                                            {u.name} {isPending ? '🔴' : ''}
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                            <optgroup label="BIDANG / LAPANGAN">
-                                {fields.map(f => {
-                                    const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
-                                    return (
-                                        <option key={f.id} value={`FIELD-${f.id}`}>
-                                            {f.name} {isPending ? '🔴' : ''}
-                                        </option>
-                                    );
-                                })}
-                            </optgroup>
-                        </select>
+                    {isSuperAdmin ? (
+                        <div className="flex items-center gap-3">
+                            <button 
+                                onClick={() => setShowDashboard(!showDashboard)}
+                                className={`p-3 rounded-lg font-black text-xs transition-all flex items-center gap-2 shadow-sm ${
+                                    showDashboard 
+                                    ? 'bg-slate-900 text-white' 
+                                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                }`}
+                            >
+                                <Layers size={16} />
+                                {showDashboard ? 'TUTUP IKHTISAR' : 'LIHAT SEMUA UNIT'}
+                            </button>
+
+                            <select 
+                                className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[250px] shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
+                                value={selectedUnitId}
+                                onChange={e => {
+                                    setSelectedUnitId(e.target.value);
+                                    setShowDashboard(false);
+                                }}
+                            >
+                                <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
+                                <optgroup label="UNIT">
+                                    {units.filter(u => !u.isDeleted).map(u => {
+                                        const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                        return (
+                                            <option key={u.id} value={u.id}>
+                                                {u.name} {isPending ? '🔴' : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </optgroup>
+                                <optgroup label="BIDANG / LAPANGAN">
+                                    {fields.map(f => {
+                                        const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                        return (
+                                            <option key={f.id} value={`FIELD-${f.id}`}>
+                                                {f.name} {isPending ? '🔴' : ''}
+                                            </option>
+                                        );
+                                    })}
+                                </optgroup>
+                            </select>
+                        </div>
                     ) : (
                         <div className="flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm min-w-[200px]">
                             <Building2 size={16} className="text-blue-500 shrink-0" />
@@ -1144,40 +1169,213 @@ export default function RAB() {
                                 </tbody>
                             </table>
                         </div>
-                    ) : (
-                        <div className="space-y-4">
-                            {(rabPlans || []).filter(p => p.status === 'PENDING').map(plan => (
-                                <div key={plan.id} className="p-8 bg-indigo-50/50 rounded-[32px] border-2 border-indigo-100">
-                                    <div className="flex justify-between items-start mb-6">
-                                        <div>
-                                            <h4 className="font-black text-slate-900 text-lg">
-                                                {plan.unitId === 'FOUNDATION' ? 'Konsolidasi Yayasan' : (units.find(u => u.id === plan.unitId)?.name || 'Bidang')}
-                                            </h4>
-                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
-                                                Review Draft Anggaran {academicYears.find(ay => ay.id === plan.academicYearId)?.name}
-                                            </p>
-                                        </div>
-                                        <div className="flex gap-2">
-                                            <button 
-                                                onClick={() => handleApproval(plan.id, 'APPROVED')}
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-emerald-100"
-                                            >
-                                                <CheckCircle2 size={16} />
-                                                ACC SEKARANG
-                                            </button>
-                                            <button 
-                                                onClick={() => setShowRejectionInput(plan.id)}
-                                                className="bg-rose-600 hover:bg-rose-700 text-white px-6 py-3 rounded-2xl font-black text-xs flex items-center gap-2 shadow-lg shadow-rose-100"
-                                            >
-                                                <XCircle size={16} />
-                                                TOLAK
-                                            </button>
+                    )}
+                </div>
+            </div>
+
+            {/* Main Content Area */}
+            {isSuperAdmin && showDashboard ? (
+                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {/* Hero Card: Yayasan Consolidation */}
+                    <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-[3rem] p-10 lg:p-14 text-white shadow-2xl relative overflow-hidden ring-8 ring-slate-100">
+                        <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
+                            <Building2 size={240} />
+                        </div>
+                        <div className="relative z-10 max-w-4xl">
+                            <div className="flex items-center gap-4 mb-8">
+                                <span className="px-5 py-2 bg-blue-500 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20">
+                                    IKHTISAR YAYASAN
+                                </span>
+                                <span className="text-slate-400 font-bold text-xs uppercase tracking-widest italic">Tahun Ajaran {academicYears.find(ay => ay.id === selectedYearId)?.name}</span>
+                            </div>
+                            
+                            <h2 className="text-5xl lg:text-7xl font-black tracking-tighter italic leading-none mb-10">
+                                Konsolidasi <span className="text-blue-400">Kas & Anggaran</span>
+                            </h2>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Unit</p>
+                                    <h3 className="text-3xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Belanja Diajukan</p>
+                                    <h3 className="text-3xl font-black italic">{formatRupiah(totalExpense)}</h3>
+                                </div>
+                                <div className="space-y-2">
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Sisa Dana Strategis</p>
+                                    <h3 className={`text-3xl font-black italic ${balance < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                        {formatRupiah(balance)}
+                                    </h3>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={() => {
+                                    setSelectedUnitId('FOUNDATION');
+                                    setShowDashboard(false);
+                                }}
+                                className="mt-12 group flex items-center gap-3 bg-white text-slate-900 px-8 py-4 rounded-2xl font-black text-sm transition-all hover:scale-105 active:scale-95 shadow-xl"
+                            >
+                                Buka Rincian Konsolidasi
+                                <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Unit Status Grid */}
+                    <div className="space-y-8">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                            <div>
+                                <h3 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Status Pengajuan Unit</h3>
+                                <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1 italic">Pantau progres pengisian RAB setiap unit pendidikan</p>
+                            </div>
+                            <div className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Disetujui</span>
+                                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> Menunggu Review</span>
+                                <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-200" /> Draft/Awal</span>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {[...units.filter(u => !u.isDeleted), ...fields.map(f => ({ ...f, isField: true }))].map(item => {
+                                const planId = `${selectedYearId}-${item.isField ? `FIELD-${item.id}` : item.id}`;
+                                const plan = rabPlans.find(p => p.id === planId);
+                                const status = plan?.status || 'EMPTY';
+                                const total = Object.values(plan?.expense || {}).reduce((sum, v) => sum + (v?.total || 0), 0);
+
+                                return (
+                                    <div 
+                                        key={item.id}
+                                        onClick={() => {
+                                            setSelectedUnitId(item.isField ? `FIELD-${item.id}` : item.id);
+                                            setShowDashboard(false);
+                                        }}
+                                        className="group cursor-pointer bg-white border border-slate-100 rounded-[2.5rem] p-8 transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/5 active:scale-95 relative"
+                                    >
+                                        {status === 'PENDING' && (
+                                            <div className="absolute top-6 right-6">
+                                                <div className="w-4 h-4 bg-rose-500 rounded-full animate-ping absolute" />
+                                                <div className="w-4 h-4 bg-rose-500 rounded-full relative" />
+                                            </div>
+                                        )}
+                                        
+                                        <div className="space-y-6">
+                                            <div className="p-3 bg-slate-50 w-fit rounded-2xl group-hover:bg-blue-50 transition-colors">
+                                                {item.isField ? <Layers size={24} className="text-slate-400 group-hover:text-blue-500" /> : <Building2 size={24} className="text-slate-400 group-hover:text-blue-500" />}
+                                            </div>
+                                            
+                                            <div>
+                                                <h4 className="font-black text-slate-900 text-lg leading-tight mb-2 group-hover:text-blue-700 transition-colors">
+                                                    {item.name}
+                                                </h4>
+                                                <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                                    status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                                                    (status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
+                                                }`}>
+                                                    {status === 'APPROVED' ? 'Disetujui' : (status === 'PENDING' ? 'Menunggu Review' : 'Belum Disetujui')}
+                                                </span>
+                                            </div>
+
+                                            <div className="pt-6 border-t border-slate-50 flex items-center justify-between group-hover:border-blue-50">
+                                                <div>
+                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Diajukan</p>
+                                                    <p className="font-black text-slate-900 italic transform transition-transform group-hover:scale-105 origin-left">
+                                                        {formatRupiah(total)}
+                                                    </p>
+                                                </div>
+                                                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all transform group-hover:translate-x-1">
+                                                    <ChevronRight size={18} />
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            ) : (
+                <div className="flex flex-col lg:flex-row gap-8 min-h-[70vh]">
+                    {/* Sidebar Filters */}
+                    <div className="w-full lg:w-[380px] space-y-8">
+                        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center">
+                            <div className="p-4 bg-blue-50 rounded-3xl mb-4">
+                                <Building2 size={32} className="text-blue-600" />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 text-center tracking-tight leading-tight">
+                                {isConsolidation ? 'Yayasan (Konsolidasi)' : (
+                                    selectedUnitId.startsWith('FIELD-') 
+                                        ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
+                                        : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
+                                )}
+                            </h3>
+                            <p className="text-slate-400 text-xs font-bold uppercase tracking-widest mt-2 italic shadow-blue-500/20">
+                                {isConsolidation ? 'Global Budget View' : (selectedUnitId.startsWith('FIELD-') ? 'Budget Bidang Struktural' : 'Budget Unit Pendidikan')}
+                            </p>
+                        </div>
+                        {/* ... existing sidebar elements if needed, or simplified common view ... */}
+                    </div>
 
-                                    {showRejectionInput === plan.id && (
-                                        <div className="mt-4 p-6 bg-white rounded-3xl border-2 border-rose-100 animate-in slide-in-from-top-4">
-                                            <label className="form-label text-rose-600 flex items-center gap-2">
+                    <div className="flex-1 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm overflow-hidden flex flex-col">
+                        <div className="bg-slate-50/50 flex border-b border-slate-100">
+                            <button 
+                                onClick={() => setActiveTab('EXPENSE')}
+                                className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'EXPENSE' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                {activeTab === 'EXPENSE' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600" />}
+                                <div className="flex items-center gap-2">
+                                    <ArrowUpCircle size={16} />
+                                    Input Anggaran
+                                </div>
+                            </button>
+                            {isSuperAdmin && (
+                                <button 
+                                    onClick={() => setActiveTab('REVIEW')}
+                                    className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'REVIEW' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    {activeTab === 'REVIEW' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600" />}
+                                    <div className="flex items-center gap-2">
+                                        <Wallet size={16} />
+                                        Review Pengajuan
+                                    </div>
+                                </button>
+                            )}
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="flex-1 p-8 lg:p-12">
+                            <div className="flex items-center justify-between mb-10">
+                                <div>
+                                    <h3 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">
+                                        {activeTab === 'EXPENSE' ? 'Rencana Pengeluaran (RAB)' : 'Review Draft Anggaran'}
+                                    </h3>
+                                    <p className="text-slate-400 text-sm font-bold mt-1 uppercase tracking-widest italic opacity-70">
+                                        {activeTab === 'REVIEW' ? 'Review pengajuan anggaran dari setiap unit dan bidang struktural.' : 'Input nilai rencana pengeluaran untuk satu periode tahun ajaran.'}
+                                    </p>
+                                </div>
+                                <div className="hidden sm:flex items-center gap-2 px-6 py-3 bg-slate-100 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest shadow-inner">
+                                    <Filter size={14} />
+                                    Filter: Semua Pos
+                                </div>
+                            </div>
+
+                            {/* ... render table or review view ... */}
+                            {activeTab === 'EXPENSE' ? (
+                                <div className="overflow-x-auto rounded-3xl border border-slate-100 shadow-sm bg-white">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50/50">
+                                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Pos Anggaran</th>
+                                                <th className="p-6 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Sumber Dana</th>
+                                                <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Limit RAP</th>
+                                                <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Total RAB</th>
+                                                <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Sisa Limit</th>
+                                                <th className="p-6 text-right text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {/* ... existing table map ... */}
                                                 <MessageSquare size={14} />
                                                 Alasan Penolakan
                                             </label>
