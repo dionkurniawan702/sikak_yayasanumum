@@ -161,9 +161,9 @@ export const initialExpenseItems = [
 
 // Tahun Ajaran Awal
 export const initialAcademicYears = [
-    { id: 'AY-2024/2025', name: '2024/2025', startDate: '2024-07-01', endDate: '2025-06-30', isCurrent: false },
-    { id: 'AY-2025/2026', name: '2025/2026', startDate: '2025-07-01', endDate: '2026-06-30', isCurrent: true },
-    { id: 'AY-2026/2027', name: '2026/2027', startDate: '2026-07-01', endDate: '2027-06-30', isCurrent: false },
+    { id: 'AY-2024-2025', name: '2024-2025', startDate: '2024-07-01', endDate: '2025-06-30', isCurrent: false },
+    { id: 'AY-2025-2026', name: '2025-2026', startDate: '2025-07-01', endDate: '2026-06-30', isCurrent: true },
+    { id: 'AY-2026-2027', name: '2026-2027', startDate: '2026-07-01', endDate: '2027-06-30', isCurrent: false },
 ];
 
 // Status Siswa
@@ -180,7 +180,7 @@ export const initialStudents = [
         name: 'Ahmad Faisal',
         nis: '12345',
         unitId: 'SMP', // ID unit harus sesuai dengan yang ada di state
-        academicYearId: 'AY-2025/2026',
+        academicYearId: 'AY-2025-2026',
         statusId: 'ST-AKTIF',
         incomeDetails: [
             { incomeItemId: 'INC-036', amount: 500000 }, // SPP
@@ -192,7 +192,7 @@ export const initialStudents = [
         name: 'Siti Aminah',
         nis: '12346',
         unitId: 'SMP',
-        academicYearId: 'AY-2025/2026',
+        academicYearId: 'AY-2025-2026',
         statusId: 'ST-AKTIF',
         incomeDetails: [
             { incomeItemId: 'INC-036', amount: 500000 },

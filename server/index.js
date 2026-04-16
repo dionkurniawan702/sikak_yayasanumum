@@ -713,11 +713,11 @@ const ensureFundSources = async () => {
 
 const ensureAcademicYears = async () => {
     const requiredYears = [
-        { name: '2023/2024', isCurrent: false },
-        { name: '2024/2025', isCurrent: false },
-        { name: '2025/2026', isCurrent: false },
-        { name: '2026/2027', isCurrent: false },
-        { name: '2027/2028', isCurrent: false },
+        { name: '2023-2024', isCurrent: false },
+        { name: '2024-2025', isCurrent: false },
+        { name: '2025-2026', isCurrent: false },
+        { name: '2026-2027', isCurrent: false },
+        { name: '2027-2028', isCurrent: false },
     ];
 
     try {

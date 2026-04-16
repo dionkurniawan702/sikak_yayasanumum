@@ -99,13 +99,28 @@ function loadState() {
             }
 
             // Migration: Ensure Academic Years have valid dates (Fix for "Invalid Date" sync issue)
+            // Migration: Replace slash (/) with dash (-) in academic year names and IDs
             if (merged.academicYears && Array.isArray(merged.academicYears)) {
                 const currentYear = new Date().getFullYear();
-                merged.academicYears = merged.academicYears.map(ay => ({
-                    ...ay,
-                    startDate: (ay.startDate && !isNaN(new Date(ay.startDate))) ? ay.startDate : `${currentYear}-01-01`,
-                    endDate: (ay.endDate && !isNaN(new Date(ay.endDate))) ? ay.endDate : `${currentYear}-12-31`,
-                    isCurrent: ay.isCurrent || false
+                merged.academicYears = merged.academicYears.map(ay => {
+                    const newName = ay.name ? ay.name.replace(/\//g, '-') : ay.name;
+                    const newId = ay.id ? ay.id.replace(/\//g, '-') : ay.id;
+                    return {
+                        ...ay,
+                        id: newId,
+                        name: newName,
+                        startDate: (ay.startDate && !isNaN(new Date(ay.startDate))) ? ay.startDate : `${currentYear}-01-01`,
+                        endDate: (ay.endDate && !isNaN(new Date(ay.endDate))) ? ay.endDate : `${currentYear}-12-31`,
+                        isCurrent: ay.isCurrent || false
+                    };
+                });
+            }
+
+            // Migration: Fix academicYearId references in students
+            if (merged.students && Array.isArray(merged.students)) {
+                merged.students = merged.students.map(s => ({
+                    ...s,
+                    academicYearId: s.academicYearId ? s.academicYearId.replace(/\//g, '-') : s.academicYearId
                 }));
             }
 
@@ -210,7 +225,7 @@ function appReducer(state, action) {
                 notes: serverData.notes || state.notes || {}
             };
 
-            // Server Data Migration
+            // Server Data Migration: account type rename
             if (newState.accounts) {
                 newState.accounts = newState.accounts.map(acc => {
                     if (acc.type === 'Saldo Dana') {
@@ -218,6 +233,21 @@ function appReducer(state, action) {
                     }
                     return acc;
                 });
+            }
+
+            // Server Data Migration: Replace slash (/) with dash (-) in academic year names/IDs
+            if (newState.academicYears && Array.isArray(newState.academicYears)) {
+                newState.academicYears = newState.academicYears.map(ay => ({
+                    ...ay,
+                    id: ay.id ? ay.id.replace(/\//g, '-') : ay.id,
+                    name: ay.name ? ay.name.replace(/\//g, '-') : ay.name,
+                }));
+            }
+            if (newState.students && Array.isArray(newState.students)) {
+                newState.students = newState.students.map(s => ({
+                    ...s,
+                    academicYearId: s.academicYearId ? s.academicYearId.replace(/\//g, '-') : s.academicYearId
+                }));
             }
             break;
         }
