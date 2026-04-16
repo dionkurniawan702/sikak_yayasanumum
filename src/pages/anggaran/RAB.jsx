@@ -704,11 +704,11 @@ export default function RAB() {
             <table className="w-full border-separate border-spacing-y-4">
                 <thead>
                     <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
-                        <th className="px-6 py-2 text-left w-12">#</th>
-                        <th className="px-6 py-2 text-left">Item Belanja / Rincian</th>
-                        <th className="px-6 py-2 text-center">Semester</th>
-                        <th className="px-6 py-2 text-right">Limit</th>
-                        <th className="px-6 py-2 text-right">Draft RAB</th>
+                        <th className="px-6 py-1 text-left w-12">#</th>
+                        <th className="px-6 py-1 text-left">Item Belanja / Rincian</th>
+                        <th className="px-6 py-1 text-center">Semester</th>
+                        <th className="px-6 py-1 text-right">Limit</th>
+                        <th className="px-6 py-1 text-right">Draft RAB</th>
                         <th className="px-6 py-2 text-right">Aksi</th>
                     </tr>
                 </thead>
@@ -728,10 +728,10 @@ export default function RAB() {
                         
                         return (
                             <tr key={item.id} className="group bg-white hover:bg-slate-50 transition-all duration-300">
-                                <td className="px-6 py-8 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
+                                <td className="px-6 py-4 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
                                     {(index + 1).toString().padStart(2, '0')}
                                 </td>
-                                <td className="px-6 py-8 border-y border-slate-100">
+                                <td className="px-6 py-4 border-y border-slate-100">
                                     <div className="flex items-center gap-4">
                                         <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${detail.total > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>
                                             <TrendingUp size={18} />
@@ -742,13 +742,13 @@ export default function RAB() {
                                         </div>
                                     </div>
                                 </td>
-                                <td className="px-6 py-8 border-y border-slate-100 text-center">
+                                <td className="px-6 py-4 border-y border-slate-100 text-center">
                                     <span className="px-3 py-1 bg-slate-50 rounded-full font-black text-[9px] text-slate-400">SMT {detail.semester || '1'}</span>
                                 </td>
-                                <td className="px-6 py-8 border-y border-slate-100 text-right">
+                                <td className="px-6 py-4 border-y border-slate-100 text-right">
                                     <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>
                                 </td>
-                                <td className="px-6 py-8 border-y border-slate-100 text-right">
+                                <td className="px-6 py-4 border-y border-slate-100 text-right">
                                     <div className="flex flex-col items-end gap-1">
                                         <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (detail.total > 0 ? 'text-indigo-600' : 'text-slate-300')}`}>
                                             {formatRupiah(detail.total)}
@@ -760,7 +760,7 @@ export default function RAB() {
                                         )}
                                     </div>
                                 </td>
-                                <td className="px-6 py-8 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
+                                <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
                                     <button 
                                         onClick={() => setEditingItem(item)}
                                         disabled={isLocked && !isSuperAdmin}
@@ -826,7 +826,7 @@ export default function RAB() {
     const balance = totalIncome - totalExpense;
 
     return (
-        <div className="p-4 lg:p-10 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-700">
+        <div className="p-4 lg:p-10 max-w-[1440px] mx-auto space-y-8 animate-in fade-in duration-700">
             {/* Top Toolbar */}
             <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-4 flex-wrap">
@@ -990,36 +990,36 @@ export default function RAB() {
             {/* Main Display Logic */}
             {isSuperAdmin && showDashboard ? (
                 /* DASHBOARD VIEW */
-                <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
                     {/* Hero Card: Yayasan Consolidation */}
-                    <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-[3rem] p-10 lg:p-14 text-white shadow-2xl relative overflow-hidden ring-8 ring-slate-100">
+                    <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 lg:p-12 text-white shadow-2xl relative overflow-hidden ring-8 ring-slate-100">
                         <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
                             <Building2 size={240} />
                         </div>
                         <div className="relative z-10 max-w-4xl">
-                            <div className="flex items-center gap-4 mb-8">
+                            <div className="flex items-center gap-4 mb-6">
                                 <span className="px-5 py-2 bg-blue-500 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-blue-500/20">
                                     IKHTISAR YAYASAN
                                 </span>
                                 <span className="text-slate-400 font-bold text-xs uppercase tracking-widest italic">Tahun Ajaran {academicYears.find(ay => ay.id === selectedYearId)?.name}</span>
                             </div>
                             
-                            <h2 className="text-5xl lg:text-7xl font-black tracking-tighter italic leading-none mb-10">
+                            <h2 className="text-4xl lg:text-5xl font-black tracking-tighter italic leading-none mb-8">
                                 Konsolidasi <span className="text-blue-400">Kas & Anggaran</span>
                             </h2>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Unit</p>
-                                    <h3 className="text-3xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
+                                    <h3 className="text-2xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Belanja Diajukan</p>
-                                    <h3 className="text-3xl font-black italic">{formatRupiah(totalExpense)}</h3>
+                                    <h3 className="text-2xl font-black italic">{formatRupiah(totalExpense)}</h3>
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Sisa Dana Strategis</p>
-                                    <h3 className={`text-3xl font-black italic ${balance < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
+                                    <h3 className={`text-2xl font-black italic ${balance < 0 ? 'text-rose-400' : 'text-emerald-400'}`}>
                                         {formatRupiah(balance)}
                                     </h3>
                                 </div>
@@ -1039,20 +1039,20 @@ export default function RAB() {
                     </div>
 
                     {/* Unit Status Grid */}
-                    <div className="space-y-8">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-6">
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                             <div>
-                                <h3 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">Status Pengajuan Unit</h3>
-                                <p className="text-slate-400 text-sm font-bold uppercase tracking-widest mt-1 italic">Pantau progres pengisian RAB setiap unit pendidikan</p>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight italic uppercase">Status Pengajuan Unit</h3>
+                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1 italic">Pantau progres pengisian RAB setiap unit pendidikan</p>
                             </div>
-                            <div className="flex items-center gap-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            <div className="flex items-center gap-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                 <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Disetujui</span>
                                 <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-rose-500" /> Menunggu Review</span>
                                 <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-slate-200" /> Draft/Awal</span>
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
                             {[...units.filter(u => !u.isDeleted), ...fields.map(f => ({ ...f, isField: true }))].map(item => {
                                 const planId = `${selectedYearId}-${item.isField ? `FIELD-${item.id}` : item.id}`;
                                 const plan = rabPlans.find(p => p.id === planId);
@@ -1066,25 +1066,25 @@ export default function RAB() {
                                             setSelectedUnitId(item.isField ? `FIELD-${item.id}` : item.id);
                                             setShowDashboard(false);
                                         }}
-                                        className="group cursor-pointer bg-white border border-slate-100 rounded-[2.5rem] p-8 transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/5 active:scale-95 relative"
+                                        className="group cursor-pointer bg-white border border-slate-100 rounded-[2rem] p-6 transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/5 active:scale-95 relative"
                                     >
                                         {status === 'PENDING' && (
-                                            <div className="absolute top-6 right-6">
-                                                <div className="w-4 h-4 bg-rose-500 rounded-full animate-ping absolute" />
-                                                <div className="w-4 h-4 bg-rose-500 rounded-full relative" />
+                                            <div className="absolute top-4 right-4">
+                                                <div className="w-3 h-3 bg-rose-500 rounded-full animate-ping absolute" />
+                                                <div className="w-3 h-3 bg-rose-500 rounded-full relative" />
                                             </div>
                                         )}
                                         
-                                        <div className="space-y-6">
-                                            <div className="p-3 bg-slate-50 w-fit rounded-2xl group-hover:bg-blue-50 transition-colors">
-                                                {item.isField ? <Layers size={24} className="text-slate-400 group-hover:text-blue-500" /> : <Building2 size={24} className="text-slate-400 group-hover:text-blue-500" />}
+                                        <div className="space-y-4">
+                                            <div className="p-2.5 bg-slate-50 w-fit rounded-xl group-hover:bg-blue-50 transition-colors">
+                                                {item.isField ? <Layers size={20} className="text-slate-400 group-hover:text-blue-500" /> : <Building2 size={20} className="text-slate-400 group-hover:text-blue-500" />}
                                             </div>
                                             
                                             <div>
-                                                <h4 className="font-black text-slate-900 text-lg leading-tight mb-2 group-hover:text-blue-700 transition-colors">
+                                                <h4 className="font-black text-slate-900 text-base leading-tight mb-1 group-hover:text-blue-700 transition-colors">
                                                     {item.name}
                                                 </h4>
-                                                <span className={`px-4 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest ${
+                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
                                                     status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
                                                     (status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
                                                 }`}>
@@ -1092,15 +1092,15 @@ export default function RAB() {
                                                 </span>
                                             </div>
 
-                                            <div className="pt-6 border-t border-slate-50 flex items-center justify-between group-hover:border-blue-50">
+                                            <div className="pt-4 border-t border-slate-50 flex items-center justify-between group-hover:border-blue-50">
                                                 <div>
-                                                    <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Total Diajukan</p>
-                                                    <p className="font-black text-slate-900 italic transform transition-transform group-hover:scale-105 origin-left">
+                                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Diajukan</p>
+                                                    <p className="font-black text-slate-900 text-sm italic transform transition-transform group-hover:scale-105 origin-left">
                                                         {formatRupiah(total)}
                                                     </p>
                                                 </div>
-                                                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                                                    <ChevronRight size={18} />
+                                                <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all transform group-hover:translate-x-1">
+                                                    <ChevronRight size={14} />
                                                 </div>
                                             </div>
                                         </div>
@@ -1112,46 +1112,46 @@ export default function RAB() {
                 </div>
             ) : (
                 /* DETAIL VIEW (SIDEBAR + TABLE/REVIEW) */
-                <div className="flex flex-col lg:flex-row gap-8 min-h-[70vh]">
+                <div className="flex flex-col lg:flex-row gap-6 min-h-[70vh]">
                     {/* Sidebar */}
-                    <div className="w-full lg:w-[380px] space-y-8">
+                    <div className="w-full lg:w-[320px] space-y-6">
                         {/* Selected Entity Card */}
-                        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100 flex flex-col items-center">
-                            <div className="p-4 bg-blue-50 rounded-3xl mb-4">
-                                <Building2 size={32} className="text-blue-600" />
+                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col items-center">
+                            <div className="p-3 bg-blue-50 rounded-2xl mb-3">
+                                <Building2 size={24} className="text-blue-600" />
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 text-center tracking-tight leading-tight">
+                            <h3 className="text-lg font-black text-slate-900 text-center tracking-tight leading-tight">
                                 {isConsolidation ? 'Yayasan (Konsolidasi)' : (
                                     selectedUnitId.startsWith('FIELD-') 
                                         ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
                                         : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
                                 )}
                             </h3>
-                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2 italic">
+                            <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-1 italic">
                                 {isConsolidation ? 'KONSOLIDASI DATA STRATEGIS' : (selectedUnitId.startsWith('FIELD-') ? 'BIDANG STRUKTURAL' : 'UNIT PENDIDIKAN')}
                             </p>
                         </div>
 
                         {/* Quick Stats Cards in Sidebar */}
-                        <div className="grid grid-cols-1 gap-4">
-                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
-                                <p className="text-[9px] font-black uppercase tracking-widest opacity-80 mb-1">Target RAP</p>
-                                <h3 className="text-2xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
+                        <div className="grid grid-cols-1 gap-3">
+                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Target RAP</p>
+                                <h3 className="text-xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                              </div>
-                             <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-[2.5rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
-                                <p className="text-[9px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB Belanja</p>
-                                <h3 className="text-2xl font-black italic">{formatRupiah(totalExpense)}</h3>
+                             <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB Belanja</p>
+                                <h3 className="text-xl font-black italic">{formatRupiah(totalExpense)}</h3>
                              </div>
-                             <div className={`${balance >= 0 ? 'bg-blue-600' : 'bg-slate-800'} p-6 rounded-[2.5rem] text-white shadow-xl relative overflow-hidden group transition-colors`}>
-                                <p className="text-[9px] font-black uppercase tracking-widest opacity-80 mb-1">Sisa Anggaran</p>
-                                <h3 className="text-2xl font-black italic">{formatRupiah(balance)}</h3>
+                             <div className={`${balance >= 0 ? 'bg-blue-600' : 'bg-slate-800'} p-5 rounded-[2rem] text-white shadow-xl relative overflow-hidden group transition-colors`}>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Sisa Anggaran</p>
+                                <h3 className="text-xl font-black italic">{formatRupiah(balance)}</h3>
                              </div>
                         </div>
 
                         {/* Financial Analysis Tooltip / Mini Panel */}
-                        <div className="p-8 bg-indigo-900 rounded-[2.5rem] text-white shadow-2xl relative overflow-hidden ring-4 ring-indigo-50">
-                            <div className="absolute top-0 right-0 p-6 opacity-10"><Database size={80} /></div>
-                            <h4 className="font-black text-sm uppercase tracking-widest mb-4 italic">Ringkasan Sisa Limit</h4>
+                        <div className="p-6 bg-indigo-900 rounded-[2rem] text-white shadow-2xl relative overflow-hidden ring-4 ring-indigo-50">
+                            <div className="absolute top-0 right-0 p-6 opacity-10"><Database size={60} /></div>
+                            <h4 className="font-black text-[10px] uppercase tracking-widest mb-4 italic">Ringkasan Sisa Limit</h4>
                             <div className="space-y-4">
                                 {(filteredExpenseItems || []).slice(0, 3).map(item => {
                                     const allocated = rapData.itemAllocations[item.id] || 0;
@@ -1163,19 +1163,19 @@ export default function RAB() {
                                                 <span className="truncate w-32">{item.name}</span>
                                                 <span className={pct > 100 ? 'text-rose-400' : 'text-emerald-400'}>{Math.round(pct)}%</span>
                                             </div>
-                                            <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
                                                 <div className={`h-full transition-all ${pct > 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
                                             </div>
                                         </div>
                                     );
                                 })}
-                                <p className="text-[9px] font-bold opacity-50 mt-4 italic">*Menampilkan 3 item teratas belanja</p>
+                                <p className="text-[8px] font-bold opacity-50 mt-4 italic">*Menampilkan 3 item teratas belanja</p>
                             </div>
                         </div>
                     </div>
 
                     {/* Content Component */}
-                    <div className="flex-1 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm overflow-hidden flex flex-col">
+                    <div className="flex-1 bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
                         {/* Tab Switcher */}
                         <div className="bg-slate-50/50 flex border-b border-slate-100">
                             <button 
