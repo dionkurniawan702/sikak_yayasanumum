@@ -505,14 +505,12 @@ export default function RAB() {
         setIsSaving(true);
         const planId = `${selectedYearId}-${selectedUnitId}`;
         const submittedPlan = {
-            ...(rabPlans.find(p => p.id === planId) || {
-                id: planId,
-                academicYearId: selectedYearId,
-                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                income: currentPlan.income,
-                expense: currentPlan.expense,
-            }),
+            id: planId,
+            academicYearId: selectedYearId,
+            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+            income: currentPlan.income,
+            expense: currentPlan.expense,
             status: 'PENDING',
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
