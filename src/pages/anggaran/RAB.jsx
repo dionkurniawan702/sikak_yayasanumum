@@ -1104,6 +1104,16 @@ export default function RAB() {
                                                         {formatRupiah(sumSisa)}
                                                     </td>
                                                 )}
+                                                <td className="p-4 text-right">
+                                                    <button 
+                                                        onClick={handleSave}
+                                                        disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
+                                                        className="bg-slate-900 hover:bg-black text-white px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg disabled:opacity-50 flex items-center gap-2 ml-auto"
+                                                    >
+                                                        <Save size={14} />
+                                                        SIMPAN DRAFT
+                                                    </button>
+                                                </td>
                                             </tr>
                                         );
                                     })()}
@@ -1696,25 +1706,7 @@ export default function RAB() {
                     </div>
                 </div>
             )}
-            {/* Floating Action Bar (Sticky Footer) */}
-            {activeTab !== 'REVIEW' && selectedYearId && (
-                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[1000] w-full max-w-lg px-4 animate-in slide-in-from-bottom-10 duration-700">
-                    <div className="bg-white/80 backdrop-blur-xl border border-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] rounded-[32px] p-4 flex items-center justify-between gap-6 ring-1 ring-slate-900/5">
-                        <div className="flex flex-col pl-4">
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Terhitung</span>
-                            <span className="text-xl font-black text-blue-600 italic tracking-tight">{formatRupiah(totalExpense)}</span>
-                        </div>
-                        <button 
-                            onClick={handleSave}
-                            disabled={isSaving || !selectedYearId || isLocked || isConsolidation}
-                            className="bg-slate-900 hover:bg-black text-white px-8 py-4 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-slate-200 disabled:opacity-50 flex items-center gap-2 group"
-                        >
-                            <Save size={16} className="group-hover:scale-110 transition-transform" />
-                            SIMPAN DRAFT
-                        </button>
-                    </div>
-                </div>
-            )}
+            {/* No floating bar here, moved to table summary row */}
         </div>
     );
 }
