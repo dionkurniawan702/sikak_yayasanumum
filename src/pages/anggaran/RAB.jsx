@@ -57,12 +57,10 @@ export default function RAB() {
     // Role helpers
     const isSuperAdmin = currentUser?.role === 'superadmin';
 
-    // Filters & Selectors
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
     const [showDashboard, setShowDashboard] = useState(isSuperAdmin); 
-    const [showAllYears, setShowAllYears] = useState(false);
     const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -903,16 +901,10 @@ export default function RAB() {
                             value={selectedYearId}
                             onChange={e => setSelectedYearId(e.target.value)}
                         >
-                            {academicYears?.filter(y => y.isActive || y.id === selectedYearId || showAllYears).map(y => (
+                            {academicYears?.filter(y => y.isActive || y.id === selectedYearId).map(y => (
                                 <option key={y.id} value={y.id}>TA {y.name}</option>
                             ))}
                         </select>
-                        <button 
-                            onClick={() => setShowAllYears(!showAllYears)}
-                            className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-right mr-2 hover:underline"
-                        >
-                            {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
-                        </button>
                     </div>
                 </div>
 

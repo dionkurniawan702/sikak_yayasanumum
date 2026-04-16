@@ -270,16 +270,10 @@ export default function StudentDatabase() {
                         onChange={e => setAcademicYearFilter(e.target.value)}
                     >
                         <option value="all">Semua Thn Ajaran</option>
-                        {state.academicYears?.filter(y => y.isActive || y.id === academicYearFilter || showAllYears).map(y => (
+                        {state.academicYears?.filter(y => y.isActive || y.id === academicYearFilter).map(y => (
                             <option key={y.id} value={y.id}>{y.name}</option>
                         ))}
                     </select>
-                    <button 
-                        onClick={() => setShowAllYears(!showAllYears)}
-                        className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-right mr-2 hover:underline"
-                    >
-                        {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
-                    </button>
                 </div>
                 <select 
                     className="form-select"
@@ -486,17 +480,10 @@ export default function StudentDatabase() {
                                                     onChange={e => setStudentForm({ ...studentForm, academicYearId: e.target.value })}
                                                 >
                                                     <option value="">Pilih Tahun</option>
-                                                    {state.academicYears?.filter(y => y.isActive || y.id === studentForm.academicYearId || showAllYears).map(y => (
+                                                    {state.academicYears?.filter(y => y.isActive || y.id === studentForm.academicYearId).map(y => (
                                                         <option key={y.id} value={y.id}>{y.name}</option>
                                                     ))}
                                                 </select>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setShowAllYears(!showAllYears)}
-                                                    className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-right mr-2 hover:underline"
-                                                >
-                                                    {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
-                                                </button>
                                             </div>
                                     </div>
                                     <div>

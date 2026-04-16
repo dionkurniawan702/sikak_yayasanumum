@@ -468,18 +468,12 @@ export default function BudgetDashboard() {
                             value={selectedAcademicYearId}
                             onChange={e => setSelectedAcademicYearId(e.target.value)}
                         >
-                            {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId || showAllYears))
+                            {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId))
                                 .sort((a, b) => b.name.localeCompare(a.name))
                                 .map(y => (
                                     <option key={y.id} value={y.id}>{y.name}</option>
                                 ))}
                         </select>
-                        <button 
-                            onClick={() => setShowAllYears(!showAllYears)}
-                            className="text-[9px] font-black text-blue-600 uppercase tracking-widest text-right mr-2 hover:underline"
-                        >
-                            {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
-                        </button>
                     </div>
                     <button
                         onClick={exportToExcel}

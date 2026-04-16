@@ -88,16 +88,10 @@ export default function Budgeting() {
                             value={selectedYearId} 
                             onChange={e => setSelectedYearId(e.target.value)}
                         >
-                            {state.academicYears?.filter(y => y.isActive || y.id === selectedYearId || showAllYears).map(y => (
+                            {state.academicYears?.filter(y => y.isActive || y.id === selectedYearId).map(y => (
                                 <option key={y.id} value={y.id}>{y.name}</option>
                             ))}
                         </select>
-                        <button 
-                            onClick={() => setShowAllYears(!showAllYears)}
-                            className="text-[8px] font-black text-blue-600 uppercase tracking-widest text-right hover:underline"
-                        >
-                            {showAllYears ? 'Sembunyikan' : 'Tampilkan Semua'}
-                        </button>
                     </div>
                 </div>
             </div>
