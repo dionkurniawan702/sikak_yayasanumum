@@ -997,7 +997,7 @@ export default function RAB() {
                             </div>
                             
                             <h2 className="text-4xl lg:text-5xl font-black tracking-tighter italic leading-none mb-8">
-                                Konsolidasi <span className="text-blue-400">Kas & Anggaran</span>
+                                Konsolidasi <span className="text-blue-400">Anggaran</span>
                             </h2>
                             
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
