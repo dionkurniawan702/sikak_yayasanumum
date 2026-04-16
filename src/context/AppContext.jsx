@@ -126,6 +126,29 @@ function loadState() {
                 }));
             }
 
+            // Migration: Robust year formatting for all other entities (Drafts, Reports, etc.)
+            const migrationMap = {
+                rabPlans: true,  // id and academicYearId
+                budgetRequests: false, // only academicYearId
+                budgetReports: false,
+                bosStages: false
+            };
+
+            Object.entries(migrationMap).forEach(([key, fixId]) => {
+                if (merged[key] && Array.isArray(merged[key])) {
+                    merged[key] = merged[key].map(item => {
+                        const updated = { ...item };
+                        if (item.academicYearId) {
+                            updated.academicYearId = item.academicYearId.replace(/\//g, '-');
+                        }
+                        if (fixId && item.id) {
+                            updated.id = item.id.replace(/\//g, '-');
+                        }
+                        return updated;
+                    });
+                }
+            });
+
             return merged;
         }
     } catch (e) { /* ignore */ }
@@ -247,7 +270,7 @@ function appReducer(state, action) {
                 });
             }
 
-            // Server Data Migration: Replace slash (/) with dash (-) in academic year names/IDs
+            // Server Data Migration: Replace slash (/) with dash (-) in all academic year references
             if (newState.academicYears && Array.isArray(newState.academicYears)) {
                 newState.academicYears = newState.academicYears.map(ay => ({
                     ...ay,
@@ -257,12 +280,28 @@ function appReducer(state, action) {
                 }));
             }
 
-            if (newState.students && Array.isArray(newState.students)) {
-                newState.students = newState.students.map(s => ({
-                    ...s,
-                    academicYearId: s.academicYearId ? s.academicYearId.replace(/\//g, '-') : s.academicYearId
-                }));
-            }
+            const migrationMap = {
+                students: false,
+                rabPlans: true,
+                budgetRequests: false,
+                budgetReports: false,
+                bosStages: false
+            };
+
+            Object.entries(migrationMap).forEach(([key, fixId]) => {
+                if (newState[key] && Array.isArray(newState[key])) {
+                    newState[key] = newState[key].map(item => {
+                        const updated = { ...item };
+                        if (item.academicYearId) {
+                            updated.academicYearId = item.academicYearId.replace(/\//g, '-');
+                        }
+                        if (fixId && item.id) {
+                            updated.id = item.id.replace(/\//g, '-');
+                        }
+                        return updated;
+                    });
+                }
+            });
             break;
         }
         case 'LOGOUT':
