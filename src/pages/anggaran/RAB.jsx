@@ -1069,9 +1069,11 @@ export default function RAB() {
                                         className="group cursor-pointer bg-white border border-slate-100 rounded-[2rem] p-6 transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/5 active:scale-95 relative"
                                     >
                                         {status === 'PENDING' && (
-                                            <div className="absolute top-4 right-4">
-                                                <div className="w-3 h-3 bg-rose-500 rounded-full animate-ping absolute" />
-                                                <div className="w-3 h-3 bg-rose-500 rounded-full relative" />
+                                            <div className="absolute top-4 right-4 flex items-center justify-center">
+                                                <div className="w-6 h-6 bg-rose-500 rounded-full animate-ping absolute opacity-20" />
+                                                <div className="w-6 h-6 bg-rose-600 rounded-full relative flex items-center justify-center text-[10px] font-black text-white shadow-lg shadow-rose-200">
+                                                    {Object.keys(plan?.expense || {}).length}
+                                                </div>
                                             </div>
                                         )}
                                         
