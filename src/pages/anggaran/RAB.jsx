@@ -1471,7 +1471,7 @@ export default function RAB() {
             {editingItem && (
                 <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItem(null)} />
-                    <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+                    <div className="bg-white rounded-[3rem] w-full max-w-7xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
                         {/* Modal Header */}
                         <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                             <div>
@@ -1677,7 +1677,7 @@ export default function RAB() {
                             </div>
 
                             {/* Section 2: Calculation Breakdown (Journal Style) */}
-                            <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
+                            <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-10">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
@@ -1775,187 +1775,188 @@ export default function RAB() {
                                     </div>
                                 </div>
 
+                                {/* Monthly Breakdown Table */}
+                                <div className="space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                                        {months.map(m => {
+                                            const mData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
+                                            const jumlahVal = parseFloat(mData.jumlah) || 0;
+                                            return (
+                                                <div key={m.id} className={`p-4 rounded-2xl border flex flex-col gap-3 transition-all ${
+                                                    jumlahVal > 0 
+                                                        ? 'bg-blue-50 border-blue-200 shadow-sm' 
+                                                        : 'bg-slate-50 border-slate-100'
+                                                }`}>
+                                                    <div className="flex items-center justify-between">
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                            jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
+                                                        }`}>{m.label}</span>
+                                                        <input 
+                                                            type="checkbox"
+                                                            checked={mData.m}
+                                                            onChange={e => handleMonthlyUpdate(editingItem.id, m.id, 'm', e.target.checked)}
+                                                            className="w-4 h-4 rounded text-blue-600"
+                                                        />
+                                                    </div>
+                                                    {/* Formatted rupiah input */}
+                                                    <input 
+                                                        type="text"
+                                                        inputMode="numeric"
+                                                        className={`w-full bg-transparent font-black text-slate-800 outline-none border-b-2 border-dashed pb-1 transition-all text-right ${
+                                                            jumlahVal > 0 
+                                                                ? 'border-blue-400 text-blue-800' 
+                                                                : 'border-slate-200 focus:border-blue-500'
+                                                        }`}
+                                                        value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
+                                                        onChange={e => {
+                                                            const numeric = e.target.value.replace(/\D/g, '');
+                                                            handleMonthlyUpdate(editingItem.id, m.id, 'jumlah', numeric ? parseFloat(numeric) : 0);
+                                                        }}
+                                                        placeholder="0"
+                                                    />
+                                                    {/* Per-month formatted hint */}
+                                                    {jumlahVal > 0 && (
+                                                        <span className="text-[9px] font-bold text-blue-500 text-right">
+                                                            Rp {jumlahVal.toLocaleString('id-ID')}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* Live Running Total */}
+                                    {(() => {
+                                        const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
+                                        const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                        const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0).length;
+                                        const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
+                                        const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
+
+                                        return (
+                                            <>
+                                            <div className={`flex items-center justify-between px-6 py-4 rounded-2xl ${
+                                                monthlyTotal > 0 ? (isMismatch ? 'bg-amber-50 border-2 border-amber-200' : 'bg-emerald-50 border-2 border-emerald-200') : 'bg-slate-100 border border-dashed border-slate-300'
+                                            }`}>
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-2 h-2 rounded-full ${ monthlyTotal > 0 ? (isMismatch ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-400' }`} />
+                                                    <div>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Rincian Bulan</p>
+                                                        <p className="text-[10px] text-slate-400">{activeMonths} bulan diisi</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`text-xl font-black tabular-nums ${ monthlyTotal > 0 ? (isMismatch ? 'text-amber-700' : 'text-emerald-700') : 'text-slate-400' }`}>
+                                                        Rp {monthlyTotal.toLocaleString('id-ID')}
+                                                    </p>
+                                                    {isMismatch && (
+                                                        <p className="text-[9px] font-bold text-amber-600">
+                                                            ⚠ Beda {formatRupiah(Math.abs(itemTotal - monthlyTotal))} dari total item
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {isMismatch && (
+                                                <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
+                                                    <AlertCircle size={14} className="shrink-0" />
+                                                    <p className="text-[10px] font-black uppercase tracking-tight">Rincian bulanan wajib sama dengan Total Terhitung agar bisa disimpan.</p>
+                                                </div>
+                                            )}
+                                            </>
+                                        );
+                                    })()}
+                                </div>
+
                                 {/* LIST OF SAVED COMPONENTS */}
-                                <div className="overflow-hidden rounded-3xl border border-slate-100">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
-                                            <tr>
-                                                <th className="px-6 py-4">Keterangan / Rincian</th>
-                                                <th className="px-6 py-4 text-center">Volume</th>
-                                                <th className="px-6 py-4 text-right">Subtotal</th>
-                                                <th className="px-6 py-4 text-center">Aksi</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-50 italic">
-                                            {(() => {
-                                                const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                                const comps = item.components || [];
-                                                
-                                                if (comps.length === 0) {
-                                                    return (
-                                                        <tr>
-                                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-300 font-black text-xs uppercase tracking-widest italic opacity-50">
-                                                                Belum ada rincian belanja terinput...
+                                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian (Summary Table)</h4>
+                                    </div>
+                                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
+                                                <tr>
+                                                    <th className="px-6 py-5">Keterangan / Rincian</th>
+                                                    <th className="px-6 py-5 text-center">Volume</th>
+                                                    <th className="px-6 py-5 text-center">Satuan</th>
+                                                    <th className="px-6 py-5 text-center">Kali</th>
+                                                    <th className="px-6 py-5 text-right">Harga Satuan</th>
+                                                    <th className="px-6 py-5 text-right">Subtotal</th>
+                                                    <th className="px-6 py-5 text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 italic">
+                                                {(() => {
+                                                    const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                    const comps = item.components || [];
+                                                    
+                                                    if (comps.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={7} className="px-6 py-12 text-center text-slate-300 font-black text-xs uppercase tracking-widest italic opacity-50">
+                                                                    Belum ada rincian belanja terinput...
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return comps.map((comp, idx) => (
+                                                        <tr key={idx} className={`group hover:bg-slate-50 transition-colors ${editingCompIdx === idx ? 'bg-indigo-50/30' : ''}`}>
+                                                            <td className="px-6 py-4">
+                                                                <p className="font-black text-slate-800 text-xs tracking-tight">{comp.label}</p>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
+                                                            <td className="px-6 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan || '-'}</td>
+                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali || 1}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-slate-500 text-[11px]">{formatRupiah(comp.harga)}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button 
+                                                                        onClick={() => handleLoadToEdit(idx, comp)}
+                                                                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all"
+                                                                    >
+                                                                        <Pencil size={14} />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleRemoveComponent(editingItem.id, idx)}
+                                                                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-all"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
                                                             </td>
                                                         </tr>
-                                                    );
-                                                }
-
-                                                return comps.map((comp, idx) => (
-                                                    <tr key={idx} className={`group hover:bg-slate-50 transition-colors ${editingCompIdx === idx ? 'bg-indigo-50/30' : ''}`}>
-                                                        <td className="px-6 py-4">
-                                                            <p className="font-black text-slate-800 text-xs tracking-tight">{comp.label}</p>
-                                                            <p className="text-[9px] text-slate-400 font-bold mt-0.5">{formatRupiah(comp.harga)} / {comp.satuan || 'Unit'}</p>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-center">
-                                                            <span className="px-2 py-1 bg-slate-100 rounded-lg font-black text-[10px] text-slate-600">
-                                                                {comp.volume} {comp.satuan} {comp.kali > 1 && `x ${comp.kali}`}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-6 py-4 text-right font-black text-slate-700 text-xs">
-                                                            {formatRupiah(comp.total)}
-                                                        </td>
-                                                        <td className="px-6 py-4">
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <button 
-                                                                    onClick={() => handleLoadToEdit(idx, comp)}
-                                                                    className="p-2 text-slate-300 hover:text-blue-600 hover:bg-white rounded-lg transition-all"
-                                                                >
-                                                                    <Pencil size={14} />
-                                                                </button>
-                                                                <button 
-                                                                    onClick={() => handleRemoveComponent(editingItem.id, idx)}
-                                                                    className="p-2 text-slate-300 hover:text-rose-600 hover:bg-white rounded-lg transition-all"
-                                                                >
-                                                                    <Trash2 size={14} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                ));
+                                                    ));
+                                                })()}
+                                            </tbody>
+                                            {(() => {
+                                                const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                const total = item.total || 0;
+                                                if (!item.components || item.components.length === 0) return null;
+                                                return (
+                                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                                                        <tr>
+                                                            <td colSpan={5} className="px-6 py-5 font-black text-[11px] uppercase tracking-widest italic text-slate-500">Total Akumulasi Rincian</td>
+                                                            <td className="px-6 py-5 text-right font-black text-sm italic text-slate-900">{formatRupiah(total)}</td>
+                                                            <td></td>
+                                                        </tr>
+                                                    </tfoot>
+                                                );
                                             })()}
-                                        </tbody>
-                                        {(() => {
-                                            const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                            const total = item.total || 0;
-                                            if (!item.components || item.components.length === 0) return null;
-                                            return (
-                                                <tfoot className="bg-slate-900 text-white">
-                                                    <tr>
-                                                        <td colSpan={2} className="px-6 py-4 font-black text-[10px] uppercase tracking-widest italic">Total Kalkulasi</td>
-                                                        <td className="px-6 py-4 text-right font-black text-sm italic">{formatRupiah(total)}</td>
-                                                        <td></td>
-                                                    </tr>
-                                                </tfoot>
-                                            );
-                                        })()}
-                                    </table>
+                                        </table>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                        <Info size={16} className="text-amber-600 shrink-0" />
+                                        <p className="text-[10px] font-bold text-amber-800 tracking-tight leading-relaxed italic">
+                                            Periksa kembali daftar di atas. Total Akumulasi Rincian harus sama dengan alokasi bulanan yang Anda tentukan di atasnya.
+                                        </p>
+                                    </div>
                                 </div>
-                                
-                                {/* Info Helper */}
-                                <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                    <Info size={16} className="text-amber-600 shrink-0" />
-                                    <p className="text-[10px] font-bold text-amber-800 tracking-tight leading-relaxed italic">
-                                        Input setiap rincian pengeluaran (misal: Gaji Pokok, Tunjangan) di atas satu-persatu. 
-                                        Baris yang sudah terinput akan muncul di tabel bawah dan otomatis dijumlahkan ke Total Item.
-                                    </p>
-                                </div>
-                            </div>
-
-                            {/* Monthly Breakdown Table */}
-                            <div className="space-y-6">
-                                <div className="flex items-center justify-between">
-                                    <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
-                                </div>
-
-                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                    {months.map(m => {
-                                        const mData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
-                                        const jumlahVal = parseFloat(mData.jumlah) || 0;
-                                        return (
-                                            <div key={m.id} className={`p-4 rounded-2xl border flex flex-col gap-3 transition-all ${
-                                                jumlahVal > 0 
-                                                    ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                                                    : 'bg-slate-50 border-slate-100'
-                                            }`}>
-                                                <div className="flex items-center justify-between">
-                                                    <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                                        jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
-                                                    }`}>{m.label}</span>
-                                                    <input 
-                                                        type="checkbox"
-                                                        checked={mData.m}
-                                                        onChange={e => handleMonthlyUpdate(editingItem.id, m.id, 'm', e.target.checked)}
-                                                        className="w-4 h-4 rounded text-blue-600"
-                                                    />
-                                                </div>
-                                                {/* Formatted rupiah input */}
-                                                <input 
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    className={`w-full bg-transparent font-black text-slate-800 outline-none border-b-2 border-dashed pb-1 transition-all text-right ${
-                                                        jumlahVal > 0 
-                                                            ? 'border-blue-400 text-blue-800' 
-                                                            : 'border-slate-200 focus:border-blue-500'
-                                                    }`}
-                                                    value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
-                                                    onChange={e => {
-                                                        const numeric = e.target.value.replace(/\D/g, '');
-                                                        handleMonthlyUpdate(editingItem.id, m.id, 'jumlah', numeric ? parseFloat(numeric) : 0);
-                                                    }}
-                                                    placeholder="0"
-                                                />
-                                                {/* Per-month formatted hint */}
-                                                {jumlahVal > 0 && (
-                                                    <span className="text-[9px] font-bold text-blue-500 text-right">
-                                                        Rp {jumlahVal.toLocaleString('id-ID')}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-
-                                {/* Live Running Total */}
-                                {(() => {
-                                    const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
-                                    const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                    const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0).length;
-                                    const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
-                                    const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
-
-                                    return (
-                                        <>
-                                        <div className={`flex items-center justify-between px-6 py-4 rounded-2xl ${
-                                            monthlyTotal > 0 ? (isMismatch ? 'bg-amber-50 border-2 border-amber-200' : 'bg-emerald-50 border-2 border-emerald-200') : 'bg-slate-100 border border-dashed border-slate-300'
-                                        }`}>
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-2 h-2 rounded-full ${ monthlyTotal > 0 ? (isMismatch ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-400' }`} />
-                                                <div>
-                                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Rincian Bulan</p>
-                                                    <p className="text-[10px] text-slate-400">{activeMonths} bulan diisi</p>
-                                                </div>
-                                            </div>
-                                            <div className="text-right">
-                                                <p className={`text-xl font-black tabular-nums ${ monthlyTotal > 0 ? (isMismatch ? 'text-amber-700' : 'text-emerald-700') : 'text-slate-400' }`}>
-                                                    Rp {monthlyTotal.toLocaleString('id-ID')}
-                                                </p>
-                                                {isMismatch && (
-                                                    <p className="text-[9px] font-bold text-amber-600">
-                                                        ⚠ Beda {formatRupiah(Math.abs(itemTotal - monthlyTotal))} dari total item
-                                                    </p>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {isMismatch && (
-                                            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
-                                                <AlertCircle size={14} className="shrink-0" />
-                                                <p className="text-[10px] font-black uppercase tracking-tight">Rincian bulanan wajib sama dengan Total Terhitung agar bisa disimpan.</p>
-                                            </div>
-                                        )}
-                                        </>
-                                    );
-                                })()}
                             </div>
                         </div>
 
