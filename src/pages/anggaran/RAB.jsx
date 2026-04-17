@@ -131,39 +131,7 @@ export default function RAB() {
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
     
-    // Auto-migrate legacy data to components when modal opens
-    useEffect(() => {
-        if (!editingItem) return;
-        const type = activeTab.toLowerCase();
-        const item = currentPlan[type][editingItem.id];
-        
-        if (item && item.total > 0 && (!item.components || item.components.length === 0)) {
-            setCurrentPlan(prev => {
-                const currentItem = prev[type][editingItem.id];
-                if (!currentItem || currentItem.components?.length > 0) return prev;
-                
-                const initialComp = {
-                    label: 'Komponen Utama (Legacy)',
-                    volume: currentItem.volume || 1,
-                    satuan: currentItem.satuan || '',
-                    kali: currentItem.kali || 1,
-                    harga: currentItem.harga || currentItem.total,
-                    total: currentItem.total
-                };
-                
-                return {
-                    ...prev,
-                    [type]: {
-                        ...prev[type],
-                        [editingItem.id]: {
-                            ...currentItem,
-                            components: [initialComp]
-                        }
-                    }
-                };
-            });
-        }
-    }, [editingItem, activeTab]);
+    // Computation logic moved out of useEffect to ensure clean slate as per user request
 
     // Compute consolidated data if Yayasan is selected
     const consolidatedPlan = useMemo(() => {
@@ -308,12 +276,12 @@ export default function RAB() {
     }, [expenseItems, state.distributionSettings, selectedUnitId]);
 
 
-    // - [x] Update `handleItemUpdate` di `RAB.jsx` untuk logika Semester
-    // - [x] Deteksi perubahan field `semester`
-    // - [x] Tentukan daftar bulan berdasarkan `generateMonths`
-    // - [x] Update status `m` (checked) sesuai semester yang dipilih
-    // - [x] Verifikasi inisialisasi input kosong untuk item baru
-    // - [x] Verifikasi tampilan UI (Checkbox terupdate otomatis saat ganti semester)
+    // - [x] Hapus fitur Migrasi Otomatis (Auto-Migration) di `RAB.jsx`
+    // - [x] Hapus `useEffect` pembuat komponen "Legacy"
+    // - [x] Bersihkan logika fallback `currentItem.total` di `handlePushComponent`
+    // - [x] Perbaiki perhitungan `activeMonths` di UI
+    // - [x] Hanya hitung bulan yang status centangnya `true`
+    // - [x] Verifikasi Start from Zero (Klik Atur Budget -> Semua 0)
     // - [x] Git commit & push
     const handleItemUpdate = (itemId, field, value) => {
         const type = activeTab.toLowerCase();
@@ -420,14 +388,7 @@ export default function RAB() {
             // If item has legacy data and 0 components, convert it first
             let components = currentItem.components && currentItem.components.length > 0 
                 ? [...currentItem.components] 
-                : (currentItem.total > 0 ? [{
-                    label: 'Komponen Utama',
-                    volume: currentItem.volume || 0,
-                    satuan: currentItem.satuan || '',
-                    kali: currentItem.kali || 1,
-                    harga: currentItem.harga || 0,
-                    total: currentItem.total || 0
-                }] : []);
+                : [];
 
             if (editingCompIdx !== null) {
                 // Update mode
@@ -492,14 +453,7 @@ export default function RAB() {
             // If item has legacy data and 0 components, convert it first
             let components = currentItem.components && currentItem.components.length > 0 
                 ? [...currentItem.components] 
-                : (currentItem.total > 0 ? [{
-                    label: 'Komponen Utama',
-                    volume: currentItem.volume || 0,
-                    satuan: currentItem.satuan || '',
-                    kali: currentItem.kali || 1,
-                    harga: currentItem.harga || 0,
-                    total: currentItem.total || 0
-                }] : []);
+                : [];
 
             components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
 
@@ -1951,7 +1905,7 @@ export default function RAB() {
                                     {(() => {
                                         const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
                                         const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                        const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0 || m.m).length;
+                                        const activeMonths = Object.values(monthsData).filter(m => m.m).length;
                                         const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
                                         const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
 
