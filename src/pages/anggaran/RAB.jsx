@@ -351,7 +351,21 @@ export default function RAB() {
             const currentMonths = currentItem.months || {};
             const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
             
-            const updatedMonthData = { ...currentMonthData, [field]: value };
+            let updatedMonthData = { ...currentMonthData, [field]: value };
+
+            // Logic 1: If unchecking, zero out the amount
+            if (field === 'm' && value === false) {
+                updatedMonthData.jumlah = 0;
+            }
+            // Logic 2: If typing an amount > 0, auto-check the month
+            if (field === 'jumlah' && (parseFloat(value) || 0) > 0) {
+                updatedMonthData.m = true;
+            }
+            // Logic 3: If typing 0 or empty, uncheck the month
+            if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) {
+                updatedMonthData.m = false;
+            }
+            
             const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
             
             return {
@@ -1612,7 +1626,7 @@ export default function RAB() {
                                 {/* Live Running Total */}
                                 {(() => {
                                     const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
-                                    const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (parseFloat(m?.jumlah) || 0), 0);
+                                    const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                     const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0).length;
                                     const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
                                     const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
@@ -1655,7 +1669,7 @@ export default function RAB() {
                         {/* Modal Footer */}
                         {(() => {
                             const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
-                            const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (parseFloat(m?.jumlah) || 0), 0);
+                            const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                             const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
                             const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
 
