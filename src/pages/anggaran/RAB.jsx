@@ -1936,8 +1936,11 @@ export default function RAB() {
                                         const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
                                         const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                         const activeMonths = Object.values(monthsData).filter(m => m.m).length;
-                                        const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
-                                        const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
+                                        const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                        const itemTotal = (item.components && item.components.length > 0) 
+                                            ? item.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) 
+                                            : (item.total || 0);
+                                        const isMismatch = itemTotal > 0 && Math.abs(monthlyTotal - itemTotal) > 0.01;
 
                                         return (
                                             <>
@@ -2080,8 +2083,11 @@ export default function RAB() {
                         {(() => {
                             const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
                             const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                            const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
-                            const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
+                            const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                            const itemTotal = (item.components && item.components.length > 0) 
+                                ? item.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) 
+                                : (item.total || 0);
+                            const isMismatch = itemTotal > 0 && Math.abs(monthlyTotal - itemTotal) > 0.01;
 
                             return (
                                 <div className="p-8 bg-slate-900 flex items-center justify-between text-white">
