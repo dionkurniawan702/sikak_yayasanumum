@@ -282,11 +282,6 @@ export default function RAB() {
                 updatedItem.total = (parseFloat(updatedItem.volume) || 0) * 
                                    (parseFloat(updatedItem.kali) || 0) * 
                                    (parseFloat(updatedItem.harga) || 0);
-
-                // Ensure bosAmount doesn't exceed new total
-                if (updatedItem.bosAmount > updatedItem.total) {
-                    updatedItem.bosAmount = updatedItem.total;
-                }
             }
             
             return {
@@ -1333,7 +1328,7 @@ export default function RAB() {
                                 {(() => {
                                     const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0, bosAmount: 0, useBos: false };
                                     const allocated = rapData.itemAllocations[editingItem.id] || 0;
-                                    const yayasanSpent = detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0);
+                                    const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
                                     const isOver = yayasanSpent > (allocated + 100);
                                     
                                     if (isOver) {
@@ -1442,7 +1437,7 @@ export default function RAB() {
                                                         <div className="flex justify-between items-center">
                                                             <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Porsi Dana BOS (Rp)</label>
                                                             <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
-                                                                Beban Yayasan: {formatRupiah((currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0) - (currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0))}
+                                                                Beban Yayasan: {formatRupiah(Math.max(0, (currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0) - (currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0)))}
                                                             </span>
                                                         </div>
                                                         <input 
@@ -1451,8 +1446,7 @@ export default function RAB() {
                                                             value={parseInt(currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0).toLocaleString('id-ID')}
                                                             onChange={e => {
                                                                 const val = e.target.value.replace(/\D/g, '') || 0;
-                                                                const total = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
-                                                                handleItemUpdate(editingItem.id, 'bosAmount', Math.min(parseInt(val), total));
+                                                                handleItemUpdate(editingItem.id, 'bosAmount', parseInt(val));
                                                             }}
                                                         />
                                                     </div>
