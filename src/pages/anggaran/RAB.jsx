@@ -131,7 +131,29 @@ export default function RAB() {
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
     
-    // Computation logic moved out of useEffect to ensure clean slate as per user request
+    // Force reset legacy items to 0 upon opening the modal to ensure a clean slate
+    useEffect(() => {
+        if (!editingItem) return;
+        const type = activeTab.toLowerCase();
+        const item = currentPlan[type][editingItem.id];
+        
+        // If it's a legacy item (has total but NO components yet)
+        if (item && item.total > 0 && (!item.components || item.components.length === 0)) {
+            setCurrentPlan(prev => ({
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    [editingItem.id]: {
+                        ...item,
+                        total: 0,
+                        months: {},
+                        components: [],
+                        bosAmount: 0 // Reset BOS allocation too
+                    }
+                }
+            }));
+        }
+    }, [editingItem, activeTab]);
 
     // Compute consolidated data if Yayasan is selected
     const consolidatedPlan = useMemo(() => {
