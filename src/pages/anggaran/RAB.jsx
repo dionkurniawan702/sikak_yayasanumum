@@ -784,9 +784,9 @@ export default function RAB() {
                         if (fundSourceFilter === 'BOS') return item.sourceOfFunds === 'BOS';
                         return true;
                     }).map((item, index) => {
-                        const detail = activePlan.expense[item.id] || { total: 0, semester: '1', bosAmount: 0 };
+                        const detail = activePlan.expense[item.id] || { total: 0, semester: '1', bosAmount: 0, useBos: false };
                         const allocated = rapData.itemAllocations[item.id] || 0;
-                        const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+                        const yayasanSpent = detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0);
                         const isOver = yayasanSpent > (allocated + 100);
                         const progress = allocated > 0 ? (yayasanSpent / allocated * 100) : 0;
                         
@@ -804,7 +804,7 @@ export default function RAB() {
                                             <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{item.name}</p>
                                             <div className="flex items-center gap-2 mt-1">
                                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">{item.sourceOfFunds || 'Yayasan'}</p>
-                                                {detail.bosAmount > 0 && (
+                                                {detail.useBos && (
                                                     <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
                                                         <Wallet size={10} />
                                                         BOS: {formatRupiah(detail.bosAmount)}
@@ -901,7 +901,9 @@ export default function RAB() {
     }, [bosAllocations, selectedYearId, selectedUnitId]);
 
     const totalExpenseBos = useMemo(() => {
-        return Object.values(activePlan?.expense || {}).reduce((sum, val) => sum + (parseFloat(val?.bosAmount) || 0), 0);
+        return Object.values(activePlan?.expense || {}).reduce((sum, val) => {
+            return sum + (val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0);
+        }, 0);
     }, [activePlan?.expense]);
 
     const balance = (rapData?.totalTarget || 0) + totalIncome + totalBosAllocated - totalExpense;
@@ -1329,9 +1331,9 @@ export default function RAB() {
                             </div>
                             <div className="flex items-center gap-4">
                                 {(() => {
-                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0, bosAmount: 0 };
+                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0, bosAmount: 0, useBos: false };
                                     const allocated = rapData.itemAllocations[editingItem.id] || 0;
-                                    const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+                                    const yayasanSpent = detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0);
                                     const isOver = yayasanSpent > (allocated + 100);
                                     
                                     if (isOver) {
@@ -1417,20 +1419,24 @@ export default function RAB() {
                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gunakan Dana BOS?</span>
                                                     <button 
                                                         onClick={() => {
-                                                            const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0 };
-                                                            const hasBos = !!detail.bosAmount && detail.bosAmount > 0;
-                                                            handleItemUpdate(editingItem.id, 'bosAmount', hasBos ? 0 : detail.total);
+                                                            const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                            const nextState = !detail.useBos;
+                                                            handleItemUpdate(editingItem.id, 'useBos', nextState);
+                                                            // If turning ON for the first time and amount is missing/0, initialize to 0 (user request)
+                                                            if (nextState && (detail.bosAmount === undefined)) {
+                                                                handleItemUpdate(editingItem.id, 'bosAmount', 0);
+                                                            }
                                                         }}
-                                                        className={`w-12 h-6 rounded-full transition-all relative ${((currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0) > 0) ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                                                        className={`w-12 h-6 rounded-full transition-all relative ${currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'bg-emerald-500' : 'bg-slate-200'}`}
                                                     >
-                                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${((currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0) > 0) ? 'left-7' : 'left-1'}`} />
+                                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'left-7' : 'left-1'}`} />
                                                     </button>
                                                 </div>
                                             )}
                                         </div>
 
                                         <div className="space-y-4">
-                                            {((currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0) > 0) ? (
+                                            {currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? (
                                                 <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                                     <div className="space-y-2">
                                                         <div className="flex justify-between items-center">
