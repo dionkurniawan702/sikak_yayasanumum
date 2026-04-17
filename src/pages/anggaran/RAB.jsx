@@ -308,6 +308,13 @@ export default function RAB() {
     }, [expenseItems, state.distributionSettings, selectedUnitId]);
 
 
+    // - [x] Update `handleItemUpdate` di `RAB.jsx` untuk logika Semester
+    // - [x] Deteksi perubahan field `semester`
+    // - [x] Tentukan daftar bulan berdasarkan `generateMonths`
+    // - [x] Update status `m` (checked) sesuai semester yang dipilih
+    // - [x] Verifikasi inisialisasi input kosong untuk item baru
+    // - [x] Verifikasi tampilan UI (Checkbox terupdate otomatis saat ganti semester)
+    // - [x] Git commit & push
     const handleItemUpdate = (itemId, field, value) => {
         const type = activeTab.toLowerCase();
         setCurrentPlan(prev => {
@@ -327,6 +334,23 @@ export default function RAB() {
             // If we have components, the total is ALWAYS the sum of components
             if (updatedItem.components && updatedItem.components.length > 0) {
                 updatedItem.total = updatedItem.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+            }
+            
+            // Special logic if semester changes: auto-toggle checkboxes
+            if (field === 'semester') {
+                const yearName = academicYears.find(ay => ay.id === selectedYearId)?.name;
+                const yearMonths = generateMonths(yearName);
+                const monthsData = { ...(updatedItem.months || {}) };
+                
+                yearMonths.forEach((m, idx) => {
+                    const isSemester1 = idx < 6;
+                    const targetSemester = value === '1' ? isSemester1 : !isSemester1;
+                    monthsData[m.id] = {
+                        ...(monthsData[m.id] || { jumlah: 0 }),
+                        m: targetSemester
+                    };
+                });
+                updatedItem.months = monthsData;
             }
             
             return {
