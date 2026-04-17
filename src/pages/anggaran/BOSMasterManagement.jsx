@@ -3,19 +3,27 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { 
     Plus, Edit2, Trash2, ShieldCheck, ChevronRight, 
-    Layers, Filter, AlertCircle, CheckCircle2, Box, Calendar
+    Layers, Filter, AlertCircle, CheckCircle2, Box, Calendar,
+    Coins, Receipt, Layout
 } from 'lucide-react';
 import { generateId } from '../../utils/format';
 
 export default function BOSMasterManagement() {
     const { state, dispatch } = useApp();
-    const { bosStages = [], bosPosList = [], academicYears = [] } = state;
+    const { 
+        bosStages = [], 
+        bosPosList = [], 
+        incomeItems = [], 
+        expenseItems = [], 
+        academicYears = [] 
+    } = state;
 
+    const [activeTab, setActiveTab] = useState('STAGES'); // 'STAGES' | 'POS' | 'INCOME' | 'EXPENSE'
     const [message, setMessage] = useState(null);
     const [loading, setLoading] = useState(false);
 
     // Modal State
-    const [modalType, setModalType] = useState(null); // 'STAGE' | 'POS'
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({ name: '', academicYearId: '' });
 
@@ -23,25 +31,30 @@ export default function BOSMasterManagement() {
         e.preventDefault();
         setLoading(true);
         try {
-            const actionType = modalType === 'STAGE' 
-                ? (editingItem ? 'EDIT_BOS_STAGE' : 'ADD_BOS_STAGE')
-                : (editingItem ? 'EDIT_BOS_POS' : 'ADD_BOS_POS');
-            
-            const payload = {
-                ...formData,
-                id: editingItem ? editingItem.id : (modalType === 'STAGE' ? `BSTG-${generateId()}` : `BPOS-${generateId()}`)
-            };
+            let actionType;
+            let payload;
 
-            // Remove academicYearId for POS as it's not in the DB schema
-            if (modalType === 'POS') {
-                delete payload.academicYearId;
+            if (activeTab === 'STAGES') {
+                actionType = editingItem ? 'EDIT_BOS_STAGE' : 'ADD_BOS_STAGE';
+                payload = { ...formData, id: editingItem ? editingItem.id : `BSTG-${generateId()}` };
+            } else if (activeTab === 'POS') {
+                actionType = editingItem ? 'EDIT_BOS_POS' : 'ADD_BOS_POS';
+                payload = { name: formData.name, id: editingItem ? editingItem.id : `BPOS-${generateId()}` };
+            } else if (activeTab === 'INCOME') {
+                actionType = editingItem ? 'EDIT_INCOME_ITEM' : 'ADD_INCOME_ITEM';
+                payload = { ...editingItem, name: formData.name, isBos: true, id: editingItem ? editingItem.id : `BINC-${generateId()}` };
+            } else if (activeTab === 'EXPENSE') {
+                actionType = editingItem ? 'EDIT_EXPENSE_ITEM' : 'ADD_EXPENSE_ITEM';
+                payload = { ...editingItem, name: formData.name, isBos: true, id: editingItem ? editingItem.id : `BEXP-${generateId()}` };
             }
 
             dispatch({ type: actionType, payload });
             await api.pushAction({ type: actionType, payload }, state);
             
             setMessage({ type: 'success', text: 'Data berhasil disimpan' });
-            setModalType(null);
+            setIsModalOpen(false);
+            setEditingItem(null);
+            setFormData({ name: '', academicYearId: '' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -50,17 +63,29 @@ export default function BOSMasterManagement() {
         }
     };
 
-    const handleDelete = async (type, id) => {
+    const handleDelete = async (item) => {
         if (!window.confirm('Hapus data ini?')) return;
         try {
-            const actionType = type === 'STAGE' ? 'DELETE_BOS_STAGE' : 'DELETE_BOS_POS';
-            dispatch({ type: actionType, payload: id });
-            await api.pushAction({ type: actionType, payload: id }, state);
+            let actionType;
+            if (activeTab === 'STAGES') actionType = 'DELETE_BOS_STAGE';
+            else if (activeTab === 'POS') actionType = 'DELETE_BOS_POS';
+            else if (activeTab === 'INCOME') actionType = 'DELETE_INCOME_ITEM';
+            else if (activeTab === 'EXPENSE') actionType = 'DELETE_EXPENSE_ITEM';
+
+            dispatch({ type: actionType, payload: item.id });
+            await api.pushAction({ type: actionType, payload: item.id }, state);
             setMessage({ type: 'success', text: 'Data berhasil dihapus' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         }
     };
+
+    const tabs = [
+        { id: 'STAGES', label: 'Tahap BOS', icon: Calendar, color: 'emerald' },
+        { id: 'POS', label: 'POS Anggaran', icon: Box, color: 'blue' },
+        { id: 'INCOME', label: 'Item Penerimaan', icon: Coins, color: 'indigo' },
+        { id: 'EXPENSE', label: 'Item Belanja', icon: Receipt, color: 'rose' }
+    ];
 
     return (
         <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-10 animate-in fade-in duration-700">
@@ -73,8 +98,27 @@ export default function BOSMasterManagement() {
                         </div>
                         Master Pengaturan BOS
                     </h1>
-                    <p className="text-slate-500 mt-2 font-medium">Kelola Tahap dan POS Anggaran untuk pendanaan BOS</p>
+                    <p className="text-slate-500 mt-2 font-medium">Kelola seluruh konfigurasi komponen dana BOS secara terpusat</p>
                 </div>
+            </div>
+
+            {/* Tab Navigation */}
+            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-[2rem] w-fit">
+                {tabs.map(tab => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`
+                            flex items-center gap-2.5 px-6 py-3.5 rounded-full text-sm font-black transition-all duration-300
+                            ${activeTab === tab.id 
+                                ? `bg-white text-slate-900 shadow-xl shadow-slate-200` 
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}
+                        `}
+                    >
+                        <tab.icon size={18} className={activeTab === tab.id ? `text-${tab.color}-600` : ''} />
+                        {tab.label}
+                    </button>
+                ))}
             </div>
 
             {/* Alert Message */}
@@ -87,143 +131,124 @@ export default function BOSMasterManagement() {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* BOS Stages Section */}
-                <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                    <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                        <div className="flex items-center gap-3">
-                            <Calendar className="text-emerald-600" size={20} />
-                            <h2 className="text-xl font-black text-slate-900 tracking-tight">Tahap BOS</h2>
-                        </div>
-                        <button 
-                            onClick={() => {
-                                setModalType('STAGE');
-                                setEditingItem(null);
-                                setFormData({ name: '', academicYearId: '' });
-                            }}
-                            className="p-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-all shadow-md active:scale-95"
-                        >
-                            <Plus size={20} />
-                        </button>
+            {/* Main Content Area */}
+            <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
+                <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/10">
+                    <div>
+                        <h2 className="text-xl font-black text-slate-900 tracking-tight">
+                            Daftar {tabs.find(t => t.id === activeTab).label}
+                        </h2>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">
+                            Manajemen data {tabs.find(t => t.id === activeTab).label.toLowerCase()} BOS
+                        </p>
                     </div>
-                    <div className="p-4 overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
-                                    <th className="p-4">Nama Tahap</th>
-                                    <th className="p-4">Tahun Ajaran</th>
-                                    <th className="p-4 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 font-bold text-sm text-slate-700">
-                                {bosStages.filter(s => !s.isDeleted).map(stage => (
-                                    <tr key={stage.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-4">{stage.name}</td>
-                                        <td className="p-4">
-                                            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg">
-                                                {academicYears.find(ay => ay.id === stage.academicYearId)?.name || 'Global'}
-                                            </span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => {
-                                                    setModalType('STAGE');
-                                                    setEditingItem(stage);
-                                                    setFormData({ name: stage.name, academicYearId: stage.academicYearId || '' });
-                                                }} className="p-2 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-all">
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button onClick={() => handleDelete('STAGE', stage.id)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <button 
+                        onClick={() => {
+                            setEditingItem(null);
+                            setFormData({ name: '', academicYearId: '' });
+                            setIsModalOpen(true);
+                        }}
+                        className={`flex items-center gap-2 px-6 py-3.5 text-white rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
+                            activeTab === 'STAGES' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' :
+                            activeTab === 'POS' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' :
+                            activeTab === 'INCOME' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' :
+                            'bg-rose-600 hover:bg-rose-700 shadow-rose-100'
+                        }`}
+                    >
+                        <Plus size={20} />
+                        Tambah Data
+                    </button>
                 </div>
 
-                {/* BOS POS Section */}
-                <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                    <div className="p-8 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
-                        <div className="flex items-center gap-3">
-                            <Box className="text-blue-600" size={20} />
-                            <h2 className="text-xl font-black text-slate-900 tracking-tight">POS Anggaran BOS</h2>
-                        </div>
-                        <button 
-                            onClick={() => {
-                                setModalType('POS');
-                                setEditingItem(null);
-                                setFormData({ name: '', academicYearId: '' });
-                            }}
-                            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-md active:scale-95"
-                        >
-                            <Plus size={20} />
-                        </button>
-                    </div>
-                    <div className="p-4 overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50">
-                                    <th className="p-4">Nama POS</th>
-                                    <th className="p-4 text-right">Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-50 font-bold text-sm text-slate-700">
-                                {bosPosList.filter(p => !p.isDeleted).map(pos => (
-                                    <tr key={pos.id} className="hover:bg-slate-50 transition-colors">
-                                        <td className="p-4">{pos.name}</td>
-                                        <td className="p-4 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button onClick={() => {
-                                                    setModalType('POS');
-                                                    setEditingItem(pos);
-                                                    setFormData({ name: pos.name, academicYearId: '' });
-                                                }} className="p-2 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 rounded-lg transition-all">
-                                                    <Edit2 size={16} />
-                                                </button>
-                                                <button onClick={() => handleDelete('POS', pos.id)} className="p-2 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded-lg transition-all">
-                                                    <Trash2 size={16} />
-                                                </button>
-                                            </div>
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left">
+                        <thead>
+                            <tr className="text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                                <th className="px-8 py-5">Nama Komponen</th>
+                                {activeTab === 'STAGES' && <th className="px-8 py-5">Tahun Ajaran</th>}
+                                <th className="px-8 py-5 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-50">
+                            {/* Render Logic based on activeTab */}
+                            {(activeTab === 'STAGES' ? bosStages : 
+                              activeTab === 'POS' ? bosPosList :
+                              activeTab === 'INCOME' ? incomeItems.filter(i => i.isBos) :
+                              expenseItems.filter(i => i.isBos)
+                             ).filter(item => !item.isDeleted).map(item => (
+                                <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
+                                    <td className="px-8 py-5 font-bold text-slate-700">
+                                        <div className="flex items-center gap-3">
+                                            <div className={`w-2 h-2 rounded-full opacity-40 group-hover:opacity-100 transition-opacity ${
+                                                activeTab === 'STAGES' ? 'bg-emerald-400' :
+                                                activeTab === 'POS' ? 'bg-blue-400' :
+                                                activeTab === 'INCOME' ? 'bg-indigo-400' : 'bg-rose-400'
+                                            }`} />
+                                            {item.name}
+                                        </div>
+                                    </td>
+                                    {activeTab === 'STAGES' && (
+                                        <td className="px-8 py-5">
+                                            <span className="text-xs bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-black uppercase tracking-tight">
+                                                {academicYears.find(ay => ay.id === item.academicYearId)?.name || 'Global'}
+                                            </span>
                                         </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                                    )}
+                                    <td className="px-8 py-5 text-right">
+                                        <div className="flex items-center justify-end gap-2 text-slate-400">
+                                            <button onClick={() => {
+                                                setEditingItem(item);
+                                                setFormData({ 
+                                                    name: item.name, 
+                                                    academicYearId: item.academicYearId || '' 
+                                                });
+                                                setIsModalOpen(true);
+                                            }} className="p-2.5 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button onClick={() => handleDelete(item)} className="p-2.5 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all">
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            {/* Modal */}
-            {modalType && (
+            {/* Unified Modal */}
+            {isModalOpen && (
                 <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
-                        <div className={`p-8 border-b border-slate-100 ${modalType === 'STAGE' ? 'bg-emerald-50/50' : 'bg-blue-50/50'}`}>
+                        <div className={`p-8 border-b border-slate-50 ${
+                            activeTab === 'STAGES' ? 'bg-emerald-50/50' :
+                            activeTab === 'POS' ? 'bg-blue-50/50' :
+                            activeTab === 'INCOME' ? 'bg-indigo-50/50' : 'bg-rose-50/50'
+                        }`}>
                             <h2 className="text-2xl font-black text-slate-900">
-                                {editingItem ? 'Edit Data' : (modalType === 'STAGE' ? 'Tambah Tahap' : 'Tambah POS')}
+                                {editingItem ? 'Edit Data' : `Tambah ${tabs.find(t => t.id === activeTab).label}`}
                             </h2>
                             <p className="text-slate-500 text-sm font-medium mt-1">
-                                Masukkan detail informasi {modalType === 'STAGE' ? 'Tahap BOS' : 'POS Anggaran'}
+                                Masukkan detail informasi {tabs.find(t => t.id === activeTab).label}
                             </p>
                         </div>
                         
                         <form onSubmit={handleSubmit} className="p-8 space-y-6">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama {modalType === 'STAGE' ? 'Tahap' : 'POS'}</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama {tabs.find(t => t.id === activeTab).label}</label>
                                 <input 
                                     type="text" 
                                     required
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
-                                    placeholder={modalType === 'STAGE' ? 'Contoh: BOS THP 1 2025' : 'Contoh: Barang dan Jasa'}
+                                    placeholder="Contoh: BOS Reguler, Honor Guru, dll"
                                 />
                             </div>
 
-                            {modalType === 'STAGE' && (
+                            {activeTab === 'STAGES' && (
                                 <div className="space-y-2">
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Tahun Ajaran</label>
                                     <select 
@@ -240,7 +265,7 @@ export default function BOSMasterManagement() {
                             <div className="flex gap-3 pt-4">
                                 <button 
                                     type="button"
-                                    onClick={() => setModalType(null)}
+                                    onClick={() => setIsModalOpen(false)}
                                     className="flex-1 px-6 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold transition-all active:scale-95"
                                 >
                                     Batal
@@ -248,7 +273,12 @@ export default function BOSMasterManagement() {
                                 <button 
                                     type="submit"
                                     disabled={loading}
-                                    className={`flex-1 px-6 py-4 text-white rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${modalType === 'STAGE' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' : 'bg-blue-600 hover:bg-blue-700 shadow-blue-100'}`}
+                                    className={`flex-1 px-6 py-4 text-white rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
+                                        activeTab === 'STAGES' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' :
+                                        activeTab === 'POS' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' :
+                                        activeTab === 'INCOME' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' :
+                                        'bg-rose-600 hover:bg-rose-700 shadow-rose-100'
+                                    }`}
                                 >
                                     {loading ? 'Menyimpan...' : 'Simpan Data'}
                                 </button>

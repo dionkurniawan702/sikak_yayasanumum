@@ -35,8 +35,6 @@ import BudgetProgramManagement from './pages/anggaran/ProgramManagement';
 import BOSMasterManagement from './pages/anggaran/BOSMasterManagement';
 import ClassManagement from './pages/anggaran/ClassManagement';
 import RAB from './pages/anggaran/RAB';
-import BOSIncomeItemManagement from './pages/anggaran/BOSIncomeItemManagement';
-import BOSExpenseItemManagement from './pages/anggaran/BOSExpenseItemManagement';
 import BOSRecipientUnitManagement from './pages/anggaran/BOSRecipientUnitManagement';
 import BOSDatabase from './pages/anggaran/BOSDatabase';
 import GenericMasterManagement from './components/GenericMasterManagement';
@@ -197,8 +195,6 @@ function AppContent() {
                     } />
                     <Route path="anggaran/item-penerimaan" element={<IncomeItemManagement />} />
                     <Route path="anggaran/item-pengeluaran" element={<ExpenseItemManagement />} />
-                    <Route path="anggaran/item-penerimaan-bos" element={<BOSIncomeItemManagement />} />
-                    <Route path="anggaran/item-belanja-bos" element={<BOSExpenseItemManagement />} />
                     <Route path="anggaran/unit-penerima-bos" element={<BOSRecipientUnitManagement />} />
                     <Route path="anggaran/database-bos" element={<BOSDatabase />} />
                     <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />

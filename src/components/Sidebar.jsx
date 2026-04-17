@@ -99,8 +99,6 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
             { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
             { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
-            { path: '/anggaran/item-penerimaan-bos', label: 'Item Penerimaan BOS', icon: Coins },
-            { path: '/anggaran/item-belanja-bos', label: 'Item Belanja BOS', icon: Receipt },
             { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
 
             { section: 'ADMINISTRASI SISTEM' },
