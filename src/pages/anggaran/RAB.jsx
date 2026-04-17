@@ -5,7 +5,7 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter, 
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X,
-    Calculator, Trash2, Pencil, Save
+    Calculator, Trash2, Pencil
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
@@ -1674,7 +1674,9 @@ export default function RAB() {
                                         </div>
                                     )}
                                 </div>
-                                                {/* Section 2: Calculation Breakdown (Journal Style) */}
+                            </div>
+
+                            {/* Section 2: Calculation Breakdown (Journal Style) */}
                             <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-8">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-4">
@@ -1858,7 +1860,7 @@ export default function RAB() {
                                         Baris yang sudah terinput akan muncul di tabel bawah dan otomatis dijumlahkan ke Total Item.
                                     </p>
                                 </div>
-                            </div>  </div>  </div>
+                            </div>
 
                             {/* Monthly Breakdown Table */}
                             <div className="space-y-6">
