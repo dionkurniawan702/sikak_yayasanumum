@@ -577,6 +577,39 @@ export default function RAB() {
         }
     };
 
+    const handleCancelApproval = async () => {
+        if (!selectedYearId || !selectedUnitId) return;
+        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const plan = rabPlans.find(p => p.id === planId);
+        if (!plan || plan.status !== 'APPROVED') return;
+
+        const reason = window.prompt('Masukkan alasan pembatalan persetujuan (agar unit tahu apa yang harus diperbaiki):', 'Pembatalan persetujuan untuk perbaikan/penambahan data.');
+        if (reason === null) return; // User cancelled prompt
+
+        const updatedPlan = {
+            ...plan,
+            status: 'REJECTED',
+            rejectionReason: reason,
+            notified: false,
+            approvedAt: null,
+            approvedBy: null,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.username
+        };
+
+        setIsSaving(true);
+        try {
+            dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+            await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+            setMessage({ type: 'success', text: 'Persetujuan dibatalkan. RAB kini terbuka kembali untuk diperbaiki oleh Unit/Bidang.' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Gagal membatalkan persetujuan: ' + error.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 5000);
+        }
+    };
+
     const handleAcknowledgeStatus = () => {
         const planId = `${selectedYearId}-${selectedUnitId}`;
         const plan = rabPlans.find(p => p.id === planId);
@@ -940,12 +973,23 @@ export default function RAB() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
-                        <p className={`font-black uppercase tracking-tight ${
-                            activePlan.status === 'APPROVED' ? 'text-emerald-600' : 
-                            (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
-                        }`}>
-                            {activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim')}
-                        </p>
+                        <div className="flex items-center justify-between">
+                            <p className={`font-black uppercase tracking-tight ${
+                                activePlan.status === 'APPROVED' ? 'text-emerald-600' : 
+                                (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
+                            }`}>
+                                {activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim')}
+                            </p>
+                            {isSuperAdmin && activePlan.status === 'APPROVED' && (
+                                <button 
+                                    onClick={handleCancelApproval}
+                                    disabled={isSaving}
+                                    className="px-4 py-1.5 bg-rose-100 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                                >
+                                    Batalkan Persetujuan
+                                </button>
+                            )}
+                        </div>
                     </div>
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Periode Anggaran</p>
