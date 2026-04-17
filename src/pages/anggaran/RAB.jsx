@@ -1329,22 +1329,23 @@ export default function RAB() {
                             </div>
                             <div className="flex items-center gap-4">
                                 {(() => {
-                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0 };
+                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0, bosAmount: 0 };
                                     const allocated = rapData.itemAllocations[editingItem.id] || 0;
-                                    const isOver = detail.total > (allocated + 1);
+                                    const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+                                    const isOver = yayasanSpent > (allocated + 100);
                                     
                                     if (isOver) {
                                         return (
                                             <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
                                                 <AlertCircle size={18} />
-                                                DILARANG: TOTAL MELEBIHI LIMIT!
+                                                DILARANG: BEBAN YAYASAN MELEBIHI LIMIT!
                                             </div>
                                         );
                                     }
                                     return (
                                         <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget</span>
-                                            <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - detail.total)}</span>
+                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Yayasan</span>
+                                            <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
                                         </div>
                                     );
                                 })()}
