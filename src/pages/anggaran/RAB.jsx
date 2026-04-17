@@ -1322,10 +1322,10 @@ export default function RAB() {
                                             </select>
                                         </div>
                                         <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Dana</label>
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Persetujuan</label>
                                             <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
                                                 {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-3 h-3 rounded-full border-2 border-slate-300 animate-pulse" />}
-                                                {currentPlan.status === 'APPROVED' ? 'Sudah Cair' : 'Belum Cair'}
+                                                {currentPlan.status === 'APPROVED' ? 'Sudah Disetujui' : 'Belum Disetujui'}
                                             </div>
                                         </div>
                                     </div>
