@@ -14,8 +14,11 @@ export default function BOSDatabase() {
         bosStages = [], 
         bosPosList = [], 
         units = [], 
-        academicYears = [] 
+        academicYears = [],
+        currentUser
     } = state;
+
+    const isSuperAdmin = currentUser?.role === 'superadmin';
 
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,11 +34,23 @@ export default function BOSDatabase() {
     const [message, setMessage] = useState(null);
 
     // Filter units that are BOS recipients
-    const bosUnits = useMemo(() => units.filter(u => u.receivesBos && !u.isDeleted), [units]);
+    const bosUnits = useMemo(() => {
+        let list = units.filter(u => u.receivesBos && !u.isDeleted);
+        if (!isSuperAdmin && currentUser?.unitId) {
+            list = list.filter(u => u.id === currentUser.unitId);
+        }
+        return list;
+    }, [units, isSuperAdmin, currentUser]);
 
     const filteredAllocations = useMemo(() => {
         return (bosAllocations || []).filter(item => {
             if (item.isDeleted) return false;
+            
+            // Role-based data visibility
+            if (!isSuperAdmin && currentUser?.unitId && item.unitId !== currentUser.unitId) {
+                return false;
+            }
+
             const unit = units.find(u => u.id === item.unitId);
             const stage = bosStages.find(s => s.id === item.stageId);
             const pos = bosPosList.find(p => p.id === item.posId);
@@ -43,7 +58,7 @@ export default function BOSDatabase() {
             const searchStr = `${unit?.name} ${stage?.name} ${pos?.name}`.toLowerCase();
             return searchStr.includes(searchTerm.toLowerCase());
         });
-    }, [bosAllocations, units, bosStages, bosPosList, searchTerm]);
+    }, [bosAllocations, units, bosStages, bosPosList, searchTerm, isSuperAdmin, currentUser]);
 
     const totalAllocated = useMemo(() => {
         return filteredAllocations.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -133,15 +148,17 @@ export default function BOSDatabase() {
                         <p className="text-2xl font-black text-slate-900">{formatRupiah(totalAllocated)}</p>
                     </div>
                 </div>
-                <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center gap-5">
-                    <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
-                        <Landmark size={28} />
+                {isSuperAdmin && (
+                    <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center gap-5 transition-all hover:scale-[1.02]">
+                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <Landmark size={28} />
+                        </div>
+                        <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Penerima</p>
+                            <p className="text-2xl font-black text-slate-900">{bosUnits.length} Sekolah</p>
+                        </div>
                     </div>
-                    <div>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Penerima</p>
-                        <p className="text-2xl font-black text-slate-900">{bosUnits.length} Sekolah</p>
-                    </div>
-                </div>
+                )}
                 <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center gap-5">
                     <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
                         <Calendar size={28} />
