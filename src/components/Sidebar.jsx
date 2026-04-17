@@ -20,6 +20,12 @@ export default function Sidebar({ isOpen, onClose }) {
     const isAdminField = currentUser?.role === 'admin_bidang';
     const isAdminUnit = currentUser?.role === 'admin_unit';
 
+    const currentUserUnit = React.useMemo(() => 
+        state.units?.find(u => u.id === currentUser?.unitId)
+    , [state.units, currentUser]);
+
+    const hasBos = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
+
     // Calculate Notifications for RAB
     const pendingRabCount = React.useMemo(() => {
         if (!state.rabPlans) return 0;
@@ -79,6 +85,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { section: 'DATABASE ANGGARAN' },
             { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
             { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
+            { path: '/anggaran/database-bos', label: 'Database BOS', icon: Database },
 
 
             { section: 'PENGATURAN ANGGARAN' },
@@ -91,6 +98,9 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
             { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
             { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
+            { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
+            { path: '/anggaran/item-penerimaan-bos', label: 'Item Penerimaan BOS', icon: Coins },
+            { path: '/anggaran/item-belanja-bos', label: 'Item Belanja BOS', icon: Receipt },
             { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
 
             { section: 'ADMINISTRASI SISTEM' },
@@ -112,7 +122,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { section: 'ANGGARAN & PELAPORAN' },
             { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
-            { path: '/pelaporan/bos', label: 'BOS', icon: Landmark },
+            ...(hasBos ? [{ path: '/pelaporan/bos', label: 'BOS', icon: Landmark }] : []),
             { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
             
             { section: 'PERENCANAAN (RAB)' },
@@ -133,7 +143,8 @@ export default function Sidebar({ isOpen, onClose }) {
             menuItems.push(
                 { section: 'DATABASE ANGGARAN' },
                 { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
-                { path: '/anggaran/kelas', label: 'Kelas', icon: Users }
+                { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
+                ...(hasBos ? [{ path: '/anggaran/database-bos', label: 'Database BOS', icon: Database }] : [])
 
             );
         }

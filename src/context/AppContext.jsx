@@ -31,6 +31,7 @@ const defaultState = {
     rabPlans: [],
     bosStages: [],
     bosPosList: [],
+    bosAllocations: [], 
     users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
     globalAcademicYearId: null, // Persisted globally
@@ -131,7 +132,8 @@ function loadState() {
                 rabPlans: true,  // id and academicYearId
                 budgetRequests: false, // only academicYearId
                 budgetReports: false,
-                bosStages: false
+                bosStages: false,
+                bosAllocations: false
             };
 
             Object.entries(migrationMap).forEach(([key, fixId]) => {
@@ -246,6 +248,7 @@ function appReducer(state, action) {
                 rabPlans: serverData.rabPlans || state.rabPlans || [],
                 bosStages: serverData.bosStages || state.bosStages || [],
                 bosPosList: serverData.bosPosList || state.bosPosList || [],
+                bosAllocations: serverData.bosAllocations || state.bosAllocations || [],
 
                 users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
@@ -286,7 +289,8 @@ function appReducer(state, action) {
                 rabPlans: true,
                 budgetRequests: false,
                 budgetReports: false,
-                bosStages: false
+                bosStages: false,
+                bosAllocations: false
             };
 
             Object.entries(migrationMap).forEach(([key, fixId]) => {
@@ -495,6 +499,10 @@ function appReducer(state, action) {
         case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
+        case 'ADD_BOS_ALLOCATION': newState = { ...state, bosAllocations: [...state.bosAllocations, action.payload] }; break;
+        case 'EDIT_BOS_ALLOCATION': newState = { ...state, bosAllocations: state.bosAllocations.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'DELETE_BOS_ALLOCATION': newState = { ...state, bosAllocations: state.bosAllocations.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
+
         case 'ADD_NOTIFICATION': newState = { ...state, notifications: [action.payload, ...state.notifications] }; break;
         case 'MARK_NOTIFICATION_READ': newState = { ...state, notifications: state.notifications.map(n => n.id === action.payload ? { ...n, read: true } : n) }; break;
         case 'CLEAR_NOTIFICATIONS': newState = { ...state, notifications: [] }; break;
@@ -518,7 +526,8 @@ function appReducer(state, action) {
                 'student-status': 'studentStatuses',
                 'parent-status': 'parentStatuses',
                 'bos-stage': 'bosStages',
-                'bos-pos': 'bosPosList'
+                'bos-pos': 'bosPosList',
+                'bos-allocation': 'bosAllocations'
             };
             const collection = mapping[type];
             if (collection) {
@@ -575,7 +584,8 @@ function appReducer(state, action) {
                 studentStatuses: state.studentStatuses.filter(s => !s.isDeleted),
                 parentStatuses: state.parentStatuses.filter(ps => !ps.isDeleted),
                 bosStages: state.bosStages.filter(bs => !bs.isDeleted),
-                bosPosList: state.bosPosList.filter(bp => !bp.isDeleted)
+                bosPosList: state.bosPosList.filter(bp => !bp.isDeleted),
+                bosAllocations: state.bosAllocations.filter(ba => !ba.isDeleted)
             };
             break;
 

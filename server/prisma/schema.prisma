@@ -140,11 +140,13 @@ model Unit {
   name      String
   fieldId   String
   field     Field    @relation(fields: [fieldId], references: [id])
+  receivesBos Boolean  @default(false)
   isDeleted Boolean  @default(false)
 
-  students     Student[]
-  expenseItems ExpenseItem[]
-  classes      Class[]
+  students       Student[]
+  expenseItems   ExpenseItem[]
+  classes        Class[]
+  bosAllocations BosAllocation[]
 
   @@map("units")
   @@unique([fieldId, name])
@@ -188,6 +190,7 @@ model Class {
 model IncomeItem {
   id        String   @id @default(uuid())
   name      String   @unique
+  isBos     Boolean  @default(false)
   isDeleted Boolean  @default(false)
 
   studentDetails       StudentIncomeDetail[]
@@ -223,8 +226,9 @@ model AcademicYear {
   isActive  Boolean  @default(true)
   isDeleted Boolean  @default(false)
 
-  students  Student[]
-  bosStages BosStage[]
+  students       Student[]
+  bosStages      BosStage[]
+  bosAllocations BosAllocation[]
 
   @@map("AcademicYear")
 }
@@ -235,6 +239,8 @@ model BosStage {
   academicYearId String?
   academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
   isDeleted      Boolean       @default(false)
+  
+  bosAllocations BosAllocation[]
 
   @@map("bos_stages")
 }
@@ -243,6 +249,8 @@ model BosPos {
   id        String   @id @default(uuid())
   name      String   @unique
   isDeleted Boolean  @default(false)
+
+  bosAllocations BosAllocation[]
 
   @@map("bos_pos")
 }
@@ -397,4 +405,21 @@ model Contact {
   updatedAt DateTime @default(now()) @updatedAt
   
   @@map("contacts")
+}
+
+model BosAllocation {
+  id              String      @id @default(uuid())
+  academicYearId  String
+  academicYear    AcademicYear @relation(fields: [academicYearId], references: [id])
+  stageId         String
+  stage           BosStage    @relation(fields: [stageId], references: [id])
+  posId           String
+  pos             BosPos      @relation(fields: [posId], references: [id])
+  unitId          String
+  unit            Unit        @relation(fields: [unitId], references: [id])
+  amount          Decimal     @db.Decimal(15, 2)
+  isDeleted       Boolean     @default(false)
+  updatedAt       DateTime    @default(now()) @updatedAt
+
+  @@map("bos_allocations")
 }

@@ -20,7 +20,7 @@ export default function ExpenseItemManagement() {
     const [message, setMessage] = useState(null);
 
     const filteredItems = (expenseItems || []).filter(item => 
-        !item.isDeleted && (
+        !item.isDeleted && !item.isBos && (
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (item.sourceOfFunds || '').toLowerCase().includes(searchTerm.toLowerCase())
         )

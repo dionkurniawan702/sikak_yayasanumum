@@ -19,7 +19,7 @@ export default function IncomeItemManagement() {
     const [message, setMessage] = useState(null);
 
     const filteredItems = (incomeItems || []).filter(item => 
-        !item.isDeleted && item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        !item.isDeleted && !item.isBos && item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleSubmit = async (e) => {
