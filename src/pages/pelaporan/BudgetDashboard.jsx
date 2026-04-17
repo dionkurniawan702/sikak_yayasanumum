@@ -22,7 +22,6 @@ export default function BudgetDashboard() {
     // Global Academic Year Persistence (ID-based)
     const selectedAcademicYearId = state.globalAcademicYearId || '';
     const setSelectedAcademicYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
-    const [showAllYears, setShowAllYears] = useState(false);
     
     const activeAcademicYear = useMemo(() => {
         return academicYears.find(y => y.id === selectedAcademicYearId && !y.isDeleted);
@@ -128,7 +127,8 @@ export default function BudgetDashboard() {
         units.filter(u => !u.isDeleted).forEach(u => uRAB[u.id] = { total: 0, items: {} });
         fields.filter(f => !f.isDeleted).forEach(f => fRAB[f.id] = { total: 0, items: {} });
 
-        // 1. Process Consolidated RAB Plans (The main annual budget)
+        // 1. Process Consolidated RAB Plans (The Master Budget Source)
+        // BUG FIX: Only use this as the single source for RAB to avoid double counting with requests
         rabPlans.filter(p => p.status === 'APPROVED' && p.academicYearId === selectedAcademicYearId).forEach(plan => {
             Object.entries(plan.expense || {}).forEach(([exId, detail]) => {
                 const amount = parseFloat(detail.total) || 0;
@@ -166,55 +166,11 @@ export default function BudgetDashboard() {
             });
         });
 
-        // 2. Process Individual Budget Requests (Extra/Implementation requests)
-        const startYear = parseInt(selectedAcademicYearName.split('-')[0]);
-        const endYear = parseInt(selectedAcademicYearName.split('-')[1]);
-
-        const approvedRequests = (state.budgetRequests || []).filter(r => {
-            if (r.status !== 'APPROVED') return false;
-            // Only include if not already part of a plan (to avoid double counting if they are separate)
-            // For now, we'll keep them as cumulative unless the user says otherwise.
-            const reqYear = parseInt(r.year);
-            const reqMonth = parseInt(r.month);
-            if (reqYear === startYear && reqMonth >= 7) return true;
-            if (reqYear === endYear && reqMonth <= 6) return true;
-            return false;
-        });
-
-        approvedRequests.forEach(req => {
-            const amount = parseFloat(req.amount) || 0;
-            if (amount <= 0) return;
-            const exId = req.expenseItemId || 'other';
-            const exItem = expenseItems.find(e => e.id === exId);
-            const itemName = (exItem?.name || getExpenseName(exId) || '').toLowerCase().trim();
-
-            const isFieldItem = (exItem && exItem.fieldId && !exItem.unitId) || 
-                               itemName.includes('penggajian') || 
-                               itemName.includes('pengembangan (umum)') ||
-                               itemName.includes('honor') ||
-                               itemName.includes('yayasan');
-                               
-            const targetFieldId = isFieldItem ? (exItem?.fieldId || req.fieldId) : req.fieldId;
-            
-            if (!isFieldItem && req.unitId && uRAB[req.unitId]) {
-                uRAB[req.unitId].total += amount;
-                uRAB[req.unitId].items[exId] = (uRAB[req.unitId].items[exId] || 0) + amount;
-            } else if (targetFieldId && fRAB[targetFieldId]) {
-                fRAB[targetFieldId].total += amount;
-                if (!fRAB[targetFieldId].items[exId]) {
-                    fRAB[targetFieldId].items[exId] = { total: 0, sources: {} };
-                }
-                const fItem = fRAB[targetFieldId].items[exId];
-                fItem.total = (typeof fItem === 'number' ? fItem : fItem.total) + amount;
-                if (req.unitId) {
-                    fItem.sources = fItem.sources || {};
-                    fItem.sources[req.unitId] = (fItem.sources[req.unitId] || 0) + amount;
-                }
-            }
-        });
+        // NOTE: Budget Requests removed from RAB total to avoid duplicate info as requested.
+        // If needed for "Realisasi", a separate engine/column should be added later.
 
         return { unitRAB: uRAB, fieldRAB: fRAB };
-    }, [state.budgetRequests, rabPlans, units, fields, currentUser, selectedAcademicYearId, expenseItems, selectedAcademicYearName]);
+    }, [rabPlans, units, fields, currentUser, selectedAcademicYearId, expenseItems, selectedAcademicYearName]);
 
     // ========== Helpers ==========
     const getExpenseName = (id) => {
@@ -231,7 +187,7 @@ export default function BudgetDashboard() {
 
     const formatCurrency = (val) => {
         const num = parseFloat(val) || 0;
-        return `Rp. ${num.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+        return `Rp. ${num.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
     };
 
     // ========== Build Display Data ==========
@@ -324,7 +280,7 @@ export default function BudgetDashboard() {
     const totalUnitRAB = unitData.reduce((s, d) => s + d.rab, 0);
     const totalUnitSisa = totalUnitRAP - totalUnitRAB;
 
-    // ========== Export to Excel ==========
+    // ========== Export to Excel (Bahasa Indonesia) ==========
     const exportToExcel = () => {
         const wb = XLSX.utils.book_new();
 
@@ -366,32 +322,32 @@ export default function BudgetDashboard() {
             XLSX.utils.book_append_sheet(wb, ws2, 'Unit');
         }
 
-        XLSX.writeFile(wb, `Dashboard-Anggaran-${selectedAcademicYearName}.xlsx`);
+        XLSX.writeFile(wb, `Dasbor-Anggaran-${selectedAcademicYearName}.xlsx`);
     };
 
-    // ========== Table Row Component ==========
+    // ========== Table Row Component (Premium Look) ==========
     const BudgetRow = ({ data, isExpanded, onToggle }) => (
         <>
             <tr 
-                className="budget-row cursor-pointer hover:bg-slate-50 transition-colors"
+                className="budget-row cursor-pointer hover:bg-slate-50 transition-colors group"
                 onClick={onToggle}
             >
                 <td className="budget-cell budget-cell-name">
-                    <div className="flex items-center gap-2">
-                        <span className="expand-icon">
-                            {isExpanded ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
+                    <div className="flex items-center gap-3">
+                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
+                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </span>
-                        <span className="font-semibold text-slate-800">{data.name}</span>
+                        <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
                     </div>
                 </td>
-                <td className="budget-cell budget-cell-number">
-                    <span className="font-bold text-slate-900">{formatCurrency(data.rap)}</span>
+                <td className="budget-cell budget-cell-number font-black text-slate-900">
+                    {formatCurrency(data.rap)}
                 </td>
-                <td className="budget-cell budget-cell-number">
-                    <span className="font-bold text-slate-600">{formatCurrency(data.rab)}</span>
+                <td className="budget-cell budget-cell-number font-bold text-slate-500">
+                    {formatCurrency(data.rab)}
                 </td>
                 <td className="budget-cell budget-cell-number budget-cell-sisa">
-                    <span className={`font-bold ${data.sisa < 0 ? 'text-rose-600' : 'text-slate-900'}`}>
+                    <span className={`font-black px-3 py-1 rounded-full text-[12px] ${data.sisa < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
                         {formatCurrency(data.sisa)}
                     </span>
                 </td>
@@ -408,7 +364,7 @@ export default function BudgetDashboard() {
                         >
                             <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }}>
                                 <div className="flex items-center gap-2">
-                                    <span className="text-slate-400/50">└</span>
+                                    <span className="text-slate-300">└</span>
                                     {hasSources && (
                                         <span className="text-indigo-400 group-hover:text-indigo-600">
                                             {isDetailExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
@@ -419,13 +375,13 @@ export default function BudgetDashboard() {
                                     </span>
                                 </div>
                             </td>
-                            <td className="budget-cell budget-cell-number text-slate-500 text-[12px]">
+                            <td className="budget-cell budget-cell-number text-slate-400 text-[11px] font-bold">
                                 {formatCurrency(item.rap)}
                             </td>
-                            <td className="budget-cell budget-cell-number text-slate-500 text-[12px]">
+                            <td className="budget-cell budget-cell-number text-slate-400 text-[11px] font-bold">
                                 {formatCurrency(item.rab)}
                             </td>
-                            <td className={`budget-cell budget-cell-number budget-cell-sisa text-[12px] ${item.sisa < 0 ? 'text-rose-500' : 'text-slate-500'}`}>
+                            <td className={`budget-cell budget-cell-number budget-cell-sisa text-[11px] font-black ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
                                 {formatCurrency(item.sisa)}
                             </td>
                         </tr>
@@ -434,13 +390,13 @@ export default function BudgetDashboard() {
                                 <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
                                     <div className="flex items-center gap-1.5 py-0.5">
                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                             {getUnitName(unitId)}
                                         </span>
                                     </div>
                                 </td>
                                 <td className="budget-cell budget-cell-number">
-                                    <span className="text-[11px] font-black text-indigo-400/80">
+                                    <span className="text-[10px] font-black text-indigo-400">
                                         {formatCurrency(amount)}
                                     </span>
                                 </td>
@@ -455,51 +411,49 @@ export default function BudgetDashboard() {
 
     return (
         <div className="p-8 animate-in pb-20">
-            {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            {/* Header (Indonesian) */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight font-display">Dashboard</h1>
-                    <p className="text-slate-500 font-medium text-sm mt-1">Ringkasan Rencana Anggaran Pendapatan (RAP) vs Rencana Anggaran Belanja (RAB)</p>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight font-display">Dasbor Anggaran</h1>
+                    <p className="text-slate-400 font-bold text-xs mt-2 uppercase tracking-widest">Ringkasan Rencana Anggaran Pendapatan (RAP) vs Belanja (RAB)</p>
                 </div>
-                <div className="flex items-center gap-4">
-                    <div className="flex flex-col gap-1">
-                        <select
-                            className="budget-select"
-                            value={selectedAcademicYearId}
-                            onChange={e => setSelectedAcademicYearId(e.target.value)}
-                        >
-                            {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId))
-                                .sort((a, b) => b.name.localeCompare(a.name))
-                                .map(y => (
-                                    <option key={y.id} value={y.id}>{y.name}</option>
-                                ))}
-                        </select>
-                    </div>
+                <div className="flex items-center gap-3">
+                    <select
+                        className="budget-select shadow-sm"
+                        value={selectedAcademicYearId}
+                        onChange={e => setSelectedAcademicYearId(e.target.value)}
+                    >
+                        {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId))
+                            .sort((a, b) => b.name.localeCompare(a.name))
+                            .map(y => (
+                                <option key={y.id} value={y.id}>{y.name}</option>
+                            ))}
+                    </select>
                     <button
                         onClick={exportToExcel}
-                        className="budget-export-btn"
+                        className="budget-export-btn shadow-sm"
                     >
                         <FileSpreadsheet size={16} />
-                        <span>Export Excel</span>
+                        <span>Cetak Laporan Excel</span>
                     </button>
                 </div>
             </div>
 
-            {/* ===== BIDANG TABLE ===== */}
+            {/* ===== BIDANG TABLE (Indigo Theme) ===== */}
             {currentUser?.role !== 'admin_unit' && (
-                <div className="budget-table-wrapper mb-10">
-                    <div className="budget-table-title">
-                        <Layers size={20} className="text-slate-600" />
-                        <span>Bidang</span>
+                <div className="budget-table-wrapper mb-12 border-none shadow-xl shadow-slate-200/50">
+                    <div className="budget-table-title bg-slate-900 text-white">
+                        <Layers size={20} className="text-indigo-400" />
+                        <span className="uppercase tracking-widest text-sm italic">Ringkasan Per Bidang</span>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
                             <thead>
                                 <tr>
-                                    <th className="budget-th budget-th-name">Nama</th>
-                                    <th className="budget-th budget-th-number">RAP</th>
-                                    <th className="budget-th budget-th-number">RAB</th>
-                                    <th className="budget-th budget-th-number">Sisa Anggaran</th>
+                                    <th className="budget-th budget-th-name">NAMA BIDANG</th>
+                                    <th className="budget-th budget-th-number">RAP (PENDAPATAN)</th>
+                                    <th className="budget-th budget-th-number">RAB (BELANJA)</th>
+                                    <th className="budget-th budget-th-number">SISA ANGGARAN</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -513,17 +467,17 @@ export default function BudgetDashboard() {
                                                 onToggle={() => toggleField(b.id)} 
                                             />
                                         ))}
-                                        <tr className="budget-row-total">
-                                            <td className="budget-cell budget-cell-name font-black text-sm text-slate-700 uppercase tracking-wider">Total Bidang</td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalBidangRAP)}</td>
+                                        <tr className="budget-row-total bg-slate-50">
+                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">Total Konsolidasi Bidang</td>
+                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-indigo-100">{formatCurrency(totalBidangRAP)}</td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalBidangRAB)}</td>
-                                            <td className="budget-cell budget-cell-number budget-cell-sisa font-black text-slate-900">{formatCurrency(totalBidangSisa)}</td>
+                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-indigo-50/30 text-indigo-700 font-black">{formatCurrency(totalBidangSisa)}</td>
                                         </tr>
                                     </>
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="text-center py-12 text-slate-400 italic text-sm">
-                                            Belum ada data bidang. Silakan tambahkan bidang terlebih dahulu.
+                                        <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                            Belum ada data bidang untuk periode ini.
                                         </td>
                                     </tr>
                                 )}
@@ -533,21 +487,21 @@ export default function BudgetDashboard() {
                 </div>
             )}
 
-            {/* ===== UNIT TABLE ===== */}
+            {/* ===== UNIT TABLE (Indigo Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && (
-                <div className="budget-table-wrapper">
-                    <div className="budget-table-title">
-                        <Building2 size={20} className="text-slate-600" />
-                        <span>Unit</span>
+                <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50">
+                    <div className="budget-table-title bg-slate-900 text-white">
+                        <Building2 size={20} className="text-blue-400" />
+                        <span className="uppercase tracking-widest text-sm italic">Ringkasan Per Unit</span>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
                             <thead>
                                 <tr>
-                                    <th className="budget-th budget-th-name">Nama</th>
-                                    <th className="budget-th budget-th-number">RAP</th>
-                                    <th className="budget-th budget-th-number">RAB</th>
-                                    <th className="budget-th budget-th-number">Sisa Anggaran</th>
+                                    <th className="budget-th budget-th-name">NAMA UNIT</th>
+                                    <th className="budget-th budget-th-number">RAP (PENDAPATAN)</th>
+                                    <th className="budget-th budget-th-number">RAB (BELANJA)</th>
+                                    <th className="budget-th budget-th-number">SISA ANGGARAN</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -561,17 +515,17 @@ export default function BudgetDashboard() {
                                                 onToggle={() => toggleUnit(u.id)} 
                                             />
                                         ))}
-                                        <tr className="budget-row-total">
-                                            <td className="budget-cell budget-cell-name font-black text-sm text-slate-700 uppercase tracking-wider">Total Unit</td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalUnitRAP)}</td>
+                                        <tr className="budget-row-total bg-slate-50">
+                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">Total Konsolidasi Unit</td>
+                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-blue-100">{formatCurrency(totalUnitRAP)}</td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalUnitRAB)}</td>
-                                            <td className="budget-cell budget-cell-number budget-cell-sisa font-black text-slate-900">{formatCurrency(totalUnitSisa)}</td>
+                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-blue-50/30 text-blue-700 font-black">{formatCurrency(totalUnitSisa)}</td>
                                         </tr>
                                     </>
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="text-center py-12 text-slate-400 italic text-sm">
-                                            Belum ada data unit. Silakan tambahkan unit terlebih dahulu.
+                                        <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                            Belum ada data unit untuk periode ini.
                                         </td>
                                     </tr>
                                 )}
@@ -581,9 +535,16 @@ export default function BudgetDashboard() {
                 </div>
             )}
 
-            <div className="mt-12 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                Data Dashboard Anggaran — SIKAK Yayasan Umum
+            <div className="mt-20 text-center">
+                <div className="inline-block px-10 py-3 bg-white border border-slate-100 rounded-full shadow-sm">
+                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                        Sistem Akuntansi Keuangan Yayasan Umum — SIKAK
+                    </p>
+                </div>
             </div>
         </div>
+    );
+}
+
     );
 }

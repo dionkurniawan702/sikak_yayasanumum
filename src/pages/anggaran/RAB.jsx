@@ -1512,46 +1512,15 @@ export default function RAB() {
                         </div>
 
                         {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-10">
-                            {/* Section 1: Basic Info & Program */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Rincian / Keterangan Pengeluaran</label>
-                                        <textarea 
-                                            className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-medium text-slate-700 outline-none focus:border-blue-500 transition-all min-h-[100px]"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.keterangan || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'keterangan', e.target.value)}
-                                            placeholder="Tulis detail rincian belanja di sini..."
-                                        />
-                                    </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
-                                            <select 
-                                                className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.semester || '1'}
-                                                onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
-                                            >
-                                                <option value="1">Semester 1</option>
-                                                <option value="2">Semester 2</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Persetujuan</label>
-                                            <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
-                                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-3 h-3 rounded-full border-2 border-slate-300 animate-pulse" />}
-                                                {currentPlan.status === 'APPROVED' ? 'Sudah Disetujui' : 'Belum Disetujui'}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
+                        <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
+                            {/* Section 1: Basic Info & Program (Tidied Up) */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50/30 p-8 rounded-[2.5rem] border border-slate-100/50 shadow-sm relative overflow-hidden">
+                                {/* Left Side: Configuration */}
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja</label>
                                         <select 
-                                            className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
                                             value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.programId || ''}
                                             onChange={e => handleItemUpdate(editingItem.id, 'programId', e.target.value)}
                                         >
@@ -1562,7 +1531,31 @@ export default function RAB() {
                                         </select>
                                     </div>
 
-                                    <div className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
+                                            <select 
+                                                className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.semester || '1'}
+                                                onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
+                                            >
+                                                <option value="1">Semester 1</option>
+                                                <option value="2">Semester 2</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Persetujuan</label>
+                                            <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 h-[58px] ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
+                                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-3 h-3 rounded-full border-2 border-slate-300 animate-pulse" />}
+                                                {currentPlan.status === 'APPROVED' ? 'Disetujui' : 'Draft'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Right Side: Sumber Dana */}
+                                <div className="space-y-4">
+                                    <div className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm space-y-4">
                                         <div className="flex items-center justify-between">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber Dana Belanja</p>
                                             {isBosRecipient && (
@@ -1573,10 +1566,7 @@ export default function RAB() {
                                                             const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
                                                             const nextState = !detail.useBos;
                                                             handleItemUpdate(editingItem.id, 'useBos', nextState);
-                                                            // If turning ON for the first time and amount is missing/0, initialize to 0 (user request)
-                                                            if (nextState && (detail.bosAmount === undefined)) {
-                                                                handleItemUpdate(editingItem.id, 'bosAmount', 0);
-                                                            }
+                                                            if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(editingItem.id, 'bosAmount', 0);
                                                         }}
                                                         className={`w-12 h-6 rounded-full transition-all relative ${currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'bg-emerald-500' : 'bg-slate-200'}`}
                                                     >
@@ -1590,90 +1580,75 @@ export default function RAB() {
                                             {currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? (
                                                 <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                                                     <div className="space-y-2">
-                                                        <div className="flex justify-between items-center">
-                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Porsi Dana BOS (Rp)</label>
-                                                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 flex justify-between">
+                                                            Porsi Dana BOS (Rp)
+                                                            <span className="text-[9px] font-black text-blue-500 lowercase italic">
                                                                 Beban Yayasan: {formatRupiah(Math.max(0, (currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0) - (currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0)))}
                                                             </span>
-                                                        </div>
+                                                        </label>
                                                         <input 
                                                             type="text"
-                                                            className="w-full p-4 bg-white border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
+                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
                                                             value={parseInt(currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0).toLocaleString('id-ID')}
-                                                            onChange={e => {
-                                                                const val = e.target.value.replace(/\D/g, '') || 0;
-                                                                handleItemUpdate(editingItem.id, 'bosAmount', parseInt(val));
-                                                            }}
+                                                            onChange={e => handleItemUpdate(editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
                                                         />
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-4">
-                                                        <div className="space-y-2">
-                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">POS Anggaran BOS</label>
-                                                            <select 
-                                                                className="w-full p-4 bg-white border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosPosId || ''}
-                                                                onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
-                                                            >
-                                                                <option value="">Pilih POS...</option>
-                                                                {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
-                                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Tahap BOS</label>
-                                                            <select 
-                                                                className="w-full p-4 bg-white border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosStageId || ''}
-                                                                onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
-                                                            >
-                                                                <option value="">Pilih Tahap...</option>
-                                                                {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
-                                                                    <option key={s.id} value={s.id}>{s.name}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
+                                                        <select 
+                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosPosId || ''}
+                                                            onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
+                                                        >
+                                                            <option value="">Pilih POS...</option>
+                                                            {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
+                                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                                            ))}
+                                                        </select>
+                                                        <select 
+                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosStageId || ''}
+                                                            onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
+                                                        >
+                                                            <option value="">Pilih Tahap...</option>
+                                                            {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
+                                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="p-10 border-2 border-dashed border-slate-200 rounded-2xl text-center">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">100% Menggunakan Dana Yayasan</p>
-                                                    {isBosRecipient && <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1">Gunakan toggle di atas untuk berbagi porsi dengan dana BOS</p>}
+                                                <div className="py-8 border-2 border-dashed border-slate-200 rounded-2xl text-center">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber: Dana Yayasan 100%</p>
                                                 </div>
                                             )}
                                         </div>
                                     </div>
-
-                                    {/* Unit Peruntukan Selector (For Specialized Field Items) */}
-                                    {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
-                                        <div className="space-y-2 pt-2 animate-in slide-in-from-bottom-2">
-                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <Building2 size={12} />
-                                                Unit Peruntukan Belanja (Penting)
-                                            </label>
-                                            <select 
-                                                className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.targetUnitId || ''}
-                                                onChange={e => handleItemUpdate(editingItem.id, 'targetUnitId', e.target.value)}
-                                            >
-                                                <option value="">Pilih Unit Penerima Manfaat...</option>
-                                                {(() => {
-                                                    const fieldId = selectedUnitId.replace('FIELD-', '');
-                                                    // First try units that belong to this field
-                                                    const fieldUnits = units.filter(u => !u.isDeleted && u.fieldId === fieldId);
-                                                    // Fallback: show all active units if no units are linked to this field
-                                                    const displayUnits = fieldUnits.length > 0 ? fieldUnits : units.filter(u => !u.isDeleted);
-                                                    return displayUnits;
-                                                })().map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                            </select>
-                                            <p className="text-[9px] font-medium text-slate-400 px-2 italic">
-                                                * Gunakan ini agar sistem bisa memantau "kekuatan" masing-masing unit terhadap rencana belanja bidang.
-                                            </p>
-                                        </div>
-                                    )}
                                 </div>
+
+                                {/* Unit Peruntukan (Bottom-Full width in Section 1) */}
+                                {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
+                                    <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-100 animate-in slide-in-from-bottom-2">
+                                        <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                            <Building2 size={12} />
+                                            Unit Peruntukan Belanja (Penting)
+                                        </label>
+                                        <select 
+                                            className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.targetUnitId || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'targetUnitId', e.target.value)}
+                                        >
+                                            <option value="">Pilih Unit Penerima Manfaat...</option>
+                                            {(() => {
+                                                const fieldId = selectedUnitId.replace('FIELD-', '');
+                                                const fieldUnits = units.filter(u => !u.isDeleted && u.fieldId === fieldId);
+                                                const displayUnits = fieldUnits.length > 0 ? fieldUnits : units.filter(u => !u.isDeleted);
+                                                return displayUnits;
+                                            })().map(u => (
+                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Section 2: Calculation Breakdown (Journal Style) */}
