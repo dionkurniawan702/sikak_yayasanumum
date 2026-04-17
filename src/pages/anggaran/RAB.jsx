@@ -905,17 +905,35 @@ export default function RAB() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
-                                    <button 
-                                        onClick={() => setEditingItem(item)}
-                                        disabled={isLocked && !isSuperAdmin}
-                                        className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                                            isLocked && !isSuperAdmin 
-                                            ? 'bg-slate-100 text-slate-300 shadow-none' 
-                                            : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-slate-900 group-hover:shadow-indigo-200'
-                                        }`}
-                                    >
-                                        {isLocked && !isSuperAdmin ? 'TERKUNCI' : 'ATUR BUDGET'}
-                                    </button>
+                                    <div className="flex items-center justify-end gap-2">
+                                        {!isLocked && (
+                                            <button 
+                                                onClick={() => {
+                                                    setNewItemData({
+                                                        name: item.name,
+                                                        sourceOfFunds: item.sourceOfFunds || 'Yayasan',
+                                                        incomeItemId: item.incomeItemId || ''
+                                                    });
+                                                    setIsAddingItem(true);
+                                                }}
+                                                className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                title="Tambah Pengeluaran Lain untuk Item Ini"
+                                            >
+                                                <Plus size={16} />
+                                            </button>
+                                        )}
+                                        <button 
+                                            onClick={() => setEditingItem(item)}
+                                            disabled={isLocked && !isSuperAdmin}
+                                            className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
+                                                isLocked && !isSuperAdmin 
+                                                ? 'bg-slate-100 text-slate-300 shadow-none' 
+                                                : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-slate-900 group-hover:shadow-indigo-200'
+                                            }`}
+                                        >
+                                            {isLocked && !isSuperAdmin ? 'TERKUNCI' : 'ATUR BUDGET'}
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         );
