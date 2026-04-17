@@ -14,12 +14,12 @@ export default function IncomeItemManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({ name: '' });
+    const [formData, setFormData] = useState({ name: '', isBos: false });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
     const filteredItems = (incomeItems || []).filter(item => 
-        !item.isDeleted && !item.isBos && item.name.toLowerCase().includes(searchTerm.toLowerCase())
+        !item.isDeleted && item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     const handleSubmit = async (e) => {
@@ -36,7 +36,8 @@ export default function IncomeItemManagement() {
             } else {
                 const newItem = {
                     id: `INC-${generateId()}`,
-                    name: formData.name
+                    name: formData.name,
+                    isBos: formData.isBos
                 };
                 dispatch({ type: 'ADD_INCOME_ITEM', payload: newItem });
                 await api.pushAction({ type: 'ADD_INCOME_ITEM', payload: newItem }, state);
@@ -44,7 +45,7 @@ export default function IncomeItemManagement() {
             }
             setIsModalOpen(false);
             setEditingItem(null);
-            setFormData({ name: '' });
+            setFormData({ name: '', isBos: false });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -151,7 +152,7 @@ export default function IncomeItemManagement() {
                                             <button 
                                                 onClick={() => {
                                                     setEditingItem(item);
-                                                    setFormData({ name: item.name });
+                                                    setFormData({ name: item.name, isBos: !!item.isBos });
                                                     setIsModalOpen(true);
                                                 }}
                                                 className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
@@ -213,6 +214,19 @@ export default function IncomeItemManagement() {
                                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
                                     placeholder="Contoh: Gedung, Seragam, dll"
                                 />
+                            </div>
+
+                            <div className="flex items-center gap-3 px-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer"
+                                        checked={formData.isBos}
+                                        onChange={(e) => setFormData({ ...formData, isBos: e.target.checked })}
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                    <span className="ml-3 text-sm font-bold text-slate-600">Item Khusus BOS?</span>
+                                </label>
                             </div>
 
                             <div className="flex gap-3 pt-4">

@@ -15,12 +15,12 @@ export default function ExpenseItemManagement() {
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({ name: '', sourceOfFunds: '' });
+    const [formData, setFormData] = useState({ name: '', sourceOfFunds: '', isBos: false });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
     const filteredItems = (expenseItems || []).filter(item => 
-        !item.isDeleted && !item.isBos && (
+        !item.isDeleted && (
             item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             (item.sourceOfFunds || '').toLowerCase().includes(searchTerm.toLowerCase())
         )
@@ -52,7 +52,7 @@ export default function ExpenseItemManagement() {
             }
             setIsModalOpen(false);
             setEditingItem(null);
-            setFormData({ name: '', sourceOfFunds: '' });
+            setFormData({ name: '', sourceOfFunds: '', isBos: false });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -154,7 +154,11 @@ export default function ExpenseItemManagement() {
                                             <button 
                                                 onClick={() => {
                                                     setEditingItem(item);
-                                                    setFormData({ name: item.name, sourceOfFunds: item.sourceOfFunds || '' });
+                                                    setFormData({ 
+                                                        name: item.name, 
+                                                        sourceOfFunds: item.sourceOfFunds || '',
+                                                        isBos: !!item.isBos
+                                                    });
                                                     setIsModalOpen(true);
                                                 }}
                                                 className="p-2.5 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
@@ -216,6 +220,19 @@ export default function ExpenseItemManagement() {
                                     className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-rose-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
                                     placeholder="Contoh: Penggajian, Operasional, dll"
                                 />
+                            </div>
+
+                            <div className="flex items-center gap-3 px-2">
+                                <label className="relative inline-flex items-center cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        className="sr-only peer"
+                                        checked={formData.isBos}
+                                        onChange={(e) => setFormData({ ...formData, isBos: e.target.checked })}
+                                    />
+                                    <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-600"></div>
+                                    <span className="ml-3 text-sm font-bold text-slate-600">Item Khusus BOS?</span>
+                                </label>
                             </div>
 
                             <div className="space-y-2">

@@ -3,22 +3,15 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { 
     Plus, Edit2, Trash2, ShieldCheck, ChevronRight, 
-    Layers, Filter, AlertCircle, CheckCircle2, Box, Calendar,
-    Coins, Receipt, Layout
+    Layers, Filter, AlertCircle, CheckCircle2, Box, Calendar
 } from 'lucide-react';
 import { generateId } from '../../utils/format';
 
 export default function BOSMasterManagement() {
     const { state, dispatch } = useApp();
-    const { 
-        bosStages = [], 
-        bosPosList = [], 
-        incomeItems = [], 
-        expenseItems = [], 
-        academicYears = [] 
-    } = state;
+    const { bosStages = [], bosPosList = [], academicYears = [] } = state;
 
-    const [activeTab, setActiveTab] = useState('STAGES'); // 'STAGES' | 'POS' | 'INCOME' | 'EXPENSE'
+    const [activeTab, setActiveTab] = useState('STAGES'); // 'STAGES' | 'POS'
     const [message, setMessage] = useState(null);
     const [loading, setLoading] = useState(false);
 
@@ -40,12 +33,6 @@ export default function BOSMasterManagement() {
             } else if (activeTab === 'POS') {
                 actionType = editingItem ? 'EDIT_BOS_POS' : 'ADD_BOS_POS';
                 payload = { name: formData.name, id: editingItem ? editingItem.id : `BPOS-${generateId()}` };
-            } else if (activeTab === 'INCOME') {
-                actionType = editingItem ? 'EDIT_INCOME_ITEM' : 'ADD_INCOME_ITEM';
-                payload = { ...editingItem, name: formData.name, isBos: true, id: editingItem ? editingItem.id : `BINC-${generateId()}` };
-            } else if (activeTab === 'EXPENSE') {
-                actionType = editingItem ? 'EDIT_EXPENSE_ITEM' : 'ADD_EXPENSE_ITEM';
-                payload = { ...editingItem, name: formData.name, isBos: true, id: editingItem ? editingItem.id : `BEXP-${generateId()}` };
             }
 
             dispatch({ type: actionType, payload });
@@ -69,8 +56,6 @@ export default function BOSMasterManagement() {
             let actionType;
             if (activeTab === 'STAGES') actionType = 'DELETE_BOS_STAGE';
             else if (activeTab === 'POS') actionType = 'DELETE_BOS_POS';
-            else if (activeTab === 'INCOME') actionType = 'DELETE_INCOME_ITEM';
-            else if (activeTab === 'EXPENSE') actionType = 'DELETE_EXPENSE_ITEM';
 
             dispatch({ type: actionType, payload: item.id });
             await api.pushAction({ type: actionType, payload: item.id }, state);
@@ -82,9 +67,7 @@ export default function BOSMasterManagement() {
 
     const tabs = [
         { id: 'STAGES', label: 'Tahap BOS', icon: Calendar, color: 'emerald' },
-        { id: 'POS', label: 'POS Anggaran', icon: Box, color: 'blue' },
-        { id: 'INCOME', label: 'Item Penerimaan', icon: Coins, color: 'indigo' },
-        { id: 'EXPENSE', label: 'Item Belanja', icon: Receipt, color: 'rose' }
+        { id: 'POS', label: 'POS Anggaran', icon: Box, color: 'blue' }
     ];
 
     return (
@@ -98,12 +81,12 @@ export default function BOSMasterManagement() {
                         </div>
                         Master Pengaturan BOS
                     </h1>
-                    <p className="text-slate-500 mt-2 font-medium">Kelola seluruh konfigurasi komponen dana BOS secara terpusat</p>
+                    <p className="text-slate-500 mt-2 font-medium">Kelola Tahap dan POS Anggaran untuk pendanaan BOS</p>
                 </div>
             </div>
 
             {/* Tab Navigation */}
-            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-[2rem] w-fit">
+            <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100 rounded-full w-fit">
                 {tabs.map(tab => (
                     <button
                         key={tab.id}
@@ -150,9 +133,7 @@ export default function BOSMasterManagement() {
                         }}
                         className={`flex items-center gap-2 px-6 py-3.5 text-white rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
                             activeTab === 'STAGES' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' :
-                            activeTab === 'POS' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' :
-                            activeTab === 'INCOME' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' :
-                            'bg-rose-600 hover:bg-rose-700 shadow-rose-100'
+                            'bg-blue-600 hover:bg-blue-700 shadow-blue-100'
                         }`}
                     >
                         <Plus size={20} />
@@ -170,19 +151,12 @@ export default function BOSMasterManagement() {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
-                            {/* Render Logic based on activeTab */}
-                            {(activeTab === 'STAGES' ? bosStages : 
-                              activeTab === 'POS' ? bosPosList :
-                              activeTab === 'INCOME' ? incomeItems.filter(i => i.isBos) :
-                              expenseItems.filter(i => i.isBos)
-                             ).filter(item => !item.isDeleted).map(item => (
+                            {(activeTab === 'STAGES' ? bosStages : bosPosList).filter(item => !item.isDeleted).map(item => (
                                 <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                                     <td className="px-8 py-5 font-bold text-slate-700">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-2 h-2 rounded-full opacity-40 group-hover:opacity-100 transition-opacity ${
-                                                activeTab === 'STAGES' ? 'bg-emerald-400' :
-                                                activeTab === 'POS' ? 'bg-blue-400' :
-                                                activeTab === 'INCOME' ? 'bg-indigo-400' : 'bg-rose-400'
+                                                activeTab === 'STAGES' ? 'bg-emerald-400' : 'bg-blue-400'
                                             }`} />
                                             {item.name}
                                         </div>
@@ -221,11 +195,9 @@ export default function BOSMasterManagement() {
             {/* Unified Modal */}
             {isModalOpen && (
                 <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white w-full max-w-md rounded-[2.5rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+                    <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
                         <div className={`p-8 border-b border-slate-50 ${
-                            activeTab === 'STAGES' ? 'bg-emerald-50/50' :
-                            activeTab === 'POS' ? 'bg-blue-50/50' :
-                            activeTab === 'INCOME' ? 'bg-indigo-50/50' : 'bg-rose-50/50'
+                            activeTab === 'STAGES' ? 'bg-emerald-50/50' : 'bg-blue-50/50'
                         }`}>
                             <h2 className="text-2xl font-black text-slate-900">
                                 {editingItem ? 'Edit Data' : `Tambah ${tabs.find(t => t.id === activeTab).label}`}
@@ -275,9 +247,7 @@ export default function BOSMasterManagement() {
                                     disabled={loading}
                                     className={`flex-1 px-6 py-4 text-white rounded-2xl font-bold transition-all shadow-lg active:scale-95 ${
                                         activeTab === 'STAGES' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-100' :
-                                        activeTab === 'POS' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-100' :
-                                        activeTab === 'INCOME' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-100' :
-                                        'bg-rose-600 hover:bg-rose-700 shadow-rose-100'
+                                        'bg-blue-600 hover:bg-blue-700 shadow-blue-100'
                                     }`}
                                 >
                                     {loading ? 'Menyimpan...' : 'Simpan Data'}
