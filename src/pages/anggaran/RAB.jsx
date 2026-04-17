@@ -130,6 +130,40 @@ export default function RAB() {
             lastPlanIdRef.current = planId;
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
+    
+    // Auto-migrate legacy data to components when modal opens
+    useEffect(() => {
+        if (!editingItem) return;
+        const type = activeTab.toLowerCase();
+        const item = currentPlan[type][editingItem.id];
+        
+        if (item && item.total > 0 && (!item.components || item.components.length === 0)) {
+            setCurrentPlan(prev => {
+                const currentItem = prev[type][editingItem.id];
+                if (!currentItem || currentItem.components?.length > 0) return prev;
+                
+                const initialComp = {
+                    label: 'Komponen Utama (Legacy)',
+                    volume: currentItem.volume || 1,
+                    satuan: currentItem.satuan || '',
+                    kali: currentItem.kali || 1,
+                    harga: currentItem.harga || currentItem.total,
+                    total: currentItem.total
+                };
+                
+                return {
+                    ...prev,
+                    [type]: {
+                        ...prev[type],
+                        [editingItem.id]: {
+                            ...currentItem,
+                            components: [initialComp]
+                        }
+                    }
+                };
+            });
+        }
+    }, [editingItem, activeTab]);
 
     // Compute consolidated data if Yayasan is selected
     const consolidatedPlan = useMemo(() => {
