@@ -379,11 +379,26 @@ export default function RAB() {
                 components.push(newComp);
             }
 
+            const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+            
+            const updatedItem = { 
+                ...currentItem, 
+                components, 
+                total: newTotal
+            };
+
+            // If it's a BOS item, sync bosAmount too
+            const itemDef = filteredExpenseItems.find(ei => ei.id === itemId);
+            if (itemDef?.sourceOfFunds === 'BOS') {
+                updatedItem.useBos = true;
+                updatedItem.bosAmount = newTotal;
+            }
+
             return {
                 ...prev,
                 [type]: {
                     ...prev[type],
-                    [itemId]: { ...currentItem, components, total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) }
+                    [itemId]: updatedItem
                 }
             };
         });
@@ -430,11 +445,25 @@ export default function RAB() {
 
             components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
 
+            const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+            const updatedItem = { 
+                ...currentItem, 
+                components, 
+                total: newTotal 
+            };
+
+            // If it's a BOS item, sync bosAmount too
+            const itemDef = filteredExpenseItems.find(ei => ei.id === itemId);
+            if (itemDef?.sourceOfFunds === 'BOS') {
+                updatedItem.useBos = true;
+                updatedItem.bosAmount = newTotal;
+            }
+
             return {
                 ...prev,
                 [type]: {
                     ...prev[type],
-                    [itemId]: { ...currentItem, components, total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) }
+                    [itemId]: updatedItem
                 }
             };
         });
@@ -446,14 +475,70 @@ export default function RAB() {
             const currentItem = prev[type][itemId] || { components: [] };
             const components = (currentItem.components || []).filter((_, i) => i !== index);
             
+            const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+            const updatedItem = { 
+                ...currentItem, 
+                components, 
+                total: newTotal 
+            };
+
+            // If it's a BOS item, sync bosAmount too
+            const itemDef = filteredExpenseItems.find(ei => ei.id === itemId);
+            if (itemDef?.sourceOfFunds === 'BOS') {
+                updatedItem.useBos = true;
+                updatedItem.bosAmount = newTotal;
+            }
+
             return {
                 ...prev,
                 [type]: {
                     ...prev[type],
-                    [itemId]: { ...currentItem, components, total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) }
+                    [itemId]: updatedItem
                 }
             };
         });
+    };
+
+    const handleSyncMonthly = (itemId) => {
+        const type = activeTab.toLowerCase();
+        setCurrentPlan(prev => {
+            const currentItem = prev[type][itemId] || { total: 0, months: {} };
+            const monthsData = { ...(currentItem.months || {}) };
+            const activeMonthIds = Object.keys(monthsData).filter(mId => monthsData[mId]?.m);
+            
+            if (activeMonthIds.length === 0) {
+                setMessage({ type: 'error', text: 'Pilih setidaknya satu bulan (centang) untuk membagi anggaran!' });
+                setTimeout(() => setMessage(null), 3000);
+                return prev;
+            }
+
+            const totalToSync = currentItem.total || 0;
+            if (totalToSync <= 0) {
+                setMessage({ type: 'error', text: 'Total anggaran harus lebih dari 0 untuk disinkronkan!' });
+                setTimeout(() => setMessage(null), 3000);
+                return prev;
+            }
+
+            const amountPerMonth = Math.floor(totalToSync / activeMonthIds.length);
+            const remainder = totalToSync % activeMonthIds.length;
+
+            activeMonthIds.forEach((mId, idx) => {
+                monthsData[mId] = {
+                    ...monthsData[mId],
+                    jumlah: amountPerMonth + (idx === 0 ? remainder : 0)
+                };
+            });
+
+            return {
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    [itemId]: { ...currentItem, months: monthsData }
+                }
+            };
+        });
+        setMessage({ type: 'success', text: 'Anggaran berhasil disinkronkan ke rincian bulanan.' });
+        setTimeout(() => setMessage(null), 3000);
     };
 
     const incomeExpenseBalances = useMemo(() => {
@@ -1808,37 +1893,51 @@ export default function RAB() {
                                     {(() => {
                                         const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
                                         const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                        const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0).length;
+                                        const activeMonths = Object.values(monthsData).filter(m => (parseFloat(m?.jumlah) || 0) > 0 || m.m).length;
                                         const itemTotal = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
                                         const isMismatch = itemTotal > 0 && monthlyTotal !== itemTotal;
 
                                         return (
                                             <>
-                                            <div className={`flex items-center justify-between px-6 py-4 rounded-2xl ${
-                                                monthlyTotal > 0 ? (isMismatch ? 'bg-amber-50 border-2 border-amber-200' : 'bg-emerald-50 border-2 border-emerald-200') : 'bg-slate-100 border border-dashed border-slate-300'
+                                            <div className={`flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-6 rounded-3xl ${
+                                                monthlyTotal > 0 ? (isMismatch ? 'bg-amber-50 border-2 border-amber-200' : 'bg-emerald-50 border-2 border-emerald-200 shadow-lg shadow-emerald-500/5') : 'bg-slate-100 border border-dashed border-slate-300'
                                             }`}>
-                                                <div className="flex items-center gap-3">
-                                                    <div className={`w-2 h-2 rounded-full ${ monthlyTotal > 0 ? (isMismatch ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-400' }`} />
+                                                <div className="flex items-center gap-4">
+                                                    <div className={`w-3 h-3 rounded-full ${ monthlyTotal > 0 ? (isMismatch ? 'bg-amber-500 animate-pulse' : 'bg-emerald-500 animate-pulse') : 'bg-slate-400' }`} />
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Total Rincian Bulan</p>
-                                                        <p className="text-[10px] text-slate-400">{activeMonths} bulan diisi</p>
+                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none mb-1">Total Alokasi Bulanan</p>
+                                                        <p className="text-[10px] text-slate-400 font-bold">{activeMonths} bulan terpilih</p>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className={`text-xl font-black tabular-nums ${ monthlyTotal > 0 ? (isMismatch ? 'text-amber-700' : 'text-emerald-700') : 'text-slate-400' }`}>
-                                                        Rp {monthlyTotal.toLocaleString('id-ID')}
-                                                    </p>
-                                                    {isMismatch && (
-                                                        <p className="text-[9px] font-bold text-amber-600">
-                                                            ⚠ Beda {formatRupiah(Math.abs(itemTotal - monthlyTotal))} dari total item
-                                                        </p>
+                                                
+                                                <div className="flex items-center gap-8">
+                                                    {isMismatch && itemTotal > 0 && (
+                                                        <button 
+                                                            onClick={() => handleSyncMonthly(editingItem.id)}
+                                                            className="px-6 py-3 bg-indigo-600 text-white rounded-xl font-black text-[9px] uppercase tracking-widest shadow-lg shadow-indigo-100 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                                                        >
+                                                            <RefreshCw size={14} className="animate-spin-slow" />
+                                                            Sinkronkan Otomatis
+                                                        </button>
                                                     )}
+                                                    <div className="text-right">
+                                                        <p className={`text-2xl font-black tabular-nums leading-none ${ monthlyTotal > 0 ? (isMismatch ? 'text-amber-700' : 'text-emerald-700') : 'text-slate-400' }`}>
+                                                            Rp {monthlyTotal.toLocaleString('id-ID')}
+                                                        </p>
+                                                        {isMismatch && (
+                                                            <p className="text-[9px] font-bold text-amber-600 mt-1">
+                                                                ⚠ Selisih {formatRupiah(Math.abs(itemTotal - monthlyTotal))}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                             {isMismatch && (
-                                                <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 animate-in fade-in slide-in-from-top-2">
-                                                    <AlertCircle size={14} className="shrink-0" />
-                                                    <p className="text-[10px] font-black uppercase tracking-tight">Rincian bulanan wajib sama dengan Total Terhitung agar bisa disimpan.</p>
+                                                <div className="p-5 bg-amber-50/50 border border-amber-100 rounded-2xl flex items-center gap-4 text-amber-700 animate-in fade-in slide-in-from-top-2">
+                                                    <Info size={16} className="shrink-0" />
+                                                    <p className="text-[10px] font-bold leading-relaxed italic">
+                                                        Nominal bulanan Anda belum sesuai dengan total rincian (Rp {itemTotal.toLocaleString('id-ID')}). Klik <strong className="uppercase">"Sinkronkan Otomatis"</strong> untuk membagi rata ke bulan yang dicentang.
+                                                    </p>
                                                 </div>
                                             )}
                                             </>
