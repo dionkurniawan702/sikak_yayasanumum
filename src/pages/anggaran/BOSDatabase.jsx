@@ -125,7 +125,7 @@ export default function BOSDatabase() {
                             academicYearId: academicYears.find(ay => ay.isCurrent)?.id || '', 
                             stageId: '', 
                             posId: '', 
-                            unitId: '', 
+                            unitId: isSuperAdmin ? '' : (currentUser?.unitId || ''), 
                             amount: '' 
                         });
                         setIsModalOpen(true);
@@ -321,18 +321,20 @@ export default function BOSDatabase() {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Penerima</label>
-                                <select 
-                                    required
-                                    value={formData.unitId}
-                                    onChange={(e) => setFormData({ ...formData, unitId: e.target.value })}
-                                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900 appearance-none"
-                                >
-                                    <option value="">Pilih Unit Sekolah...</option>
-                                    {bosUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                                </select>
-                            </div>
+                            {isSuperAdmin && (
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Unit Penerima</label>
+                                    <select 
+                                        required
+                                        value={formData.unitId}
+                                        onChange={(e) => setFormData({ ...formData, unitId: e.target.value })}
+                                        className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900 appearance-none"
+                                    >
+                                        <option value="">Pilih Unit Sekolah...</option>
+                                        {bosUnits.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </select>
+                                </div>
+                            )}
 
                             <div className="space-y-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">POS Anggaran</label>
