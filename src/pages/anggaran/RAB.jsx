@@ -131,7 +131,7 @@ export default function RAB() {
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
     
-    // Force reset legacy items to 0 upon opening the modal to ensure a clean slate
+    // Force migration of legacy items to Components, but clear their Months distribution
     useEffect(() => {
         if (!editingItem) return;
         const type = activeTab.toLowerCase();
@@ -145,10 +145,16 @@ export default function RAB() {
                     ...prev[type],
                     [editingItem.id]: {
                         ...item,
-                        total: 0,
-                        months: {},
-                        components: [],
-                        bosAmount: 0 // Reset BOS allocation too
+                        components: [{
+                            label: 'Komponen Utama (Legacy)',
+                            volume: item.volume || 1,
+                            satuan: item.satuan || '',
+                            kali: item.kali || 1,
+                            harga: item.harga || item.total,
+                            total: item.total
+                        }],
+                        months: {}, // CLEAR MONTHS as requested (blank sheet for months)
+                        bosAmount: item.bosAmount || 0
                     }
                 }
             }));
@@ -303,8 +309,10 @@ export default function RAB() {
     // - [x] Bersihkan logika fallback `currentItem.total` di `handlePushComponent`
     // - [x] Perbaiki perhitungan `activeMonths` di UI
     // - [x] Hanya hitung bulan yang status centangnya `true`
-    // - [x] Verifikasi Start from Zero (Klik Atur Budget -> Semua 0)
-    // - [x] Git commit & push
+    // - [x] Restore Migration for Summary Table (Isi detil dari data lama)
+    // - [x] Clear Months only (Kosongkan kotak bulanan saat migrasi)
+    // - [x] Sinkronisasi handlePush & handleAdd
+    // - [ ] Git commit & push
     const handleItemUpdate = (itemId, field, value) => {
         const type = activeTab.toLowerCase();
         setCurrentPlan(prev => {
