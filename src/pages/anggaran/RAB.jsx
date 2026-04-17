@@ -364,30 +364,7 @@ export default function RAB() {
         });
     };
 
-    const handleDistributeMonthly = (itemId) => {
-        const type = activeTab.toLowerCase();
-        const item = currentPlan[type][itemId];
-        if (!item || item.total <= 0) return;
 
-        const perMonth = Math.floor(item.total / 12);
-        const remainder = item.total % 12;
-
-        const updatedMonths = {};
-        months.forEach((m, idx) => {
-            updatedMonths[m.id] = { 
-                jumlah: perMonth + (idx === 0 ? remainder : 0), 
-                m: true 
-            };
-        });
-
-        setCurrentPlan(prev => ({
-            ...prev,
-            [type]: {
-                ...prev[type],
-                [itemId]: { ...item, months: updatedMonths }
-            }
-        }));
-    };
 
     const months = useMemo(() => {
         const selectedYear = academicYears.find(ay => ay.id === selectedYearId);
@@ -1582,13 +1559,6 @@ export default function RAB() {
                             <div className="space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
-                                    <button 
-                                        onClick={() => handleDistributeMonthly(editingItem.id)}
-                                        className="text-blue-600 font-black text-[10px] uppercase tracking-widest flex items-center gap-2 hover:bg-blue-50 px-4 py-2 rounded-xl transition-all"
-                                    >
-                                        <RefreshCw size={14} />
-                                        Bagi Rata (12 Bulan)
-                                    </button>
                                 </div>
 
                                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
