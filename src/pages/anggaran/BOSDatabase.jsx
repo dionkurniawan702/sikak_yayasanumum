@@ -354,10 +354,13 @@ export default function BOSDatabase() {
                                 <div className="relative">
                                     <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-slate-400">Rp</span>
                                     <input 
-                                        type="number" 
+                                        type="text" 
                                         required
-                                        value={formData.amount}
-                                        onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                                        value={formData.amount ? parseInt(formData.amount).toLocaleString('id-ID') : ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, '');
+                                            setFormData({ ...formData, amount: val });
+                                        }}
                                         className="w-full pl-14 pr-8 py-5 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-black text-slate-900"
                                         placeholder="0"
                                     />
