@@ -736,7 +736,7 @@ export default function RAB() {
                 <thead>
                     <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
                         <th className="px-6 py-1 text-left w-12">#</th>
-                        <th className="px-6 py-1 text-left">Item Belanja / Rincian</th>
+                        <th className="px-6 py-1 text-left">Item pengeluaran</th>
                         <th className="px-6 py-1 text-center">Semester</th>
                         <th className="px-6 py-1 text-right">Limit</th>
                         <th className="px-6 py-1 text-right">Draft RAB</th>
