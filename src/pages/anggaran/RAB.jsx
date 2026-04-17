@@ -1599,15 +1599,13 @@ export default function RAB() {
                             <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
                                 <div className="flex items-center justify-between">
                                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Perhitungan Anggaran</h4>
-                                    {(currentPlan[activeTab.toLowerCase()][editingItem.id]?.components || []).length > 0 && (
-                                        <button 
-                                            onClick={() => handleAddComponent(editingItem.id)}
-                                            className="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-black/10 flex items-center gap-2"
-                                        >
-                                            <Plus size={14} />
-                                            Tambah Rincian
-                                        </button>
-                                    )}
+                                    <button 
+                                        onClick={() => handleAddComponent(editingItem.id)}
+                                        className="px-6 py-3 bg-slate-900 text-white rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-black/10 flex items-center gap-2 animate-pulse"
+                                    >
+                                        <Plus size={16} />
+                                        Tambah Rincian / Pengeluaran
+                                    </button>
                                 </div>
 
                                 {(() => {
