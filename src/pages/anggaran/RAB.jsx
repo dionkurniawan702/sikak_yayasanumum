@@ -908,16 +908,71 @@ export default function RAB() {
                                     <div className="flex items-center justify-end gap-2">
                                         {!isLocked && (
                                             <button 
-                                                onClick={() => {
-                                                    setNewItemData({
-                                                        name: item.name,
-                                                        sourceOfFunds: item.sourceOfFunds || 'Yayasan',
-                                                        incomeItemId: item.incomeItemId || ''
-                                                    });
-                                                    setIsAddingItem(true);
+                                                onClick={async () => {
+                                                    // Quick add and edit
+                                                    setIsSaving(true);
+                                                    try {
+                                                        const isField = selectedUnitId.startsWith('FIELD-');
+                                                        const unitId = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+                                                        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
+                                                        const expenseItemId = `EXP-${Date.now().toString(36).toUpperCase()}`;
+
+                                                        // Find current income item link
+                                                        const dist = state.distributionSettings.find(s => s.expenseItemId === item.id && s.destId === (isField ? fieldId : selectedUnitId));
+                                                        const incomeItemId = dist?.incomeItemId || (isField ? 'BOS-REGULER' : 'SPP'); // Fallback
+
+                                                        const newExpenseItem = {
+                                                            id: expenseItemId,
+                                                            name: item.name,
+                                                            unitId,
+                                                            fieldId,
+                                                            sourceOfFunds: item.sourceOfFunds || 'Yayasan',
+                                                            isDeleted: false
+                                                        };
+
+                                                        // 1. Add Item
+                                                        dispatch({ type: 'ADD_EXPENSE_ITEM', payload: newExpenseItem });
+                                                        await api.pushAction({ type: 'ADD_EXPENSE_ITEM', payload: newExpenseItem }, state);
+
+                                                        // 2. Add Distribution Rule
+                                                        const distributionRule = {
+                                                            id: `DIST-${Date.now().toString(36).toUpperCase()}`,
+                                                            unitId: isField ? (state.units.find(u => u.fieldId === fieldId)?.id || 'FOUNDATION') : selectedUnitId,
+                                                            incomeItemId: incomeItemId,
+                                                            expenseItemId: expenseItemId,
+                                                            percentage: 100,
+                                                            destType: isField ? 'field' : 'unit',
+                                                            destId: isField ? fieldId : selectedUnitId,
+                                                            isDeleted: false
+                                                        };
+                                                        
+                                                        const existingSettings = state.distributionSettings.filter(s => 
+                                                            s.unitId === distributionRule.unitId && s.incomeItemId === distributionRule.incomeItemId
+                                                        );
+                                                        const updatedSettings = [...existingSettings, distributionRule];
+                                                        
+                                                        dispatch({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
+                                                            unitId: distributionRule.unitId, 
+                                                            incomeItemId: distributionRule.incomeItemId, 
+                                                            settings: updatedSettings 
+                                                        }});
+                                                        await api.pushAction({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
+                                                            unitId: distributionRule.unitId, 
+                                                            incomeItemId: distributionRule.incomeItemId, 
+                                                            settings: updatedSettings 
+                                                        }}, state);
+
+                                                        // 3. Open Editing Modal
+                                                        setEditingItem(newExpenseItem);
+                                                    } catch (e) {
+                                                        setMessage({ type: 'error', text: 'Gagal duplikasi: ' + e.message });
+                                                    } finally {
+                                                        setIsSaving(false);
+                                                    }
                                                 }}
                                                 className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                                                 title="Tambah Pengeluaran Lain untuk Item Ini"
+                                                disabled={isSaving}
                                             >
                                                 <Plus size={16} />
                                             </button>
