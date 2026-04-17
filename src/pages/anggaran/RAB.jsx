@@ -824,7 +824,7 @@ export default function RAB() {
                         <div className={`px-8 py-3 rounded-2xl border-2 flex items-center gap-3 ${balance < 0 ? 'bg-rose-500/20 border-rose-500/50 text-rose-300' : 'bg-white/10 border-white/20 text-blue-300'}`}>
                             {balance < 0 ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
                             <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Sisa Kapasitas</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Sisa Anggaran</span>
                                 <span className="font-black text-sm italic">{formatRupiah(balance)}</span>
                             </div>
                         </div>
@@ -854,7 +854,7 @@ export default function RAB() {
         Object.values(activePlan?.expense || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
     , [activePlan?.expense]);
 
-    const balance = totalIncome - totalExpense;
+    const balance = (rapData?.totalTarget || 0) + totalIncome - totalExpense;
 
     return (
         <div className="p-4 lg:p-10 max-w-[1440px] mx-auto space-y-8 animate-in fade-in duration-700">
@@ -1164,7 +1164,7 @@ export default function RAB() {
                                 <h3 className="text-xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                              </div>
                              <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB Belanja</p>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(totalExpense)}</h3>
                              </div>
                              <div className={`${balance >= 0 ? 'bg-blue-600' : 'bg-slate-800'} p-5 rounded-[2rem] text-white shadow-xl relative overflow-hidden group transition-colors`}>
