@@ -817,22 +817,11 @@ export default function RAB() {
                 </div>
                 <div className="relative z-10 flex items-center gap-10">
                     <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total RAP</span>
-                        <h4 className="text-3xl font-black italic">{formatRupiah(rapData?.totalTarget || 0)}</h4>
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
+                        <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                            {formatRupiah(balance)}
+                        </h4>
                     </div>
-                    <div className="flex flex-col border-l border-white/10 pl-10">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Rencana RAB</span>
-                        <h4 className="text-3xl font-black italic text-indigo-400">{formatRupiah(totalExpense)}</h4>
-                    </div>
-                    {!isConsolidation && (
-                        <div className={`px-8 py-3 rounded-2xl border-2 flex items-center gap-3 ${balance < 0 ? 'bg-rose-500/20 border-rose-500/50 text-rose-300' : 'bg-white/10 border-white/20 text-blue-300'}`}>
-                            {balance < 0 ? <AlertCircle size={20} /> : <CheckCircle2 size={20} />}
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-black uppercase tracking-widest opacity-60">Sisa Anggaran</span>
-                                <span className="font-black text-sm italic">{formatRupiah(balance)}</span>
-                            </div>
-                        </div>
-                    )}
                 </div>
                 {!isLocked && !isConsolidation && (
                     <div className="relative z-10">
