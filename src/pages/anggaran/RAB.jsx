@@ -4,7 +4,7 @@ import {
     ArrowUpCircle, ArrowDownCircle, Info, ChevronRight,
     TrendingUp, Wallet, ShieldCheck, Download, Filter, 
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
-    Edit3, PlusCircle, Database
+    Edit3, PlusCircle, Database, Plus, X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
@@ -272,21 +272,107 @@ export default function RAB() {
         const type = activeTab.toLowerCase();
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || {
-                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}
+                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}, components: []
             };
             
             const updatedItem = { ...currentItem, [field]: value };
             
-            // Recalculate total if volume, kali, or harga changes
+            // Recalculate total if volume, kali, or harga changes (Legacy / Single Mode)
             if (['volume', 'kali', 'harga'].includes(field)) {
                 updatedItem.total = (parseFloat(updatedItem.volume) || 0) * 
                                    (parseFloat(updatedItem.kali) || 0) * 
                                    (parseFloat(updatedItem.harga) || 0);
             }
             
+            // If we have components, the total is ALWAYS the sum of components
+            if (updatedItem.components && updatedItem.components.length > 0) {
+                updatedItem.total = updatedItem.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+            }
+            
             return {
                 ...prev,
                 [type]: { ...prev[type], [itemId]: updatedItem }
+            };
+        });
+    };
+
+    const handleComponentUpdate = (itemId, index, field, value) => {
+        const type = activeTab.toLowerCase();
+        setCurrentPlan(prev => {
+            const currentItem = prev[type][itemId] || { components: [] };
+            const components = [...(currentItem.components || [])];
+            
+            // Initialize component if it doesn't exist (though it should by index)
+            if (!components[index]) {
+                components[index] = { label: '', volume: 0, satuan: '', kali: 1, harga: 0, total: 0 };
+            }
+
+            const updatedComp = { ...components[index], [field]: value };
+
+            // Calc subtotal
+            if (['volume', 'kali', 'harga'].includes(field)) {
+                updatedComp.total = (parseFloat(updatedComp.volume) || 0) * 
+                                   (parseFloat(updatedComp.kali) || 0) * 
+                                   (parseFloat(updatedComp.harga) || 0);
+            }
+
+            components[index] = updatedComp;
+            
+            const updatedItem = { 
+                ...currentItem, 
+                components,
+                // Always sync top-level total
+                total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0)
+            };
+
+            return {
+                ...prev,
+                [type]: { ...prev[type], [itemId]: updatedItem }
+            };
+        });
+    };
+
+    const handleAddComponent = (itemId) => {
+        const type = activeTab.toLowerCase();
+        setCurrentPlan(prev => {
+            const currentItem = prev[type][itemId] || { components: [] };
+            
+            // If item has legacy data and 0 components, convert it first
+            let components = currentItem.components && currentItem.components.length > 0 
+                ? [...currentItem.components] 
+                : (currentItem.total > 0 ? [{
+                    label: 'Komponen Utama',
+                    volume: currentItem.volume || 0,
+                    satuan: currentItem.satuan || '',
+                    kali: currentItem.kali || 1,
+                    harga: currentItem.harga || 0,
+                    total: currentItem.total || 0
+                }] : []);
+
+            components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
+
+            return {
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    [itemId]: { ...currentItem, components, total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) }
+                }
+            };
+        });
+    };
+
+    const handleRemoveComponent = (itemId, index) => {
+        const type = activeTab.toLowerCase();
+        setCurrentPlan(prev => {
+            const currentItem = prev[type][itemId] || { components: [] };
+            const components = (currentItem.components || []).filter((_, i) => i !== index);
+            
+            return {
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    [itemId]: { ...currentItem, components, total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) }
+                }
             };
         });
     };
@@ -1509,65 +1595,160 @@ export default function RAB() {
                                         </div>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Section 2: Calculation (Volume, Price, etc) */}
-                            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100">
-                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
-                                        <input 
-                                            type="number"
-                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.volume || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'volume', e.target.value)}
-                                            placeholder="0"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
-                                        <input 
-                                            type="text"
-                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all uppercase"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.satuan || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'satuan', e.target.value)}
-                                            placeholder="E.G. UNIT"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali (Freq)</label>
-                                        <input 
-                                            type="number"
-                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.kali || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'kali', e.target.value)}
-                                            placeholder="1"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
-                                        <input 
-                                            type="text"
-                                            inputMode="numeric"
-                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={(() => {
-                                                const raw = currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || 0;
-                                                return raw ? Number(raw).toLocaleString('id-ID') : '';
-                                            })()}
-                                            onChange={e => {
-                                                const numeric = e.target.value.replace(/\D/g, '');
-                                                handleItemUpdate(editingItem.id, 'harga', numeric ? parseFloat(numeric) : 0);
-                                            }}
-                                            placeholder="0"
-                                        />
-                                        {(currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || 0) > 0 && (
-                                            <p className="text-[9px] font-bold text-emerald-600 px-1">
-                                                Rp {Number(currentPlan[activeTab.toLowerCase()][editingItem.id]?.harga || 0).toLocaleString('id-ID')}
-                                            </p>
-                                        )}
-                                    </div>
+                                                        {/* Section 2: Calculation (Volume, Price, etc) */}
+                            <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
+                                <div className="flex items-center justify-between">
+                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Perhitungan Anggaran</h4>
+                                    {(currentPlan[activeTab.toLowerCase()][editingItem.id]?.components || []).length > 0 && (
+                                        <button 
+                                            onClick={() => handleAddComponent(editingItem.id)}
+                                            className="px-4 py-2 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-black/10 flex items-center gap-2"
+                                        >
+                                            <Plus size={14} />
+                                            Tambah Rincian
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
+
+                                {(() => {
+                                    const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                    const comps = item.components || [];
+
+                                    if (comps.length === 0) {
+                                        // LEGACY / SINGLE MODE
+                                        return (
+                                            <div className="space-y-6">
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
+                                                        <input 
+                                                            type="number"
+                                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                                            value={item.volume || ''}
+                                                            onChange={e => handleItemUpdate(editingItem.id, 'volume', e.target.value)}
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
+                                                        <input 
+                                                            type="text"
+                                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all uppercase"
+                                                            value={item.satuan || ''}
+                                                            onChange={e => handleItemUpdate(editingItem.id, 'satuan', e.target.value)}
+                                                            placeholder="E.G. UNIT"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali (Freq)</label>
+                                                        <input 
+                                                            type="number"
+                                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                                            value={item.kali || ''}
+                                                            onChange={e => handleItemUpdate(editingItem.id, 'kali', e.target.value)}
+                                                            placeholder="1"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
+                                                        <input 
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                                            value={item.harga ? Number(item.harga).toLocaleString('id-ID') : ''}
+                                                            onChange={e => {
+                                                                const numeric = e.target.value.replace(/\D/g, '');
+                                                                handleItemUpdate(editingItem.id, 'harga', numeric ? parseFloat(numeric) : 0);
+                                                            }}
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleAddComponent(editingItem.id)}
+                                                    className="w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-blue-500 hover:text-blue-500 transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    <PlusCircle size={14} />
+                                                    Pecah Rincian Perhitungan (Multi-Komponen)
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+
+                                    // MULTI-COMPONENT MODE
+                                    return (
+                                        <div className="space-y-4">
+                                            {comps.map((c, idx) => (
+                                                <div key={idx} className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm relative group animate-in slide-in-from-right-2 duration-300">
+                                                    <button 
+                                                        onClick={() => handleRemoveComponent(editingItem.id, idx)}
+                                                        className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                    
+                                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-end">
+                                                        <div className="lg:col-span-3 space-y-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Label</label>
+                                                            <input 
+                                                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 outline-none focus:border-blue-400"
+                                                                value={c.label || ''}
+                                                                onChange={e => handleComponentUpdate(editingItem.id, idx, 'label', e.target.value)}
+                                                                placeholder="Misal: Gaji Pokok"
+                                                            />
+                                                        </div>
+                                                        <div className="lg:col-span-1 space-y-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Vol</label>
+                                                            <input 
+                                                                type="number"
+                                                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 outline-none"
+                                                                value={c.volume || ''}
+                                                                onChange={e => handleComponentUpdate(editingItem.id, idx, 'volume', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="lg:col-span-2 space-y-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
+                                                            <input 
+                                                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 outline-none uppercase"
+                                                                value={c.satuan || ''}
+                                                                onChange={e => handleComponentUpdate(editingItem.id, idx, 'satuan', e.target.value)}
+                                                                placeholder="ORANG"
+                                                            />
+                                                        </div>
+                                                        <div className="lg:col-span-1 space-y-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali</label>
+                                                            <input 
+                                                                type="number"
+                                                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 outline-none"
+                                                                value={c.kali || ''}
+                                                                onChange={e => handleComponentUpdate(editingItem.id, idx, 'kali', e.target.value)}
+                                                            />
+                                                        </div>
+                                                        <div className="lg:col-span-3 space-y-2">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
+                                                            <input 
+                                                                inputMode="numeric"
+                                                                className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-700 outline-none text-right"
+                                                                value={c.harga ? Number(c.harga).toLocaleString('id-ID') : ''}
+                                                                onChange={e => {
+                                                                    const val = e.target.value.replace(/\D/g, '');
+                                                                    handleComponentUpdate(editingItem.id, idx, 'harga', val ? parseFloat(val) : 0);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                        <div className="lg:col-span-2 space-y-2 text-right">
+                                                            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-1">Subtotal</label>
+                                                            <div className="p-3 font-black text-slate-900 border-b-2 border-slate-200">
+                                                                {formatRupiah(c.total || 0)}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                })()}
+                            </div>  </div>
 
                             {/* Monthly Breakdown Table */}
                             <div className="space-y-6">
