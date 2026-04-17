@@ -51,11 +51,14 @@ export default function RAB() {
         expensePrograms = [],
         bosStages = [],
         bosPosList = [],
+        bosAllocations = [],
         currentUser
     } = state;
 
     // Role helpers
     const isSuperAdmin = currentUser?.role === 'superadmin';
+    const currentUserUnit = units.find(u => u.id === currentUser?.unitId);
+    const isBosRecipient = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
 
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
@@ -279,6 +282,11 @@ export default function RAB() {
                 updatedItem.total = (parseFloat(updatedItem.volume) || 0) * 
                                    (parseFloat(updatedItem.kali) || 0) * 
                                    (parseFloat(updatedItem.harga) || 0);
+
+                // Ensure bosAmount doesn't exceed new total
+                if (updatedItem.bosAmount > updatedItem.total) {
+                    updatedItem.bosAmount = updatedItem.total;
+                }
             }
             
             return {
@@ -476,19 +484,31 @@ export default function RAB() {
             updatedBy: currentUser?.username
         };
 
-        // Strict Validation: Prevent saving if any item exceeds allocation (only for EXPENSE tab, and only if allocation exists)
+        // 1. Strict Validation: BOS Limit
+        if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
+            setMessage({ 
+                type: 'error', 
+                text: `DILARANG: Total rencana belanja BOS (${formatRupiah(totalExpenseBos)}) melebihi total alokasi BOS (${formatRupiah(totalBosAllocated)}).` 
+            });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 7000);
+            return;
+        }
+
+        // 2. Strict Validation: Yayasan Item Limits (after BOS savings)
         const overBudgetItem = activeTab === 'EXPENSE' ? filteredExpenseItems.find(item => {
             const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
-            // Only validate items that have data (> 0) and have an allocation set
             if (detail.total <= 0 || allocated === 0) return false;
-            return detail.total > (allocated + 100); // Allow 100 rupiah tolerance
+            
+            const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+            return yayasanSpent > (allocated + 100);
         }) : null;
 
         if (overBudgetItem) {
             setMessage({ 
                 type: 'error', 
-                text: `DILARANG: Item "${overBudgetItem.name}" melebihi rencana penerimaan. Mohon sesuaikan rincian belanja Anda.` 
+                text: `DILARANG: Item "${overBudgetItem.name}" melebihi rencana penerimaan Yayasan (setelah dikurangi porsi BOS).` 
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -522,19 +542,31 @@ export default function RAB() {
             updatedBy: currentUser?.username
         };
 
-        // Strict Validation for submission (only check expense items with existing allocations)
+        // 1. Strict Validation: BOS Limit for Submission
+        if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
+            setMessage({ 
+                type: 'error', 
+                text: `PENGAJUAN DITOLAK: Total rencana belanja BOS melebihi alokasi tersedia (${formatRupiah(totalBosAllocated)}).` 
+            });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 7000);
+            return;
+        }
+
+        // 2. Strict Validation: Yayasan Item Limits for Submission
         const overBudgetItemSubmit = filteredExpenseItems.find(item => {
             const detail = submittedPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
-            // Only validate items that have data (> 0) and have an allocation set
             if (detail.total <= 0 || allocated === 0) return false;
-            return detail.total > (allocated + 100);
+
+            const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+            return yayasanSpent > (allocated + 100);
         });
 
         if (overBudgetItemSubmit) {
             setMessage({ 
                 type: 'error', 
-                text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit. Harap diperbaiki sebelum dikirim ke Yayasan.` 
+                text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit Yayasan.` 
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -752,10 +784,11 @@ export default function RAB() {
                         if (fundSourceFilter === 'BOS') return item.sourceOfFunds === 'BOS';
                         return true;
                     }).map((item, index) => {
-                        const detail = activePlan.expense[item.id] || { total: 0, semester: '1' };
+                        const detail = activePlan.expense[item.id] || { total: 0, semester: '1', bosAmount: 0 };
                         const allocated = rapData.itemAllocations[item.id] || 0;
-                        const isOver = detail.total > (allocated + 100);
-                        const progress = allocated > 0 ? (detail.total / allocated * 100) : 0;
+                        const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+                        const isOver = yayasanSpent > (allocated + 100);
+                        const progress = allocated > 0 ? (yayasanSpent / allocated * 100) : 0;
                         
                         return (
                             <tr key={item.id} className="group bg-white hover:bg-slate-50 transition-all duration-300">
@@ -769,7 +802,15 @@ export default function RAB() {
                                         </div>
                                         <div>
                                             <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{item.name}</p>
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">{item.sourceOfFunds || 'Yayasan'}</p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">{item.sourceOfFunds || 'Yayasan'}</p>
+                                                {detail.bosAmount > 0 && (
+                                                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                        <Wallet size={10} />
+                                                        BOS: {formatRupiah(detail.bosAmount)}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
                                 </td>
@@ -847,7 +888,23 @@ export default function RAB() {
         Object.values(activePlan?.expense || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
     , [activePlan?.expense]);
 
-    const balance = (rapData?.totalTarget || 0) + totalIncome - totalExpense;
+    // NEW: Calculate BOS Specifics
+    const totalBosAllocated = useMemo(() => {
+        const unitId = selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+        if (!unitId || !selectedYearId) return 0;
+        
+        return (bosAllocations || []).filter(a => 
+            !a.isDeleted && 
+            a.academicYearId === selectedYearId && 
+            a.unitId === unitId
+        ).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+    }, [bosAllocations, selectedYearId, selectedUnitId]);
+
+    const totalExpenseBos = useMemo(() => {
+        return Object.values(activePlan?.expense || {}).reduce((sum, val) => sum + (parseFloat(val?.bosAmount) || 0), 0);
+    }, [activePlan?.expense]);
+
+    const balance = (rapData?.totalTarget || 0) + totalIncome + totalBosAllocated - totalExpense;
 
     return (
         <div className="p-4 lg:p-10 max-w-[1440px] mx-auto space-y-8 animate-in fade-in duration-700">
@@ -1024,13 +1081,19 @@ export default function RAB() {
                                 Konsolidasi <span className="text-blue-400">Anggaran</span>
                             </h2>
                             
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className={`grid grid-cols-1 ${isBosRecipient ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-8`}>
                                 <div className="space-y-2">
-                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Penerimaan</p>
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Yayasan</p>
                                     <h3 className="text-2xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                                 </div>
+                                {isBosRecipient && (
+                                    <div className="space-y-2">
+                                        <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest opacity-60">Total Alokasi BOS</p>
+                                        <h3 className="text-2xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>
+                                    </div>
+                                )}
                                 <div className="space-y-2">
-                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Belanja Diajukan</p>
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Rencana Belanja</p>
                                     <h3 className="text-2xl font-black italic">{formatRupiah(totalExpense)}</h3>
                                 </div>
                                 <div className="space-y-2">
@@ -1152,18 +1215,24 @@ export default function RAB() {
 
                         {/* Quick Stats Cards in Sidebar */}
                         <div className="grid grid-cols-1 gap-3">
-                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Target RAP</p>
+                              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Target Yayasan</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
-                             </div>
-                             <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB</p>
+                              </div>
+                              {isBosRecipient && (
+                                  <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
+                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Alokasi BOS</p>
+                                    <h3 className="text-xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>
+                                  </div>
+                              )}
+                              <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB (Total)</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(totalExpense)}</h3>
-                             </div>
-                             <div className={`${balance >= 0 ? 'bg-blue-600' : 'bg-slate-800'} p-5 rounded-[2rem] text-white shadow-xl relative overflow-hidden group transition-colors`}>
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Sisa Anggaran</p>
+                              </div>
+                              <div className={`${balance >= 0 ? 'bg-slate-900' : 'bg-rose-900'} p-5 rounded-[2rem] text-white shadow-xl relative overflow-hidden group transition-colors`}>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Sisa Anggaran Akhir</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(balance)}</h3>
-                             </div>
+                              </div>
                         </div>
 
                         {/* Financial Analysis Tooltip / Mini Panel */}
@@ -1339,36 +1408,84 @@ export default function RAB() {
                                         </select>
                                     </div>
 
-                                    {editingItem.sourceOfFunds === 'BOS' && (
-                                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-right duration-500">
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-emerald-600">POS Anggaran BOS</label>
-                                                <select 
-                                                    className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
-                                                    value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosPosId || ''}
-                                                    onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
-                                                >
-                                                    <option value="">Pilih POS...</option>
-                                                    {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
-                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 text-emerald-600">Tahap BOS</label>
-                                                <select 
-                                                    className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
-                                                    value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosStageId || ''}
-                                                    onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
-                                                >
-                                                    <option value="">Pilih Tahap...</option>
-                                                    {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
-                                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                                    ))}
-                                                </select>
-                                            </div>
+                                    <div className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber Dana Belanja</p>
+                                            {isBosRecipient && (
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gunakan Dana BOS?</span>
+                                                    <button 
+                                                        onClick={() => {
+                                                            const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0 };
+                                                            const hasBos = !!detail.bosAmount && detail.bosAmount > 0;
+                                                            handleItemUpdate(editingItem.id, 'bosAmount', hasBos ? 0 : detail.total);
+                                                        }}
+                                                        className={`w-12 h-6 rounded-full transition-all relative ${((currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0) > 0) ? 'bg-emerald-500' : 'bg-slate-200'}`}
+                                                    >
+                                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${((currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0) > 0) ? 'left-7' : 'left-1'}`} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
+
+                                        <div className="space-y-4">
+                                            {((currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0) > 0) ? (
+                                                <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between items-center">
+                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Porsi Dana BOS (Rp)</label>
+                                                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">
+                                                                Beban Yayasan: {formatRupiah((currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0) - (currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0))}
+                                                            </span>
+                                                        </div>
+                                                        <input 
+                                                            type="text"
+                                                            className="w-full p-4 bg-white border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
+                                                            value={parseInt(currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosAmount || 0).toLocaleString('id-ID')}
+                                                            onChange={e => {
+                                                                const val = e.target.value.replace(/\D/g, '') || 0;
+                                                                const total = currentPlan[activeTab.toLowerCase()][editingItem.id]?.total || 0;
+                                                                handleItemUpdate(editingItem.id, 'bosAmount', Math.min(parseInt(val), total));
+                                                            }}
+                                                        />
+                                                    </div>
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">POS Anggaran BOS</label>
+                                                            <select 
+                                                                className="w-full p-4 bg-white border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosPosId || ''}
+                                                                onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
+                                                            >
+                                                                <option value="">Pilih POS...</option>
+                                                                {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
+                                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Tahap BOS</label>
+                                                            <select 
+                                                                className="w-full p-4 bg-white border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.bosStageId || ''}
+                                                                onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
+                                                            >
+                                                                <option value="">Pilih Tahap...</option>
+                                                                {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
+                                                                    <option key={s.id} value={s.id}>{s.name}</option>
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="p-10 border-2 border-dashed border-slate-200 rounded-2xl text-center">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">100% Menggunakan Dana Yayasan</p>
+                                                    {isBosRecipient && <p className="text-[8px] font-bold text-blue-400 uppercase tracking-widest mt-1">Gunakan toggle di atas untuk berbagi porsi dengan dana BOS</p>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
 
                                     {/* Unit Peruntukan Selector (For Specialized Field Items) */}
                                     {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
