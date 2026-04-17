@@ -1940,7 +1940,7 @@ export default function RAB() {
                                         const itemTotal = (item.components && item.components.length > 0) 
                                             ? item.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) 
                                             : (item.total || 0);
-                                        const isMismatch = itemTotal > 0 && Math.abs(monthlyTotal - itemTotal) > 0.01;
+                                        const isMismatch = false;
 
                                         return (
                                             <>
@@ -2087,31 +2087,41 @@ export default function RAB() {
                             const itemTotal = (item.components && item.components.length > 0) 
                                 ? item.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0) 
                                 : (item.total || 0);
-                            const isMismatch = itemTotal > 0 && Math.abs(monthlyTotal - itemTotal) > 0.01;
+                            const isMismatch = false;
+                            
+                            // itemTotal renamed to monthlyTotal as definitive budget source
+                            const itemTotal = monthlyTotal; 
 
                             return (
                                 <div className="p-8 bg-slate-900 flex items-center justify-between text-white">
                                     <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Terhitung</span>
-                                        <h3 className="text-3xl font-black italic">{formatRupiah(itemTotal)}</h3>
+                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Anggaran Akhir</span>
+                                        <h3 className="text-3xl font-black italic">{formatRupiah(monthlyTotal)}</h3>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
                                         <button 
-                                            onClick={handleCloseModal}
-                                            disabled={isMismatch}
-                                            className={`px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-black/20 ${
-                                                isMismatch 
-                                                    ? 'bg-slate-700 text-slate-500 cursor-not-allowed opacity-50' 
-                                                    : 'bg-white text-slate-900 hover:bg-emerald-400 hover:text-white'
-                                            }`}
+                                            onClick={() => {
+                                                // Sync item total with monthly total on close/save
+                                                setCurrentPlan(prev => {
+                                                    const type = activeTab.toLowerCase();
+                                                    const item = prev[type][editingItem.id];
+                                                    return {
+                                                        ...prev,
+                                                        [type]: {
+                                                            ...prev[type],
+                                                            [editingItem.id]: {
+                                                                ...item,
+                                                                total: monthlyTotal
+                                                            }
+                                                        }
+                                                    };
+                                                });
+                                                handleCloseModal();
+                                            }}
+                                            className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
                                         >
-                                            {isMismatch ? 'CEK LAGI TOTALNYA' : 'SIMPAN RINCIAN'}
+                                            SIMPAN RINCIAN
                                         </button>
-                                        {isMismatch && (
-                                            <span className="text-[8px] font-black text-rose-400 uppercase tracking-widest animate-pulse">
-                                                Wajib sama dengan rincian bulan
-                                            </span>
-                                        )}
                                     </div>
                                 </div>
                             );
