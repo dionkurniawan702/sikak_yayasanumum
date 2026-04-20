@@ -1598,36 +1598,9 @@ export default function RAB() {
                                 <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB (Total)</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(totalExpense)}</h3>
                               </div>
-                              <div className={`${balance >= 0 ? 'bg-slate-900' : 'bg-rose-900'} p-5 rounded-[2rem] text-white shadow-xl relative overflow-hidden group transition-colors`}>
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Sisa Anggaran Akhir</p>
-                                <h3 className="text-xl font-black italic">{formatRupiah(balance)}</h3>
-                              </div>
                         </div>
 
                         {/* Financial Analysis Tooltip / Mini Panel */}
-                        <div className="p-6 bg-indigo-900 rounded-[2rem] text-white shadow-2xl relative overflow-hidden ring-4 ring-indigo-50">
-                            <div className="absolute top-0 right-0 p-6 opacity-10"><Database size={60} /></div>
-                            <h4 className="font-black text-[10px] uppercase tracking-widest mb-4 italic">Ringkasan Sisa Limit</h4>
-                            <div className="space-y-4">
-                                {(filteredExpenseItems || []).slice(0, 3).map(item => {
-                                    const allocated = rapData.itemAllocations[item.id] || 0;
-                                    const used = activePlan.expense[item.id]?.total || 0;
-                                    const pct = allocated > 0 ? (used / allocated * 100) : 0;
-                                    return (
-                                        <div key={item.id} className="space-y-1">
-                                            <div className="flex justify-between text-[10px] font-bold">
-                                                <span className="truncate w-32">{item.name}</span>
-                                                <span className={pct > 100 ? 'text-rose-400' : 'text-emerald-400'}>{Math.round(pct)}%</span>
-                                            </div>
-                                            <div className="h-1 bg-white/10 rounded-full overflow-hidden">
-                                                <div className={`h-full transition-all ${pct > 100 ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(pct, 100)}%` }} />
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                                <p className="text-[8px] font-bold opacity-50 mt-4 italic">*Menampilkan 3 item teratas belanja</p>
-                            </div>
-                        </div>
                     </div>
 
                     {/* Content Component */}
