@@ -304,6 +304,10 @@ export default function RAB() {
         return (expenseItems || []).filter(ei => {
             if (ei.isDeleted || !activeIds.has(ei.id)) return false;
 
+            // HANYA tampilkan item GLOBAL (otomatis). 
+            // Item yang diinput secara manual (memiliki unitId/fieldId) disembunyikan.
+            if (ei.unitId !== null || ei.fieldId !== null) return false;
+
             // Special Rule: "Pengembangan (umum)" only for Superadmin and Finance Field
             if (ei.name === 'Pengembangan (umum)') {
                 const financeField = fields.find(f => f.name === 'Bidang Keuangan');
