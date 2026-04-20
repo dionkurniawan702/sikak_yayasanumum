@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Edit2, Trash2, ChevronRight, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, ChevronRight, ChevronDown, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 
@@ -24,6 +24,7 @@ export default function FieldUnitManagement() {
     const [isSaved, setIsSaved] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [expandedIncomeItem, setExpandedIncomeItem] = useState(null);
 
     const handleOpenModal = (item = null) => {
         if (item) {
@@ -483,113 +484,136 @@ export default function FieldUnitManagement() {
                                                             const total = calculateTotal(incomeId);
                                                             
                                                             return (
-                                                                <div key={incomeId} className="p-8 bg-slate-50 border border-slate-100 rounded-[40px] space-y-6">
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex items-center gap-3">
-                                                                            <Share2 className="text-blue-500" size={20} />
-                                                                            <span className="font-black text-slate-800 text-lg">{item?.name}</span>
-                                                                        </div>
-                                                                        <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${total === 100 ? 'bg-emerald-500 text-white' : 'bg-rose-100 text-rose-600 border border-rose-200'}`}>
-                                                                            Total: {total}% {total !== 100 && '(Harus 100%)'}
-                                                                        </div>
-                                                                    </div>
-
-                                                                    <div className="space-y-4">
-                                                                        {(unitDistributions[incomeId] || []).map((rule, idx) => (
-                                                                            <div key={rule.id} className="flex flex-col md:flex-row gap-4 p-5 bg-white border border-slate-100 rounded-[28px] relative group hover:border-blue-200 transition-all shadow-sm">
-                                                                                {/* Target Type */}
-                                                                                <div className="flex-1">
-                                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Tujuan</label>
-                                                                                    <div className="flex gap-2 p-1 bg-slate-50 border border-slate-100 rounded-xl">
-                                                                                        <button 
-                                                                                            type="button"
-                                                                                            onClick={() => updateDistributionRule(incomeId, rule.id, { destType: 'unit' })}
-                                                                                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${rule.destType === 'unit' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                                                                        >Unit</button>
-                                                                                        <button 
-                                                                                            type="button"
-                                                                                            onClick={() => updateDistributionRule(incomeId, rule.id, { destType: 'field' })}
-                                                                                            className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${rule.destType === 'field' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                                                                                        >Bidang</button>
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                {/* Expense Item (Only for Unit) */}
-                                                                                <div className="flex-[2]">
-                                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">
-                                                                                        {rule.destType === 'unit' ? 'Pos Pengeluaran Unit' : 'Alokasi & Pos Pengeluaran Bidang'}
-                                                                                    </label>
-                                                                                    {rule.destType === 'unit' ? (
-                                                                                        <select 
-                                                                                            required
-                                                                                            className="form-select w-full !py-2.5 !text-sm !rounded-xl"
-                                                                                            value={rule.expenseItemId}
-                                                                                            onChange={e => updateDistributionRule(incomeId, rule.id, { expenseItemId: e.target.value })}
-                                                                                        >
-                                                                                            <option value="">Pilih Pos Pengeluaran</option>
-                                                                                            {expenseItems.filter(ex => !ex.isFieldOnly).map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-                                                                                        </select>
-                                                                                    ) : (
-                                                                                        <div className="flex gap-2 w-full">
-                                                                                            <select
-                                                                                                required
-                                                                                                className="form-select w-1/2 !py-2.5 !text-sm !rounded-xl"
-                                                                                                value={rule.destId || formData.fieldId}
-                                                                                                onChange={e => updateDistributionRule(incomeId, rule.id, { destId: e.target.value })}
-                                                                                            >
-                                                                                                <option value="">Pilih Bidang</option>
-                                                                                                {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                                                                                            </select>
-                                                                                            <select
-                                                                                                required
-                                                                                                className="form-select w-1/2 !py-2.5 !text-sm !rounded-xl"
-                                                                                                value={rule.expenseItemId}
-                                                                                                onChange={e => updateDistributionRule(incomeId, rule.id, { expenseItemId: e.target.value })}
-                                                                                            >
-                                                                                                <option value="">Pos Pengeluaran</option>
-                                                                                                {expenseItems.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
-                                                                                            </select>
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-
-                                                                                {/* Percentage */}
-                                                                                <div className="w-full md:w-24">
-                                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Persentase</label>
-                                                                                    <div className="relative">
-                                                                                        <input 
-                                                                                            type="number" 
-                                                                                            required
-                                                                                            className="form-input !py-2.5 !text-sm !font-black !rounded-xl !pr-8"
-                                                                                            value={rule.percentage}
-                                                                                            onChange={e => updateDistributionRule(incomeId, rule.id, { percentage: e.target.value })}
-                                                                                        />
-                                                                                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xs text-[9px]">%</span>
-                                                                                    </div>
-                                                                                </div>
-
-                                                                                {/* Action */}
-                                                                                <div className="flex items-end pb-0.5">
-                                                                                    <button 
-                                                                                        type="button" 
-                                                                                        onClick={() => removeDistributionRule(incomeId, rule.id)}
-                                                                                        className="p-3 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
-                                                                                    >
-                                                                                        <Trash2 size={16} />
-                                                                                    </button>
-                                                                                </div>
+                                                                <div key={incomeId} className="p-0 border border-slate-100 rounded-[32px] overflow-hidden bg-white shadow-sm hover:shadow-md transition-all duration-300">
+                                                                    {/* Accordion Header */}
+                                                                    <div 
+                                                                        onClick={() => setExpandedIncomeItem(expandedIncomeItem === incomeId ? null : incomeId)}
+                                                                        className={`flex items-center justify-between p-7 cursor-pointer transition-all ${expandedIncomeItem === incomeId ? 'bg-slate-50 border-b border-slate-100' : 'hover:bg-slate-50/50'}`}
+                                                                    >
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${expandedIncomeItem === incomeId ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                                                                                <Share2 size={18} />
                                                                             </div>
-                                                                        ))}
-
-                                                                        <button 
-                                                                            type="button" 
-                                                                            onClick={() => addDistributionRule(incomeId)}
-                                                                            className="w-full py-4 border-2 border-dashed border-slate-200 rounded-[28px] text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2"
-                                                                        >
-                                                                            <Plus size={14} />
-                                                                            <span>Tambah Distribusi</span>
-                                                                        </button>
+                                                                            <div className="flex flex-col">
+                                                                                <span className="font-black text-slate-800 text-lg tracking-tight">{item?.name}</span>
+                                                                                {expandedIncomeItem !== incomeId && (
+                                                                                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                                                                        {(unitDistributions[incomeId] || []).length} Aturan Distribusi
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-4">
+                                                                            <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${total === 100 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                                                                                Total: {total}% {total !== 100 && '(Harus 100%)'}
+                                                                            </div>
+                                                                            <div className={`text-slate-300 transition-transform duration-300 ${expandedIncomeItem === incomeId ? 'rotate-180 text-blue-600' : ''}`}>
+                                                                                <ChevronDown size={20} />
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
+                                                                    
+                                                                    {/* Accordion Content */}
+                                                                    {expandedIncomeItem === incomeId && (
+                                                                        <div className="p-8 space-y-6 animate-in slide-in-from-top-4 duration-300">
+                                                                            <div className="space-y-4">
+                                                                                {(unitDistributions[incomeId] || []).map((rule, idx) => (
+                                                                                    <div key={rule.id} className="flex flex-col md:flex-row gap-4 p-5 bg-white border border-slate-100 rounded-[28px] relative group hover:border-blue-200 transition-all shadow-sm">
+                                                                                        {/* Target Type */}
+                                                                                        <div className="flex-1">
+                                                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Tujuan</label>
+                                                                                            <div className="flex gap-2 p-1 bg-slate-50 border border-slate-100 rounded-xl">
+                                                                                                <button 
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateDistributionRule(incomeId, rule.id, { destType: 'unit' })}
+                                                                                                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${rule.destType === 'unit' ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                                                                >Unit</button>
+                                                                                                <button 
+                                                                                                    type="button"
+                                                                                                    onClick={() => updateDistributionRule(incomeId, rule.id, { destType: 'field' })}
+                                                                                                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all ${rule.destType === 'field' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                                                                                >Bidang</button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        
+                                                                                        {/* Expense Item (Only for Unit) */}
+                                                                                        <div className="flex-[2]">
+                                                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">
+                                                                                                {rule.destType === 'unit' ? 'Pos Pengeluaran Unit' : 'Alokasi & Pos Pengeluaran Bidang'}
+                                                                                            </label>
+                                                                                            {rule.destType === 'unit' ? (
+                                                                                                <select 
+                                                                                                    required
+                                                                                                    className="form-select w-full !py-2.5 !text-sm !rounded-xl"
+                                                                                                    value={rule.expenseItemId}
+                                                                                                    onChange={e => updateDistributionRule(incomeId, rule.id, { expenseItemId: e.target.value })}
+                                                                                                >
+                                                                                                    <option value="">Pilih Pos Pengeluaran</option>
+                                                                                                    {expenseItems.filter(ex => !ex.isFieldOnly).map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                                                                                                </select>
+                                                                                            ) : (
+                                                                                                <div className="flex gap-2 w-full">
+                                                                                                    <select
+                                                                                                        required
+                                                                                                        className="form-select w-1/2 !py-2.5 !text-sm !rounded-xl"
+                                                                                                        value={rule.destId || formData.fieldId}
+                                                                                                        onChange={e => updateDistributionRule(incomeId, rule.id, { destId: e.target.value })}
+                                                                                                    >
+                                                                                                        <option value="">Pilih Bidang</option>
+                                                                                                        {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                                                                                    </select>
+                                                                                                    <select
+                                                                                                        required
+                                                                                                        className="form-select w-1/2 !py-2.5 !text-sm !rounded-xl"
+                                                                                                        value={rule.expenseItemId}
+                                                                                                        onChange={e => updateDistributionRule(incomeId, rule.id, { expenseItemId: e.target.value })}
+                                                                                                    >
+                                                                                                        <option value="">Pos Pengeluaran</option>
+                                                                                                        {expenseItems.map(ex => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+                                                                                                    </select>
+                                                                                                </div>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        
+                                                                                        {/* Percentage */}
+                                                                                        <div className="w-full md:w-24">
+                                                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Persentase</label>
+                                                                                            <div className="relative">
+                                                                                                <input 
+                                                                                                    type="number" 
+                                                                                                    required
+                                                                                                    className="form-input !py-2.5 !text-sm !font-black !rounded-xl !pr-8"
+                                                                                                    value={rule.percentage}
+                                                                                                    onChange={e => updateDistributionRule(incomeId, rule.id, { percentage: e.target.value })}
+                                                                                                />
+                                                                                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xs text-[9px]">%</span>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                        
+                                                                                        {/* Action */}
+                                                                                        <div className="flex items-end pb-0.5">
+                                                                                            <button 
+                                                                                                type="button" 
+                                                                                                onClick={() => removeDistributionRule(incomeId, rule.id)}
+                                                                                                className="p-3 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-all"
+                                                                                            >
+                                                                                                <Trash2 size={16} />
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                ))}
+                                                                                
+                                                                                <button 
+                                                                                    type="button" 
+                                                                                    onClick={() => addDistributionRule(incomeId)}
+                                                                                    className="w-full py-4 border-2 border-dashed border-slate-200 rounded-[28px] text-[10px] font-black text-slate-400 uppercase tracking-widest hover:border-blue-200 hover:text-blue-600 hover:bg-blue-50/50 transition-all flex items-center justify-center gap-2"
+                                                                                >
+                                                                                    <Plus size={14} />
+                                                                                    <span>Tambah Distribusi</span>
+                                                                                </button>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             );
                                                         })}
