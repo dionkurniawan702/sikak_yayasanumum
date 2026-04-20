@@ -1023,7 +1023,7 @@ export default function RAB() {
                             const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
                             const total = Object.values(plan.expense || {}).reduce((sum, v) => sum + (v.total || 0), 0);
                             return (
-                                <div key={plan.id} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex items-center justify-between hover:border-indigo-200 transition-all cursor-pointer">
+                                <div key={plan.id} onClick={() => { setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION')); setActiveTab('EXPENSE'); setShowDashboard(false); }} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex items-center justify-between hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer">
                                     <div className="flex items-center gap-4">
                                         <div className="p-3 bg-white rounded-xl shadow-sm text-slate-400">
                                             {plan.fieldId ? <Layers size={18} /> : <Building2 size={18} />}
