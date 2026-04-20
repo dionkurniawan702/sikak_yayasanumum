@@ -307,6 +307,7 @@ export default function StudentDatabase() {
                             <th className="p-6">Unit & Kelas</th>
                             <th className="p-6 text-center">Tahun Ajaran</th>
                             <th className="p-6 text-center">Status</th>
+                            <th className="p-6 text-right">Jumlah</th>
                             <th className="p-6 text-right">Aksi</th>
                         </tr>
                     </thead>
@@ -317,6 +318,7 @@ export default function StudentDatabase() {
                             const academicYear = state.academicYears?.find(y => y.id === student.academicYearId);
                             const status = state.studentStatuses?.find(s => s.id === student.statusId);
                             const isLocked = isBudgetLocked(student.unitId, student.academicYearId);
+                            const totalIncome = (student.incomeDetails || []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
 
                             return (
                                 <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
@@ -363,6 +365,11 @@ export default function StudentDatabase() {
                                             <span className="text-[10px] text-slate-300">-</span>
                                         )}
                                     </td>
+                                    <td className="p-6 text-right">
+                                        <span className="font-black text-slate-900 border-b-2 border-blue-100 italic">
+                                            {formatRupiah(totalIncome)}
+                                        </span>
+                                    </td>
                                     <td className="p-6">
                                         <div className="flex items-center justify-end gap-2">
                                             <button 
@@ -395,7 +402,7 @@ export default function StudentDatabase() {
                             );
                         }) : (
                             <tr>
-                                <td colSpan={5} className="py-20 text-center">
+                                <td colSpan={6} className="py-20 text-center">
                                     <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-200">
                                         <User size={32} />
                                     </div>
