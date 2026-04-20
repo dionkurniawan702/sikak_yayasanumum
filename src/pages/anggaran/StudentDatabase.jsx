@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { User, Plus, Search, Filter, Download, Upload, Edit3, Trash2, Wallet, CreditCard, ChevronRight, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
-import { formatAngka } from '../../utils/format';
+import { formatAngka, formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
 
 export default function StudentDatabase() {
@@ -546,6 +546,11 @@ export default function StudentDatabase() {
                                                 );
                                             })}
                                         </div>
+
+                                        <div className="flex items-center justify-between p-4 bg-blue-50/50 border-2 border-dashed border-blue-100 rounded-[24px] mt-4">
+                                            <span className="text-[10px] font-black text-blue-600 uppercase tracking-widest">Total Nominal</span>
+                                            <span className="font-black text-blue-700">{formatRupiah((studentForm.incomeDetails || []).reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0))}</span>
+                                        </div>
                                     </div>
                                 )}
 
@@ -602,6 +607,13 @@ export default function StudentDatabase() {
                                         </div>
                                     </div>
                                 ))}
+                            </div>
+
+                            <div className="flex items-center justify-between p-6 bg-slate-900 rounded-[2rem] mb-8 shadow-xl shadow-slate-900/20">
+                                <div>
+                                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Total Pembayaran Tahunan</p>
+                                    <p className="text-xl font-black text-white">{formatRupiah(paymentForm.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0))}</p>
+                                </div>
                             </div>
 
                             <div className="flex gap-4">
