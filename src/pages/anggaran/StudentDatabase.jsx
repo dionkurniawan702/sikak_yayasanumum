@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, Plus, Search, Filter, Download, Upload, Edit3, Trash2, Wallet, CreditCard, ChevronRight, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
+import { formatAngka } from '../../utils/format';
 import * as XLSX from 'xlsx';
 
 export default function StudentDatabase() {
@@ -526,12 +527,13 @@ export default function StudentDatabase() {
                                                         <div className="relative w-full sm:w-1/2 md:w-[45%]">
                                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
                                                             <input 
-                                                                type="number"
+                                                                type="text"
                                                                 className="form-input !py-2 !pl-9 !text-sm text-right font-black text-blue-600 !rounded-xl"
                                                                 placeholder="0"
-                                                                value={existingDetail?.amount || ''}
+                                                                value={formatAngka(existingDetail?.amount || 0)}
                                                                 onChange={e => {
-                                                                    const val = e.target.value === '' ? '' : parseFloat(e.target.value);
+                                                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                                                    const val = rawValue === '' ? 0 : parseInt(rawValue, 10);
                                                                     const newDetails = [...(studentForm.incomeDetails || [])];
                                                                     const idx = newDetails.findIndex(d => d.incomeItemId === item.id);
                                                                     if (idx >= 0) newDetails[idx].amount = val;
@@ -586,12 +588,14 @@ export default function StudentDatabase() {
                                         <div className="relative">
                                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-bold">Rp</span>
                                             <input 
-                                                type="number" 
+                                                type="text" 
                                                 className="form-input !py-2 !pl-10 !w-40 text-right font-black text-blue-600"
-                                                value={item.amount}
+                                                value={formatAngka(item.amount)}
                                                 onChange={e => {
+                                                    const rawValue = e.target.value.replace(/\D/g, '');
+                                                    const val = rawValue === '' ? 0 : parseInt(rawValue, 10);
                                                     const newForm = [...paymentForm];
-                                                    newForm[idx].amount = e.target.value;
+                                                    newForm[idx].amount = val;
                                                     setPaymentForm(newForm);
                                                 }}
                                             />
