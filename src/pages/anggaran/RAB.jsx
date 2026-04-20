@@ -1340,7 +1340,18 @@ export default function RAB() {
         }, 0);
     }, [activePlan?.expense]);
 
-    const balance = (rapData?.totalTarget || 0) + totalIncome + totalBosAllocated - totalExpense;
+    const balance = useMemo(() => {
+        if (fundSourceFilter === 'BOS') {
+            return totalBosAllocated - totalExpenseBos;
+        }
+        if (fundSourceFilter === 'Yayasan') {
+            // totalExpense includes totalExpenseBos, so we isolate Yayasan portion
+            const yayasanExpense = totalExpense - totalExpenseBos;
+            return (rapData?.totalTarget || 0) + totalIncome - yayasanExpense;
+        }
+        // Fallback for 'all' or default view (Global Balance)
+        return (rapData?.totalTarget || 0) + totalIncome + totalBosAllocated - totalExpense;
+    }, [fundSourceFilter, rapData?.totalTarget, totalIncome, totalBosAllocated, totalExpense, totalExpenseBos]);
 
     return (
         <div className="p-4 lg:p-10 max-w-[1440px] mx-auto space-y-8 animate-in fade-in duration-700">
