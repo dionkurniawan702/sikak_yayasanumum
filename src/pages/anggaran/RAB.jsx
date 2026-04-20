@@ -1418,15 +1418,7 @@ export default function RAB() {
                         </div>
                     )}
 
-                    <select 
-                        className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
-                        value={fundSourceFilter}
-                        onChange={e => setFundSourceFilter(e.target.value)}
-                    >
-                        <option value="all">Semua Sumber Dana</option>
-                        <option value="Yayasan">Yayasan</option>
-                        <option value="BOS">BOS</option>
-                    </select>
+
 
                     <div className="flex flex-col gap-1">
                         <select 
