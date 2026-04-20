@@ -528,6 +528,8 @@ app.get('/api/seed', async (req, res) => {
     }
 });
 
+
+
 const buildPath = path.join(__dirname, '../dist');
 console.log(`[Diagnostic] Build path: ${buildPath}`);
 
