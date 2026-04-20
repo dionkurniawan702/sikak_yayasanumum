@@ -666,8 +666,10 @@ export default function FieldUnitManagement() {
                                                             );
                                                         })}
                                                     </div>
-                                                </>
-                                            ) : (
+                                                </div>
+                                            )}
+                                        </>
+                                    ) : (
                                                 <div className="py-20 text-center border-2 border-dashed border-slate-200 rounded-[3rem]">
                                                     <Building2 size={48} className="mx-auto text-slate-200 mb-4" />
                                                     <p className="font-black text-slate-400 text-xs uppercase tracking-widest italic">Pilih unit terlebih dahulu untuk mengelola konfigurasi dana</p>
