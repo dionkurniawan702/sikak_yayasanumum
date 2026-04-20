@@ -55,6 +55,9 @@ export default function FieldUnitManagement() {
 
     const toggleIncomeItem = (id) => {
         if (selectedIncomeItems.includes(id)) {
+            if (!window.confirm('Anda yakin ingin menghapus item ini? Seluruh konfigurasi pembagian dana untuk item ini akan ikut terhapus.')) {
+                return;
+            }
             setSelectedIncomeItems(prev => prev.filter(item => item !== id));
             const { [id]: removed, ...rest } = unitDistributions;
             setUnitDistributions(rest);
