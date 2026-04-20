@@ -302,16 +302,11 @@ export default function RAB() {
         // });
         
         return (expenseItems || []).filter(ei => {
-            if (ei.isDeleted) return false;
+            if (ei.isDeleted || !activeIds.has(ei.id)) return false;
 
-            // HANYA tampilkan item GLOBAL (otomatis) versi utama.
+            // HANYA tampilkan item GLOBAL (otomatis). 
             // Item yang diinput secara manual (memiliki unitId/fieldId) tetap disembunyikan.
             if (ei.unitId !== null || ei.fieldId !== null) return false;
-
-            // STRATEGIC ITEMS: Selalu munculkan item Gedung dan Sarpras agar bisa diinput dana BOS/Pusat
-            const isStrategic = ['Gedung', 'Perawatan Sarpras dan Bangunan', 'Penggajian'].includes(ei.name);
-            
-            if (!isStrategic && !activeIds.has(ei.id)) return false;
 
             // Special Rule: "Pengembangan (umum)" only for Superadmin and Finance Field
             if (ei.name === 'Pengembangan (umum)') {
