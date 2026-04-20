@@ -465,7 +465,7 @@ export default function BudgetDashboard() {
                 <div className="budget-table-wrapper mb-12 border-none shadow-xl shadow-slate-200/50">
                     <div className="budget-table-title bg-slate-900 text-white">
                         <Layers size={20} className="text-indigo-400" />
-                        <span className="uppercase tracking-widest text-sm italic">Ringkasan Per Bidang</span>
+                        <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan Per Bidang</span>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
@@ -513,7 +513,7 @@ export default function BudgetDashboard() {
                 <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50">
                     <div className="budget-table-title bg-slate-900 text-white">
                         <Building2 size={20} className="text-blue-400" />
-                        <span className="uppercase tracking-widest text-sm italic">Ringkasan Per Unit</span>
+                        <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan Per Unit</span>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
