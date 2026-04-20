@@ -302,14 +302,16 @@ export default function RAB() {
                 return s.destId === selectedUnitId;
             })
             .forEach(s => { if (s.expenseItemId) activeIds.add(s.expenseItemId); });
-        
-        // NOTE: Manual inclusion removed by request to only show items based on distribution settings
-        // (expenseItems || []).forEach(ei => {
-        //     if (!ei.isDeleted) {
-        //         if (unitId && ei.unitId === unitId) activeIds.add(ei.id);
-        //         if (fieldId && ei.fieldId === fieldId) activeIds.add(ei.id);
-        //     }
-        // });
+
+        // Include items from BOS allocations
+        const unitIdForBos = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+        if (selectedYearId) {
+            (bosAllocations || []).filter(a => 
+                !a.isDeleted && 
+                a.academicYearId === selectedYearId && 
+                ((!isField && a.unitId === unitIdForBos) || (isField && a.fieldId === fieldId))
+            ).forEach(a => activeIds.add(a.expenseItemId));
+        }
         
         return (expenseItems || []).filter(ei => {
             if (ei.isDeleted || !activeIds.has(ei.id)) return false;
@@ -332,7 +334,7 @@ export default function RAB() {
 
             return true;
         });
-    }, [expenseItems, state.distributionSettings, selectedUnitId, currentUser, fields, isSuperAdmin]);
+    }, [expenseItems, state.distributionSettings, bosAllocations, selectedYearId, selectedUnitId, currentUser, fields, isSuperAdmin]);
 
 
     // - [x] Hapus fitur Migrasi Otomatis (Auto-Migration) di `RAB.jsx`
