@@ -289,7 +289,7 @@ export default function RAB() {
         distributionSettings
             .filter(s => {
                 if (isField) return s.destId === fieldId;
-                return s.destId === selectedUnitId || s.unitId === selectedUnitId;
+                return s.destId === selectedUnitId;
             })
             .forEach(s => { if (s.expenseItemId) activeIds.add(s.expenseItemId); });
         
