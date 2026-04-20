@@ -191,36 +191,6 @@ export default function BudgetDashboard() {
     };
 
     // ========== Build Display Data ==========
-    const bidangData = useMemo(() => {
-        return fields.filter(f => !f.isDeleted).map(f => {
-            if (currentUser?.role === 'admin_bidang' && f.id !== currentUser.fieldId) return null;
-            const rap = fieldRAP[f.id]?.total || 0;
-            const rab = fieldRAB[f.id]?.total || 0;
-            const sisa = rap - rab;
-            const items = fieldRAP[f.id]?.items || {};
-            const rabItems = fieldRAB[f.id]?.items || {};
-            
-            const allKeys = new Set([...Object.keys(items), ...Object.keys(rabItems)]);
-            const breakdown = [];
-            allKeys.forEach(exId => {
-                const itemRAP = typeof items[exId] === 'object' ? items[exId].total : (items[exId] || 0);
-                const itemRAB = typeof rabItems[exId] === 'object' ? rabItems[exId].total : (rabItems[exId] || 0);
-                if (itemRAP === 0 && itemRAB === 0) return;
-
-                breakdown.push({
-                    id: exId,
-                    name: getExpenseName(exId),
-                    rap: itemRAP,
-                    rab: itemRAB,
-                    sisa: itemRAP - itemRAB,
-                    sources: typeof items[exId] === 'object' ? items[exId].sources : {}
-                });
-            });
-
-            return { id: f.id, name: f.name, rap, rab, sisa, breakdown };
-        }).filter(Boolean).sort((a, b) => b.rap - a.rap);
-    }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems]);
-
     const unitData = useMemo(() => {
         return units.filter(u => !u.isDeleted).map(u => {
             if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return null;
@@ -270,6 +240,57 @@ export default function BudgetDashboard() {
             };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
     }, [units, unitRAP, unitRAB, currentUser, expenseItems, fields]);
+
+    const bidangData = useMemo(() => {
+        return fields.filter(f => !f.isDeleted).map(f => {
+            if (currentUser?.role === 'admin_bidang' && f.id !== currentUser.fieldId) return null;
+            
+            // SPECIAL CASE: Bidang Pendidikan consolidates all Educational Units
+            if (f.name === 'Bidang Pendidikan') {
+                const rap = unitData.reduce((s, u) => s + u.rap, 0);
+                const rab = unitData.reduce((s, u) => s + u.rab, 0);
+                return {
+                    id: f.id,
+                    name: f.name,
+                    rap,
+                    rab,
+                    sisa: rap - rab,
+                    breakdown: unitData.map(u => ({
+                        id: u.id,
+                        name: u.name,
+                        rap: u.rap,
+                        rab: u.rab,
+                        sisa: u.sisa
+                    }))
+                };
+            }
+
+            const rap = fieldRAP[f.id]?.total || 0;
+            const rab = fieldRAB[f.id]?.total || 0;
+            const sisa = rap - rab;
+            const items = fieldRAP[f.id]?.items || {};
+            const rabItems = fieldRAB[f.id]?.items || {};
+            
+            const allKeys = new Set([...Object.keys(items), ...Object.keys(rabItems)]);
+            const breakdown = [];
+            allKeys.forEach(exId => {
+                const itemRAP = typeof items[exId] === 'object' ? items[exId].total : (items[exId] || 0);
+                const itemRAB = typeof rabItems[exId] === 'object' ? rabItems[exId].total : (rabItems[exId] || 0);
+                if (itemRAP === 0 && itemRAB === 0) return;
+
+                breakdown.push({
+                    id: exId,
+                    name: getExpenseName(exId),
+                    rap: itemRAP,
+                    rab: itemRAB,
+                    sisa: itemRAP - itemRAB,
+                    sources: typeof items[exId] === 'object' ? items[exId].sources : {}
+                });
+            });
+
+            return { id: f.id, name: f.name, rap, rab, sisa, breakdown };
+        }).filter(Boolean).sort((a, b) => b.rap - a.rap);
+    }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems, unitData]);
 
     // ========== Totals ==========
     const totalBidangRAP = bidangData.reduce((s, d) => s + d.rap, 0);
