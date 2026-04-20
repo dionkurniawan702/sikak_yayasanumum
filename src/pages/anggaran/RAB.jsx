@@ -1141,9 +1141,12 @@ export default function RAB() {
                                             const financeField = fields.find(f => f.name === 'Bidang Keuangan');
                                             const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
 
-                                            // Special Logic: Read-Only for Building/Sarpras (for Unit Admin)
-                                            if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) {
-                                                return true;
+                                            const sarprasField = fields.find(f => f.name === 'Bidang Sarpras');
+                                            const isSarprasAdmin = isAdminBidang && currentUser?.fieldId === sarprasField?.id;
+
+                                            // Special Logic: Shared Edit for Building/Sarpras
+                                            if (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') {
+                                                if (isAdminUnit || isSarprasAdmin) return false;
                                             }
 
                                             // Special Logic: Shared Edit for Payroll (Penggajian)
@@ -1169,7 +1172,10 @@ export default function RAB() {
                                                 const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
                                                 const financeField = fields.find(f => f.name === 'Bidang Keuangan');
                                                 const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
+                                                const sarprasField = fields.find(f => f.name === 'Bidang Sarpras');
+                                                const isSarprasAdmin = isAdminBidang && currentUser?.fieldId === sarprasField?.id;
 
+                                                if ((item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') && (isAdminUnit || isSarprasAdmin)) return false;
                                                 if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return true;
                                                 if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return false;
                                                 if (item.name === 'Pengembangan (umum)' && isFinanceAdmin) return false;
@@ -1189,8 +1195,11 @@ export default function RAB() {
                                              const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
                                              const financeField = fields.find(f => f.name === 'Bidang Keuangan');
                                              const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
+                                             const sarprasField = fields.find(f => f.name === 'Bidang Sarpras');
+                                             const isSarprasAdmin = isAdminBidang && currentUser?.fieldId === sarprasField?.id;
 
-                                             if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return 'HANYA LIHAT';
+                                             if ((item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') && (isAdminUnit || isSarprasAdmin)) return 'ATUR BUDGET';
+                                             if (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') return 'HANYA LIHAT';
                                              if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return 'ATUR BUDGET';
                                              if (item.name === 'Pengembangan (umum)') return isFinanceAdmin ? 'ATUR BUDGET' : 'HANYA LIHAT';
                                              return 'ATUR BUDGET';

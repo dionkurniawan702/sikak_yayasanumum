@@ -28,6 +28,7 @@ export default function BOSDatabase() {
         stageId: '', 
         posId: '', 
         unitId: '', 
+        expenseItemId: '',
         amount: '' 
     });
     const [loading, setLoading] = useState(false);
@@ -126,6 +127,7 @@ export default function BOSDatabase() {
                             stageId: '', 
                             posId: '', 
                             unitId: isSuperAdmin ? '' : (currentUser?.unitId || ''), 
+                            expenseItemId: '',
                             amount: '' 
                         });
                         setIsModalOpen(true);
@@ -203,6 +205,7 @@ export default function BOSDatabase() {
                                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Penerima</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Tahap BOS</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">POS Anggaran</th>
+                                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Peruntukan</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah Alokasi</th>
                                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Aksi</th>
                             </tr>
@@ -238,6 +241,11 @@ export default function BOSDatabase() {
                                                 <span className="text-sm font-medium text-slate-600">{pos?.name}</span>
                                             </div>
                                         </td>
+                                        <td className="px-8 py-5">
+                                            <span className="text-sm font-bold text-blue-600">
+                                                {state.expenseItems?.find(ei => ei.id === item.expenseItemId)?.name || '-'}
+                                            </span>
+                                        </td>
                                         <td className="px-8 py-5 text-right">
                                             <span className="font-black text-slate-900">{formatRupiah(item.amount)}</span>
                                         </td>
@@ -251,6 +259,7 @@ export default function BOSDatabase() {
                                                             stageId: item.stageId, 
                                                             posId: item.posId, 
                                                             unitId: item.unitId, 
+                                                            expenseItemId: item.expenseItemId || '',
                                                             amount: item.amount.toString() 
                                                         });
                                                         setIsModalOpen(true);
@@ -346,6 +355,37 @@ export default function BOSDatabase() {
                                 >
                                     <option value="">Pilih POS Anggaran...</option>
                                     {bosPosList.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Peruntukan (Item Pengeluaran)</label>
+                                <select 
+                                    required
+                                    value={formData.expenseItemId}
+                                    onChange={(e) => setFormData({ ...formData, expenseItemId: e.target.value })}
+                                    className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900 appearance-none"
+                                >
+                                    <option value="">Pilih Item Pengeluaran...</option>
+                                    {(() => {
+                                        const selectedUnitId = formData.unitId;
+                                        if (!selectedUnitId) return [];
+                                        
+                                        const distSettings = state.distributionSettings || [];
+                                        // Get IDs of expense items that are valid for this unit
+                                        const validItemIds = new Set(
+                                            distSettings
+                                                .filter(s => s.destId === selectedUnitId || s.unitId === selectedUnitId)
+                                                .map(s => s.expenseItemId)
+                                                .filter(Boolean)
+                                        );
+
+                                        return (state.expenseItems || [])
+                                            .filter(ei => !ei.isDeleted && validItemIds.has(ei.id) && ei.unitId === null && ei.fieldId === null)
+                                            .map(ei => (
+                                                <option key={ei.id} value={ei.id}>{ei.name}</option>
+                                            ));
+                                    })()}
                                 </select>
                             </div>
 

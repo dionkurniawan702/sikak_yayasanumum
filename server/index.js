@@ -795,6 +795,36 @@ const ensureRabPlansColumns = async () => {
     }
 };
 
+const ensureBosAllocationColumns = async () => {
+    try {
+        const client = getPrisma();
+        const tableVariations = ['bos_allocations', 'BosAllocation', 'bosallocation'];
+        let targetTable = null;
+
+        for (const t of tableVariations) {
+            try {
+                await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
+                targetTable = t;
+                break;
+            } catch (e) {}
+        }
+
+        if (!targetTable) return;
+
+        const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+        const hasExpenseItem = columns.some(c => (c.Field || c.field) === 'expenseItemId');
+
+        if (!hasExpenseItem) {
+            console.log(`[Self-Healing] Adding expenseItemId column to ${targetTable}...`);
+            await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN expenseItemId VARCHAR(255)`);
+        }
+
+        console.log(`[Self-Healing] bos_allocations columns verified.`);
+    } catch (error) {
+        console.error(`[Self-Healing Error] bos_allocations columns: ${error.message}`);
+    }
+};
+
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n\n************************************************`);
     console.log(`[SUCCESS] SIKAK Yayasan Backend is now ACTIVE!`);
@@ -811,6 +841,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureAcademicYears();
             await ensureDistributionColumns();
             await ensureRabPlansColumns();
+            await ensureBosAllocationColumns();
         } catch (err) {
             console.error(`[Background Tasks Error] ${err.message}`);
         }
