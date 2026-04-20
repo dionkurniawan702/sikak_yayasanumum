@@ -25,6 +25,8 @@ export default function FieldUnitManagement() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [expandedIncomeItem, setExpandedIncomeItem] = useState(null);
+    const [selectedUnitForFinance, setSelectedUnitForFinance] = useState(''); // When editing a field, which unit's finance to manage
+
 
     const handleOpenModal = (item = null) => {
         if (item) {
@@ -50,6 +52,7 @@ export default function FieldUnitManagement() {
             setUnitDistributions({});
         }
         setModalTab('info');
+        setSelectedUnitForFinance(''); // Reset unit selector for finance
         setShowModal(true);
     };
 
@@ -141,24 +144,27 @@ export default function FieldUnitManagement() {
                 payload: payload
             });
 
-            // 3. Save Financial Config if Unit
-            if (type === 'UNIT') {
+            // 3. Save Financial Config if Unit OR if a Unit is selected in Field Modal
+            const targetUnitIdForFinance = type === 'UNIT' ? id : selectedUnitForFinance;
+            
+            if (targetUnitIdForFinance) {
+                const targetUnit = units.find(u => u.id === targetUnitIdForFinance) || (type === 'UNIT' ? payload : null);
+
                 for (const incomeId of selectedIncomeItems) {
                     const settings = (unitDistributions[incomeId] || []).map(rule => {
-                        const ruleDestId = rule.destType === 'field' ? (rule.destId || formData.fieldId) : id;
+                        const ruleDestId = rule.destType === 'field' ? (rule.destId || (type === 'UNIT' ? formData.fieldId : editingItem.id)) : targetUnitIdForFinance;
                         
                         // Find descriptive name for phpMyAdmin/audit
                         let destName = '';
                         if (rule.destType === 'unit') {
-                            // If it matches the unit we are currently editing/adding, use the name from the form
-                            destName = ruleDestId === id ? formData.name : (units.find(u => u.id === ruleDestId)?.name || 'Unit');
+                            destName = ruleDestId === targetUnitIdForFinance ? targetUnit.name : (units.find(u => u.id === ruleDestId)?.name || 'Unit');
                         } else {
                             destName = fields.find(f => f.id === ruleDestId)?.name || 'Bidang';
                         }
 
                         return {
                             ...rule,
-                            unitId: id,
+                            unitId: targetUnitIdForFinance,
                             incomeItemId: incomeId,
                             destId: ruleDestId,
                             destName: destName,
@@ -169,19 +175,17 @@ export default function FieldUnitManagement() {
                     // Push to server explicitly
                     await api.pushAction({
                         type: 'UPDATE_DISTRIBUTION_SETTINGS',
-                        payload: { unitId: id, incomeItemId: incomeId, settings }
+                        payload: { unitId: targetUnitIdForFinance, incomeItemId: incomeId, settings }
                     }, state);
 
                     // Update local state
                     dispatch({
                         type: 'UPDATE_DISTRIBUTION_SETTINGS',
-                        payload: { unitId: id, incomeItemId: incomeId, settings }
+                        payload: { unitId: targetUnitIdForFinance, incomeItemId: incomeId, settings }
                     });
                 }
 
-                // 4. IMPORTANT: Fetch fresh data from server and refresh state
-                // This ensures that the local state matches exactly what is in the DB,
-                // preventing the "reverting to unit" bug caused by stale background sync.
+                // 4. Refresh fresh data
                 const freshData = await api.fetchAllData();
                 if (freshData) {
                     dispatch({ type: 'SET_ALL_DATA', payload: freshData });
@@ -388,7 +392,7 @@ export default function FieldUnitManagement() {
                                     {editingItem ? 'Edit' : 'Tambah'} {activeTab === 'fields' ? 'Bidang' : 'Unit'}
                                 </h2>
 
-                                {activeTab === 'units' && (
+                                {editingItem && (
                                     <div className="flex gap-2 p-1.5 bg-slate-50 rounded-[20px] w-fit border border-slate-200">
                                         <button 
                                             onClick={() => setModalTab('info')}
@@ -448,7 +452,48 @@ export default function FieldUnitManagement() {
                                         </div>
                                     ) : (
                                         <div className="space-y-10 animate-in slide-in-from-left-4">
-                                            {/* Step 1: Item Selection */}
+                                            {/* Unit Selector (if editing a field) */}
+                                            {activeTab === 'fields' && (
+                                                <div className="p-8 bg-blue-50 border border-blue-100 rounded-[2.5rem]">
+                                                    <div className="flex items-center gap-4 mb-4">
+                                                        <Building2 size={24} className="text-blue-500" />
+                                                        <div>
+                                                            <h4 className="font-black text-blue-900 uppercase tracking-tight italic leading-none">Pilih Unit Pendidikan</h4>
+                                                            <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mt-1">Konfigurasi Dana & Distribusi untuk unit di dalam Bidang ini</p>
+                                                        </div>
+                                                    </div>
+                                                    <select 
+                                                        className="w-full p-4 bg-white border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                                                        value={selectedUnitForFinance}
+                                                        onChange={e => {
+                                                            const unitId = e.target.value;
+                                                            setSelectedUnitForFinance(unitId);
+                                                            if (unitId) {
+                                                                const unitSettings = distributionSettings.filter(s => s.unitId === unitId);
+                                                                const uniqueIncomeItemIds = [...new Set(unitSettings.map(s => s.incomeItemId))];
+                                                                setSelectedIncomeItems(uniqueIncomeItemIds);
+                                                                const distMap = {};
+                                                                uniqueIncomeItemIds.forEach(id => {
+                                                                    distMap[id] = unitSettings.filter(s => s.incomeItemId === id);
+                                                                });
+                                                                setUnitDistributions(distMap);
+                                                            } else {
+                                                                setSelectedIncomeItems([]);
+                                                                setUnitDistributions({});
+                                                            }
+                                                        }}
+                                                    >
+                                                        <option value="">Pilih Unit...</option>
+                                                        {units.filter(u => u.fieldId === editingItem?.id).map(u => (
+                                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+
+                                            {(activeTab === 'units' || selectedUnitForFinance) ? (
+                                                <>
+                                                    {/* Step 1: Item Selection */}
                                             <div>
                                                 <div className="flex items-center gap-3 mb-6">
                                                     <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center font-black text-sm">1</div>
@@ -621,6 +666,11 @@ export default function FieldUnitManagement() {
                                                             );
                                                         })}
                                                     </div>
+                                                </>
+                                            ) : (
+                                                <div className="py-20 text-center border-2 border-dashed border-slate-200 rounded-[3rem]">
+                                                    <Building2 size={48} className="mx-auto text-slate-200 mb-4" />
+                                                    <p className="font-black text-slate-400 text-xs uppercase tracking-widest italic">Pilih unit terlebih dahulu untuk mengelola konfigurasi dana</p>
                                                 </div>
                                             )}
                                         </div>

@@ -304,6 +304,11 @@ export default function RAB() {
         return (expenseItems || []).filter(ei => {
             if (ei.isDeleted || !activeIds.has(ei.id)) return false;
 
+            // NEW: Hide 'Persentase Konfigurasi' items from Admin Units specifically
+            if (currentUser?.role === 'admin_unit' && ei.sourceOfFunds === 'Persentase Konfigurasi') {
+                return false;
+            }
+
             // HANYA tampilkan item GLOBAL (otomatis). 
             // Item yang diinput secara manual (memiliki unitId/fieldId) tetap disembunyikan.
             if (ei.unitId !== null || ei.fieldId !== null) return false;
