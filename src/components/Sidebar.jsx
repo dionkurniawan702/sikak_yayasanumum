@@ -1,3 +1,4 @@
+import React, { useState, useEffect } from 'react';
 import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
@@ -201,7 +202,8 @@ export default function Sidebar({ isOpen, onClose }) {
                             to={item.path}
                             className={({ isActive }) => {
                                 // Strict matching for paths with query params
-                                const itemSearch = item.path.split('?')[1] || '';
+                                const itemPath = item.path || '';
+                                const itemSearch = itemPath.split('?')[1] || '';
                                 const currentSearch = location.search.replace('?', '');
                                 const isParamMatch = itemSearch === currentSearch;
                                 const isTrulyActive = isActive && isParamMatch;
@@ -211,7 +213,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     ${isTrulyActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
                                 `;
                             }}
-                            end={item.path.split('?')[0] === '/'}
+                            end={(item.path || '').split('?')[0] === '/'}
                         >
                             {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                             <span className="text-sm font-medium flex-1">{item.label}</span>
