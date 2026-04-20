@@ -381,7 +381,15 @@ export default function BOSDatabase() {
                                         );
 
                                         return (state.expenseItems || [])
-                                            .filter(ei => !ei.isDeleted && validItemIds.has(ei.id) && ei.unitId === null && ei.fieldId === null)
+                                            .filter(ei => {
+                                                if (ei.isDeleted || !validItemIds.has(ei.id)) return false;
+                                                if (ei.unitId !== null || ei.fieldId !== null) return false;
+                                                
+                                                const itemName = ei.name.toLowerCase();
+                                                if (itemName === 'aset' || itemName.includes('pengembangan (umum)')) return false;
+                                                
+                                                return true;
+                                            })
                                             .map(ei => (
                                                 <option key={ei.id} value={ei.id}>{ei.name}</option>
                                             ));
