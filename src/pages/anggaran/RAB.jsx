@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
     Calendar, Building2, Layers, Save, RefreshCw, 
     ArrowUpCircle, ArrowDownCircle, Info, ChevronRight,
@@ -80,7 +81,16 @@ export default function RAB() {
     // States for Journal-style component entry
     const [entryForm, setEntryForm] = useState({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
+    const [searchParams] = useSearchParams();
+    const sourceParam = searchParams.get('source');
     const labelInputRef = useRef(null);
+
+    // Sync filter with URL parameter
+    useEffect(() => {
+        if (sourceParam === 'Yayasan' || sourceParam === 'BOS') {
+            setFundSourceFilter(sourceParam);
+        }
+    }, [sourceParam]);
 
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({

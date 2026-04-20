@@ -124,7 +124,13 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
             
             { section: 'PERENCANAAN (RAB)' },
-            { path: '/anggaran/rab', label: 'RAB', icon: Target },
+            ...(isAdminUnit 
+                ? [
+                    { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
+                    ...(hasBos ? [{ path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark }] : [])
+                  ]
+                : [{ path: '/anggaran/rab', label: 'RAB', icon: Target }]
+            ),
             { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
 
             { section: 'OPERASIONAL DANA' },
@@ -201,7 +207,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         >
                             {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                             <span className="text-sm font-medium flex-1">{item.label}</span>
-                            {item.label === 'RAB' && pendingRabCount > 0 && (
+                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabCount > 0 && (
                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
                                     {pendingRabCount}
                                 </span>
