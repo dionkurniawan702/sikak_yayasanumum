@@ -1126,7 +1126,10 @@ export default function RAB() {
                         if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
                         return true;
                     }).filter(item => {
-                        if (fundSourceFilter === 'Yayasan') return item.sourceOfFunds !== 'BOS';
+                        if (fundSourceFilter === 'Yayasan') {
+                            // Hide items that are strictly BOS OR items that have a BOS allocation for this unit
+                            return item.sourceOfFunds !== 'BOS' && !bosItemMap[item.id];
+                        }
                         if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
                         return true;
                     }).map((item, index) => {
