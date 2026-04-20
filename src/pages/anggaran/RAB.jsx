@@ -1452,7 +1452,7 @@ export default function RAB() {
                             
                             <div className={`grid grid-cols-1 ${isBosRecipient ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-8`}>
                                 <div className="space-y-2">
-                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Target Yayasan</p>
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total RAP</p>
                                     <h3 className="text-2xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                                 </div>
                                 {isBosRecipient && (
@@ -1585,7 +1585,7 @@ export default function RAB() {
                         {/* Quick Stats Cards in Sidebar */}
                         <div className="grid grid-cols-1 gap-3">
                               <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Target Yayasan</p>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">RAP</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
                               </div>
                               {isBosRecipient && (

@@ -109,9 +109,8 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                             if (!results.itemSourceBreakdown[exId]) results.itemSourceBreakdown[exId] = {};
                             results.itemSourceBreakdown[exId][student.unitId] = (results.itemSourceBreakdown[exId][student.unitId] || 0) + share;
 
-                        } else if (destType === 'field' && (targetFieldId == destId || (targetUnitId && !targetFieldId))) {
+                        } else if (destType === 'field' && targetFieldId == destId) {
                             // If calculating for a field, we only want that field's share.
-                            // If calculating for a unit, we want that unit's share of ANY field items as well.
                             results.totalTarget += share;
                             results.itemAllocations[exId] = (results.itemAllocations[exId] || 0) + share;
 
