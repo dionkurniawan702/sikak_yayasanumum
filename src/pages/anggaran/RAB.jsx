@@ -285,10 +285,11 @@ export default function RAB() {
         const activeIds = new Set();
 
         // Include items where this unit/field is the distribution destination
+        // OR if this unit is the source of the distribution (even if going to a field)
         distributionSettings
             .filter(s => {
                 if (isField) return s.destId === fieldId;
-                return s.destId === unitId || s.destId === selectedUnitId;
+                return s.destId === selectedUnitId || s.unitId === selectedUnitId;
             })
             .forEach(s => { if (s.expenseItemId) activeIds.add(s.expenseItemId); });
         
@@ -1113,14 +1114,54 @@ export default function RAB() {
                                 <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
                                     <button 
                                         onClick={() => setEditingItem(item)}
-                                        disabled={isLocked && !isSuperAdmin}
+                                        disabled={(() => {
+                                            if (isSuperAdmin) return false;
+                                            if (isLocked) return true;
+
+                                            const isAdminUnit = currentUser?.role === 'admin_unit';
+                                            const isAdminBidang = currentUser?.role === 'admin_bidang';
+                                            const sdmField = fields.find(f => f.name === 'Bidang SDM');
+                                            const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
+
+                                            // Special Logic: Read-Only for Building/Sarpras (for Unit Admin)
+                                            if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) {
+                                                return true;
+                                            }
+
+                                            // Special Logic: Shared Edit for Payroll (Penggajian)
+                                            if (item.name === 'Penggajian') {
+                                                if (isAdminUnit || isSdmAdmin) return false;
+                                            }
+
+                                            return false;
+                                        })()}
                                         className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                                            isLocked && !isSuperAdmin 
+                                            (() => {
+                                                if (isSuperAdmin) return false;
+                                                if (isLocked) return true;
+                                                const isAdminUnit = currentUser?.role === 'admin_unit';
+                                                const isAdminBidang = currentUser?.role === 'admin_bidang';
+                                                const sdmField = fields.find(f => f.name === 'Bidang SDM');
+                                                const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
+                                                if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return true;
+                                                if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return false;
+                                                return false;
+                                            })()
                                             ? 'bg-slate-100 text-slate-300 shadow-none' 
                                             : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-slate-900 group-hover:shadow-indigo-200'
                                         }`}
                                     >
-                                        {isLocked && !isSuperAdmin ? 'TERKUNCI' : 'ATUR BUDGET'}
+                                        {(() => {
+                                             if (isSuperAdmin) return 'ATUR BUDGET';
+                                             if (isLocked) return 'TERKUNCI';
+                                             const isAdminUnit = currentUser?.role === 'admin_unit';
+                                             const isAdminBidang = currentUser?.role === 'admin_bidang';
+                                             const sdmField = fields.find(f => f.name === 'Bidang SDM');
+                                             const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
+                                             if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return 'HANYA LIHAT';
+                                             if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return 'ATUR BUDGET';
+                                             return 'ATUR BUDGET';
+                                        })()}
                                     </button>
                                 </td>
                             </tr>
