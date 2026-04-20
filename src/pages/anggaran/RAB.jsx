@@ -293,13 +293,13 @@ export default function RAB() {
             })
             .forEach(s => { if (s.expenseItemId) activeIds.add(s.expenseItemId); });
         
-        // Also include items explicitly linked to this unit
-        (expenseItems || []).forEach(ei => {
-            if (!ei.isDeleted) {
-                if (unitId && ei.unitId === unitId) activeIds.add(ei.id);
-                if (fieldId && ei.fieldId === fieldId) activeIds.add(ei.id);
-            }
-        });
+        // NOTE: Manual inclusion removed by request to only show items based on distribution settings
+        // (expenseItems || []).forEach(ei => {
+        //     if (!ei.isDeleted) {
+        //         if (unitId && ei.unitId === unitId) activeIds.add(ei.id);
+        //         if (fieldId && ei.fieldId === fieldId) activeIds.add(ei.id);
+        //     }
+        // });
         
         return (expenseItems || []).filter(ei => {
             if (ei.isDeleted || !activeIds.has(ei.id)) return false;
@@ -1352,7 +1352,8 @@ export default function RAB() {
                                 KIRIM KE YAYASAN
                             </button>
                         )}
-                        {!isConsolidation && !isLocked && (
+                        {/* Button TAMBAH ITEM RAB dihapus agar input hanya melalui logika otomatis (Konfigurasi Peruntukan) */}
+                        {/* {!isConsolidation && !isLocked && (
                             <button 
                                 onClick={() => {
                                     const availableFunds = rapData.totalTarget - totalExpense;
@@ -1367,7 +1368,7 @@ export default function RAB() {
                                 <PlusCircle size={14} />
                                 TAMBAH ITEM RAB
                             </button>
-                        )}
+                        )} */}
                     </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
