@@ -32,6 +32,8 @@ export default function BudgetDashboard() {
     const selectedAcademicYearName = activeAcademicYear?.name || '';
 
     const [expandedUnits, setExpandedUnits] = useState({});
+    const [expandedBosUnits, setExpandedBosUnits] = useState({});
+    const toggleBosUnit = (id) => setExpandedBosUnits(prev => ({ ...prev, [id]: !prev[id] }));
     const [expandedFields, setExpandedFields] = useState({});
 
     const toggleUnit = (id) => {
@@ -627,27 +629,70 @@ export default function BudgetDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {bosUnitData.map(u => (
-                                    <tr key={u.id} className="budget-row hover:bg-emerald-50/30 transition-colors group">
-                                        <td className="budget-cell budget-cell-name">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                                                <span className="font-black text-slate-800 tracking-tight">{u.name}</span>
-                                            </div>
-                                        </td>
-                                        <td className="budget-cell budget-cell-number font-black text-slate-900">
-                                            {formatCurrency(u.rap)}
-                                        </td>
-                                        <td className="budget-cell budget-cell-number font-bold text-slate-500">
-                                            {formatCurrency(u.rab)}
-                                        </td>
-                                        <td className="budget-cell budget-cell-number budget-cell-sisa">
-                                            <span className={`font-black px-3 py-1 rounded-full text-[12px] ${u.sisa < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                {formatCurrency(u.sisa)}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {bosUnitData.map(u => {
+                                    const isExpanded = !!expandedBosUnits[u.id];
+                                    return (
+                                        <React.Fragment key={u.id}>
+                                            <tr 
+                                                className="budget-row hover:bg-emerald-50/50 transition-colors group cursor-pointer"
+                                                onClick={() => toggleBosUnit(u.id)}
+                                            >
+                                                <td className="budget-cell budget-cell-name">
+                                                    <div className="flex items-center gap-3">
+                                                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-slate-100 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600'}`}>
+                                                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                                        </span>
+                                                        <span className="font-black text-slate-800 tracking-tight">{u.name}</span>
+                                                    </div>
+                                                </td>
+                                                <td className="budget-cell budget-cell-number font-black text-slate-900">
+                                                    {formatCurrency(u.rap)}
+                                                </td>
+                                                <td className="budget-cell budget-cell-number font-bold text-slate-500">
+                                                    {formatCurrency(u.rab)}
+                                                </td>
+                                                <td className="budget-cell budget-cell-number budget-cell-sisa">
+                                                    <span className={`font-black px-3 py-1 rounded-full text-[12px] ${u.sisa < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                        {formatCurrency(u.sisa)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {isExpanded && (
+                                                <tr>
+                                                    <td colSpan={4} className="px-6 py-3 bg-emerald-50/30">
+                                                        <div className="ml-8 space-y-2">
+                                                            <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-2">Alokasi BOS per Item</p>
+                                                            {bosAllocations.filter(a => a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted).length === 0 ? (
+                                                                <p className="text-[10px] text-slate-400 italic">Tidak ada rincian alokasi tersedia.</p>
+                                                            ) : (
+                                                                bosAllocations.filter(a => a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted).map((alloc, i) => {
+                                                                    const exItem = expenseItems.find(e => e.id === alloc.expenseItemId);
+                                                                    const plan = rabPlans.find(p => p.unitId === u.id && p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED');
+                                                                    const usedDetail = plan?.expense?.[alloc.expenseItemId];
+                                                                    const used = usedDetail?.useBos ? (parseFloat(usedDetail?.bosAmount) || 0) : 0;
+                                                                    const allocated = parseFloat(alloc.amount) || 0;
+                                                                    return (
+                                                                        <div key={i} className="flex items-center justify-between py-1.5 border-b border-emerald-100 last:border-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-emerald-300 text-lg leading-none">└</span>
+                                                                                <span className="text-[11px] font-bold text-slate-600">{exItem?.name || alloc.expenseItemId}</span>
+                                                                            </div>
+                                                                            <div className="flex items-center gap-6 text-right">
+                                                                                <span className="text-[10px] text-slate-400">Alokasi: <strong className="text-emerald-700">{formatCurrency(allocated)}</strong></span>
+                                                                                <span className="text-[10px] text-slate-400">Digunakan: <strong className={used > allocated ? 'text-rose-600' : 'text-indigo-600'}>{formatCurrency(used)}</strong></span>
+                                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${(allocated - used) < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>Sisa: {formatCurrency(allocated - used)}</span>
+                                                                            </div>
+                                                                        </div>
+                                                                    );
+                                                                })
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
+                                    );
+                                })}
                                 <tr className="budget-row-total bg-emerald-50/20">
                                     <td className="budget-cell budget-cell-name font-black text-xs text-emerald-900 uppercase tracking-widest italic">Total Konsolidasi BOS</td>
                                     <td className="budget-cell budget-cell-number font-black text-emerald-950 border-l-2 border-emerald-100">{formatCurrency(totalBosUnitRAP)}</td>
