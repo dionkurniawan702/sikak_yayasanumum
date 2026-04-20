@@ -301,8 +301,19 @@ export default function RAB() {
             }
         });
         
-        return (expenseItems || []).filter(ei => !ei.isDeleted && activeIds.has(ei.id));
-    }, [expenseItems, state.distributionSettings, selectedUnitId]);
+        return (expenseItems || []).filter(ei => {
+            if (ei.isDeleted || !activeIds.has(ei.id)) return false;
+
+            // Special Rule: "Pengembangan (umum)" only for Superadmin and Finance Field
+            if (ei.name === 'Pengembangan (umum)') {
+                const financeField = fields.find(f => f.name === 'Bidang Keuangan');
+                const isFinanceAdmin = currentUser?.role === 'admin_bidang' && currentUser?.fieldId === financeField?.id;
+                if (!isSuperAdmin && !isFinanceAdmin) return false;
+            }
+
+            return true;
+        });
+    }, [expenseItems, state.distributionSettings, selectedUnitId, currentUser, fields, isSuperAdmin]);
 
 
     // - [x] Hapus fitur Migrasi Otomatis (Auto-Migration) di `RAB.jsx`
@@ -1123,6 +1134,9 @@ export default function RAB() {
                                             const sdmField = fields.find(f => f.name === 'Bidang SDM');
                                             const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
 
+                                            const financeField = fields.find(f => f.name === 'Bidang Keuangan');
+                                            const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
+
                                             // Special Logic: Read-Only for Building/Sarpras (for Unit Admin)
                                             if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) {
                                                 return true;
@@ -1131,6 +1145,12 @@ export default function RAB() {
                                             // Special Logic: Shared Edit for Payroll (Penggajian)
                                             if (item.name === 'Penggajian') {
                                                 if (isAdminUnit || isSdmAdmin) return false;
+                                            }
+
+                                            // Special Logic: Development (Pengembangan (umum))
+                                            if (item.name === 'Pengembangan (umum)') {
+                                                if (isFinanceAdmin) return false;
+                                                return true; 
                                             }
 
                                             return false;
@@ -1143,8 +1163,13 @@ export default function RAB() {
                                                 const isAdminBidang = currentUser?.role === 'admin_bidang';
                                                 const sdmField = fields.find(f => f.name === 'Bidang SDM');
                                                 const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
+                                                const financeField = fields.find(f => f.name === 'Bidang Keuangan');
+                                                const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
+
                                                 if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return true;
                                                 if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return false;
+                                                if (item.name === 'Pengembangan (umum)' && isFinanceAdmin) return false;
+                                                if (item.name === 'Pengembangan (umum)') return true;
                                                 return false;
                                             })()
                                             ? 'bg-slate-100 text-slate-300 shadow-none' 
@@ -1158,8 +1183,12 @@ export default function RAB() {
                                              const isAdminBidang = currentUser?.role === 'admin_bidang';
                                              const sdmField = fields.find(f => f.name === 'Bidang SDM');
                                              const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
+                                             const financeField = fields.find(f => f.name === 'Bidang Keuangan');
+                                             const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
+
                                              if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return 'HANYA LIHAT';
                                              if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return 'ATUR BUDGET';
+                                             if (item.name === 'Pengembangan (umum)') return isFinanceAdmin ? 'ATUR BUDGET' : 'HANYA LIHAT';
                                              return 'ATUR BUDGET';
                                         })()}
                                     </button>
