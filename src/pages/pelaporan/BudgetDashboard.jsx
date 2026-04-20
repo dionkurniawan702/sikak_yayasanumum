@@ -280,17 +280,31 @@ export default function BudgetDashboard() {
             const rap = uBosRAP[u.id] || 0;
             const rab = uBosRAB[u.id] || 0;
             if (rap === 0 && rab === 0) return null;
+
+            // Build per-item breakdown from bosAllocations
+            const unitAllocations = (bosAllocations || []).filter(a =>
+                a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted
+            );
+            const plan = (rabPlans || []).find(p =>
+                p.unitId === u.id && p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED'
+            );
+            const breakdown = unitAllocations.map(alloc => {
+                const exItem = expenseItems.find(e => e.id === alloc.expenseItemId);
+                const usedDetail = plan?.expense?.[alloc.expenseItemId];
+                const itemRab = usedDetail?.useBos ? (parseFloat(usedDetail?.bosAmount) || 0) : 0;
+                const itemRap = parseFloat(alloc.amount) || 0;
+                return {
+                    id: alloc.id || alloc.expenseItemId,
+                    name: exItem?.name || alloc.expenseItemId,
+                    rap: itemRap,
+                    rab: itemRab,
+                    sisa: itemRap - itemRab
+                };
+            });
             
-            return {
-                id: u.id,
-                name: u.name,
-                rap,
-                rab,
-                sisa: rap - rab,
-                breakdown: [] // Simplified for BOS dashboard summary
-            };
+            return { id: u.id, name: u.name, rap, rab, sisa: rap - rab, breakdown };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
-    }, [units, bosAllocations, rabPlans, currentUser, selectedAcademicYearId]);
+    }, [units, bosAllocations, rabPlans, expenseItems, currentUser, selectedAcademicYearId]);
 
     const totalBosUnitRAP = bosUnitData.reduce((s, u) => s + u.rap, 0);
     const totalBosUnitRAB = bosUnitData.reduce((s, u) => s + u.rab, 0);
@@ -629,70 +643,14 @@ export default function BudgetDashboard() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {bosUnitData.map(u => {
-                                    const isExpanded = !!expandedBosUnits[u.id];
-                                    return (
-                                        <React.Fragment key={u.id}>
-                                            <tr 
-                                                className="budget-row hover:bg-emerald-50/50 transition-colors group cursor-pointer"
-                                                onClick={() => toggleBosUnit(u.id)}
-                                            >
-                                                <td className="budget-cell budget-cell-name">
-                                                    <div className="flex items-center gap-3">
-                                                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' : 'bg-slate-100 text-slate-400 group-hover:bg-emerald-100 group-hover:text-emerald-600'}`}>
-                                                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                                                        </span>
-                                                        <span className="font-black text-slate-800 tracking-tight">{u.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="budget-cell budget-cell-number font-black text-slate-900">
-                                                    {formatCurrency(u.rap)}
-                                                </td>
-                                                <td className="budget-cell budget-cell-number font-bold text-slate-500">
-                                                    {formatCurrency(u.rab)}
-                                                </td>
-                                                <td className="budget-cell budget-cell-number budget-cell-sisa">
-                                                    <span className={`font-black px-3 py-1 rounded-full text-[12px] ${u.sisa < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                                        {formatCurrency(u.sisa)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            {isExpanded && (
-                                                <tr>
-                                                    <td colSpan={4} className="px-6 py-3 bg-emerald-50/30">
-                                                        <div className="ml-8 space-y-2">
-                                                            <p className="text-[9px] font-black text-emerald-700 uppercase tracking-widest mb-2">Alokasi BOS per Item</p>
-                                                            {bosAllocations.filter(a => a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted).length === 0 ? (
-                                                                <p className="text-[10px] text-slate-400 italic">Tidak ada rincian alokasi tersedia.</p>
-                                                            ) : (
-                                                                bosAllocations.filter(a => a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted).map((alloc, i) => {
-                                                                    const exItem = expenseItems.find(e => e.id === alloc.expenseItemId);
-                                                                    const plan = rabPlans.find(p => p.unitId === u.id && p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED');
-                                                                    const usedDetail = plan?.expense?.[alloc.expenseItemId];
-                                                                    const used = usedDetail?.useBos ? (parseFloat(usedDetail?.bosAmount) || 0) : 0;
-                                                                    const allocated = parseFloat(alloc.amount) || 0;
-                                                                    return (
-                                                                        <div key={i} className="flex items-center justify-between py-1.5 border-b border-emerald-100 last:border-0">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-emerald-300 text-lg leading-none">└</span>
-                                                                                <span className="text-[11px] font-bold text-slate-600">{exItem?.name || alloc.expenseItemId}</span>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-6 text-right">
-                                                                                <span className="text-[10px] text-slate-400">Alokasi: <strong className="text-emerald-700">{formatCurrency(allocated)}</strong></span>
-                                                                                <span className="text-[10px] text-slate-400">Digunakan: <strong className={used > allocated ? 'text-rose-600' : 'text-indigo-600'}>{formatCurrency(used)}</strong></span>
-                                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${(allocated - used) < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-700'}`}>Sisa: {formatCurrency(allocated - used)}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    );
-                                })}
+                                {bosUnitData.map(u => (
+                                    <BudgetRow
+                                        key={u.id}
+                                        data={u}
+                                        isExpanded={!!expandedBosUnits[u.id]}
+                                        onToggle={() => toggleBosUnit(u.id)}
+                                    />
+                                ))}
                                 <tr className="budget-row-total bg-emerald-50/20">
                                     <td className="budget-cell budget-cell-name font-black text-xs text-emerald-900 uppercase tracking-widest italic">Total Konsolidasi BOS</td>
                                     <td className="budget-cell budget-cell-number font-black text-emerald-950 border-l-2 border-emerald-100">{formatCurrency(totalBosUnitRAP)}</td>
