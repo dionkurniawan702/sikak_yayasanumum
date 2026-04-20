@@ -1595,10 +1595,14 @@ export default function RAB() {
                         {/* Quick Stats Cards in Sidebar */}
                         <div className="grid grid-cols-1 gap-3">
                               <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">RAP</p>
-                                <h3 className="text-xl font-black italic">{formatRupiah(rapData.totalTarget)}</h3>
+                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">
+                                    {fundSourceFilter === 'BOS' ? 'ALOKASI BOS' : 'RAP'}
+                                </p>
+                                <h3 className="text-xl font-black italic">
+                                    {formatRupiah(fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget)}
+                                </h3>
                               </div>
-                              {isBosRecipient && (
+                              {isBosRecipient && fundSourceFilter === 'all' && (
                                   <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
                                     <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Alokasi BOS</p>
                                     <h3 className="text-xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>

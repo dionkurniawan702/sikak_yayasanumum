@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
@@ -13,6 +12,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const { state, dispatch } = useApp();
     const { currentUser } = state;
     const navigate = useNavigate();
+    const location = useLocation();
 
     let menuItems = [];
 
@@ -199,11 +199,19 @@ export default function Sidebar({ isOpen, onClose }) {
                         <NavLink
                             key={idx}
                             to={item.path}
-                            className={({ isActive }) => `
-                                flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                                ${isActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
-                            `}
-                            end={item.path === '/'}
+                            className={({ isActive }) => {
+                                // Strict matching for paths with query params
+                                const itemSearch = item.path.split('?')[1] || '';
+                                const currentSearch = location.search.replace('?', '');
+                                const isParamMatch = itemSearch === currentSearch;
+                                const isTrulyActive = isActive && isParamMatch;
+
+                                return `
+                                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all
+                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                                `;
+                            }}
+                            end={item.path.split('?')[0] === '/'}
                         >
                             {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                             <span className="text-sm font-medium flex-1">{item.label}</span>
