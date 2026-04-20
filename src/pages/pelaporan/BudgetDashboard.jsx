@@ -16,7 +16,8 @@ export default function BudgetDashboard() {
         studentStatuses = [],
         budgets = [],
         academicYears = [],
-        rabPlans = []
+        rabPlans = [],
+        bosAllocations = []
     } = state;
 
     // Global Academic Year Persistence (ID-based)
@@ -240,6 +241,58 @@ export default function BudgetDashboard() {
             };
         }).filter(Boolean).sort((a, b) => b.rap - a.rap);
     }, [units, unitRAP, unitRAB, currentUser, expenseItems, fields]);
+    
+    // ========== ENGINE: BOS (Bantuan Operasional Sekolah) ==========
+    const bosUnitData = useMemo(() => {
+        const uBosRAP = {};
+        const uBosRAB = {};
+        units.forEach(u => {
+            uBosRAP[u.id] = 0;
+            uBosRAB[u.id] = 0;
+        });
+
+        // RAP BOS (Allocations)
+        bosAllocations?.forEach(alloc => {
+            if (alloc.academicYearId === selectedAcademicYearId && !alloc.isDeleted) {
+                if (uBosRAP[alloc.unitId] !== undefined) {
+                    uBosRAP[alloc.unitId] += (parseFloat(alloc.amount) || 0);
+                }
+            }
+        });
+
+        // RAB BOS (Expenses)
+        rabPlans?.forEach(plan => {
+            if (plan.academicYearId === selectedAcademicYearId && plan.status === 'APPROVED') {
+                Object.values(plan.expense || {}).forEach(item => {
+                    if (item.useBos && plan.unitId) {
+                        if (uBosRAB[plan.unitId] !== undefined) {
+                            uBosRAB[plan.unitId] += (parseFloat(item.bosAmount) || 0);
+                        }
+                    }
+                });
+            }
+        });
+
+        return units.filter(u => !u.isDeleted).map(u => {
+            if (currentUser?.role === 'admin_unit' && u.id !== currentUser.unitId) return null;
+            const rap = uBosRAP[u.id] || 0;
+            const rab = uBosRAB[u.id] || 0;
+            if (rap === 0 && rab === 0) return null;
+            
+            return {
+                id: u.id,
+                name: u.name,
+                rap,
+                rab,
+                sisa: rap - rab,
+                breakdown: [] // Simplified for BOS dashboard summary
+            };
+        }).filter(Boolean).sort((a, b) => b.rap - a.rap);
+    }, [units, bosAllocations, rabPlans, currentUser, selectedAcademicYearId]);
+
+    const totalBosUnitRAP = bosUnitData.reduce((s, u) => s + u.rap, 0);
+    const totalBosUnitRAB = bosUnitData.reduce((s, u) => s + u.rab, 0);
+    const totalBosUnitSisa = totalBosUnitRAP - totalBosUnitRAB;
 
     const bidangData = useMemo(() => {
         return fields.filter(f => !f.isDeleted).map(f => {
@@ -550,6 +603,57 @@ export default function BudgetDashboard() {
                                         </td>
                                     </tr>
                                 )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== BOS TABLE (Emerald/Green Theme) ===== */}
+            {currentUser?.role !== 'admin_bidang' && bosUnitData.length > 0 && (
+                <div className="budget-table-wrapper mt-12 border-none shadow-xl shadow-slate-200/50 animate-in slide-in-from-bottom-4 duration-700">
+                    <div className="budget-table-title bg-emerald-900 text-white">
+                        <Gem size={20} className="text-emerald-400" />
+                        <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan BOS Per Unit</span>
+                    </div>
+                    <div className="budget-table-scroll">
+                        <table className="budget-table">
+                            <thead>
+                                <tr className="bg-emerald-50/50">
+                                    <th className="budget-th budget-th-name text-emerald-900">NAMA UNIT</th>
+                                    <th className="budget-th budget-th-number text-emerald-900">RAP BOS (ALOKASI)</th>
+                                    <th className="budget-th budget-th-number text-emerald-900">RAB BOS (RENCANA)</th>
+                                    <th className="budget-th budget-th-number text-emerald-900">SISA BOS</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {bosUnitData.map(u => (
+                                    <tr key={u.id} className="budget-row hover:bg-emerald-50/30 transition-colors group">
+                                        <td className="budget-cell budget-cell-name">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                                                <span className="font-black text-slate-800 tracking-tight">{u.name}</span>
+                                            </div>
+                                        </td>
+                                        <td className="budget-cell budget-cell-number font-black text-slate-900">
+                                            {formatCurrency(u.rap)}
+                                        </td>
+                                        <td className="budget-cell budget-cell-number font-bold text-slate-500">
+                                            {formatCurrency(u.rab)}
+                                        </td>
+                                        <td className="budget-cell budget-cell-number budget-cell-sisa">
+                                            <span className={`font-black px-3 py-1 rounded-full text-[12px] ${u.sisa < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                                {formatCurrency(u.sisa)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                                <tr className="budget-row-total bg-emerald-50/20">
+                                    <td className="budget-cell budget-cell-name font-black text-xs text-emerald-900 uppercase tracking-widest italic">Total Konsolidasi BOS</td>
+                                    <td className="budget-cell budget-cell-number font-black text-emerald-950 border-l-2 border-emerald-100">{formatCurrency(totalBosUnitRAP)}</td>
+                                    <td className="budget-cell budget-cell-number font-black text-emerald-950">{formatCurrency(totalBosUnitRAB)}</td>
+                                    <td className="budget-cell budget-cell-number budget-cell-sisa bg-emerald-100/30 text-emerald-800 font-black">{formatCurrency(totalBosUnitSisa)}</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
