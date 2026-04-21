@@ -5,7 +5,7 @@ import {
     ArrowUpCircle, ArrowDownCircle, Info, ChevronRight,
     TrendingUp, Wallet, ShieldCheck, Download, Filter, 
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
-    Edit3, PlusCircle, Database, Plus, X,
+    Edit3, PlusCircle, Database, Plus, X, RotateCcw,
     Calculator, Trash2, Pencil, DollarSign
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -14,15 +14,15 @@ import { api } from '../../services/api';
 import { calculateRAP } from '../../utils/budgetEngine';
 import BudgetRow from '../../components/BudgetRow';
 
+const monthNames = [
+    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+];
+
+const getMonthName = (monthNum) => monthNames[monthNum - 1] || `Bulan ${monthNum}`;
+
 // Helper to generate months for an academic year based on its settings
 const generateMonths = (ay) => {
-    if (!ay) return [];
-    
-    const months = [];
-    const monthNames = [
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-    ];
 
     try {
         // Option 1: Use explicit start and end dates from settings
