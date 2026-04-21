@@ -123,26 +123,34 @@ app.post('/api/login', async (req, res) => {
         const { username, password } = req.body;
         const client = getPrisma();
 
+        console.log(`[Login Attempt] Username: ${username}`);
         const user = await client.user.findFirst({
             where: { username, isDeleted: false }
         });
 
         if (!user) {
+            console.log(`[Login Failure] User "${username}" NOT found in database.`);
             return res.status(401).json({ success: false, error: 'Username atau password salah' });
         }
+
+        console.log(`[Login Progress] User "${username}" found. Checking password...`);
 
         // Check if password is hashed (bcrypt hashes start with $2)
         let passwordMatch = false;
         if (user.password.startsWith('$2')) {
+            console.log(`[Login Progress] Hashed password detected. comparing...`);
             passwordMatch = await bcrypt.compare(password, user.password);
         } else {
-            // Plain text fallback (for initial superadmin)
+            console.log(`[Login Progress] Plaintext password detected. Comparing...`);
             passwordMatch = (user.password === password);
         }
 
         if (!passwordMatch) {
+            console.log(`[Login Failure] Password for "${username}" does NOT match.`);
             return res.status(401).json({ success: false, error: 'Username atau password salah' });
         }
+
+        console.log(`[Login Success] User "${username}" authenticated successfully.`);
 
         const token = jwt.sign(
             { id: user.id, username: user.username, role: user.role },
@@ -811,24 +819,26 @@ const healAcademicYearIds = async () => {
 const ensureSuperAdmin = async () => {
     try {
         const client = getPrisma();
-        const count = await client.user.count({ where: { isDeleted: false } });
+        console.log('[Seed] Ensuring superadmin "adminsdit1" exists (Force Upsert)...');
         
-        if (count === 0) {
-            console.log('[Seed] Database is empty. Creating default superadmin...');
-            // Default: adminsdit1 / admin123
-            const hashedPassword = await bcrypt.hash('admin123', 10);
-            await client.user.create({
-                data: {
-                    username: 'adminsdit1',
-                    password: hashedPassword,
-                    name: 'Super Admin',
-                    role: 'superadmin'
-                }
-            });
-            console.log('[Seed] Default superadmin created successfully.');
-        }
+        const hashedPassword = await bcrypt.hash('admin123', 10);
+        await client.user.upsert({
+            where: { username: 'adminsdit1' },
+            update: { 
+                password: hashedPassword, // Reset password if user exists
+                role: 'superadmin',
+                isDeleted: false
+            },
+            create: {
+                username: 'adminsdit1',
+                password: hashedPassword,
+                name: 'Super Admin',
+                role: 'superadmin'
+            }
+        });
+        console.log('[Seed] Superadmin "adminsdit1" is ready.');
     } catch (error) {
-        console.error(`[Seed Error] SuperAdmin: ${error.message}`);
+        console.error(`[Seed Error] SuperAdmin Force Reset: ${error.message}`);
     }
 };
 
