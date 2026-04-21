@@ -5,7 +5,7 @@ import {
     ArrowUpCircle, ArrowDownCircle, Info, ChevronRight,
     TrendingUp, Wallet, ShieldCheck, Download, Filter, 
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
-    Edit3, PlusCircle, Database, Plus, X, RotateCcw,
+    Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
     Calculator, Trash2, Pencil, DollarSign
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -118,6 +118,7 @@ export default function RAB() {
     // States for Journal-style component entry
     const [entryForm, setEntryForm] = useState({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
+    const [showCompModal, setShowCompModal] = useState(false);
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
     const [expandedDetailItems, setExpandedDetailItems] = useState({});
@@ -562,6 +563,7 @@ export default function RAB() {
 
         setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
         setEditingCompIdx(null);
+        setShowCompModal(false);
     };
 
     const handleAddComponent = (itemId, planId) => {
@@ -1862,564 +1864,289 @@ export default function RAB() {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
                             const itemId = editingItem.itemId || editingItem.id;
                             const plans = activePlan[type][itemId] || [];
-                            // Find specific plan OR use defaults for new one
                             const item = plans.find(p => p.id === editingItem.id) || { 
-                                total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1' 
+                                id: editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1' 
                             };
 
                             return (
                                 <>
-                        {/* Modal Header */}
-                        <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                            <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
-                                    {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${editingItem.id} • `}
-                                    TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
-                                </p>
-                            </div>
-
-
-                            <div className="flex items-center gap-4">
-                                {(() => {
-                                    const detail = item;
-                                    const allocated = rapData.itemAllocations[itemId] || 0;
-                                    const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
-                                    const isOver = yayasanSpent > (allocated + 100);
-                                    
-                                    if (isOver) {
-                                        return (
-                                            <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
-                                                <AlertCircle size={18} />
-                                                DILARANG: MELEBIHI LIMIT!
-                                            </div>
-                                        );
-                                    }
-                                    return (
-                                        <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Yayasan</span>
-                                            <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
+                                    {/* Modal Header */}
+                                    <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                                        <div>
+                                            <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
+                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
+                                                {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${editingItem.id} • `}
+                                                TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
+                                            </p>
                                         </div>
-                                    );
-                                })()}
-                                <button 
-                                    onClick={() => setEditingItem(null)}
-                                    className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
-                                >
-                                    <XCircle size={24} />
-                                </button>
-                            </div>
-                        </div>
 
-                            <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
-                                {/* INTEGRATED SUMMARY TABLE & INPUT SYSTEM (Always visible first for new plans) */}
-                                <div className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
-                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian (Summary Table)</h4>
+                                        <div className="flex items-center gap-4">
+                                            {(() => {
+                                                const detail = item;
+                                                const allocated = rapData.itemAllocations[itemId] || 0;
+                                                const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
+                                                const isOver = yayasanSpent > (allocated + 100);
+                                                
+                                                if (isOver) {
+                                                    return (
+                                                        <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
+                                                            <AlertCircle size={18} />
+                                                            MELEBIHI LIMIT!
+                                                        </div>
+                                                    );
+                                                }
+                                                return (
+                                                    <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
+                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Yayasan</span>
+                                                        <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
+                                                    </div>
+                                                );
+                                            })()}
+                                            <button 
+                                                onClick={() => setEditingItem(null)}
+                                                className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
+                                            >
+                                                <XCircle size={24} />
+                                            </button>
                                         </div>
-                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic opacity-60">Inline Editing Active</p>
                                     </div>
-                                    
-                                    <div className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/20">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
-                                                <tr>
-                                                    <th className="px-6 py-5 w-[40%] text-white">Keterangan / Rincian</th>
-                                                    <th className="px-4 py-5 text-center text-white">Vol</th>
-                                                    <th className="px-4 py-5 text-center text-white">Sat</th>
-                                                    <th className="px-4 py-5 text-center text-white">Kali</th>
-                                                    <th className="px-4 py-5 text-right w-[15%] text-white">Harga Satuan</th>
-                                                    <th className="px-6 py-5 text-right w-[15%] text-white">Subtotal</th>
-                                                    <th className="px-4 py-5 text-center w-[8%] text-white">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100 italic">
-                                                {(() => {
-                                                    const comps = item?.components || [];
-                                                    return comps.map((comp, idx) => (
-                                                        <tr key={idx} className="group hover:bg-slate-50 transition-colors">
-                                                            <td className="px-4 py-3">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="w-full bg-transparent p-2 font-black text-slate-800 text-xs tracking-tight outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
-                                                                    value={comp.label}
-                                                                    onChange={e => handleComponentUpdate(itemId, editingItem.id, idx, 'label', e.target.value)}
-                                                                />
-                                                            </td>
-                                                            <td className="px-2 py-3 text-center">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="w-16 mx-auto bg-transparent p-2 font-black text-slate-600 text-[11px] text-center outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
-                                                                    value={comp.volume}
-                                                                    onChange={e => {
-                                                                        const val = e.target.value.replace(/\D/g, '');
-                                                                        handleComponentUpdate(itemId, editingItem.id, idx, 'volume', val ? parseFloat(val) : 0);
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                            <td className="px-2 py-3 text-center">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="w-16 mx-auto bg-transparent p-2 font-black text-slate-400 text-[10px] text-center uppercase outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
-                                                                    value={comp.satuan || ''}
-                                                                    onChange={e => handleComponentUpdate(itemId, editingItem.id, idx, 'satuan', e.target.value)}
-                                                                />
-                                                            </td>
-                                                            <td className="px-2 py-3 text-center">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="w-12 mx-auto bg-transparent p-2 font-black text-slate-600 text-[11px] text-center outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
-                                                                    value={comp.kali || 1}
-                                                                    onChange={e => {
-                                                                        const val = e.target.value.replace(/\D/g, '');
-                                                                        handleComponentUpdate(itemId, editingItem.id, idx, 'kali', val ? parseFloat(val) : 1);
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                            <td className="px-2 py-3 text-right">
-                                                                <input 
-                                                                    type="text" 
-                                                                    className="w-full bg-transparent p-2 font-black text-slate-500 text-[11px] text-right outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
-                                                                    value={Number(comp.harga).toLocaleString('id-ID')}
-                                                                    onChange={e => {
-                                                                        const val = e.target.value.replace(/\D/g, '');
-                                                                        handleComponentUpdate(itemId, editingItem.id, idx, 'harga', val ? parseFloat(val) : 0);
-                                                                    }}
-                                                                />
-                                                            </td>
-                                                            <td className="px-6 py-3 text-right font-black text-slate-900 text-xs">
-                                                                {formatRupiah(comp.total)}
-                                                            </td>
-                                                            <td className="px-4 py-3 text-center">
+
+                                    <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
+                                        {/* Summary Table */}
+                                        <div className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                                                    <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian</h4>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/20">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
+                                                        <tr>
+                                                            <th className="px-6 py-5 w-[40%] text-white">Keterangan / Rincian</th>
+                                                            <th className="px-4 py-5 text-center text-white">Vol</th>
+                                                            <th className="px-4 py-5 text-center text-white">Sat</th>
+                                                            <th className="px-4 py-5 text-center text-white">Kali</th>
+                                                            <th className="px-4 py-5 text-right w-[15%] text-white">Harga Satuan</th>
+                                                            <th className="px-6 py-5 text-right w-[15%] text-white">Subtotal</th>
+                                                            <th className="px-4 py-5 text-center w-[12%] text-white">Aksi</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 italic">
+                                                        {(() => {
+                                                            const comps = item?.components || [];
+                                                            if (comps.length === 0) {
+                                                                return (
+                                                                    <tr>
+                                                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                                                            <Package size={40} className="mx-auto text-slate-300 mb-2 opacity-30" />
+                                                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-30">Belum ada rincian belanja</p>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+                                                            return comps.map((comp, idx) => (
+                                                                <tr key={idx} className="group hover:bg-slate-50 transition-colors">
+                                                                    <td className="px-6 py-4 font-black text-slate-800 text-xs italic">{comp.label}</td>
+                                                                    <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
+                                                                    <td className="px-4 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan}</td>
+                                                                    <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali}x</td>
+                                                                    <td className="px-4 py-4 text-right font-black text-slate-500 text-[11px]">{formatRupiah(comp.harga)}</td>
+                                                                    <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
+                                                                    <td className="px-4 py-4">
+                                                                        <div className="flex items-center justify-center gap-1">
+                                                                            <button onClick={() => { setEntryForm({...comp}); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14}/></button>
+                                                                            <button onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14}/></button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            ));
+                                                        })()}
+                                                    </tbody>
+                                                    <tfoot className="bg-slate-50 border-t border-slate-200">
+                                                        <tr>
+                                                            <td colSpan={5} className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] italic text-slate-400">Total Akumulasi Rincian</td>
+                                                            <td className="px-6 py-6 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total)}</td>
+                                                            <td className="px-4 py-6 text-center">
                                                                 <button 
-                                                                    onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)}
-                                                                    className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                                    onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:scale-110 transition-all mx-auto"
                                                                 >
-                                                                    <Trash2 size={14} />
+                                                                    <Plus size={20} strokeWidth={3} />
                                                                 </button>
                                                             </td>
                                                         </tr>
-                                                    ));
-                                                })()}
-                                                
-                                                {/* ADD NEW ROW (Integrated) */}
-                                                <tr className="bg-blue-50/30 border-t-2 border-slate-100">
-                                                    <td className="px-4 py-4">
-                                                        <input 
-                                                            ref={labelInputRef}
-                                                            type="text" 
-                                                            className="w-full bg-white p-3 font-black text-slate-800 text-xs tracking-tight shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
-                                                            placeholder="+ Klik untuk tambah rincian..."
-                                                            value={entryForm.label}
-                                                            onChange={e => setEntryForm({...entryForm, label: e.target.value})}
-                                                        />
-                                                    </td>
-                                                    <td className="px-2 py-4">
-                                                        <input 
-                                                            type="text" 
-                                                            className="w-16 mx-auto bg-white p-3 font-black text-slate-600 text-[11px] text-center shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
-                                                            value={entryForm.volume}
-                                                            onChange={e => setEntryForm({...entryForm, volume: e.target.value.replace(/\D/g, '')})}
-                                                        />
-                                                    </td>
-                                                    <td className="px-2 py-4">
-                                                        <input 
-                                                            type="text" 
-                                                            className="w-16 mx-auto bg-white p-3 font-black text-slate-400 text-[10px] text-center uppercase shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
-                                                            placeholder="unit"
-                                                            value={entryForm.satuan}
-                                                            onChange={e => setEntryForm({...entryForm, satuan: e.target.value})}
-                                                        />
-                                                    </td>
-                                                    <td className="px-2 py-4">
-                                                        <input 
-                                                            type="text" 
-                                                            className="w-12 mx-auto bg-white p-3 font-black text-slate-600 text-[11px] text-center shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
-                                                            value={entryForm.kali}
-                                                            onChange={e => setEntryForm({...entryForm, kali: e.target.value.replace(/\D/g, '')})}
-                                                        />
-                                                    </td>
-                                                    <td className="px-2 py-4">
-                                                        <input 
-                                                            type="text" 
-                                                            className="w-full bg-white p-3 font-black text-slate-500 text-[11px] text-right shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
-                                                            value={entryForm.harga !== undefined && entryForm.harga !== null ? Number(entryForm.harga).toLocaleString('id-ID') : '0'}
-                                                            onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})}
-                                                        />
-                                                    </td>
-                                                    <td className="px-6 py-4 text-right">
-                                                        <span className="text-[10px] font-black text-slate-400 block mb-1">Total Item</span>
-                                                        <span className="text-xs font-black text-blue-600">
-                                                            {formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-4 text-center">
-                                                        <button 
-                                                            onClick={() => handlePushComponent(itemId, editingItem.id)}
-                                                            className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all"
-                                                        >
-                                                            <Plus size={18} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            </tbody>
-                                            <tfoot className="bg-slate-50 border-t-2 border-slate-200">
-                                                <tr>
-                                                    <td colSpan={5} className="px-6 py-5 font-black text-[11px] uppercase tracking-widest italic text-slate-500">Total Akumulasi Rincian</td>
-                                                    <td className="px-6 py-5 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total || 0)}</td>
-                                                    <td></td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-
-                                    {/* Mismatch Warning */}
-                                    {(() => {
-                                        const monthlyTotal = Object.values(item.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                        const isMismatch = Math.abs(monthlyTotal - (item.total || 0)) > 10;
-                                        if (!isMismatch) return null;
-                                        return (
-                                            <div className="flex items-center gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100 animate-pulse">
-                                                <AlertCircle size={18} className="text-rose-600 shrink-0" />
-                                                <p className="text-[10px] font-black text-rose-800 tracking-tight leading-relaxed italic uppercase">
-                                                    PERINGATAN: Total Rincian ({formatRupiah(item.total)}) tidak sama dengan Total Alokasi Bulanan ({formatRupiah(monthlyTotal)}).
-                                                </p>
-                                            </div>
-                                        );
-                                    })()}
-                                </div>
-
-                                {/* Section 1: Basic Info & Program (Reveal after adding rincian) */}
-                                {((item.components && item.components.length > 0) || !editingItem.isNewPlan) && (
-                                    <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                        <div className="lg:col-span-1 space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja Utama</label>
-                                            <select 
-                                                className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                value={item.programId || ''}
-                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'programId', e.target.value)}
-                                            >
-                                                <option value="">Pilih Program Belanja...</option>
-                                                {expensePrograms?.filter(p => !p?.isDeleted)?.map(p => (
-                                                    <option key={p.id} value={p.id}>{p.name}</option>
-                                                )) || <option disabled>Tidak ada program tersedia</option>}
-                                            </select>
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
-                                            <div className="grid grid-cols-2 gap-3 h-[58px]">
-                                                {[1, 2].map(s => (
-                                                    <button 
-                                                        key={s}
-                                                        onClick={() => handleItemUpdate(itemId, editingItem.id, 'semester', s.toString())}
-                                                        className={`rounded-2xl font-black text-[11px] uppercase tracking-widest border-4 transition-all flex items-center justify-center ${
-                                                            (item.semester || '1') === s.toString() 
-                                                            ? 'bg-indigo-600 border-indigo-100 text-white shadow-xl shadow-indigo-200 scale-105' 
-                                                            : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'
-                                                        }`}
-                                                    >
-                                                        Semester {s}
-                                                    </button>
-                                                ))}
+                                                    </tfoot>
+                                                </table>
                                             </div>
                                         </div>
 
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sumber Dana & Status</label>
-                                            <div className="flex items-center gap-3 h-[58px]">
-                                                {isBosRecipient && fundSourceFilter === 'all' && (
-                                                    <button 
-                                                        onClick={() => {
-                                                            const detail = item;
-                                                            const nextState = !detail.useBos;
-                                                            handleItemUpdate(itemId, editingItem.id, 'useBos', nextState);
-                                                            if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(itemId, editingItem.id, 'bosAmount', 0);
-                                                        }}
-                                                        className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 ${
-                                                            item.useBos 
-                                                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' 
-                                                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                                                        }`}
-                                                    >
-                                                        <Wallet size={14} />
-                                                        {item.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
-                                                    </button>
-                                                )}
-                                                <div className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                                                    {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />}
-                                                    {currentPlan.status === 'APPROVED' ? 'Disetujui' : 'Draft'}
-                                                </div>
-                                            </div>
-                                        </div>
+                                        {/* Progressive Sections Grid */}
+                                        {((item.components && item.components.length > 0) || !editingItem.isNewPlan) && (
+                                            <>
+                                                <div className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm space-y-8">
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                                        <div className="space-y-4">
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Program Belanja</label>
+                                                            <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none" value={item.programId || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'programId', e.target.value)}>
+                                                                <option value="">Pilih Program...</option>
+                                                                {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-4">
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Semester</label>
+                                                            <div className="flex bg-slate-100 p-2 rounded-[1.5rem]">
+                                                                {['1', '2'].map(s => (
+                                                                    <button key={s} onClick={() => handleItemUpdate(itemId, editingItem.id, 'semester', s)} className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${item.semester === s ? 'bg-white shadow-md text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                        <div className="space-y-4">
+                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber Dana</label>
+                                                            <div className="flex items-center gap-3">
+                                                                {isBosRecipient && fundSourceFilter === 'all' && (
+                                                                    <button onClick={() => handleItemUpdate(itemId, editingItem.id, 'useBos', !item.useBos)} className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase border-2 ${item.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>BOS {item.useBos ? 'ON' : 'OFF'}</button>
+                                                                )}
+                                                                <div className="flex-1 py-3 rounded-2xl font-black text-[10px] bg-slate-50 text-slate-400 border-2 border-slate-100 text-center uppercase">YAYASAN</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
 
-                                        {/* Description Field */}
-                                        <div className="md:col-span-3 space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Justifikasi Belanja</label>
-                                            <textarea 
-                                                className="w-full p-6 bg-white border-2 border-slate-100 rounded-[2rem] font-medium text-slate-700 outline-none focus:border-indigo-500 transition-all min-h-[100px] shadow-sm italic placeholder:text-slate-300"
-                                                placeholder="Tuliskan alasan pengadaan, spesifikasi singkat, atau catatan tambahan lainnya di sini..."
-                                                value={item.description || ''}
-                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'description', e.target.value)}
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {(() => {
-                                        const detail = item;
-                                        const isBosView = fundSourceFilter === 'BOS';
-                                        const isYayasanView = fundSourceFilter === 'Yayasan';
-                                        const showBos = isBosView || (detail.useBos && !isYayasanView);
-
-                                        if (showBos) {
-                                            return (
-                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100/50 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    {!isBosView && (
-                                                        <div className="space-y-2">
-                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 flex justify-between">
-                                                                Porsi Dana BOS (Rp)
-                                                            </label>
-                                                            <div className="relative">
-                                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-xs italic">Rp</span>
-                                                                <input 
-                                                                    type="text"
-                                                                    className="w-full p-4 pl-10 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
-                                                                    value={parseInt(detail.bosAmount || 0).toLocaleString('id-ID')}
-                                                                    onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
-                                                                />
+                                                    {item.useBos && (
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100 animate-in fade-in">
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">POS BOS</label>
+                                                                <select className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl text-xs font-black" value={item.bosPosId || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosPosId', e.target.value)}>
+                                                                    <option value="">Pilih POS...</option>
+                                                                    {bosPosList?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                                </select>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Tahap BOS</label>
+                                                                <select className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl text-xs font-black" value={item.bosStageId || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosStageId', e.target.value)}>
+                                                                    <option value="">Pilih Tahap...</option>
+                                                                    {bosStages?.filter(s => !s?.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                                </select>
                                                             </div>
                                                         </div>
                                                     )}
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">POS BOS</label>
-                                                        <select 
-                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                            value={detail.bosPosId || ''}
-                                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosPosId', e.target.value)}
-                                                        >
-                                                            <option value="">Pilih POS...</option>
-                                                            {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
-                                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                                            ))}
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Tahap Pencairan</label>
-                                                        <select 
-                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                            value={detail.bosStageId || ''}
-                                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosStageId', e.target.value)}
-                                                        >
-                                                            <option value="">Pilih Tahap...</option>
-                                                            {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
-                                                                <option key={s.id} value={s.id}>{s.name}</option>
-                                                            ))}
-                                                        </select>
+
+                                                    <div className="space-y-4 pt-4 border-t border-slate-100">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Catatan / Justifikasi</label>
+                                                        <textarea className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-sm italic font-medium min-h-[80px]" value={item.description || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'description', e.target.value)} placeholder="Alasan pengadaan..." />
                                                     </div>
                                                 </div>
-                                            );
-                                        }
-                                        return null;
-                                    })()}
-                                    
-                                    {/* Unit Peruntukan */}
-                                    {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
-                                        <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-100 animate-in slide-in-from-bottom-2">
-                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                                <Building2 size={12} />
-                                                Unit Peruntukan Belanja (Penting)
-                                            </label>
-                                            <select 
-                                                className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                                value={item.targetUnitId || ''}
-                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'targetUnitId', e.target.value)}
-                                            >
-                                                <option value="">Pilih Unit Penerima Manfaat...</option>
-                                                {(() => {
-                                                    const fieldId = selectedUnitId.replace('FIELD-', '');
-                                                    const fieldUnits = units.filter(u => !u.isDeleted && u.fieldId === fieldId);
-                                                    const displayUnits = fieldUnits.length > 0 ? fieldUnits : units.filter(u => !u.isDeleted);
-                                                    return displayUnits;
-                                                })().map(u => (
-                                                    <option key={u.id} value={u.id}>{u.name}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    )}
-                                </div>
-                                )}
 
-                                {/* Monthly Breakdown Table (Reveal after adding rincian) */}
-                                {((item.components && item.components.length > 0) || !editingItem.isNewPlan) && (
-                                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-10 border-t border-slate-100">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-4">
-                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
-                                            <button 
-                                                onClick={() => {
-                                                    if (window.confirm('Reset semua alokasi bulanan?')) {
-                                                        handleItemUpdate(itemId, editingItem.id, 'months', {});
-                                                    }
-                                                }}
-                                                className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 border border-rose-100"
-                                            >
-                                                <RotateCcw size={10} />
-                                                Reset
-                                            </button>
-                                        </div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-60 italic">Masukkan jumlah Rupiah di setiap bulan</p>
+                                                {/* Monthly Spreading */}
+                                                <div className="p-10 bg-slate-900 rounded-[3rem] text-white space-y-8 shadow-2xl">
+                                                    <div className="flex items-center justify-between">
+                                                        <h4 className="text-xs font-black uppercase tracking-[0.2em] italic text-blue-400">Distribusi Alokasi Bulanan</h4>
+                                                        <button onClick={() => handleItemUpdate(itemId, editingItem.id, 'months', {})} className="text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors">RESET ALL</button>
+                                                    </div>
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                                        {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m, idx) => {
+                                                            const mData = item.months?.[m.id] || { m: false, jumlah: 0 };
+                                                            const isSelectable = (item.semester === '1' && idx < 6) || (item.semester === '2' && idx >= 6);
+                                                            return (
+                                                                <div key={m.id} className={`p-4 rounded-3xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400 shadow-xl' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')}`}>
+                                                                    <div className="flex items-center justify-between mb-2">
+                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-white">{m.shortLabel}</span>
+                                                                        <input type="checkbox" checked={mData.m} onChange={e => handleMonthlyUpdate(itemId, editingItem.id, m.id, 'm', e.target.checked)} className="w-4 h-4 rounded-lg bg-slate-800 border-slate-700 text-blue-500" />
+                                                                    </div>
+                                                                    <input type="text" className="w-full bg-transparent font-black text-xs outline-none p-0" placeholder="Rp 0" value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} onChange={e => handleMonthlyUpdate(itemId, editingItem.id, m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} />
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
                                     </div>
-                                    
-                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                        {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6].map(monthNum => {
-                                            const mData = (item.months || {})[monthNum] || { m: false, jumlah: 0 };
-                                            const jumlahVal = parseFloat(mData.jumlah) || 0;
+
+                                    {/* Modal Footer */}
+                                    <div className="p-10 border-t border-slate-100 bg-white flex items-center justify-between">
+                                        <button onClick={() => setEditingItem(null)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase hover:bg-slate-200 transition-all">BATALKAN</button>
+                                        {(() => {
+                                            const monthlyTotal = Object.values(item.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                            const canSave = item.total > 0 && Math.abs(item.total - monthlyTotal) < 1.1;
                                             return (
-                                                <div key={monthNum} className={`p-4 rounded-2xl border transition-all ${
-                                                    jumlahVal > 0 
-                                                        ? 'bg-blue-50 border-blue-200 shadow-sm' 
-                                                        : 'bg-slate-50 border-slate-100'
-                                                }`}>
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                                            jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
-                                                        }`}>
-                                                            {getMonthName(monthNum)}
-                                                        </span>
-                                                        <input 
-                                                            type="checkbox"
-                                                            checked={!!mData.m}
-                                                            onChange={e => {
-                                                                const updatedMonths = { ... (item.months || {}), [monthNum]: { ...mData, m: e.target.checked } };
-                                                                handleItemUpdate(itemId, editingItem.id, 'months', updatedMonths);
-                                                            }}
-                                                            className="w-4 h-4 rounded text-blue-600"
-                                                        />
-                                                    </div>
-                                                    <div className="relative">
-                                                        <span className={`absolute left-0 top-1/2 -translate-y-1/2 text-[9px] font-black italic ${jumlahVal > 0 ? 'text-blue-400' : 'text-slate-300'}`}>Rp</span>
-                                                        <input 
-                                                            type="text" 
-                                                            className="w-full bg-transparent pl-4 py-1 font-black text-slate-800 text-xs outline-none border-b border-transparent focus:border-blue-500 transition-all h-8 text-right"
-                                                            value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
-                                                            onChange={e => {
-                                                                const val = e.target.value.replace(/\D/g, '');
-                                                                const num = parseInt(val) || 0;
-                                                                const updatedMonths = { ... (item.months || {}), [monthNum]: { ...mData, jumlah: num, m: num > 0 ? true : mData.m } };
-                                                                handleItemUpdate(itemId, editingItem.id, 'months', updatedMonths);
-                                                            }}
-                                                            placeholder="0"
-                                                        />
-                                                    </div>
-                                                </div>
+                                                <button 
+                                                    disabled={!canSave}
+                                                    onClick={() => { 
+                                                        setCurrentPlan(prev => {
+                                                            const mId = editingItem.itemId || editingItem.id;
+                                                            const existingPlans = prev.expense[mId] || [];
+                                                            const updatedPlans = editingItem.isNewPlan 
+                                                                ? [...existingPlans, { ...item, total: monthlyTotal }]
+                                                                : existingPlans.map(p => p.id === editingItem.id ? { ...item, total: monthlyTotal } : p);
+                                                            return { ...prev, expense: { ...prev.expense, [mId]: updatedPlans } };
+                                                        });
+                                                        setEditingItem(null);
+                                                    }}
+                                                    className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl transition-all active:scale-95 flex items-center gap-3 ${canSave ? 'bg-blue-600 text-white hover:bg-slate-900 shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                                                >
+                                                    <Save size={18} />
+                                                    SIMPAN RENCANA BELANJA
+                                                </button>
                                             );
-                                        })}
+                                        })()}
                                     </div>
 
-                                    {/* Live Running Total */}
-                                    {(() => {
-                                        const monthsData = item.months || {};
-                                        const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                        const activeMonths = Object.values(monthsData).filter(m => m.m).length;
-
-                                        return (
-                                            <div className={`flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-6 rounded-3xl ${
-                                                monthlyTotal > 0 ? 'bg-emerald-50 border-2 border-emerald-200 shadow-lg shadow-emerald-500/5' : 'bg-slate-100 border border-dashed border-slate-300'
-                                            }`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-3 h-3 rounded-full ${ monthlyTotal > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400' }`} />
+                                    {/* Sub-Modal (Rincian Entry) */}
+                                    {showCompModal && (
+                                        <div className="absolute inset-0 z-[5000] flex items-center justify-center p-6 animate-in fade-in duration-200">
+                                            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm rounded-[3.5rem]" onClick={() => setShowCompModal(false)} />
+                                            <div className="bg-white rounded-[3rem] w-full max-w-xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10">
+                                                <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
                                                     <div>
-                                                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 leading-none mb-1">Total Alokasi Bulanan</p>
-                                                        <p className="text-[10px] text-slate-400 font-bold">{activeMonths} bulan terpilih</p>
+                                                        <h3 className="text-xl font-black italic uppercase italic tracking-tight">Detail Rincian</h3>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru'}</p>
+                                                    </div>
+                                                    <button onClick={() => setShowCompModal(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><X size={20}/></button>
+                                                </div>
+                                                <div className="p-8 space-y-6">
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
+                                                        <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({...entryForm, label: e.target.value})} />
+                                                    </div>
+                                                    <div className="grid grid-cols-3 gap-4">
+                                                        {['volume', 'satuan', 'kali'].map(field => (
+                                                            <div key={field} className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
+                                                                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '')})} />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
+                                                            <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
+                                                            <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
+                                                        </div>
+                                                        <Calculator size={32} className="opacity-20" />
                                                     </div>
                                                 </div>
-                                                
-                                                <div className="flex items-center gap-8">
-                                                    <div className="text-right">
-                                                        <p className={`text-2xl font-black tabular-nums leading-none ${ monthlyTotal > 0 ? 'text-emerald-700' : 'text-slate-400' }`}>
-                                                            Rp {monthlyTotal.toLocaleString('id-ID')}
-                                                        </p>
-                                                    </div>
+                                                <div className="p-8 pt-0 flex gap-4">
+                                                    <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-200">BATAL</button>
+                                                    <button disabled={!entryForm.label || !entryForm.volume || !entryForm.harga} onClick={() => handlePushComponent(itemId, editingItem.id)} className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 ${(!entryForm.label || !entryForm.volume || !entryForm.harga) ? 'bg-slate-200 text-slate-400' : 'bg-blue-600 text-white hover:bg-slate-900'}`}>{editingCompIdx !== null ? 'UPDATE' : 'SIMPAN RINCIAN'}</button>
                                                 </div>
                                             </div>
-                                        );
-                                    })()}
-                                    </div>
-                                )}
-                            </div>
-
-                        {/* Modal Footer */}
-                        {(() => {
-                            const monthsData = item.months || {};
-                            const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-
-                            return (
-                                <div className="p-8 bg-slate-900 flex items-center justify-between text-white">
-                                    <div className="flex flex-col">
-                                        <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-50">Total Anggaran Akhir</span>
-                                        <h3 className="text-3xl font-black italic">{formatRupiah(monthlyTotal)}</h3>
-                                    </div>
-                                    <div className="flex flex-col items-end gap-2">
-                                        <button 
-                                            onClick={async () => {
-                                                const finalMonthsData = item.months || {};
-                                                const finalMonthlyTotal = Object.values(finalMonthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                                
-                                                setCurrentPlan(prev => {
-                                                    const mId = editingItem.itemId || editingItem.id;
-                                                    const existingPlans = prev.expense[mId] || [];
-                                                    
-                                                    let updatedPlans;
-                                                    if (editingItem.isNewPlan) {
-                                                        const newPlan = {
-                                                            ...item,
-                                                            id: editingItem.id,
-                                                            itemId: mId,
-                                                            total: finalMonthlyTotal
-                                                        };
-                                                        
-                                                        const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
-                                                        if (alreadyExists) {
-                                                            updatedPlans = existingPlans.map(p => p.id === editingItem.id ? newPlan : p);
-                                                        } else {
-                                                            updatedPlans = [...existingPlans, newPlan];
-                                                        }
-                                                    } else {
-                                                        updatedPlans = existingPlans.map(p => 
-                                                            p.id === editingItem.id
-                                                                ? { ...p, ...item, total: finalMonthlyTotal }
-                                                                : p
-                                                        );
-                                                    }
-
-                                                    return {
-                                                        ...prev,
-                                                        expense: {
-                                                            ...prev.expense,
-                                                            [mId]: updatedPlans
-                                                        }
-                                                    };
-                                                });
-                                                
-                                                handleCloseModal();
-                                            }}
-                                            className="px-12 py-5 rounded-[2rem] font-black text-sm uppercase tracking-tight transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
-                                        >
-                                            {editingItem.isNewPlan ? 'SELESAI & SIMPAN RENCANA' : 'SIMPAN PERUBAHAN'}
-                                        </button>
-                                    </div>
-                                </div>
+                                        </div>
+                                    )}
+                                </>
                             );
                         })()}
-                    </>
-                );
-            })()}
                     </div>
                 </div>
-              )}
+            )}
             {/* Status Feedback Modal */}
             {showStatusModal && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
