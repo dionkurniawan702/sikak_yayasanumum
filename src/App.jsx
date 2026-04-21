@@ -107,7 +107,6 @@ function AppContent() {
     const { state } = useApp();
     return (
         <BrowserRouter>
-            {state.isSyncing && <SyncOverlay message={state.syncMessage} />}
             <Routes>
                 <Route path="/login" element={<Login />} />
                 
