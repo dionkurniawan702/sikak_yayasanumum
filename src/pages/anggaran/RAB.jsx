@@ -2152,9 +2152,14 @@ export default function RAB() {
                                                         : 'bg-slate-50 border-slate-100'
                                                 }`}>
                                                     <div className="flex items-center justify-between">
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${
                                                             jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
-                                                        }`}>{m.label}</span>
+                                                        }`}>
+                                                            {m.label}
+                                                            <span className={`font-bold normal-case tracking-normal ${jumlahVal > 0 ? 'text-blue-400' : 'text-slate-300'}`}>
+                                                                '{String(m.year).slice(-2)}
+                                                            </span>
+                                                        </span>
                                                         <input 
                                                             type="checkbox"
                                                             checked={mData.m}
