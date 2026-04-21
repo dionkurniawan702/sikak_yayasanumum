@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Edit2, Trash2, ChevronRight, ChevronDown, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, ChevronRight, ChevronDown, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 
@@ -230,6 +230,25 @@ export default function FieldUnitManagement() {
         return (unitDistributions[incomeId] || []).reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
     };
 
+    const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+
+    const handleDeduplicate = async () => {
+        if (!window.confirm('Bersihkan semua data duplikat (Bidang/Unit dengan nama yang sama)? Proses ini akan menggabungkan data dan tidak bisa dibatalkan.')) return;
+        
+        setLoading(true);
+        try {
+            const response = await api.post('/repair/deduplicate');
+            window.alert(`${response.message}\n\nDetail:\n${response.details.join('\n')}`);
+            // Force refresh data
+            const freshData = await api.fetchAllData();
+            if (freshData) dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+        } catch (err) {
+            window.alert('Gagal membersihkan duplikat: ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleDuplicateUnit = async (sourceUnit) => {
         const newName = window.prompt(`Masukkan nama unit baru (Duplikat dari ${sourceUnit.name}):`, `${sourceUnit.name} 2`);
         if (!newName || !newName.trim()) return;
@@ -237,7 +256,7 @@ export default function FieldUnitManagement() {
         setLoading(true);
         setError(null);
 
-        const newUnitId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        const newUnitId = generateId();
         const newUnitPayload = {
             id: newUnitId,
             name: newName,
@@ -257,7 +276,7 @@ export default function FieldUnitManagement() {
             for (const incomeId of incomeItemIds) {
                 const settingToClone = sourceSettings.filter(s => s.incomeItemId === incomeId).map(s => ({
                     ...s,
-                    id: crypto.randomUUID(), // New distribution ID
+                    id: generateId(), // New distribution ID
                     unitId: newUnitId,
                     destId: s.destId === sourceUnit.id ? newUnitId : s.destId, // If target was the unit itself, point to new unit
                     destName: s.destName === sourceUnit.name ? newName : s.destName
@@ -434,7 +453,7 @@ export default function FieldUnitManagement() {
                                                     className="p-3 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all shadow-sm hover:shadow-md flex items-center gap-2"
                                                     title="Duplikat Unit (Beserta Konfigurasi)"
                                                 >
-                                                    <Copy size={18} />
+                                                    <Share2 size={18} />
                                                 </button>
                                                 <button onClick={() => handleDelete(unit.id)} className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all shadow-sm hover:shadow-md"><Trash2 size={18} /></button>
                                             </div>
