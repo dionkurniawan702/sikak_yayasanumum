@@ -583,6 +583,29 @@ export default function RAB() {
         });
     };
 
+    const handleResetBudget = (itemId) => {
+        const type = activeTab.toLowerCase();
+        if (!window.confirm('Apakah Anda yakin ingin mengosongkan semua rincian dan alokasi bulanan untuk item ini?')) return;
+        
+        setCurrentPlan(prev => ({
+            ...prev,
+            [type]: {
+                ...prev[type],
+                [itemId]: {
+                    ...prev[type][itemId],
+                    components: [],
+                    months: {},
+                    total: 0,
+                    bosAmount: 0
+                }
+            }
+        }));
+        setEntryForm({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
+        setEditingCompIdx(null);
+        setMessage({ type: 'success', text: 'Anggaran item telah dikosongkan.' });
+        setTimeout(() => setMessage(null), 3000);
+    };
+
     const handleSyncMonthly = (itemId) => {
         const type = activeTab.toLowerCase();
         setCurrentPlan(prev => {
@@ -1839,6 +1862,13 @@ export default function RAB() {
                                         </div>
                                     );
                                 })()}
+                                <button 
+                                    onClick={() => handleResetBudget(editingItem.id)}
+                                    className="px-6 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2"
+                                >
+                                    <Trash2 size={14} />
+                                    KOSONGKAN
+                                </button>
                                 <button 
                                     onClick={() => setEditingItem(null)}
                                     className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
