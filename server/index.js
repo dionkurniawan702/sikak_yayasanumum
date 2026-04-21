@@ -69,7 +69,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.4.4-diag'
+        version: '1.5.0'
     });
 });
 
@@ -773,6 +773,36 @@ const ensureAcademicYears = async () => {
 
     try {
         const client = getPrisma();
+
+        // --- SELF-HEALING: Ensure Date Columns Exist ---
+        try {
+            const tableVariations = ['AcademicYear', 'academicyear', 'academic_year'];
+            let targetTable = null;
+            for (const t of tableVariations) {
+                try {
+                    await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
+                    targetTable = t;
+                    break;
+                } catch (e) {}
+            }
+
+            if (targetTable) {
+                const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+                const hasCol = (name) => columns.some(c => (c.Field || c.field).toLowerCase() === name.toLowerCase());
+                
+                if (!hasCol('startDate')) {
+                    console.log(`[Self-Healing] Adding startDate to ${targetTable}...`);
+                    await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN startDate DATETIME NULL`);
+                }
+                if (!hasCol('endDate')) {
+                    console.log(`[Self-Healing] Adding endDate to ${targetTable}...`);
+                    await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN endDate DATETIME NULL`);
+                }
+            }
+        } catch (colErr) {
+            console.error(`[Self-Healing Error] AcademicYear columns: ${colErr.message}`);
+        }
+
         console.log('[Seed] Ensuring academic years exist with standard IDs...');
         for (const y of requiredYears) {
             await client.academicYear.upsert({
