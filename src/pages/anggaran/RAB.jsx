@@ -380,97 +380,106 @@ export default function RAB() {
     // - [x] Clear Months only (Kosongkan kotak bulanan saat migrasi)
     // - [x] Sinkronisasi handlePush & handleAdd
     // - [ ] Git commit & push
-    const handleItemUpdate = (itemId, field, value) => {
+    const handleItemUpdate = (itemId, planId, field, value) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
-            const currentItem = prev[type][itemId] || {
-                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}, components: []
-            };
+            const plans = prev[type][itemId] || [];
             
-            const updatedItem = { ...currentItem, [field]: value };
-            
-            // Recalculate total if volume, kali, or harga changes (Legacy / Single Mode)
-            if (['volume', 'kali', 'harga'].includes(field)) {
-                updatedItem.total = (parseFloat(updatedItem.volume) || 0) * 
-                                   (parseFloat(updatedItem.kali) || 0) * 
-                                   (parseFloat(updatedItem.harga) || 0);
+            // For a NEW plan being filled in the modal for the first time
+            if (plans.length === 0 || !plans.find(p => p.id === planId)) {
+                // If it's a new plan not yet in the array, we'll handle it during SIMPAN.
+                // But for reactive UI, we need it in the state. 
+                // However, most metadata is edited in the modal.
+                // Let's ensure the array exists and find/add the plan.
             }
-            
-            // If we have components, the total is ALWAYS the sum of components
-            if (updatedItem.components && updatedItem.components.length > 0) {
-                updatedItem.total = updatedItem.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-            }
-            
-            // Special logic if semester changes: auto-toggle checkboxes
-            if (field === 'semester') {
-                const ay = academicYears.find(ay => ay.id === selectedYearId);
-                const yearMonths = generateMonths(ay);
-                const monthsData = { ...(updatedItem.months || {}) };
+
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId && p.id !== itemId) return p;
                 
-                yearMonths.forEach((m, idx) => {
-                    const isSemester1 = idx < 6;
-                    const targetSemester = value === '1' ? isSemester1 : !isSemester1;
-                    monthsData[m.id] = {
-                        ...(monthsData[m.id] || { jumlah: 0 }),
-                        m: targetSemester
-                    };
-                });
-                updatedItem.months = monthsData;
+                const updatedPlan = { ...p, [field]: value };
+                
+                // Recalculate total if volume, kali, or harga changes (Legacy / Single Mode)
+                if (['volume', 'kali', 'harga'].includes(field)) {
+                    updatedPlan.total = (parseFloat(updatedPlan.volume) || 0) * 
+                                       (parseFloat(updatedPlan.kali) || 0) * 
+                                       (parseFloat(updatedPlan.harga) || 0);
+                }
+                
+                // If we have components, the total is ALWAYS the sum of components
+                if (updatedPlan.components && updatedPlan.components.length > 0) {
+                    updatedPlan.total = updatedPlan.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+                }
+                
+                // Semester logic: auto-toggle checkboxes
+                if (field === 'semester') {
+                    const ay = academicYears.find(a => a.id === selectedYearId);
+                    const yearMonths = generateMonths(ay);
+                    const monthsData = { ...(updatedPlan.months || {}) };
+                    yearMonths.forEach((m, idx) => {
+                        const isSemester1 = idx < 6;
+                        const targetSemester = value === '1' ? isSemester1 : !isSemester1;
+                        monthsData[m.id] = { ...(monthsData[m.id] || { jumlah: 0 }), m: targetSemester };
+                    });
+                    updatedPlan.months = monthsData;
+                }
+                
+                return updatedPlan;
+            });
+
+            // Special case: if planId is actually a NEW plan not yet in the array
+            if (plans.length > 0 && !plans.find(p => p.id === planId)) {
+                 // The Save button in the modal handles adding to the array, 
+                 // but for intermediate steps (like changing semester in a new plan), 
+                 // we might need a temporary entry or just update the Save logic.
+                 // For now, let's keep it simple and ensure Save is the source of truth for new additions.
             }
-            
+
             return {
                 ...prev,
-                [type]: { ...prev[type], [itemId]: updatedItem }
+                [type]: { ...prev[type], [itemId]: updatedPlans }
             };
         });
     };
 
-    const handleComponentUpdate = (itemId, index, field, value) => {
+    const handleComponentUpdate = (itemId, planId, index, field, value) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
-            const currentItem = prev[type][itemId] || { components: [] };
-            const components = [...(currentItem.components || [])];
-            
-            // Initialize component if it doesn't exist (though it should by index)
-            if (!components[index]) {
-                components[index] = { label: '', volume: 0, satuan: '', kali: 1, harga: 0, total: 0 };
-            }
+            const plans = prev[type][itemId] || [];
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                
+                const components = [...(p.components || [])];
+                if (!components[index]) {
+                    components[index] = { label: '', volume: 0, satuan: '', kali: 1, harga: 0, total: 0 };
+                }
+                
+                const updatedComp = { ...components[index], [field]: value };
+                if (['volume', 'kali', 'harga'].includes(field)) {
+                    updatedComp.total = (parseFloat(updatedComp.volume) || 0) * 
+                                       (parseFloat(updatedComp.kali) || 0) * 
+                                       (parseFloat(updatedComp.harga) || 0);
+                }
+                components[index] = updatedComp;
+                
+                return { 
+                    ...p, 
+                    components,
+                    total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0)
+                };
+            });
 
-            const updatedComp = { ...components[index], [field]: value };
-
-            // Calc subtotal
-            if (['volume', 'kali', 'harga'].includes(field)) {
-                updatedComp.total = (parseFloat(updatedComp.volume) || 0) * 
-                                   (parseFloat(updatedComp.kali) || 0) * 
-                                   (parseFloat(updatedComp.harga) || 0);
-            }
-
-            components[index] = updatedComp;
-            
-            const updatedItem = { 
-                ...currentItem, 
-                components,
-                // Always sync top-level total
-                total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0)
-            };
-
-            return {
-                ...prev,
-                [type]: { ...prev[type], [itemId]: updatedItem }
-            };
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
     };
 
-    const handlePushComponent = (itemId) => {
+    const handlePushComponent = (itemId, planId) => {
         if (!entryForm.label || !entryForm.volume || !entryForm.harga) {
             setMessage({ type: 'error', text: 'Mohon isi Keterangan, Volume, dan Harga!' });
-            setTimeout(() => setMessage(null), 3000);
             return;
         }
 
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 0) * (parseFloat(entryForm.harga) || 0);
-        
         const newComp = {
             ...entryForm,
             volume: parseFloat(entryForm.volume),
@@ -480,128 +489,74 @@ export default function RAB() {
         };
 
         setCurrentPlan(prev => {
-            const currentItem = prev[type][itemId] || { components: [] };
-            
-            // If item has legacy data and 0 components, convert it first
-            let components = currentItem.components && currentItem.components.length > 0 
-                ? [...currentItem.components] 
-                : [];
-
-            if (editingCompIdx !== null) {
-                // Update mode
-                components[editingCompIdx] = newComp;
-            } else {
-                // Add mode
-                components.push(newComp);
-            }
-
-            const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-            
-            const updatedItem = { 
-                ...currentItem, 
-                components, 
-                total: newTotal
-            };
-
-            // If it's a BOS view/item, sync bosAmount too
-            if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
-                updatedItem.useBos = true;
-                updatedItem.bosAmount = newTotal;
-            }
-
-            return {
-                ...prev,
-                [type]: {
-                    ...prev[type],
-                    [itemId]: updatedItem
+            const plans = prev[type][itemId] || [];
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                
+                const components = p.components && p.components.length > 0 ? [...p.components] : [];
+                if (editingCompIdx !== null) components[editingCompIdx] = newComp;
+                else components.push(newComp);
+                
+                const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+                const updatedPlan = { ...p, components, total: newTotal };
+                
+                if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
+                    updatedPlan.useBos = true;
+                    updatedPlan.bosAmount = newTotal;
                 }
-            };
+                return updatedPlan;
+            });
+
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
 
-        // Reset Form & Refocus
-        setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
-        setEditingCompIdx(null);
-        if (labelInputRef.current) labelInputRef.current.focus();
-    };
-
-    const handleLoadToEdit = (index, component) => {
-        setEntryForm({
-            label: component.label,
-            volume: component.volume,
-            satuan: component.satuan,
-            kali: component.kali,
-            harga: component.harga
-        });
-        setEditingCompIdx(index);
-        if (labelInputRef.current) labelInputRef.current.focus();
-    };
-
-    const handleCancelEdit = () => {
         setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
         setEditingCompIdx(null);
     };
 
-    const handleAddComponent = (itemId) => {
+    const handleAddComponent = (itemId, planId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
-            const currentItem = prev[type][itemId] || { components: [] };
-            
-            // If item has legacy data and 0 components, convert it first
-            let components = currentItem.components && currentItem.components.length > 0 
-                ? [...currentItem.components] 
-                : [];
-
-            components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
-
-            const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-            const updatedItem = { 
-                ...currentItem, 
-                components, 
-                total: newTotal 
-            };
-
-            // If it's a BOS view/item, sync bosAmount too
-            if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
-                updatedItem.useBos = true;
-                updatedItem.bosAmount = newTotal;
-            }
-
-            return {
-                ...prev,
-                [type]: {
-                    ...prev[type],
-                    [itemId]: updatedItem
+            const plans = prev[type][itemId] || [];
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                
+                const components = p.components && p.components.length > 0 ? [...p.components] : [];
+                components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
+                
+                const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+                const updatedPlan = { ...p, components, total: newTotal };
+                
+                if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
+                    updatedPlan.useBos = true;
+                    updatedPlan.bosAmount = newTotal;
                 }
-            };
+                return updatedPlan;
+            });
+
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
     };
 
-    const handleRemoveComponent = (itemId, index) => {
+    const handleRemoveComponent = (itemId, planId, index) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
-            const currentItem = prev[type][itemId] || { components: [] };
-            const components = (currentItem.components || []).filter((_, i) => i !== index);
-            
-            const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-            const updatedItem = { 
-                ...currentItem, 
-                components, 
-                total: newTotal 
-            };
-
-            // If it's a BOS view/item, sync bosAmount too
-            if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
-                updatedItem.useBos = true;
-                updatedItem.bosAmount = newTotal;
-            }
-
-            return {
-                ...prev,
-                [type]: {
-                    ...prev[type],
-                    [itemId]: updatedItem
+            const plans = prev[type][itemId] || [];
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                
+                const components = (p.components || []).filter((_, i) => i !== index);
+                const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+                const updatedPlan = { ...p, components, total: newTotal };
+                
+                if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
+                    updatedPlan.useBos = true;
+                    updatedPlan.bosAmount = newTotal;
                 }
-            };
+                return updatedPlan;
+            });
+
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
     };
 
@@ -715,40 +670,33 @@ export default function RAB() {
         setTimeout(() => setMessage(null), 8000);
     };
 
-    const handleMonthlyUpdate = (itemId, monthId, field, value) => {
+    const handleMonthlyUpdate = (itemId, planId, monthId, field, value) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
-            const currentItem = prev[type][itemId] || {
-                volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}
-            };
-            
-            const currentMonths = currentItem.months || {};
-            const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
-            
-            let updatedMonthData = { ...currentMonthData, [field]: value };
+            const plans = prev[type][itemId] || [];
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                
+                const currentMonths = p.months || {};
+                const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
+                let updatedMonthData = { ...currentMonthData, [field]: value };
+                
+                // RESTORED LOGIC: If unchecking, zero out the amount
+                if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
+                // RESTORED LOGIC: If typing an amount > 0, auto-check the month
+                if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
+                // RESTORED LOGIC: If typing 0 or empty, uncheck the month
+                if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
+                
+                const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
+                
+                // Recalculate total based on monthly sum
+                const newTotal = Object.values(updatedMonths).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                
+                return { ...p, months: updatedMonths, total: newTotal };
+            });
 
-            // Logic 1: If unchecking, zero out the amount
-            if (field === 'm' && value === false) {
-                updatedMonthData.jumlah = 0;
-            }
-            // Logic 2: If typing an amount > 0, auto-check the month
-            if (field === 'jumlah' && (parseFloat(value) || 0) > 0) {
-                updatedMonthData.m = true;
-            }
-            // Logic 3: If typing 0 or empty, uncheck the month
-            if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) {
-                updatedMonthData.m = false;
-            }
-            
-            const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
-            
-            return {
-                ...prev,
-                [type]: {
-                    ...prev[type],
-                    [itemId]: { ...currentItem, months: updatedMonths }
-                }
-            };
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
     };
 
@@ -1381,11 +1329,11 @@ export default function RAB() {
     );
 
     const totalIncome = useMemo(() => 
-        Object.values(activePlan?.income || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
+        Object.values(activePlan?.income || {}).flat().reduce((sum, val) => sum + (val?.total || 0), 0)
     , [activePlan?.income]);
 
     const totalExpense = useMemo(() => 
-        Object.values(activePlan?.expense || {}).reduce((sum, val) => sum + (val?.total || 0), 0)
+        Object.values(activePlan?.expense || {}).flat().reduce((sum, val) => sum + (val?.total || 0), 0)
     , [activePlan?.expense]);
 
     // NEW: Calculate BOS Specifics
@@ -1415,7 +1363,7 @@ export default function RAB() {
     }, [bosAllocations, selectedYearId, selectedUnitId]);
 
     const totalExpenseBos = useMemo(() => {
-        return Object.values(activePlan?.expense || {}).reduce((sum, val) => {
+        return Object.values(activePlan?.expense || {}).flat().reduce((sum, val) => {
             return sum + (val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0);
         }, 0);
     }, [activePlan?.expense]);
@@ -1816,37 +1764,28 @@ export default function RAB() {
                     <div className="bg-white rounded-[3.5rem] w-full max-w-[95vw] relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[95vh] ring-12 ring-white/10">
                         {(() => {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
-                            const item = activePlan[type][editingItem.id] || { total: 0, bosAmount: 0, useBos: false, components: [], months: {} };
+                            const itemId = editingItem.itemId || editingItem.id;
+                            const plans = activePlan[type][itemId] || [];
+                            // Find specific plan OR use defaults for new one
+                            const item = plans.find(p => p.id === editingItem.id) || { 
+                                total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1' 
+                            };
+
                             return (
                                 <>
                         {/* Modal Header */}
                         <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                             <div>
-                                {editingItem.isNew ? (
-                                    <div className="space-y-2">
-                                        <input 
-                                            type="text" 
-                                            className="text-2xl font-black text-slate-900 tracking-tight italic uppercase bg-transparent border-b-4 border-slate-200 focus:border-blue-500 outline-none w-full max-w-2xl"
-                                            placeholder="TULIS NAMA RENCANA BELANJA..."
-                                            value={editingItem.name}
-                                            onChange={e => setEditingItem({...editingItem, name: e.target.value})}
-                                            autoFocus
-                                        />
-                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest italic animate-pulse">Menyiapkan Rencana Anggaran Baru...</p>
-                                    </div>
-                                ) : (
-                                    <>
-                                        <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
-                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
-                                            ID: {editingItem.id} • TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
-                                        </p>
-                                    </>
-                                )}
+                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
+                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
+                                    {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${editingItem.id} • `}
+                                    TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
+                                </p>
                             </div>
                             <div className="flex items-center gap-4">
                                 {(() => {
-                                    const detail = activePlan[type][editingItem.id] || { total: 0, bosAmount: 0, useBos: false };
-                                    const allocated = rapData.itemAllocations[editingItem.id] || 0;
+                                    const detail = item;
+                                    const allocated = rapData.itemAllocations[itemId] || 0;
                                     const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
                                     const isOver = yayasanSpent > (allocated + 100);
                                     
@@ -1854,14 +1793,14 @@ export default function RAB() {
                                         return (
                                             <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
                                                 <AlertCircle size={18} />
-                                                DILARANG: BEBAN YAYASAN MELEBIHI LIMIT!
+                                                DILARANG: MELEBIHI LIMIT!
                                             </div>
                                         );
                                     }
                                     return (
                                         <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
                                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Yayasan</span>
-                                        <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
+                                            <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
                                         </div>
                                     );
                                 })()}
@@ -1883,8 +1822,8 @@ export default function RAB() {
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja Utama</label>
                                         <select 
                                             className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                            value={activePlan[type][editingItem.id]?.programId || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'programId', e.target.value)}
+                                            value={item.programId || ''}
+                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'programId', e.target.value)}
                                         >
                                             <option value="">Pilih Program Belanja...</option>
                                             {expensePrograms?.filter(p => !p?.isDeleted)?.map(p => (
@@ -1899,9 +1838,9 @@ export default function RAB() {
                                             {[1, 2].map(s => (
                                                 <button 
                                                     key={s}
-                                                    onClick={() => handleItemUpdate(editingItem.id, 'semester', s.toString())}
+                                                    onClick={() => handleItemUpdate(itemId, editingItem.id, 'semester', s.toString())}
                                                     className={`rounded-2xl font-black text-[11px] uppercase tracking-widest border-4 transition-all flex items-center justify-center ${
-                                                        (activePlan[type][editingItem.id]?.semester || '1') === s.toString() 
+                                                        (item.semester || '1') === s.toString() 
                                                         ? 'bg-indigo-600 border-indigo-100 text-white shadow-xl shadow-indigo-200 scale-105' 
                                                         : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'
                                                     }`}
@@ -1918,19 +1857,19 @@ export default function RAB() {
                                             {isBosRecipient && fundSourceFilter === 'all' && (
                                                 <button 
                                                     onClick={() => {
-                                                        const detail = activePlan[type][editingItem.id] || {};
+                                                        const detail = item;
                                                         const nextState = !detail.useBos;
-                                                        handleItemUpdate(editingItem.id, 'useBos', nextState);
-                                                        if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(editingItem.id, 'bosAmount', 0);
+                                                        handleItemUpdate(itemId, editingItem.id, 'useBos', nextState);
+                                                        if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(itemId, editingItem.id, 'bosAmount', 0);
                                                     }}
                                                     className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 ${
-                                                        activePlan[type][editingItem.id]?.useBos 
+                                                        item.useBos 
                                                             ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' 
                                                             : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                                     }`}
                                                 >
                                                     <Wallet size={14} />
-                                                    {activePlan[type][editingItem.id]?.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
+                                                    {item.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
                                                 </button>
                                             )}
                                             <div className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
@@ -1946,14 +1885,14 @@ export default function RAB() {
                                         <textarea 
                                             className="w-full p-6 bg-white border-2 border-slate-100 rounded-[2rem] font-medium text-slate-700 outline-none focus:border-indigo-500 transition-all min-h-[100px] shadow-sm italic placeholder:text-slate-300"
                                             placeholder="Tuliskan alasan pengadaan, spesifikasi singkat, atau catatan tambahan lainnya di sini..."
-                                            value={activePlan[type][editingItem.id]?.description || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'description', e.target.value)}
+                                            value={item.description || ''}
+                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'description', e.target.value)}
                                         />
                                     </div>
                                 </div>
 
                                 {(() => {
-                                    const detail = activePlan[type][editingItem.id] || {};
+                                    const detail = item;
                                     const isBosView = fundSourceFilter === 'BOS';
                                     const isYayasanView = fundSourceFilter === 'Yayasan';
                                     const showBos = isBosView || (detail.useBos && !isYayasanView);
@@ -1972,7 +1911,7 @@ export default function RAB() {
                                                                 type="text"
                                                                 className="w-full p-4 pl-10 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
                                                                 value={parseInt(detail.bosAmount || 0).toLocaleString('id-ID')}
-                                                                onChange={e => handleItemUpdate(editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
+                                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
                                                             />
                                                         </div>
                                                     </div>
@@ -1982,7 +1921,7 @@ export default function RAB() {
                                                     <select 
                                                         className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
                                                         value={detail.bosPosId || ''}
-                                                        onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
+                                                        onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosPosId', e.target.value)}
                                                     >
                                                         <option value="">Pilih POS...</option>
                                                         {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
@@ -1995,7 +1934,7 @@ export default function RAB() {
                                                     <select 
                                                         className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
                                                         value={detail.bosStageId || ''}
-                                                        onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
+                                                        onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosStageId', e.target.value)}
                                                     >
                                                         <option value="">Pilih Tahap...</option>
                                                         {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
@@ -2021,8 +1960,8 @@ export default function RAB() {
                                         </label>
                                         <select 
                                             className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={activePlan[type][editingItem.id]?.targetUnitId || ''}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'targetUnitId', e.target.value)}
+                                            value={item.targetUnitId || ''}
+                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'targetUnitId', e.target.value)}
                                         >
                                             <option value="">Pilih Unit Penerima Manfaat...</option>
                                             {(() => {
@@ -2084,7 +2023,7 @@ export default function RAB() {
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 italic">
                                                 {(() => {
-                                                    const comps = activePlan[type][editingItem.id]?.components || [];
+                                                    const comps = item?.components || [];
                                                     return comps.map((comp, idx) => (
                                                         <tr key={idx} className="group hover:bg-slate-50 transition-colors">
                                                             <td className="px-4 py-3">
@@ -2092,7 +2031,7 @@ export default function RAB() {
                                                                     type="text" 
                                                                     className="w-full bg-transparent p-2 font-black text-slate-800 text-xs tracking-tight outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
                                                                     value={comp.label}
-                                                                    onChange={e => handleComponentUpdate(editingItem.id, idx, 'label', e.target.value)}
+                                                                    onChange={e => handleComponentUpdate(itemId, editingItem.id, idx, 'label', e.target.value)}
                                                                 />
                                                             </td>
                                                             <td className="px-2 py-3 text-center">
@@ -2102,7 +2041,7 @@ export default function RAB() {
                                                                     value={comp.volume}
                                                                     onChange={e => {
                                                                         const val = e.target.value.replace(/\D/g, '');
-                                                                        handleComponentUpdate(editingItem.id, idx, 'volume', val ? parseFloat(val) : 0);
+                                                                        handleComponentUpdate(itemId, editingItem.id, idx, 'volume', val ? parseFloat(val) : 0);
                                                                     }}
                                                                 />
                                                             </td>
@@ -2111,7 +2050,7 @@ export default function RAB() {
                                                                     type="text" 
                                                                     className="w-16 mx-auto bg-transparent p-2 font-black text-slate-400 text-[10px] text-center uppercase outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
                                                                     value={comp.satuan || ''}
-                                                                    onChange={e => handleComponentUpdate(editingItem.id, idx, 'satuan', e.target.value)}
+                                                                    onChange={e => handleComponentUpdate(itemId, editingItem.id, idx, 'satuan', e.target.value)}
                                                                 />
                                                             </td>
                                                             <td className="px-2 py-3 text-center">
@@ -2121,7 +2060,7 @@ export default function RAB() {
                                                                     value={comp.kali || 1}
                                                                     onChange={e => {
                                                                         const val = e.target.value.replace(/\D/g, '');
-                                                                        handleComponentUpdate(editingItem.id, idx, 'kali', val ? parseFloat(val) : 1);
+                                                                        handleComponentUpdate(itemId, editingItem.id, idx, 'kali', val ? parseFloat(val) : 1);
                                                                     }}
                                                                 />
                                                             </td>
@@ -2132,7 +2071,7 @@ export default function RAB() {
                                                                     value={Number(comp.harga).toLocaleString('id-ID')}
                                                                     onChange={e => {
                                                                         const val = e.target.value.replace(/\D/g, '');
-                                                                        handleComponentUpdate(editingItem.id, idx, 'harga', val ? parseFloat(val) : 0);
+                                                                        handleComponentUpdate(itemId, editingItem.id, idx, 'harga', val ? parseFloat(val) : 0);
                                                                     }}
                                                                 />
                                                             </td>
@@ -2141,7 +2080,7 @@ export default function RAB() {
                                                             </td>
                                                             <td className="px-4 py-3 text-center">
                                                                 <button 
-                                                                    onClick={() => handleRemoveComponent(editingItem.id, idx)}
+                                                                    onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)}
                                                                     className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
                                                                 >
                                                                     <Trash2 size={14} />
@@ -2204,7 +2143,7 @@ export default function RAB() {
                                                     </td>
                                                     <td className="px-4 py-4 text-center">
                                                         <button 
-                                                            onClick={() => handlePushComponent(editingItem.id)}
+                                                            onClick={() => handlePushComponent(itemId, editingItem.id)}
                                                             className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all"
                                                         >
                                                             <Plus size={18} />
@@ -2244,7 +2183,11 @@ export default function RAB() {
                                         <div className="flex items-center gap-4">
                                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
                                             <button 
-                                                onClick={() => handleResetBudget(editingItem.id)}
+                                                onClick={() => {
+                                                    if (window.confirm('Reset semua alokasi bulanan?')) {
+                                                        handleItemUpdate(itemId, editingItem.id, 'months', {});
+                                                    }
+                                                }}
                                                 className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 border border-rose-100"
                                             >
                                                 <Trash2 size={12} />
@@ -2258,7 +2201,7 @@ export default function RAB() {
 
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {months.map(m => {
-                                            const mData = activePlan[type][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
+                                            const mData = item?.months?.[m.id] || { jumlah: 0, m: false };
                                             const jumlahVal = parseFloat(mData.jumlah) || 0;
                                             return (
                                                 <div key={m.id} className={`p-4 rounded-2xl border flex flex-col gap-3 transition-all ${
@@ -2275,7 +2218,7 @@ export default function RAB() {
                                                         <input 
                                                             type="checkbox"
                                                             checked={mData.m}
-                                                            onChange={e => handleMonthlyUpdate(editingItem.id, m.id, 'm', e.target.checked)}
+                                                            onChange={e => handleMonthlyUpdate(itemId, editingItem.id, m.id, 'm', e.target.checked)}
                                                             className="w-4 h-4 rounded text-blue-600"
                                                         />
                                                     </div>
@@ -2291,7 +2234,7 @@ export default function RAB() {
                                                         value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
                                                         onChange={e => {
                                                             const numeric = e.target.value.replace(/\D/g, '');
-                                                            handleMonthlyUpdate(editingItem.id, m.id, 'jumlah', numeric ? parseFloat(numeric) : 0);
+                                                            handleMonthlyUpdate(itemId, editingItem.id, m.id, 'jumlah', numeric ? parseFloat(numeric) : 0);
                                                         }}
                                                         placeholder="0"
                                                     />
@@ -2352,30 +2295,35 @@ export default function RAB() {
                                     <div className="flex flex-col items-end gap-2">
                                          <button 
                                             onClick={async () => {
-                                                const monthsData = item.months || {};
-                                                const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                                const finalMonthsData = item.months || {};
+                                                const finalMonthlyTotal = Object.values(finalMonthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                                 
                                                 setCurrentPlan(prev => {
-                                                    const itemId = editingItem.itemId || editingItem.id;
-                                                    const existingPlans = prev.expense[itemId] || [];
+                                                    const mId = editingItem.itemId || editingItem.id;
+                                                    const existingPlans = prev.expense[mId] || [];
                                                     
                                                     let updatedPlans;
                                                     if (editingItem.isNewPlan) {
-                                                        // Adding a NEW plan to an existing item
-                                                        updatedPlans = [
-                                                            ...existingPlans,
-                                                            {
-                                                                ...item,
-                                                                id: editingItem.id,
-                                                                itemId: itemId,
-                                                                total: monthlyTotal
-                                                            }
-                                                        ];
+                                                        // Ensure the new plan is added correctly
+                                                        const newPlan = {
+                                                            ...item,
+                                                            id: editingItem.id,
+                                                            itemId: mId,
+                                                            total: finalMonthlyTotal
+                                                        };
+                                                        
+                                                        // Check if it already exists (to avoid duplicates if saved twice)
+                                                        const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
+                                                        if (alreadyExists) {
+                                                            updatedPlans = existingPlans.map(p => p.id === editingItem.id ? newPlan : p);
+                                                        } else {
+                                                            updatedPlans = [...existingPlans, newPlan];
+                                                        }
                                                     } else {
                                                         // Editing an EXISTING plan
                                                         updatedPlans = existingPlans.map(p => 
-                                                            p.id === editingItem.planId || p.id === editingItem.id
-                                                                ? { ...p, ...item, total: monthlyTotal }
+                                                            p.id === editingItem.id
+                                                                ? { ...p, ...item, total: finalMonthlyTotal }
                                                                 : p
                                                         );
                                                     }
@@ -2384,7 +2332,7 @@ export default function RAB() {
                                                         ...prev,
                                                         expense: {
                                                             ...prev.expense,
-                                                            [itemId]: updatedPlans
+                                                            [mId]: updatedPlans
                                                         }
                                                     };
                                                 });
