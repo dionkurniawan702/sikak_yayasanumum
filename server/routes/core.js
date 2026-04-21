@@ -262,10 +262,29 @@ router.post('/users', async (req, res) => {
     try {
         const { username, password, name, role, unitId, fieldId, id } = req.body;
         
-        // Secure Password Hashing
+        const prisma = getPrisma(req);
+        
+        // 1. Check if username already exists
+        const existing = await prisma.user.findFirst({
+            where: { username, isDeleted: false }
+        });
+        
+        if (existing) {
+            return res.status(400).json({ 
+                error: `Username "${username}" sudah digunakan. Silakan pilih username lain.` 
+            });
+        }
+
+        // 2. Check if ID already exists (though USR-uuid should be unique)
+        const existingId = await prisma.user.findUnique({ where: { id } });
+        if (existingId) {
+             return res.status(400).json({ error: `INTERNAL ERROR: User ID sudah ada.` });
+        }
+        
+        // 3. Secure Password Hashing
         const hashedPassword = await bcrypt.hash(password || 'sikak123', 10);
         
-        const data = await getPrisma(req).user.create({ 
+        const data = await prisma.user.create({ 
             data: { 
                 id, 
                 username, 
@@ -279,26 +298,47 @@ router.post('/users', async (req, res) => {
         res.json({ data });
     } catch (error) {
         console.error(`[Add User Error] ${error.message}`);
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: 'Username ini sudah terdaftar di sistem.' });
+        }
         res.status(500).json({ error: error.message });
     }
 });
 
 router.put('/users/:id', async (req, res) => {
     try {
+        const id = req.params.id;
         const updateData = { ...req.body };
+        const prisma = getPrisma(req);
         
-        // Remove password if empty to prevent overwriting with blank
+        // 1. If username is being changed, check for duplicates
+        if (updateData.username) {
+            const existing = await prisma.user.findFirst({
+                where: { 
+                    username: updateData.username, 
+                    isDeleted: false,
+                    id: { not: id } // Must not be the same user
+                }
+            });
+            if (existing) {
+                return res.status(400).json({ 
+                    error: `Gagal memperbarui: Username "${updateData.username}" sudah digunakan oleh orang lain.` 
+                });
+            }
+        }
+        
+        // 2. Handle password if provided
         if (updateData.password) {
             updateData.password = await bcrypt.hash(updateData.password, 10);
         } else {
             delete updateData.password;
         }
 
-        // Clean up ID tracking
+        // 3. Clean up fields that shouldn't be overridden by body
         delete updateData.id;
 
-        const data = await getPrisma(req).user.update({
-            where: { id: req.params.id },
+        const data = await prisma.user.update({
+            where: { id },
             data: { 
                 ...updateData, 
                 isDeleted: updateData.isDeleted !== undefined ? updateData.isDeleted : undefined 
@@ -307,6 +347,9 @@ router.put('/users/:id', async (req, res) => {
         res.json({ data });
     } catch (error) {
         console.error(`[Update User Error] ${error.message}`);
+        if (error.code === 'P2002') {
+            return res.status(400).json({ error: 'Username ini sudah digunakan oleh user lain.' });
+        }
         res.status(500).json({ error: error.message });
     }
 });
