@@ -184,37 +184,6 @@ export default function RAB() {
             lastPlanIdRef.current = planId;
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
-    
-    // Force migration of legacy items to Components, but clear their Months distribution
-    useEffect(() => {
-        if (!editingItem) return;
-        const type = activeTab.toLowerCase();
-        const item = currentPlan[type][editingItem.id];
-        
-        // If it's a legacy item (has total but NO components yet)
-        if (item && item.total > 0 && (!item.components || item.components.length === 0)) {
-            setCurrentPlan(prev => ({
-                ...prev,
-                [type]: {
-                    ...prev[type],
-                    [editingItem.id]: {
-                        ...item,
-                        components: [{
-                            label: 'Komponen Utama (Legacy)',
-                            volume: item.volume || 1,
-                            satuan: item.satuan || '',
-                            kali: item.kali || 1,
-                            harga: item.harga || item.total,
-                            total: item.total
-                        }],
-                        months: {}, // CLEAR MONTHS as requested (blank sheet for months)
-                        bosAmount: item.bosAmount || 0
-                    }
-                }
-            }));
-        }
-    }, [editingItem, activeTab]);
-
     // Compute consolidated data if Yayasan is selected
     const consolidatedPlan = useMemo(() => {
         try {
@@ -382,7 +351,6 @@ export default function RAB() {
 
 
     // - [x] Hapus fitur Migrasi Otomatis (Auto-Migration) di `RAB.jsx`
-    // - [x] Hapus `useEffect` pembuat komponen "Legacy"
     // - [x] Bersihkan logika fallback `currentItem.total` di `handlePushComponent`
     // - [x] Perbaiki perhitungan `activeMonths` di UI
     // - [x] Hanya hitung bulan yang status centangnya `true`
