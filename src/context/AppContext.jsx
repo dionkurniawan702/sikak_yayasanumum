@@ -35,11 +35,11 @@ const defaultState = {
     users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
     globalAcademicYearId: null, // Persisted globally
-    lastAction: null,
-    isInitialized: false,
     isSyncing: false,
     syncMessage: '',
-    version: '1.3.0'
+    lastSyncedAt: null,
+    syncResults: null,
+    version: '1.3.1'
 };
 
 const CURRENT_VERSION = '1.3.0';
@@ -163,12 +163,6 @@ let syncTimeout = null;
 function saveState(state) {
     try {
         localStorage.setItem('sikak-yayasan-data', JSON.stringify(state));
-        if (isRemote) {
-            if (syncTimeout) clearTimeout(syncTimeout);
-            syncTimeout = setTimeout(() => {
-                api.syncWholeState(state);
-            }, 1000);
-        }
     } catch (e) { /* ignore */ }
 }
 
@@ -223,6 +217,16 @@ function appReducer(state, action) {
             break;
         case 'SET_ALL_DATA': {
             const serverData = action.payload || {};
+            
+            // Safety Check: Don't overwrite with empty data if we already have local data
+            const hasLocalData = state.accounts?.length > 15 || state.units?.length > 0;
+            const hasServerData = serverData.accounts?.length > 0 || serverData.units?.length > 0;
+            
+            if (hasLocalData && !hasServerData && state.isInitialized) {
+                console.warn('[Sync Safety] Server returned empty data while local state is populated. Ignoring SET_ALL_DATA to prevent data loss.');
+                return state;
+            }
+
             newState = {
                 ...state,
                 accounts: serverData.accounts || state.accounts || [],
@@ -590,12 +594,20 @@ function appReducer(state, action) {
             break;
 
         case 'SET_SYNCING': newState = { ...state, isSyncing: action.payload.status, syncMessage: action.payload.message || '' }; break;
+        case 'SET_SYNC_RESULT': newState = { ...state, lastSyncedAt: action.payload.timestamp, syncResults: action.payload.results }; break;
 
         default:
             return state;
     }
     saveState(newState);
-    return { ...newState, lastAction: action };
+    return { 
+        ...newState, 
+        lastAction: action,
+        isSyncing: action.type === 'SET_SYNCING' ? action.payload.status : state.isSyncing,
+        syncMessage: action.type === 'SET_SYNCING' ? (action.payload.message || '') : state.syncMessage,
+        lastSyncedAt: (action.type === 'SET_SYNC_RESULT' || action.type === 'SET_ALL_DATA') ? (action.payload.timestamp || state.lastSyncedAt) : state.lastSyncedAt,
+        syncResults: (action.type === 'SET_SYNC_RESULT' || action.type === 'SET_ALL_DATA') ? (action.payload.results || state.syncResults) : state.syncResults
+    };
 }
 
 export function AppProvider({ children }) {
@@ -648,14 +660,31 @@ export function AppProvider({ children }) {
         return () => clearInterval(pollInterval);
     }, [isRemote, state.currentUser, state.isInitialized]);
 
+    // Auto-Sync Trigger (Background)
     useEffect(() => {
-        if (!state.isInitialized) return;
-        saveState(state);
-    }, [state]);
+        if (!isRemote || !state.currentUser || !state.isInitialized) return;
+        
+        // Debounce sync to avoid spamming the server
+        const timer = setTimeout(async () => {
+            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
+            try {
+                const response = await api.syncWholeState(state);
+                dispatch({ 
+                    type: 'SET_SYNC_RESULT', 
+                    payload: { 
+                        timestamp: response.timestamp || new Date().toISOString(),
+                        results: response.results 
+                    } 
+                });
+            } catch (err) {
+                console.warn('[Sync] Auto-Sync failed:', err.message);
+            } finally {
+                dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+            }
+        }, 3000); // Wait 3 seconds of inactivity before pushing
 
-    // Note: Explicit pushAction calls are now used in components
-    // to avoid redundant sync and race conditions.
-    // to avoid redundant sync and race conditions.
+        return () => clearTimeout(timer);
+    }, [state.accounts, state.journals, state.assets, state.programs, state.units, state.fields, state.students, state.rabPlans, state.bosStages]); 
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>

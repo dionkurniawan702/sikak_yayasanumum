@@ -179,8 +179,6 @@ let lastSyncStats = null;
 app.post('/api/sync', async (req, res) => {
     try {
         const client = getPrisma();
-        lastSyncError = null;
-
         const {
             accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
@@ -197,149 +195,145 @@ app.post('/api/sync', async (req, res) => {
             payloadSize: JSON.stringify(req.body || {}).length
         };
 
-        console.log(`[Sync] Starting sync 1.4.5${isPurge ? ' (PURGE MODE)' : ''}. Payload: ${lastSyncStats.payloadSize} bytes`);
+        const results = {
+            core: { status: 'pending' },
+            finance: { status: 'pending' },
+            budget: { status: 'pending' },
+            students: { status: 'pending' }
+        };
 
-        await client.$transaction(async (tx) => {
-            try {
+        const batchUpsert = async (tx, model, data) => {
+            if (!data || !Array.isArray(data) || data.length === 0) return;
+
+            for (const item of data) {
+                try {
+                    let cleanItem = { ...item, isDeleted: !!item.isDeleted };
+                    
+                    // Model-specific cleaning
+                    if (model === 'program') {
+                        const name = (item.name || '').toLowerCase();
+                        const isExpense = name.includes('ekskul') || name.includes('konsumsi') || 
+                                          name.includes('rapat') || name.includes('operasional') || 
+                                          name.includes('belanja');
+                        cleanItem.type = isExpense ? 'Expense' : (item.type || 'Donation');
+                        cleanItem.targetAmount = cleanItem.targetAmount ? parseFloat(cleanItem.targetAmount) : null;
+                        delete cleanItem.initialDonationBalance;
+                        delete cleanItem.initialResultBalance;
+                    }
+                    if (model === 'distributionSetting') {
+                        cleanItem.percentage = cleanItem.percentage ? parseFloat(cleanItem.percentage) : 0;
+                        cleanItem.destType = cleanItem.destType || 'unit';
+                        cleanItem.destId = cleanItem.destId || null;
+                    }
+                    if (model === 'field') delete cleanItem.fieldId;
+                    if (model === 'academicYear') { delete cleanItem.startDate; delete cleanItem.endDate; }
+                    if (model === 'classGroup') delete cleanItem.unitId;
+                    if (model === 'account') {
+                        if (cleanItem.initialBalance !== undefined) cleanItem.balance = parseFloat(cleanItem.initialBalance) || 0;
+                        delete cleanItem.initialBalance; delete cleanItem.normalBalance;
+                    }
+
+                    await tx[model].upsert({
+                        where: { id: item.id },
+                        update: { ...cleanItem, id: undefined },
+                        create: { ...cleanItem }
+                    });
+                } catch (e) {
+                    console.error(`[Sync Item Fail] ${model} ${item.id}: ${e.message}`);
+                    // Continue with other items in the batch
+                }
+            }
+        };
+
+        // 1. Core Data (Fields, Units, Users, Years)
+        try {
+            await client.$transaction(async (tx) => {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
-
                 if (isPurge) {
-                    console.log('[Sync] Purging existing database tables...');
-                    const tablesToPurge = [
-                        'StudentIncomeDetail', 'Student', 'Class', 'AcademicYear',
-                        'StudentStatus', 'ParentStatus', 'positions', 'distribution_settings',
-                        'expense_items', 'income_items', 'class_groups', 'bos_stages', 'bos_pos',
-                        'accounts', 'journals', 'assets', 'programs', 'expense_programs', 'budget_allocations',
-                        'budget_requests', 'budget_reports', 'rab_plans', 'users'
-                    ];
-                    for (const table of tablesToPurge) {
-                        try {
-                            await tx.$executeRawUnsafe(`DELETE FROM \`${table}\``);
-                        } catch (te) {
-                            console.warn(`[Sync Warn] Could not purge ${table}: ${te.message}`);
-                        }
-                    }
+                    await tx.$executeRawUnsafe('DELETE FROM `fields`');
+                    await tx.$executeRawUnsafe('DELETE FROM `units`');
+                    await tx.$executeRawUnsafe('DELETE FROM `users`');
                 }
+                await batchUpsert(tx, 'field', fields);
+                await batchUpsert(tx, 'unit', units);
+                await batchUpsert(tx, 'user', users);
+                await batchUpsert(tx, 'academicYear', academicYears);
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+            });
+            results.core.status = 'success';
+        } catch (e) {
+            results.core.status = 'error';
+            results.core.message = e.message;
+            console.error(`[Sync Group Fail] Core: ${e.message}`);
+        }
 
-                const batchUpsert = async (model, data) => {
-                    if (!data || !Array.isArray(data) || data.length === 0) return;
-
-                    if (isPurge) {
-                        const cleanData = data.map(item => {
-                            let clean = {
-                                ...item,
-                                isDeleted: !!item.isDeleted
-                            };
-                            if (model === 'program') {
-                                const name = (item.name || '').toLowerCase();
-                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') ||
-                                    name.includes('rapat') || name.includes('operasional') ||
-                                    name.includes('belanja');
-                                // Force 'Expense' if name matches, otherwise use incoming type or default
-                                clean.type = isExpense ? 'Expense' : (item.type || 'Donation');
-                            }
-                            if (model === 'bosPos') return { id: item.id, name: item.name, isDeleted: !!item.isDeleted };
-                            if (model === 'bosStage') return { id: item.id, name: item.name, academicYearId: item.academicYearId || null, isDeleted: !!item.isDeleted };
-                            return clean;
-                        });
-                        await tx[model].createMany({ data: cleanData, skipDuplicates: true });
-                    } else {
-                        for (const item of data) {
-                            let cleanItem = {
-                                ...item,
-                                isDeleted: !!item.isDeleted
-                            };
-                            if (model === 'program') {
-                                const name = (item.name || '').toLowerCase();
-                                const isExpense = name.includes('ekskul') || name.includes('konsumsi') ||
-                                    name.includes('rapat') || name.includes('operasional') ||
-                                    name.includes('belanja');
-                                cleanItem.type = isExpense ? 'Expense' : (item.type || 'Donation');
-
-                                // Fix Prisma Float mapping
-                                cleanItem.targetAmount = cleanItem.targetAmount ? parseFloat(cleanItem.targetAmount) : null;
-
-                                // REMOVE non-schema fields (used only in frontend/accounts)
-                                delete cleanItem.initialDonationBalance;
-                                delete cleanItem.initialResultBalance;
-                            }
-                            if (model === 'distributionSetting') {
-                                cleanItem.percentage = cleanItem.percentage ? parseFloat(cleanItem.percentage) : 0;
-                                // Preserve or default distribution columns
-                                cleanItem.destType = cleanItem.destType || 'unit';
-                                cleanItem.destId = cleanItem.destId || null;
-                            }
-                            if (model === 'field') {
-                                delete cleanItem.fieldId;
-                            }
-                            if (model === 'academicYear') {
-                                delete cleanItem.startDate;
-                                delete cleanItem.endDate;
-                            }
-                            if (model === 'classGroup') {
-                                delete cleanItem.unitId;
-                            }
-                            if (model === 'account') {
-                                if (cleanItem.initialBalance !== undefined) {
-                                    cleanItem.balance = parseFloat(cleanItem.initialBalance) || 0;
-                                }
-                                delete cleanItem.initialBalance;
-                                delete cleanItem.normalBalance;
-                            }
-                            await tx[model].upsert({
-                                where: { id: item.id },
-                                update: { ...cleanItem, id: undefined },
-                                create: { ...cleanItem }
-                            });
-                        }
-                    }
-                };
-
-                await batchUpsert('field', fields);
-                await batchUpsert('unit', units);
-                await batchUpsert('user', users);
-                await batchUpsert('academicYear', academicYears);
-                await batchUpsert('classGroup', classGroups);
-                await batchUpsert('account', accounts);
-
-                if (journals && Array.isArray(journals)) {
-                    for (const j of journals) {
-                        try {
-                            const entriesJson = typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries;
-                            await tx.journal.upsert({
-                                where: { id: j.id },
-                                update: { ...j, entries: entriesJson, id: undefined },
-                                create: { ...j, entries: entriesJson }
-                            });
-                        } catch (je) {
-                            console.error(`[Sync Fail] Journal ${j.id}: ${je.message}`);
-                        }
-                    }
+        // 2. Finance Data (Accounts, Journals, Assets, Programs)
+        try {
+            await client.$transaction(async (tx) => {
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+                if (isPurge) {
+                    await tx.$executeRawUnsafe('DELETE FROM `accounts`');
+                    await tx.$executeRawUnsafe('DELETE FROM `journals`');
+                    await tx.$executeRawUnsafe('DELETE FROM `assets`');
+                    await tx.$executeRawUnsafe('DELETE FROM `programs`');
+                    await tx.$executeRawUnsafe('DELETE FROM `expense_programs`');
                 }
+                await batchUpsert(tx, 'account', accounts);
+                await batchUpsert(tx, 'journal', journals);
+                await batchUpsert(tx, 'asset', assets);
+                await batchUpsert(tx, 'program', programs);
+                await batchUpsert(tx, 'expenseProgram', expensePrograms);
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+            });
+            results.finance.status = 'success';
+        } catch (e) {
+            results.finance.status = 'error';
+            results.finance.message = e.message;
+            console.error(`[Sync Group Fail] Finance: ${e.message}`);
+        }
 
-                await batchUpsert('asset', assets);
-                await batchUpsert('program', programs);
-                await batchUpsert('expenseProgram', expensePrograms);
-
-                if (classes && Array.isArray(classes)) {
-                    for (const c of classes) {
-                        try {
-                            await tx.class.upsert({
-                                where: { id: c.id },
-                                update: { name: c.name, unitId: c.unitId, isDeleted: !!c.isDeleted },
-                                create: { id: c.id, name: c.name, unitId: c.unitId, isDeleted: !!c.isDeleted }
-                            });
-                        } catch (ce) {
-                            console.error(`[Sync Fail] Class ${c.id}: ${ce.message}`);
-                        }
-                    }
+        // 3. Budget Data (RAB, BOS, Allocations)
+        try {
+            await client.$transaction(async (tx) => {
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+                if (isPurge) {
+                    await tx.$executeRawUnsafe('DELETE FROM `distribution_settings`');
+                    await tx.$executeRawUnsafe('DELETE FROM `rab_plans`');
+                    await tx.$executeRawUnsafe('DELETE FROM `bos_stages`');
+                    await tx.$executeRawUnsafe('DELETE FROM `bos_pos`');
+                    await tx.$executeRawUnsafe('DELETE FROM `budget_allocations`');
                 }
+                await batchUpsert(tx, 'distributionSetting', distributionSettings);
+                await batchUpsert(tx, 'rabPlan', rabPlans);
+                await batchUpsert(tx, 'bosStage', bosStages);
+                await batchUpsert(tx, 'bosPos', bosPosList);
+                await batchUpsert(tx, 'budgetAllocation', budgets);
+                await batchUpsert(tx, 'budgetRequest', budgetRequests);
+                await batchUpsert(tx, 'budgetReport', budgetReports);
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
+            });
+            results.budget.status = 'success';
+        } catch (e) {
+            results.budget.status = 'error';
+            results.budget.message = e.message;
+            console.error(`[Sync Group Fail] Budget: ${e.message}`);
+        }
 
-                await batchUpsert('position', positions);
-                await batchUpsert('studentStatus', studentStatuses);
-                await batchUpsert('parentStatus', parentStatuses);
-                await batchUpsert('incomeItem', incomeItems);
-                await batchUpsert('expenseItem', expenseItems);
+        // 4. Student Data (Students, Classes, Groups, Statuses)
+        try {
+            await client.$transaction(async (tx) => {
+                await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0');
+                if (isPurge) {
+                    await tx.$executeRawUnsafe('DELETE FROM `Student`');
+                    await tx.$executeRawUnsafe('DELETE FROM `Class`');
+                    await tx.$executeRawUnsafe('DELETE FROM `class_groups`');
+                }
+                
+                await batchUpsert(tx, 'classGroup', classGroups);
+                await batchUpsert(tx, 'position', positions);
+                await batchUpsert(tx, 'studentStatus', studentStatuses);
+                await batchUpsert(tx, 'parentStatus', parentStatuses);
+                await batchUpsert(tx, 'class', classes);
 
                 if (students && Array.isArray(students)) {
                     for (const s of students) {
@@ -347,7 +341,7 @@ app.post('/api/sync', async (req, res) => {
                             await tx.student.upsert({
                                 where: { id: s.id },
                                 update: {
-                                    nis: s.nis, name: s.name, unitId: s.unitId,
+                                    id: s.id, nis: s.nis, name: s.name, unitId: s.unitId,
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
                                     isDeleted: !!s.isDeleted
@@ -375,25 +369,24 @@ app.post('/api/sync', async (req, res) => {
                         }
                     }
                 }
-
-                await batchUpsert('distributionSetting', distributionSettings);
-                await batchUpsert('rabPlan', rabPlans);
-                await batchUpsert('bosStage', bosStages);
-                await batchUpsert('bosPos', bosPosList);
-
-                await batchUpsert('budgetAllocation', budgets);
-                await batchUpsert('budgetRequest', budgetRequests);
-                await batchUpsert('budgetReport', budgetReports);
-
-            } finally {
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
-            }
-        }, { timeout: 120000 });
+            });
+            results.students.status = 'success';
+        } catch (e) {
+            results.students.status = 'error';
+            results.students.message = e.message;
+            console.error(`[Sync Group Fail] Students: ${e.message}`);
+        }
 
-        res.json({ status: 'ok', message: 'Sync Successful 1.4.7' });
+        const overallSuccess = Object.values(results).every(r => r.status === 'success');
+        res.json({ 
+            status: overallSuccess ? 'ok' : 'partial', 
+            message: overallSuccess ? 'Sync Successful' : 'Sync completed with some group errors',
+            results,
+            timestamp: new Date().toISOString()
+        });
     } catch (error) {
-        lastSyncError = error.message;
-        console.error(`[Sync Error] ${error.message}`);
+        console.error(`[Fatal Sync Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });

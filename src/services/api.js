@@ -366,7 +366,7 @@ export const api = {
     },
 
     async syncWholeState(state) {
-        if (!isRemote) return;
+        if (!isRemote) return { status: 'disabled' };
         try {
             const syncData = {
                 accounts: state.accounts || [],
@@ -374,6 +374,7 @@ export const api = {
                 assets: state.assets || [],
                 programs: state.programs || [],
                 expensePrograms: state.expensePrograms || [],
+                users: state.users || [],
                 budgets: state.budgets || [],
                 fields: state.fields || [],
                 units: state.units || [],
@@ -381,8 +382,6 @@ export const api = {
                 incomeItems: state.incomeItems || [],
                 expenseItems: state.expenseItems || [],
                 distributionSettings: state.distributionSettings || [],
-                budgetRequests: state.budgetRequests || [],
-                budgetReports: state.budgetReports || [],
                 academicYears: state.academicYears || [],
                 classGroups: state.classGroups || [],
                 positions: state.positions || [],
@@ -390,12 +389,17 @@ export const api = {
                 parentStatuses: state.parentStatuses || [],
                 classes: state.classes || [],
                 rabPlans: state.rabPlans || [],
+                budgetRequests: state.budgetRequests || [],
+                budgetReports: state.budgetReports || [],
                 bosStages: state.bosStages || [],
                 bosPosList: state.bosPosList || []
             };
-            await this.post('/sync', syncData);
+
+            const response = await this.post('/sync', syncData);
+            return response;
         } catch (error) {
             console.error('Whole state sync failed:', error.message);
+            throw error;
         }
     }
 };
