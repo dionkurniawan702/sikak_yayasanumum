@@ -111,6 +111,7 @@ export default function RAB() {
     const [searchTerm, setSearchTerm] = useState('');
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
+    const [editingItem, setEditingItem] = useState(null);
     const [modalStep, setModalStep] = useState(1); // 1: Details Entry, 2: Program & Monthly Allocation
 
     useEffect(() => {
