@@ -214,6 +214,7 @@ function appReducer(state, action) {
             break;
         case 'SET_ALL_DATA': {
             const serverData = action.payload || {};
+            console.log('[Sync Diagnostic] Received Academic Years from Server:', serverData.academicYears);
             
             // Safety Check: Don't overwrite with empty data if we already have local data
             const hasLocalData = state.accounts?.length > 15 || state.units?.length > 0;
@@ -665,7 +666,10 @@ export function AppProvider({ children }) {
         const timer = setTimeout(async () => {
             dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
             try {
+                console.group('Syncing State to Server');
+                console.log('Payload:', state);
                 const response = await api.syncWholeState(state);
+                console.groupEnd();
                 dispatch({ 
                     type: 'SET_SYNC_RESULT', 
                     payload: { 

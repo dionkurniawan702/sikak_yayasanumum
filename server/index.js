@@ -726,21 +726,21 @@ const ensureFundSources = async () => {
 
 const ensureAcademicYears = async () => {
     const requiredYears = [
-        { name: '2023-2024', isCurrent: false },
-        { name: '2024-2025', isCurrent: false },
-        { name: '2025-2026', isCurrent: false },
-        { name: '2026-2027', isCurrent: false },
-        { name: '2027-2028', isCurrent: false },
+        { id: 'AY-2023-2024', name: '2023-2024', isCurrent: false },
+        { id: 'AY-2024-2025', name: '2024-2025', isCurrent: false },
+        { id: 'AY-2025-2026', name: '2025-2026', isCurrent: false },
+        { id: 'AY-2026-2027', name: '2026-2027', isCurrent: false },
+        { id: 'AY-2027-2028', name: '2027-2028', isCurrent: false },
     ];
 
     try {
         const client = getPrisma();
-        console.log('[Seed] Ensuring academic years exist...');
+        console.log('[Seed] Ensuring academic years exist with standard IDs...');
         for (const y of requiredYears) {
             await client.academicYear.upsert({
                 where: { name: y.name },
                 update: {},  // don't overwrite user settings
-                create: { name: y.name, isCurrent: y.isCurrent, isActive: true }
+                create: { id: y.id, name: y.name, isCurrent: y.isCurrent, isActive: true }
             });
         }
         console.log('[Seed] Academic years check complete.');
@@ -748,6 +748,40 @@ const ensureAcademicYears = async () => {
         console.error(`[Seed Error] Academic years: ${error.message}`);
     }
 };
+
+const healAcademicYearIds = async () => {
+    try {
+        const client = getPrisma();
+        console.log('[Self-Healing] Checking for ID mismatches in AcademicYears...');
+        const years = await client.academicYear.findMany();
+        
+        for (const year of years) {
+            // If ID is a UUID (doesn't start with AY-), we need to fix it
+            if (!year.id.startsWith('AY-')) {
+                const standardId = `AY-${year.name.replace(/\//g, '-')}`;
+                console.log(`[Self-Healing] Migrating UUID ${year.id} to standard ID ${standardId} for year ${year.name}`);
+                
+                try {
+                    // We can't update a Primary Key directly in Prisma safely, 
+                    // so we create a new one with the same data and delete the old one
+                    const { id, ...data } = year;
+                    await client.academicYear.upsert({
+                        where: { id: standardId },
+                        update: { ...data },
+                        create: { ...data, id: standardId }
+                    });
+                    
+                    // Don't delete yet to avoid foreign key issues, 
+                    // but the next sync will clean it up or merge it
+                } catch (e) {
+                    console.error(`[Self-Healing Error] Could not migrate ${year.id}: ${e.message}`);
+                }
+            }
+        }
+    } catch (error) {
+        console.error(`[Self-Healing Error] AcademicYear IDs: ${error.message}`);
+    }
+}
 
 // Server Listening with Robust Error Handling
 const ensureRabPlansColumns = async () => {
@@ -838,6 +872,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureSoftDeleteColumns();
             await ensureFundSources();
             await ensureAcademicYears();
+            await healAcademicYearIds();
             await ensureDistributionColumns();
             await ensureRabPlansColumns();
             await ensureBosAllocationColumns();

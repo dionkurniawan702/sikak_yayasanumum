@@ -20,6 +20,7 @@ async function safeFetch(url, options = {}) {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
+        console.log(`[API Diagnostic] Fetching: ${url}`, options);
         const response = await fetch(url, { ...options, headers });
         
         // --- 1. STATUS CHECK ---

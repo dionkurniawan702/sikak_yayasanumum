@@ -454,8 +454,23 @@ router.put('/academic-years/:id', async (req, res) => {
     try {
         const { name, startDate, endDate, isCurrent, isActive, isDeleted } = req.body;
         console.log(`[AcademicYear Update] ID: ${req.params.id}, Dates: ${startDate} to ${endDate}`);
-        const data = await getPrisma(req).academicYear.update({
-            where: { id: req.params.id },
+        let data;
+        
+        // Strategy: First try by ID, then try by Name (in case of ID mismatch)
+        const client = getPrisma(req);
+        let existing = await client.academicYear.findUnique({ where: { id: req.params.id } });
+        
+        if (!existing) {
+            console.log(`[AcademicYear Update] ID ${req.params.id} not found, trying name fallback: ${name}`);
+            existing = await client.academicYear.findUnique({ where: { name: name } });
+        }
+
+        if (!existing) {
+            throw new Error(`Academic Year with ID ${req.params.id} or name ${name} not found`);
+        }
+
+        data = await client.academicYear.update({
+            where: { id: existing.id },
             data: {
                 name,
                 startDate: startDate ? new Date(startDate) : undefined,
