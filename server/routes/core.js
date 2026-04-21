@@ -473,13 +473,26 @@ router.put('/academic-years/:id', async (req, res) => {
             where: { id: existing.id },
             data: {
                 name,
-                startDate: startDate ? new Date(startDate) : undefined,
-                endDate: endDate ? new Date(endDate) : undefined,
                 isCurrent: isCurrent !== undefined ? !!isCurrent : undefined,
                 isActive: isActive !== undefined ? !!isActive : undefined,
                 isDeleted: isDeleted !== undefined ? !!isDeleted : undefined
             }
         });
+
+        // FORCE PERSISTENCE: Use Raw SQL for Date fields to bypass potentially stale Prisma Client
+        if (startDate || endDate) {
+            console.log(`[AcademicYear Force] Executing Raw SQL for ${existing.id}`);
+            const startStr = startDate ? new Date(startDate).toISOString().slice(0, 19).replace('T', ' ') : null;
+            const endStr = endDate ? new Date(endDate).toISOString().slice(0, 19).replace('T', ' ') : null;
+            
+            try {
+                if (startStr) await client.$executeRawUnsafe(`UPDATE AcademicYear SET startDate = ? WHERE id = ?`, startStr, existing.id);
+                if (endStr) await client.$executeRawUnsafe(`UPDATE AcademicYear SET endDate = ? WHERE id = ?`, endStr, existing.id);
+                console.log(`[AcademicYear Force] Raw SQL Success for ${existing.id}`);
+            } catch (sqlErr) {
+                console.error(`[AcademicYear Force Error] ${sqlErr.message}`);
+            }
+        }
         console.log(`[AcademicYear Update] Success for ${name}`);
         res.json({ data });
     } catch (error) {

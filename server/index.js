@@ -240,9 +240,17 @@ app.post('/api/sync', async (req, res) => {
                             if (existing) {
                                 await tx.academicYear.update({
                                     where: { id: existing.id },
-                                    data: { ...cleanItem, id: undefined }
+                                    data: { ...cleanItem, id: undefined, startDate: undefined, endDate: undefined }
                                 });
-                                continue; // Skip the default upsert
+                                
+                                // FORCE PERSISTENCE for dates via Raw SQL
+                                if (item.startDate || item.endDate) {
+                                    const startStr = item.startDate ? new Date(item.startDate).toISOString().slice(0, 19).replace('T', ' ') : null;
+                                    const endStr = item.endDate ? new Date(item.endDate).toISOString().slice(0, 19).replace('T', ' ') : null;
+                                    if (startStr) await tx.$executeRawUnsafe(`UPDATE AcademicYear SET startDate = ? WHERE id = ?`, startStr, existing.id);
+                                    if (endStr) await tx.$executeRawUnsafe(`UPDATE AcademicYear SET endDate = ? WHERE id = ?`, endStr, existing.id);
+                                }
+                                continue; 
                             }
                         } catch (e) {
                             console.error(`[Sync Fix Error] ${e.message}`);
