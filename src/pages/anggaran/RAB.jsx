@@ -112,14 +112,7 @@ export default function RAB() {
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
     const [editingItem, setEditingItem] = useState(null);
-    const [modalStep, setModalStep] = useState(1); // 1: Details Entry, 2: Program & Monthly Allocation
 
-    useEffect(() => {
-        if (editingItem) {
-            // New Plan starts at step 1, Existing plan (Edit) starts at step 2
-            setModalStep(editingItem.isNewPlan ? 1 : 2);
-        }
-    }, [editingItem]);
 
     // States for Journal-style component entry
     const [entryForm, setEntryForm] = useState({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
@@ -1811,32 +1804,6 @@ export default function RAB() {
                                 </p>
                             </div>
 
-                            {/* Step Indicator (Progress Bar) */}
-                            {editingItem.isNewPlan && (
-                                <div className="hidden lg:flex items-center gap-10">
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-all ${modalStep === 1 ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' : 'bg-emerald-100 text-emerald-600'}`}>
-                                            {modalStep === 1 ? '1' : <CheckCircle2 size={20} />}
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap 1</span>
-                                            <span className={`text-xs font-black uppercase tracking-tighter ${modalStep === 1 ? 'text-slate-900' : 'text-slate-400'}`}>Daftar Rincian</span>
-                                        </div>
-                                    </div>
-                                    <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
-                                        <div className={`h-full bg-blue-600 transition-all duration-500 ${modalStep === 2 ? 'w-full' : 'w-0'}`} />
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-all ${modalStep === 2 ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' : 'bg-slate-100 text-slate-400'}`}>
-                                            2
-                                        </div>
-                                        <div className="flex flex-col">
-                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap 2</span>
-                                            <span className={`text-xs font-black uppercase tracking-tighter ${modalStep === 2 ? 'text-slate-900' : 'text-slate-400'}`}>Program & Alokasi</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
 
                             <div className="flex items-center gap-4">
                                 {(() => {
@@ -1869,193 +1836,8 @@ export default function RAB() {
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
-                            {/* Section 1: Basic Info & Program (Staged) */}
-                            {modalStep === 2 && (
-                                <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                                    <div className="lg:col-span-1 space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja Utama</label>
-                                        <select 
-                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                            value={item.programId || ''}
-                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'programId', e.target.value)}
-                                        >
-                                            <option value="">Pilih Program Belanja...</option>
-                                            {expensePrograms?.filter(p => !p?.isDeleted)?.map(p => (
-                                                <option key={p.id} value={p.id}>{p.name}</option>
-                                            )) || <option disabled>Tidak ada program tersedia</option>}
-                                        </select>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
-                                        <div className="grid grid-cols-2 gap-3 h-[58px]">
-                                            {[1, 2].map(s => (
-                                                <button 
-                                                    key={s}
-                                                    onClick={() => handleItemUpdate(itemId, editingItem.id, 'semester', s.toString())}
-                                                    className={`rounded-2xl font-black text-[11px] uppercase tracking-widest border-4 transition-all flex items-center justify-center ${
-                                                        (item.semester || '1') === s.toString() 
-                                                        ? 'bg-indigo-600 border-indigo-100 text-white shadow-xl shadow-indigo-200 scale-105' 
-                                                        : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'
-                                                    }`}
-                                                >
-                                                    Semester {s}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sumber Dana & Status</label>
-                                        <div className="flex items-center gap-3 h-[58px]">
-                                            {isBosRecipient && fundSourceFilter === 'all' && (
-                                                <button 
-                                                    onClick={() => {
-                                                        const detail = item;
-                                                        const nextState = !detail.useBos;
-                                                        handleItemUpdate(itemId, editingItem.id, 'useBos', nextState);
-                                                        if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(itemId, editingItem.id, 'bosAmount', 0);
-                                                    }}
-                                                    className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 ${
-                                                        item.useBos 
-                                                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' 
-                                                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
-                                                    }`}
-                                                >
-                                                    <Wallet size={14} />
-                                                    {item.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
-                                                </button>
-                                            )}
-                                            <div className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
-                                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />}
-                                                {currentPlan.status === 'APPROVED' ? 'Disetujui' : 'Draft'}
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Description Field (NEW) */}
-                                    <div className="md:col-span-3 space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Justifikasi Belanja</label>
-                                        <textarea 
-                                            className="w-full p-6 bg-white border-2 border-slate-100 rounded-[2rem] font-medium text-slate-700 outline-none focus:border-indigo-500 transition-all min-h-[100px] shadow-sm italic placeholder:text-slate-300"
-                                            placeholder="Tuliskan alasan pengadaan, spesifikasi singkat, atau catatan tambahan lainnya di sini..."
-                                            value={item.description || ''}
-                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'description', e.target.value)}
-                                        />
-                                    </div>
-                                </div>
-
-                                {(() => {
-                                    const detail = item;
-                                    const isBosView = fundSourceFilter === 'BOS';
-                                    const isYayasanView = fundSourceFilter === 'Yayasan';
-                                    const showBos = isBosView || (detail.useBos && !isYayasanView);
-
-                                    if (showBos) {
-                                        return (
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100/50 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                {!isBosView && (
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 flex justify-between">
-                                                            Porsi Dana BOS (Rp)
-                                                        </label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-xs italic">Rp</span>
-                                                            <input 
-                                                                type="text"
-                                                                className="w-full p-4 pl-10 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
-                                                                value={parseInt(detail.bosAmount || 0).toLocaleString('id-ID')}
-                                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                )}
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">POS BOS</label>
-                                                    <select 
-                                                        className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                        value={detail.bosPosId || ''}
-                                                        onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosPosId', e.target.value)}
-                                                    >
-                                                        <option value="">Pilih POS...</option>
-                                                        {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
-                                                            <option key={p.id} value={p.id}>{p.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Tahap Pencairan</label>
-                                                    <select 
-                                                        className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                        value={detail.bosStageId || ''}
-                                                        onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosStageId', e.target.value)}
-                                                    >
-                                                        <option value="">Pilih Tahap...</option>
-                                                        {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
-                                                            <option key={s.id} value={s.id}>{s.name}</option>
-                                                        ))}
-                                                    </select>
-                                                </div>
-                                            </div>
-                                        );
-                                    }
-                                    return null;
-                                })()}
-                            </div>
-                        )}
-
-                                {/* INLINE EDITING ENABLED - TOP FORM HIDDEN */}
-
-                                {/* Unit Peruntukan (Bottom-Full width in Section 1) - Staged */}
-                                {modalStep === 2 && selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
-                                    <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-100 animate-in slide-in-from-bottom-2">
-                                        <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
-                                            <Building2 size={12} />
-                                            Unit Peruntukan Belanja (Penting)
-                                        </label>
-                                        <select 
-                                            className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={item.targetUnitId || ''}
-                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'targetUnitId', e.target.value)}
-                                        >
-                                            <option value="">Pilih Unit Penerima Manfaat...</option>
-                                            {(() => {
-                                                const fieldId = selectedUnitId.replace('FIELD-', '');
-                                                const fieldUnits = units.filter(u => !u.isDeleted && u.fieldId === fieldId);
-                                                const displayUnits = fieldUnits.length > 0 ? fieldUnits : units.filter(u => !u.isDeleted);
-                                                return displayUnits;
-                                            })().map(u => (
-                                                <option key={u.id} value={u.id}>{u.name}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                )}
-
-                            {/* Section 2: Calculation Breakdown (Journal Style) */}
-                            <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-10">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-blue-50 text-blue-600 rounded-2xl">
-                                            <Calculator size={20} />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic leading-none">Perhitungan Anggaran</h4>
-                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1 italic">Line Item Entry System</p>
-                                        </div>
-                                    </div>
-                                    {editingCompIdx !== null && (
-                                        <button 
-                                            onClick={handleCancelEdit}
-                                            className="px-4 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all"
-                                        >
-                                            Batal Edit
-                                        </button>
-                                    )}
-                                </div>
-
-                                {/* INTEGRATED SUMMARY TABLE & INPUT SYSTEM */}
+                            <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
+                                {/* INTEGRATED SUMMARY TABLE & INPUT SYSTEM (Always visible first for new plans) */}
                                 <div className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-3">
@@ -2234,8 +2016,169 @@ export default function RAB() {
                                     })()}
                                 </div>
 
-                                {/* Monthly Breakdown Table (Staged) */}
-                                {modalStep === 2 && (
+                                {/* Section 1: Basic Info & Program (Reveal after adding rincian) */}
+                                {((item.components && item.components.length > 0) || !editingItem.isNewPlan) && (
+                                    <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
+                                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                        <div className="lg:col-span-1 space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja Utama</label>
+                                            <select 
+                                                className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                                                value={item.programId || ''}
+                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'programId', e.target.value)}
+                                            >
+                                                <option value="">Pilih Program Belanja...</option>
+                                                {expensePrograms?.filter(p => !p?.isDeleted)?.map(p => (
+                                                    <option key={p.id} value={p.id}>{p.name}</option>
+                                                )) || <option disabled>Tidak ada program tersedia</option>}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
+                                            <div className="grid grid-cols-2 gap-3 h-[58px]">
+                                                {[1, 2].map(s => (
+                                                    <button 
+                                                        key={s}
+                                                        onClick={() => handleItemUpdate(itemId, editingItem.id, 'semester', s.toString())}
+                                                        className={`rounded-2xl font-black text-[11px] uppercase tracking-widest border-4 transition-all flex items-center justify-center ${
+                                                            (item.semester || '1') === s.toString() 
+                                                            ? 'bg-indigo-600 border-indigo-100 text-white shadow-xl shadow-indigo-200 scale-105' 
+                                                            : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'
+                                                        }`}
+                                                    >
+                                                        Semester {s}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sumber Dana & Status</label>
+                                            <div className="flex items-center gap-3 h-[58px]">
+                                                {isBosRecipient && fundSourceFilter === 'all' && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            const detail = item;
+                                                            const nextState = !detail.useBos;
+                                                            handleItemUpdate(itemId, editingItem.id, 'useBos', nextState);
+                                                            if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(itemId, editingItem.id, 'bosAmount', 0);
+                                                        }}
+                                                        className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 ${
+                                                            item.useBos 
+                                                                ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' 
+                                                                : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                                        }`}
+                                                    >
+                                                        <Wallet size={14} />
+                                                        {item.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
+                                                    </button>
+                                                )}
+                                                <div className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                                                    {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />}
+                                                    {currentPlan.status === 'APPROVED' ? 'Disetujui' : 'Draft'}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Description Field */}
+                                        <div className="md:col-span-3 space-y-2">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Justifikasi Belanja</label>
+                                            <textarea 
+                                                className="w-full p-6 bg-white border-2 border-slate-100 rounded-[2rem] font-medium text-slate-700 outline-none focus:border-indigo-500 transition-all min-h-[100px] shadow-sm italic placeholder:text-slate-300"
+                                                placeholder="Tuliskan alasan pengadaan, spesifikasi singkat, atau catatan tambahan lainnya di sini..."
+                                                value={item.description || ''}
+                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'description', e.target.value)}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {(() => {
+                                        const detail = item;
+                                        const isBosView = fundSourceFilter === 'BOS';
+                                        const isYayasanView = fundSourceFilter === 'Yayasan';
+                                        const showBos = isBosView || (detail.useBos && !isYayasanView);
+
+                                        if (showBos) {
+                                            return (
+                                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                    {!isBosView && (
+                                                        <div className="space-y-2">
+                                                            <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 flex justify-between">
+                                                                Porsi Dana BOS (Rp)
+                                                            </label>
+                                                            <div className="relative">
+                                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-xs italic">Rp</span>
+                                                                <input 
+                                                                    type="text"
+                                                                    className="w-full p-4 pl-10 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
+                                                                    value={parseInt(detail.bosAmount || 0).toLocaleString('id-ID')}
+                                                                    onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">POS BOS</label>
+                                                        <select 
+                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                            value={detail.bosPosId || ''}
+                                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosPosId', e.target.value)}
+                                                        >
+                                                            <option value="">Pilih POS...</option>
+                                                            {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
+                                                                <option key={p.id} value={p.id}>{p.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Tahap Pencairan</label>
+                                                        <select 
+                                                            className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                            value={detail.bosStageId || ''}
+                                                            onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosStageId', e.target.value)}
+                                                        >
+                                                            <option value="">Pilih Tahap...</option>
+                                                            {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
+                                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
+                                    
+                                    {/* Unit Peruntukan */}
+                                    {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
+                                        <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-100 animate-in slide-in-from-bottom-2">
+                                            <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                                <Building2 size={12} />
+                                                Unit Peruntukan Belanja (Penting)
+                                            </label>
+                                            <select 
+                                                className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
+                                                value={item.targetUnitId || ''}
+                                                onChange={e => handleItemUpdate(itemId, editingItem.id, 'targetUnitId', e.target.value)}
+                                            >
+                                                <option value="">Pilih Unit Penerima Manfaat...</option>
+                                                {(() => {
+                                                    const fieldId = selectedUnitId.replace('FIELD-', '');
+                                                    const fieldUnits = units.filter(u => !u.isDeleted && u.fieldId === fieldId);
+                                                    const displayUnits = fieldUnits.length > 0 ? fieldUnits : units.filter(u => !u.isDeleted);
+                                                    return displayUnits;
+                                                })().map(u => (
+                                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    )}
+                                </div>
+                                )}
+
+                                {/* Monthly Breakdown Table (Reveal after adding rincian) */}
+                                {((item.components && item.components.length > 0) || !editingItem.isNewPlan) && (
                                     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-10 border-t border-slate-100">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
@@ -2248,60 +2191,54 @@ export default function RAB() {
                                                 }}
                                                 className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 border border-rose-100"
                                             >
-                                                <Trash2 size={12} />
-                                                KOSONGKAN BULAN
+                                                <RotateCcw size={10} />
+                                                Reset
                                             </button>
                                         </div>
-                                        <div className="px-4 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest">
-                                            Periode Aktif: {months.length} Bulan
-                                        </div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic opacity-60 italic">Masukkan jumlah Rupiah di setiap bulan</p>
                                     </div>
-
-                                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                                        {months.map(m => {
-                                            const mData = item?.months?.[m.id] || { jumlah: 0, m: false };
+                                    
+                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                                        {[7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6].map(monthNum => {
+                                            const mData = (item.months || {})[monthNum] || { m: false, jumlah: 0 };
                                             const jumlahVal = parseFloat(mData.jumlah) || 0;
                                             return (
-                                                <div key={m.id} className={`p-4 rounded-2xl border flex flex-col gap-3 transition-all ${
+                                                <div key={monthNum} className={`p-4 rounded-2xl border transition-all ${
                                                     jumlahVal > 0 
                                                         ? 'bg-blue-50 border-blue-200 shadow-sm' 
                                                         : 'bg-slate-50 border-slate-100'
                                                 }`}>
-                                                    <div className="flex items-center justify-between">
+                                                    <div className="flex items-center justify-between mb-2">
                                                         <span className={`text-[10px] font-black uppercase tracking-widest ${
                                                             jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
                                                         }`}>
-                                                            {m.label}
+                                                            {getMonthName(monthNum)}
                                                         </span>
                                                         <input 
                                                             type="checkbox"
-                                                            checked={mData.m}
-                                                            onChange={e => handleMonthlyUpdate(itemId, editingItem.id, m.id, 'm', e.target.checked)}
+                                                            checked={!!mData.m}
+                                                            onChange={e => {
+                                                                const updatedMonths = { ... (item.months || {}), [monthNum]: { ...mData, m: e.target.checked } };
+                                                                handleItemUpdate(itemId, editingItem.id, 'months', updatedMonths);
+                                                            }}
                                                             className="w-4 h-4 rounded text-blue-600"
                                                         />
                                                     </div>
-                                                    {/* Formatted rupiah input */}
-                                                    <input 
-                                                        type="text"
-                                                        inputMode="numeric"
-                                                        className={`w-full bg-transparent font-black text-slate-800 outline-none border-b-2 border-dashed pb-1 transition-all text-right ${
-                                                            jumlahVal > 0 
-                                                                ? 'border-blue-400 text-blue-800' 
-                                                                : 'border-slate-200 focus:border-blue-500'
-                                                        }`}
-                                                        value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
-                                                        onChange={e => {
-                                                            const numeric = e.target.value.replace(/\D/g, '');
-                                                            handleMonthlyUpdate(itemId, editingItem.id, m.id, 'jumlah', numeric ? parseFloat(numeric) : 0);
-                                                        }}
-                                                        placeholder="0"
-                                                    />
-                                                    {/* Per-month formatted hint */}
-                                                    {jumlahVal > 0 && (
-                                                        <span className="text-[9px] font-bold text-blue-500 text-right">
-                                                            Rp {jumlahVal.toLocaleString('id-ID')}
-                                                        </span>
-                                                    )}
+                                                    <div className="relative">
+                                                        <span className={`absolute left-0 top-1/2 -translate-y-1/2 text-[9px] font-black italic ${jumlahVal > 0 ? 'text-blue-400' : 'text-slate-300'}`}>Rp</span>
+                                                        <input 
+                                                            type="text" 
+                                                            className="w-full bg-transparent pl-4 py-1 font-black text-slate-800 text-xs outline-none border-b border-transparent focus:border-blue-500 transition-all h-8 text-right"
+                                                            value={jumlahVal > 0 ? jumlahVal.toLocaleString('id-ID') : ''}
+                                                            onChange={e => {
+                                                                const val = e.target.value.replace(/\D/g, '');
+                                                                const num = parseInt(val) || 0;
+                                                                const updatedMonths = { ... (item.months || {}), [monthNum]: { ...mData, jumlah: num, m: num > 0 ? true : mData.m } };
+                                                                handleItemUpdate(itemId, editingItem.id, 'months', updatedMonths);
+                                                            }}
+                                                            placeholder="0"
+                                                        />
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -2352,81 +2289,55 @@ export default function RAB() {
                                         <h3 className="text-3xl font-black italic">{formatRupiah(monthlyTotal)}</h3>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
-                                         {modalStep === 1 ? (
-                                             <button 
-                                                onClick={() => setModalStep(2)}
-                                                className="group flex items-center gap-4 bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-200"
-                                            >
-                                                <span>LANJUT KE PENGISIAN PROGRAM</span>
-                                                <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                                            </button>
-                                         ) : (
-                                             <div className="flex items-center gap-4">
-                                                 {editingItem.isNewPlan && (
-                                                     <button 
-                                                        onClick={() => setModalStep(1)}
-                                                        className="px-6 py-5 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white transition-all"
-                                                     >
-                                                         Kembali ke Rincian
-                                                     </button>
-                                                 )}
-                                                 <button 
-                                                    onClick={async () => {
-                                                        const finalMonthsData = item.months || {};
-                                                        const finalMonthlyTotal = Object.values(finalMonthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                        <button 
+                                            onClick={async () => {
+                                                const finalMonthsData = item.months || {};
+                                                const finalMonthlyTotal = Object.values(finalMonthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                                
+                                                setCurrentPlan(prev => {
+                                                    const mId = editingItem.itemId || editingItem.id;
+                                                    const existingPlans = prev.expense[mId] || [];
+                                                    
+                                                    let updatedPlans;
+                                                    if (editingItem.isNewPlan) {
+                                                        const newPlan = {
+                                                            ...item,
+                                                            id: editingItem.id,
+                                                            itemId: mId,
+                                                            total: finalMonthlyTotal
+                                                        };
                                                         
-                                                        setCurrentPlan(prev => {
-                                                            const mId = editingItem.itemId || editingItem.id;
-                                                            const existingPlans = prev.expense[mId] || [];
-                                                            
-                                                            let updatedPlans;
-                                                            if (editingItem.isNewPlan) {
-                                                                // Ensure the new plan is added correctly
-                                                                const newPlan = {
-                                                                    ...item,
-                                                                    id: editingItem.id,
-                                                                    itemId: mId,
-                                                                    total: finalMonthlyTotal
-                                                                };
-                                                                
-                                                                // Check if it already exists (to avoid duplicates if saved twice)
-                                                                const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
-                                                                if (alreadyExists) {
-                                                                    updatedPlans = existingPlans.map(p => p.id === editingItem.id ? newPlan : p);
-                                                                } else {
-                                                                    updatedPlans = [...existingPlans, newPlan];
-                                                                }
-                                                            } else {
-                                                                // Editing an EXISTING plan
-                                                                updatedPlans = existingPlans.map(p => 
-                                                                    p.id === editingItem.id
-                                                                        ? { ...p, ...item, total: finalMonthlyTotal }
-                                                                        : p
-                                                                );
-                                                            }
+                                                        const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
+                                                        if (alreadyExists) {
+                                                            updatedPlans = existingPlans.map(p => p.id === editingItem.id ? newPlan : p);
+                                                        } else {
+                                                            updatedPlans = [...existingPlans, newPlan];
+                                                        }
+                                                    } else {
+                                                        updatedPlans = existingPlans.map(p => 
+                                                            p.id === editingItem.id
+                                                                ? { ...p, ...item, total: finalMonthlyTotal }
+                                                                : p
+                                                        );
+                                                    }
 
-                                                            return {
-                                                                ...prev,
-                                                                expense: {
-                                                                    ...prev.expense,
-                                                                    [mId]: updatedPlans
-                                                                }
-                                                            };
-                                                        });
-                                                        
-                                                        handleCloseModal();
-                                                    }}
-                                                    className="px-12 py-5 rounded-[2rem] font-black text-sm uppercase tracking-tight transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
-                                                >
-                                                    {editingItem.isNewPlan ? 'SELESAI & SIMPAN RENCANA' : 'SIMPAN PERUBAHAN'}
-                                                </button>
-                                             </div>
-                                         )}
+                                                    return {
+                                                        ...prev,
+                                                        expense: {
+                                                            ...prev.expense,
+                                                            [mId]: updatedPlans
+                                                        }
+                                                    };
+                                                });
+                                                
+                                                handleCloseModal();
+                                            }}
+                                            className="px-12 py-5 rounded-[2rem] font-black text-sm uppercase tracking-tight transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
+                                        >
+                                            {editingItem.isNewPlan ? 'SELESAI & SIMPAN RENCANA' : 'SIMPAN PERUBAHAN'}
+                                        </button>
                                     </div>
                                 </div>
-                            );
-                        })()}
-                                </>
                             );
                         })()}
                     </div>
