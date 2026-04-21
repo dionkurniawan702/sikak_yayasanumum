@@ -830,8 +830,6 @@ router.put('/rab-plans/:id', async (req, res) => {
         res.status(500).json({ error: error.message, code: error.code });
     }
 });
-createGenericRoutes('bos-stages', 'bosStage');
-createGenericRoutes('bos-pos', 'bosPos');
 
 // Classes (with Unit include)
 router.get('/classes', async (req, res) => {
@@ -936,6 +934,14 @@ router.delete('/bos-stages/:id', async (req, res) => {
         res.json({ message: 'Success' });
     } catch (error) {
         console.error(`[API Error] DELETE /bos-stages/${req.params.id}:`, error);
+
+        if (error.code === 'P2003') {
+            return res.status(400).json({ 
+                error: "Gagal menghapus permanen", 
+                message: "Tahap BOS ini masih memiliki data anggaran (BOS Allocation/RAP) yang terhubung. Hapus data anggaran tersebut terlebih dahulu." 
+            });
+        }
+
         res.status(500).json({ error: error.message });
     }
 });

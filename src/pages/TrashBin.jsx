@@ -52,19 +52,25 @@ export default function TrashBin() {
     const filteredItems = allDeletedItems;
 
     const handleRestore = async (id, type) => {
-        dispatch({ type: 'RESTORE_FROM_TRASH', payload: { id, type } });
-        await api.pushAction({ type: 'RESTORE_FROM_TRASH', payload: { id, type } }, state);
+        try {
+            await api.pushAction({ type: 'RESTORE_FROM_TRASH', payload: { id, type } }, state);
+            dispatch({ type: 'RESTORE_FROM_TRASH', payload: { id, type } });
+        } catch (err) {
+            console.error('Restore failed:', err.message);
+            window.alert(`Gagal memulihkan: ${err.message}`);
+        }
     };
 
     const handlePermanentDelete = async (id, type) => {
         if (window.confirm('PERINGATAN: Data yang dihapus permanen tidak bisa dikembalikan. Lanjutkan?')) {
             try {
-                dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
+                // Ensure server deletion succeeds BEFORE removing from local state
                 await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
+                dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
                 window.alert('Data berhasil dihapus permanen dari database.');
             } catch (err) {
                 console.error('Delete failed:', err.message);
-                window.alert(`Gagal menghapus permanen: ${err.message}. Pastikan data ini tidak memiliki ketergantungan (misal: Unit di dalam Bidang).`);
+                window.alert(`Gagal menghapus permanen: ${err.message}. Pastikan data ini tidak memiliki ketergantungan (misal: Unit di dalam Bidang atau Tahap BOS yang masih memiliki Rencana Anggaran).`);
             }
         }
     };
