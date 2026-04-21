@@ -597,7 +597,7 @@ export default function RAB() {
 
     const handleResetBudget = (itemId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
-        if (!window.confirm('Apakah Anda yakin ingin mengosongkan semua rincian dan alokasi bulanan untuk item ini?')) return;
+        if (!window.confirm('Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)')) return;
         
         setCurrentPlan(prev => ({
             ...prev,
@@ -605,16 +605,11 @@ export default function RAB() {
                 ...prev[type],
                 [itemId]: {
                     ...prev[type][itemId],
-                    components: [],
-                    months: {},
-                    total: 0,
-                    bosAmount: 0
+                    months: {}
                 }
             }
         }));
-        setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
-        setEditingCompIdx(null);
-        setMessage({ type: 'success', text: 'Anggaran item telah dikosongkan.' });
+        setMessage({ type: 'success', text: 'Alokasi bulanan telah dikosongkan.' });
         setTimeout(() => setMessage(null), 3000);
     };
 
@@ -1875,17 +1870,10 @@ export default function RAB() {
                                     return (
                                         <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
                                             <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Yayasan</span>
-                                            <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
+                                        <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
                                         </div>
                                     );
                                 })()}
-                                <button 
-                                    onClick={() => handleResetBudget(editingItem.id)}
-                                    className="px-6 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2"
-                                >
-                                    <Trash2 size={14} />
-                                    KOSONGKAN
-                                </button>
                                 <button 
                                     onClick={() => setEditingItem(null)}
                                     className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
@@ -2227,7 +2215,16 @@ export default function RAB() {
                                 {/* Monthly Breakdown Table */}
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
+                                        <div className="flex items-center gap-4">
+                                            <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
+                                            <button 
+                                                onClick={() => handleResetBudget(editingItem.id)}
+                                                className="px-4 py-1.5 bg-rose-50 text-rose-600 rounded-xl font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all flex items-center gap-2 border border-rose-100"
+                                            >
+                                                <Trash2 size={12} />
+                                                KOSONGKAN BULAN
+                                            </button>
+                                        </div>
                                         <div className="px-4 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest">
                                             Periode Aktif: {months.length} Bulan
                                         </div>
