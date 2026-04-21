@@ -1524,34 +1524,33 @@ export default function RAB() {
                     </div>
                 </div>
 
-                    
                     <div className="flex items-center gap-3 ml-auto">
                         {!isConsolidation && (
                             <button 
                                 onClick={handleSubmitReview}
                                 disabled={isSaving || !selectedYearId || isLocked}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-lg font-black text-xs transition-all shadow-md disabled:opacity-50"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95"
                             >
                                 KIRIM KE YAYASAN
                             </button>
                         )}
-                        {/* Button TAMBAH ITEM RAB dihapus agar input hanya melalui logika otomatis (Konfigurasi Peruntukan) */}
-                        {/* {!isConsolidation && !isLocked && (
+                        {!isConsolidation && !isLocked && (
                             <button 
                                 onClick={() => {
-                                    const availableFunds = rapData.totalTarget - totalExpense;
-                                    if (availableFunds <= 100) {
-                                        window.alert(`Anggaran/Dana tidak tersedia untuk penambahan item baru.\nSisa saldo saat ini: ${formatRupiah(availableFunds)}`);
-                                    } else {
-                                        setIsAddingItem(true);
-                                    }
+                                    const tempId = `temp-${Date.now()}`;
+                                    setEditingItem({ 
+                                        id: tempId, 
+                                        name: '', 
+                                        sourceOfFunds: fundSourceFilter === 'all' ? 'Yayasan' : fundSourceFilter, 
+                                        isNew: true 
+                                    });
                                 }}
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-lg font-black text-xs transition-all shadow-md flex items-center gap-2"
+                                className="bg-indigo-600 hover:bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-indigo-100 flex items-center gap-3 active:scale-95"
                             >
-                                <PlusCircle size={14} />
-                                TAMBAH ITEM RAB
+                                <PlusCircle size={18} />
+                                TAMBAH RENCANA BARU
                             </button>
-                        )} */}
+                        )}
                     </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
@@ -1844,8 +1843,8 @@ export default function RAB() {
             {/* Detail Modal */}
             {editingItem && (
                 <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItem(null)} />
-                    <div className="bg-white rounded-[3rem] w-full max-w-7xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setEditingItem(null)} />
+                    <div className="bg-white rounded-[3.5rem] w-full max-w-[95vw] relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[95vh] ring-12 ring-white/10">
                         {(() => {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
                             const item = activePlan[type][editingItem.id] || { total: 0, bosAmount: 0, useBos: false, components: [], months: {} };
@@ -1854,10 +1853,26 @@ export default function RAB() {
                         {/* Modal Header */}
                         <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
-                                <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
-                                    Sumber Dana: {editingItem.sourceOfFunds || 'Umum'} • TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
-                                </p>
+                                {editingItem.isNew ? (
+                                    <div className="space-y-2">
+                                        <input 
+                                            type="text" 
+                                            className="text-2xl font-black text-slate-900 tracking-tight italic uppercase bg-transparent border-b-4 border-slate-200 focus:border-blue-500 outline-none w-full max-w-2xl"
+                                            placeholder="TULIS NAMA RENCANA BELANJA..."
+                                            value={editingItem.name}
+                                            onChange={e => setEditingItem({...editingItem, name: e.target.value})}
+                                            autoFocus
+                                        />
+                                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest italic animate-pulse">Menyiapkan Rencana Anggaran Baru...</p>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
+                                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
+                                            ID: {editingItem.id} • TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
+                                        </p>
+                                    </>
+                                )}
                             </div>
                             <div className="flex items-center gap-4">
                                 {(() => {
@@ -1896,7 +1911,7 @@ export default function RAB() {
                             <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <div className="lg:col-span-1 space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja</label>
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja Utama</label>
                                         <select 
                                             className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
                                             value={activePlan[type][editingItem.id]?.programId || ''}
@@ -1911,14 +1926,21 @@ export default function RAB() {
 
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
-                                        <select 
-                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                            value={activePlan[type][editingItem.id]?.semester || '1'}
-                                            onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
-                                        >
-                                            <option value="1">Semester 1 (Ganjil)</option>
-                                            <option value="2">Semester 2 (Genap)</option>
-                                        </select>
+                                        <div className="grid grid-cols-2 gap-3 h-[58px]">
+                                            {[1, 2].map(s => (
+                                                <button 
+                                                    key={s}
+                                                    onClick={() => handleItemUpdate(editingItem.id, 'semester', s.toString())}
+                                                    className={`rounded-2xl font-black text-[11px] uppercase tracking-widest border-4 transition-all flex items-center justify-center ${
+                                                        (activePlan[type][editingItem.id]?.semester || '1') === s.toString() 
+                                                        ? 'bg-indigo-600 border-indigo-100 text-white shadow-xl shadow-indigo-200 scale-105' 
+                                                        : 'bg-white border-slate-50 text-slate-400 hover:border-slate-100'
+                                                    }`}
+                                                >
+                                                    Semester {s}
+                                                </button>
+                                            ))}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-2">
@@ -1947,6 +1969,17 @@ export default function RAB() {
                                                 {currentPlan.status === 'APPROVED' ? 'Disetujui' : 'Draft'}
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Description Field (NEW) */}
+                                    <div className="md:col-span-3 space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Justifikasi Belanja</label>
+                                        <textarea 
+                                            className="w-full p-6 bg-white border-2 border-slate-100 rounded-[2rem] font-medium text-slate-700 outline-none focus:border-indigo-500 transition-all min-h-[100px] shadow-sm italic placeholder:text-slate-300"
+                                            placeholder="Tuliskan alasan pengadaan, spesifikasi singkat, atau catatan tambahan lainnya di sini..."
+                                            value={activePlan[type][editingItem.id]?.description || ''}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'description', e.target.value)}
+                                        />
                                     </div>
                                 </div>
 
@@ -2348,27 +2381,64 @@ export default function RAB() {
                                         <h3 className="text-3xl font-black italic">{formatRupiah(monthlyTotal)}</h3>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
-                                        <button 
-                                            onClick={() => {
-                                                // Sync item total with monthly total on close/save
-                                                setCurrentPlan(prev => {
-                                                    const itemData = prev[type][editingItem.id];
-                                                    return {
-                                                        ...prev,
-                                                        [type]: {
-                                                            ...prev[type],
-                                                            [editingItem.id]: {
-                                                                ...itemData,
-                                                                total: monthlyTotal
-                                                            }
-                                                        }
+                                         <button 
+                                            onClick={async () => {
+                                                // Validation for new items
+                                                if (editingItem.isNew) {
+                                                    if (!editingItem.name || editingItem.name.trim().length === 0) {
+                                                        alert('Silakan isi Nama Rencana Belanja terlebih dahulu.');
+                                                        return;
+                                                    }
+                                                    
+                                                    // Convert temp ID to real ID
+                                                    const realId = `EXP-${Date.now()}`;
+                                                    const newMasterItem = {
+                                                        id: realId,
+                                                        name: editingItem.name,
+                                                        sourceOfFunds: editingItem.sourceOfFunds || 'Yayasan',
+                                                        unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId),
+                                                        fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                        isField: selectedUnitId.startsWith('FIELD-'),
+                                                        lastUpdated: new Date().toISOString()
                                                     };
-                                                });
+
+                                                    // 1. Add to master data (expenseItems)
+                                                    dispatch({ type: 'ADD_EXPENSE_ITEM', payload: newMasterItem });
+                                                    
+                                                    // 2. Transfer data from temp ID to real ID in currentPlan
+                                                    setCurrentPlan(prev => {
+                                                        const tempData = prev[type][editingItem.id] || {};
+                                                        const newExpense = { ...prev.expense };
+                                                        delete newExpense[editingItem.id]; // Remove temp
+                                                        newExpense[realId] = {
+                                                            ...tempData,
+                                                            total: monthlyTotal,
+                                                            programId: tempData.programId,
+                                                            semester: tempData.semester || '1'
+                                                        };
+                                                        return { ...prev, expense: newExpense };
+                                                    });
+                                                } else {
+                                                    // Standard Update logic
+                                                    setCurrentPlan(prev => {
+                                                        const itemData = prev[type][editingItem.id];
+                                                        return {
+                                                            ...prev,
+                                                            [type]: {
+                                                                ...prev[type],
+                                                                [editingItem.id]: {
+                                                                    ...itemData,
+                                                                    total: monthlyTotal
+                                                                }
+                                                            }
+                                                        };
+                                                    });
+                                                }
                                                 handleCloseModal();
                                             }}
                                             className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
                                         >
-                                            SIMPAN RINCIAN
+                                            SIMPAN PERUBAHAN
                                         </button>
                                     </div>
                                 </div>
@@ -2379,85 +2449,7 @@ export default function RAB() {
                         })()}
                     </div>
                 </div>
-            )}
-            {/* Add Item Modal */}
-            {isAddingItem && (
-                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsAddingItem(false)} />
-                    <div className="bg-white rounded-[3rem] w-full max-w-md relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300">
-                        <div className="p-8 border-b border-slate-100 bg-slate-50">
-                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Tambah Item Belanja Baru</h2>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                                Sisa Dana: {formatRupiah(rapData.totalTarget - totalExpense)}
-                            </p>
-                        </div>
-                        <div className="p-8 space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Nama Item Belanja</label>
-                                <input 
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
-                                    placeholder="Contoh: ATK Kantor, Biaya Lomba..."
-                                    value={newItemData.name}
-                                    onChange={e => setNewItemData({ ...newItemData, name: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-4">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Sumber Dana</label>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <button 
-                                        onClick={() => setNewItemData(prev => ({ ...prev, sourceOfFunds: 'Yayasan' }))}
-                                        className={`p-4 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
-                                            newItemData.sourceOfFunds === 'Yayasan' ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'
-                                        }`}
-                                    >
-                                        Yayasan
-                                    </button>
-                                    <button 
-                                        onClick={() => setNewItemData(prev => ({ ...prev, sourceOfFunds: 'BOS' }))}
-                                        className={`p-4 rounded-2xl border-2 font-black text-xs uppercase tracking-widest transition-all ${
-                                            newItemData.sourceOfFunds === 'BOS' ? 'bg-slate-900 border-slate-900 text-white shadow-xl' : 'bg-white border-slate-100 text-slate-400 hover:border-slate-300'
-                                        }`}
-                                    >
-                                        BOS
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Kaitan Pendapatan</label>
-                                <select 
-                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-black text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100"
-                                    value={newItemData.incomeItemId}
-                                    onChange={e => setNewItemData({ ...newItemData, incomeItemId: e.target.value })}
-                                >
-                                    <option value="">Pilih Sumber...</option>
-                                    {filteredIncomeItems.filter(ii => {
-                                        if (newItemData.sourceOfFunds === 'BOS') return ii.name.toUpperCase().includes('BOS');
-                                        return !ii.name.toUpperCase().includes('BOS');
-                                    }).map(ii => (
-                                        <option key={ii.id} value={ii.id}>{ii.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex gap-4 pt-4">
-                                <button 
-                                    onClick={() => setIsAddingItem(false)}
-                                    className="flex-1 py-4 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase"
-                                >
-                                    Batal
-                                </button>
-                                <button 
-                                    onClick={handleAddItem}
-                                    disabled={isSaving || !newItemData.name || !newItemData.incomeItemId}
-                                    className="flex-2 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase shadow-lg shadow-indigo-100 disabled:opacity-50"
-                                >
-                                    {isSaving ? 'Menyimpan...' : 'Tambahkan Ke RAB'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+              )}
             {/* Status Feedback Modal */}
             {showStatusModal && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
