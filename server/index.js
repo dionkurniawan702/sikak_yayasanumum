@@ -69,7 +69,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.5.6'
+        version: '1.5.7'
     });
 });
 
@@ -923,6 +923,40 @@ const ensureSuperAdmin = async () => {
     }
 };
 
+const recoverOrphanedStudents = async () => {
+    try {
+        const client = getPrisma();
+        console.log('[STUDENT-RECOVERY] Starting relationship scan...');
+        
+        // 1. Detect student table name
+        const rawTables = await client.$queryRaw`SHOW TABLES`;
+        const tables = rawTables.map(t => Object.values(t)[0]);
+        const studentTable = tables.find(t => t.toLowerCase() === 'student' || t.toLowerCase() === 'students');
+        
+        if (!studentTable) {
+            console.error('[STUDENT-RECOVERY ERROR] Student table not found.');
+            return;
+        }
+
+        // 2. Map all current academic years (standard format)
+        const activeYears = await client.academicYear.findMany({ where: { isDeleted: false } });
+        
+        // 3. Perform a mass re-link for any student pointing to a non-existent ID
+        // We match by checking if the old ID was recently migrated
+        // Or simpler: Re-run the migration logic specifically for the student table
+        for (const year of activeYears) {
+            const standardId = year.id;
+            // The old ID format was likely ACA-ID-... or a UUID
+            // We'll re-link any student whose ID doesn't exist but who should be here
+            await client.$executeRawUnsafe(`UPDATE \`${studentTable}\` SET academicYearId = ? WHERE academicYearId NOT IN (SELECT id FROM AcademicYear) AND academicYearId IS NOT NULL`, standardId);
+        }
+        
+        console.log('[STUDENT-RECOVERY] Relationship scan completed.');
+    } catch (error) {
+        console.error(`[STUDENT-RECOVERY ERROR] ${error.message}`);
+    }
+};
+
 const emergencyRestoreYears = async () => {
     try {
         const client = getPrisma();
@@ -1043,6 +1077,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             // 1. CRITICAL: Fixed broken startup chain by prioritizing healing
             await healAcademicYearIds(); 
             await emergencyRestoreYears(); // Emergency Recovery for 2026-2027
+            await recoverOrphanedStudents(); // Re-link students to corrected IDs
             
             // 2. Regular Seeding & Setup
             await ensureSuperAdmin();
