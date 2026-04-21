@@ -739,15 +739,21 @@ router.post('/rab-plans', async (req, res) => {
         const prisma = getPrisma(req);
         const payload = req.body;
 
-        console.log('[RAB Plan POST] Received payload:', JSON.stringify({
-            id: payload.id,
-            academicYearId: payload.academicYearId,
-            unitId: payload.unitId,
-            fieldId: payload.fieldId,
-            status: payload.status,
-            hasIncome: !!payload.income,
-            hasExpense: !!payload.expense,
-        }));
+        console.log('----------------------------------------------------');
+        console.log('[DEBUG] RAB Plan POST Request Received');
+        console.log('[DEBUG] ID:', payload.id);
+        console.log('[DEBUG] Year:', payload.academicYearId);
+        console.log('[DEBUG] Has Income:', !!payload.income, 'Keys:', payload.income ? Object.keys(payload.income).length : 0);
+        console.log('[DEBUG] Has Expense:', !!payload.expense, 'Keys:', payload.expense ? Object.keys(payload.expense).length : 0);
+        
+        // Detailed check for components in one expense item if exists
+        if (payload.expense) {
+            const firstKey = Object.keys(payload.expense)[0];
+            if (firstKey) {
+                const item = payload.expense[firstKey];
+                console.log(`[DEBUG] Sample Item (${firstKey}) Components:`, item.components ? item.components.length : 'NONE');
+            }
+        }
 
         if (!payload.id) {
             console.warn('[RAB Plan POST] Rejected: Missing ID');

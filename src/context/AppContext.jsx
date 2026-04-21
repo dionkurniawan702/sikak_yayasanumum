@@ -256,7 +256,7 @@ function appReducer(state, action) {
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
                 classes: serverData.classes || state.classes || [],
-                rabPlans: serverData.rabPlans || state.rabPlans || [],
+                rabPlans: (serverData.rabPlans && serverData.rabPlans.length > 0) ? serverData.rabPlans : (state.rabPlans || []),
                 bosStages: serverData.bosStages || state.bosStages || [],
                 bosPosList: serverData.bosPosList || state.bosPosList || [],
                 bosAllocations: serverData.bosAllocations || state.bosAllocations || [],

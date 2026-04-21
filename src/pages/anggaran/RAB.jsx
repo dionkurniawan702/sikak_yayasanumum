@@ -834,6 +834,13 @@ export default function RAB() {
             updatedBy: currentUser?.username
         };
 
+        console.log('[DEBUG] Saving RAB Plan:', planId);
+        console.table({
+            incomeItems: Object.keys(newPlan.income).length,
+            expenseItems: Object.keys(newPlan.expense).length,
+            isBos: isBosRecipient
+        });
+
         // 1. Strict Validation: BOS Limit
         if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
             setMessage({ 

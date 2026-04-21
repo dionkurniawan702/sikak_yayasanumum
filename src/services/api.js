@@ -271,6 +271,12 @@ export const api = {
                     await syncItem('classes', payload, null, 'DELETE');
                     break;
                 case 'SET_RAB_PLAN':
+                    console.log('[API] Pushing RAB Plan:', payload.id);
+                    if (payload.expense) {
+                        const keys = Object.keys(payload.expense);
+                        console.log(`[API] Expense Items: ${keys.length}. Sample Component Check:`, 
+                            keys[0] ? (payload.expense[keys[0]].components?.length || 0) : 0);
+                    }
                     await this.post('/rab-plans', payload);
                     break;
                 case 'ADD_BOS_STAGE':
