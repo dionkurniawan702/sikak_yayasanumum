@@ -994,14 +994,18 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     // Trigger background seeding & healing WITHOUT blocking startup
     const startBackgroundTasks = async () => {
         try {
-            await ensureSoftDeleteColumns();
+            // 1. CRITICAL: Fixed broken startup chain by prioritizing healing
+            await healAcademicYearIds(); 
+            
+            // 2. Regular Seeding & Setup
             await ensureSuperAdmin();
             await ensureFundSources();
             await ensureAcademicYears();
-            await healAcademicYearIds();
             await ensureDistributionColumns();
             await ensureRabPlansColumns();
             await ensureBosAllocationColumns();
+            
+            console.log('[Background Tasks] All startup checks completed successfully.');
         } catch (err) {
             console.error(`[Background Tasks Error] ${err.message}`);
         }
