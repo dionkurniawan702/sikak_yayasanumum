@@ -111,8 +111,8 @@ function loadState() {
                         ...ay,
                         id: newId,
                         name: newName,
-                        startDate: (ay.startDate && !isNaN(new Date(ay.startDate))) ? ay.startDate : `${currentYear}-01-01`,
-                        endDate: (ay.endDate && !isNaN(new Date(ay.endDate))) ? ay.endDate : `${currentYear}-12-31`,
+                        startDate: ay.startDate || null,
+                        endDate: ay.endDate || null,
                         isCurrent: ay.isCurrent || false,
                         isActive: ay.isActive !== undefined ? ay.isActive : true
                     };
