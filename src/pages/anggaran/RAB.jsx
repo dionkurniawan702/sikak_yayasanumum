@@ -1238,24 +1238,20 @@ export default function RAB() {
                             ? (bosItemMap[itemMaster.id] || 0) 
                             : (rapData.itemAllocations[itemMaster.id] || 0);
 
-                        // If no plans, show one placeholder row with a Plus button
                         if (plans.length === 0) {
                             return [{ 
                                 itemMaster, 
                                 plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
                                 allocated,
-                                isFirst: true,
-                                planIndex: 0
+                                isFirst: true
                             }];
                         }
 
-                        // Return a row for each plan
                         return plans.map((plan, pIdx) => ({
                             itemMaster,
                             plan,
                             allocated,
-                            isFirst: pIdx === 0,
-                            planIndex: pIdx
+                            isFirst: pIdx === 0
                         }));
                     }).map((rowData, index) => {
                         const { itemMaster, plan, allocated, isFirst } = rowData;
@@ -1298,58 +1294,56 @@ export default function RAB() {
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                        <button 
+                                            onClick={() => {
+                                                const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                setEditingItem({ 
+                                                    id: newPlanId, 
+                                                    itemId: itemMaster.id, 
+                                                    name: itemMaster.name,
+                                                    isNewPlan: true,
+                                                    semester: '1'
+                                                });
+                                            }}
+                                            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-slate-900 transition-all active:scale-95"
+                                            title="TAMBAH RENCANA"
+                                        >
+                                            <Plus size={18} strokeWidth={3} />
+                                        </button>
 
-                                            // Special Logic: Development (Pengembangan (umum))
-                                            if (item.name === 'Pengembangan (umum)') {
-                                                if (isFinanceAdmin) return false;
-                                                return true; 
-                                            }
+                                        {!plan.isEmpty && (
+                                            <>
+                                                <button 
+                                                    onClick={() => setEditingItem({ ...itemMaster, planId: plan.id, itemId: itemMaster.id })}
+                                                    className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+                                                    title="EDIT RENCANA"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
 
-                                            return false;
-                                        })()}
-                                        className={`px-6 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-                                            (() => {
-                                                if (isSuperAdmin) return false;
-                                                if (isLocked) return true;
-                                                const isAdminUnit = currentUser?.role === 'admin_unit';
-                                                const isAdminBidang = currentUser?.role === 'admin_bidang';
-                                                const sdmField = fields.find(f => f.name === 'Bidang SDM');
-                                                const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
-                                                const financeField = fields.find(f => f.name === 'Bidang Keuangan');
-                                                const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
-                                                const sarprasField = fields.find(f => f.name === 'Bidang Sarpras');
-                                                const isSarprasAdmin = isAdminBidang && currentUser?.fieldId === sarprasField?.id;
-
-                                                if ((item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') && (isAdminUnit || isSarprasAdmin)) return false;
-                                                if (isAdminUnit && (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan')) return true;
-                                                if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return false;
-                                                if (item.name === 'Pengembangan (umum)' && isFinanceAdmin) return false;
-                                                if (item.name === 'Pengembangan (umum)') return true;
-                                                return false;
-                                            })()
-                                            ? 'bg-slate-100 text-slate-300 shadow-none' 
-                                            : 'bg-indigo-600 text-white shadow-indigo-100 hover:bg-slate-900 group-hover:shadow-indigo-200'
-                                        }`}
-                                    >
-                                        {(() => {
-                                             if (isSuperAdmin) return 'ATUR BUDGET';
-                                             if (isLocked) return 'TERKUNCI';
-                                             const isAdminUnit = currentUser?.role === 'admin_unit';
-                                             const isAdminBidang = currentUser?.role === 'admin_bidang';
-                                             const sdmField = fields.find(f => f.name === 'Bidang SDM');
-                                             const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
-                                             const financeField = fields.find(f => f.name === 'Bidang Keuangan');
-                                             const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
-                                             const sarprasField = fields.find(f => f.name === 'Bidang Sarpras');
-                                             const isSarprasAdmin = isAdminBidang && currentUser?.fieldId === sarprasField?.id;
-
-                                             if ((item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') && (isAdminUnit || isSarprasAdmin)) return 'ATUR BUDGET';
-                                             if (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') return 'HANYA LIHAT';
-                                             if (item.name === 'Penggajian' && (isAdminUnit || isSdmAdmin)) return 'ATUR BUDGET';
-                                             if (item.name === 'Pengembangan (umum)') return isFinanceAdmin ? 'ATUR BUDGET' : 'HANYA LIHAT';
-                                             return 'ATUR BUDGET';
-                                        })()}
-                                    </button>
+                                                {!isLocked && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                setCurrentPlan(prev => ({
+                                                                    ...prev,
+                                                                    expense: {
+                                                                        ...prev.expense,
+                                                                        [itemMaster.id]: (prev.expense[itemMaster.id] || []).filter(p => p.id !== plan.id)
+                                                                    }
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                                                        title="HAPUS RENCANA"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
                                 </td>
                             </tr>
                         );
