@@ -14,7 +14,7 @@ import { api } from '../../services/api';
 import { calculateRAP } from '../../utils/budgetEngine';
 import BudgetRow from '../../components/BudgetRow';
 
-// Helper to generate 12 months for an academic year (July to June)
+// Helper to generate months for an academic year based on its settings
 const generateMonths = (ay) => {
     if (!ay) return [];
     
@@ -24,42 +24,54 @@ const generateMonths = (ay) => {
         'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
 
-    if (ay.startDate && ay.endDate) {
-        let current = new Date(ay.startDate);
-        const end = new Date(ay.endDate);
+    try {
+        // Option 1: Use explicit start and end dates from settings
+        if (ay.startDate && ay.endDate) {
+            let current = new Date(ay.startDate);
+            const end = new Date(ay.endDate);
+            
+            // Limit to a reasonable range to prevent infinite loops (e.g., 24 months)
+            let safetyCounter = 0;
+            while (current <= end && safetyCounter < 24) {
+                const year = current.getFullYear();
+                const monthIdx = current.getMonth();
+                const monthNum = monthIdx + 1;
+                
+                months.push({
+                    id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                    name: `${monthNames[monthIdx]}-${year}`,
+                    label: monthNames[monthIdx],
+                    shortLabel: monthNames[monthIdx].substring(0, 3).toUpperCase(),
+                    year: year
+                });
+                
+                current.setMonth(current.getMonth() + 1);
+                safetyCounter++;
+            }
+        } 
         
-        // Loop through each month between start and end
-        while (current <= end) {
-            const year = current.getFullYear();
-            const monthIdx = current.getMonth();
-            const monthNum = monthIdx + 1;
+        // Option 2: Fallback if months are still empty
+        if (months.length === 0) {
+            const [startYearStr, endYearStr] = (ay.name || '').split((ay.name || '').includes('/') ? '/' : '-');
+            const startYear = parseInt(startYearStr) || new Date().getFullYear();
+            const endYear = parseInt(endYearStr) || (startYear + 1);
             
-            months.push({
-                id: `${year}-${String(monthNum).padStart(2, '0')}`,
-                name: `${monthNames[monthIdx]}-${year}`,
-                label: monthNames[monthIdx],
-                year: year
+            const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+            sequence.forEach((monthNum) => {
+                const year = monthNum >= 7 ? startYear : endYear;
+                months.push({
+                    id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                    name: `${monthNames[monthNum - 1]}-${year}`,
+                    label: monthNames[monthNum - 1],
+                    shortLabel: monthNames[monthNum - 1].substring(0, 3).toUpperCase(),
+                    year: year
+                });
             });
-            
-            current.setMonth(current.getMonth() + 1);
         }
-    } else {
-        // Fallback: July to June based on name (e.g. 2026-2027)
-        const [startYearStr, endYearStr] = (ay.name || '').split((ay.name || '').includes('/') ? '/' : '-');
-        const startYear = parseInt(startYearStr) || new Date().getFullYear();
-        const endYear = parseInt(endYearStr) || (startYear + 1);
-        
-        const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-        sequence.forEach((monthNum) => {
-            const year = monthNum >= 7 ? startYear : endYear;
-            months.push({
-                id: `${year}-${String(monthNum).padStart(2, '0')}`,
-                name: `${monthNames[monthNum - 1]}-${year}`,
-                label: monthNames[monthNum - 1],
-                year: year
-            });
-        });
+    } catch (err) {
+        console.error('[Month Generation Error]:', err);
     }
+    
     return months;
 };
 
@@ -2124,6 +2136,9 @@ export default function RAB() {
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
                                         <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
+                                        <div className="px-4 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest">
+                                            Periode Aktif: {months.length} Bulan
+                                        </div>
                                     </div>
 
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
