@@ -2008,6 +2008,8 @@ export default function RAB() {
                                 })()}
                             </div>
 
+                                {/* INLINE EDITING ENABLED - TOP FORM HIDDEN */}
+
                                 {/* Unit Peruntukan (Bottom-Full width in Section 1) */}
                                 {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
                                     <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-100 animate-in slide-in-from-bottom-2">
@@ -2055,168 +2057,183 @@ export default function RAB() {
                                     )}
                                 </div>
 
-                                {/* INPUT FORM (Journal Style) */}
-                                <div className={`p-8 rounded-[2rem] border-2 transition-all duration-500 ${editingCompIdx !== null ? 'bg-indigo-50/50 border-indigo-100' : 'bg-slate-50 border-slate-50'}`}>
-                                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                                        <div className="lg:col-span-2 space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Keterangan / Label Rincian</label>
-                                            <input 
-                                                ref={labelInputRef}
-                                                type="text"
-                                                className="w-full p-4 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                value={entryForm.label}
-                                                onChange={e => setEntryForm({...entryForm, label: e.target.value})}
-                                                placeholder="Contoh: Honor GKB, Tunjangan, dll"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Volume</label>
-                                            <input 
-                                                type="number"
-                                                className="w-full p-4 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                value={entryForm.volume}
-                                                onChange={e => setEntryForm({...entryForm, volume: e.target.value})}
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Satuan</label>
-                                            <input 
-                                                type="text"
-                                                className="w-full p-4 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm uppercase placeholder:lowercase"
-                                                value={entryForm.satuan}
-                                                onChange={e => setEntryForm({...entryForm, satuan: e.target.value})}
-                                                placeholder="org/jam/unit"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Kali (Freq)</label>
-                                            <input 
-                                                type="number"
-                                                className="w-full p-4 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                value={entryForm.kali}
-                                                onChange={e => setEntryForm({...entryForm, kali: e.target.value})}
-                                                placeholder="0"
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Harga Satuan</label>
-                                            <div className="relative">
-                                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 font-black text-xs italic">Rp</span>
-                                                <input 
-                                                    type="text"
-                                                    inputMode="numeric"
-                                                    className="w-full p-4 pl-10 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                    value={entryForm.harga !== undefined && entryForm.harga !== null ? Number(entryForm.harga).toLocaleString('id-ID') : '0'}
-                                                    onChange={e => {
-                                                        const numeric = e.target.value.replace(/\D/g, '');
-                                                        setEntryForm({...entryForm, harga: numeric ? parseFloat(numeric) : 0});
-                                                    }}
-                                                    placeholder="0"
-                                                />
-                                            </div>
-                                        </div>
-                                        <div className="lg:col-span-1 flex items-end">
-                                            <button 
-                                                onClick={() => handlePushComponent(editingItem.id)}
-                                                className={`w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${
-                                                    editingCompIdx !== null 
-                                                    ? 'bg-indigo-600 text-white shadow-indigo-100' 
-                                                    : 'bg-blue-600 text-white shadow-blue-100'
-                                                }`}
-                                            >
-                                                {editingCompIdx !== null ? <Save size={16} /> : <Plus size={16} />}
-                                                {editingCompIdx !== null ? 'Perbarui Baris' : 'Tambahkan Baris'}
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* LIST OF SAVED COMPONENTS */}
-                                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
+                                {/* INTEGRATED SUMMARY TABLE & INPUT SYSTEM */}
+                                <div className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian (Summary Table)</h4>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
+                                            <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian (Summary Table)</h4>
+                                        </div>
+                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic opacity-60">Inline Editing Active</p>
                                     </div>
-                                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
+                                    
+                                    <div className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/20">
                                         <table className="w-full text-left">
                                             <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
                                                 <tr>
-                                                    <th className="px-6 py-5">Keterangan / Rincian</th>
-                                                    <th className="px-6 py-5 text-center">Volume</th>
-                                                    <th className="px-6 py-5 text-center">Satuan</th>
-                                                    <th className="px-6 py-5 text-center">Kali</th>
-                                                    <th className="px-6 py-5 text-right">Harga Satuan</th>
-                                                    <th className="px-6 py-5 text-right">Subtotal</th>
-                                                    <th className="px-6 py-5 text-center">Aksi</th>
+                                                    <th className="px-6 py-5 w-[40%] text-white">Keterangan / Rincian</th>
+                                                    <th className="px-4 py-5 text-center text-white">Vol</th>
+                                                    <th className="px-4 py-5 text-center text-white">Sat</th>
+                                                    <th className="px-4 py-5 text-center text-white">Kali</th>
+                                                    <th className="px-4 py-5 text-right w-[15%] text-white">Harga Satuan</th>
+                                                    <th className="px-6 py-5 text-right w-[15%] text-white">Subtotal</th>
+                                                    <th className="px-4 py-5 text-center w-[8%] text-white">Aksi</th>
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 italic">
                                                 {(() => {
-                                                    const item = activePlan[type][editingItem.id] || {};
-                                                    const comps = item.components || [];
-                                                    
-                                                    if (comps.length === 0) {
-                                                        return (
-                                                            <tr>
-                                                                <td colSpan={7} className="px-6 py-12 text-center text-slate-300 font-black text-xs uppercase tracking-widest italic opacity-50">
-                                                                    Belum ada rincian belanja terinput...
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    }
-
+                                                    const comps = activePlan[type][editingItem.id]?.components || [];
                                                     return comps.map((comp, idx) => (
-                                                        <tr key={idx} className={`group hover:bg-slate-50 transition-colors ${editingCompIdx === idx ? 'bg-indigo-50/30' : ''}`}>
-                                                            <td className="px-6 py-4">
-                                                                <p className="font-black text-slate-800 text-xs tracking-tight">{comp.label}</p>
+                                                        <tr key={idx} className="group hover:bg-slate-50 transition-colors">
+                                                            <td className="px-4 py-3">
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="w-full bg-transparent p-2 font-black text-slate-800 text-xs tracking-tight outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
+                                                                    value={comp.label}
+                                                                    onChange={e => handleComponentUpdate(editingItem.id, idx, 'label', e.target.value)}
+                                                                />
                                                             </td>
-                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
-                                                            <td className="px-6 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan || '-'}</td>
-                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali || 1}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-slate-500 text-[11px]">{formatRupiah(comp.harga)}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    <button 
-                                                                        onClick={() => handleLoadToEdit(idx, comp)}
-                                                                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all"
-                                                                    >
-                                                                        <Pencil size={14} />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleRemoveComponent(editingItem.id, idx)}
-                                                                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-all"
-                                                                    >
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </div>
+                                                            <td className="px-2 py-3 text-center">
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="w-16 mx-auto bg-transparent p-2 font-black text-slate-600 text-[11px] text-center outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
+                                                                    value={comp.volume}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value.replace(/\D/g, '');
+                                                                        handleComponentUpdate(editingItem.id, idx, 'volume', val ? parseFloat(val) : 0);
+                                                                    }}
+                                                                />
+                                                            </td>
+                                                            <td className="px-2 py-3 text-center">
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="w-16 mx-auto bg-transparent p-2 font-black text-slate-400 text-[10px] text-center uppercase outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
+                                                                    value={comp.satuan || ''}
+                                                                    onChange={e => handleComponentUpdate(editingItem.id, idx, 'satuan', e.target.value)}
+                                                                />
+                                                            </td>
+                                                            <td className="px-2 py-3 text-center">
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="w-12 mx-auto bg-transparent p-2 font-black text-slate-600 text-[11px] text-center outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
+                                                                    value={comp.kali || 1}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value.replace(/\D/g, '');
+                                                                        handleComponentUpdate(editingItem.id, idx, 'kali', val ? parseFloat(val) : 1);
+                                                                    }}
+                                                                />
+                                                            </td>
+                                                            <td className="px-2 py-3 text-right">
+                                                                <input 
+                                                                    type="text" 
+                                                                    className="w-full bg-transparent p-2 font-black text-slate-500 text-[11px] text-right outline-none focus:ring-2 focus:ring-blue-100 rounded-lg"
+                                                                    value={Number(comp.harga).toLocaleString('id-ID')}
+                                                                    onChange={e => {
+                                                                        const val = e.target.value.replace(/\D/g, '');
+                                                                        handleComponentUpdate(editingItem.id, idx, 'harga', val ? parseFloat(val) : 0);
+                                                                    }}
+                                                                />
+                                                            </td>
+                                                            <td className="px-6 py-3 text-right font-black text-slate-900 text-xs">
+                                                                {formatRupiah(comp.total)}
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                <button 
+                                                                    onClick={() => handleRemoveComponent(editingItem.id, idx)}
+                                                                    className="p-2 text-slate-300 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
                                                             </td>
                                                         </tr>
                                                     ));
                                                 })()}
+                                                
+                                                {/* ADD NEW ROW (Integrated) */}
+                                                <tr className="bg-blue-50/30 border-t-2 border-slate-100">
+                                                    <td className="px-4 py-4">
+                                                        <input 
+                                                            ref={labelInputRef}
+                                                            type="text" 
+                                                            className="w-full bg-white p-3 font-black text-slate-800 text-xs tracking-tight shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500 transition-all"
+                                                            placeholder="+ Klik untuk tambah rincian..."
+                                                            value={entryForm.label}
+                                                            onChange={e => setEntryForm({...entryForm, label: e.target.value})}
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <input 
+                                                            type="text" 
+                                                            className="w-16 mx-auto bg-white p-3 font-black text-slate-600 text-[11px] text-center shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
+                                                            value={entryForm.volume}
+                                                            onChange={e => setEntryForm({...entryForm, volume: e.target.value.replace(/\D/g, '')})}
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <input 
+                                                            type="text" 
+                                                            className="w-16 mx-auto bg-white p-3 font-black text-slate-400 text-[10px] text-center uppercase shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
+                                                            placeholder="unit"
+                                                            value={entryForm.satuan}
+                                                            onChange={e => setEntryForm({...entryForm, satuan: e.target.value})}
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <input 
+                                                            type="text" 
+                                                            className="w-12 mx-auto bg-white p-3 font-black text-slate-600 text-[11px] text-center shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
+                                                            value={entryForm.kali}
+                                                            onChange={e => setEntryForm({...entryForm, kali: e.target.value.replace(/\D/g, '')})}
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-4">
+                                                        <input 
+                                                            type="text" 
+                                                            className="w-full bg-white p-3 font-black text-slate-500 text-[11px] text-right shadow-sm border border-slate-200 rounded-xl outline-none focus:border-blue-500"
+                                                            value={entryForm.harga !== undefined && entryForm.harga !== null ? Number(entryForm.harga).toLocaleString('id-ID') : '0'}
+                                                            onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})}
+                                                        />
+                                                    </td>
+                                                    <td className="px-6 py-4 text-right">
+                                                        <span className="text-[10px] font-black text-slate-400 block mb-1">Total Item</span>
+                                                        <span className="text-xs font-black text-blue-600">
+                                                            {formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-4 text-center">
+                                                        <button 
+                                                            onClick={() => handlePushComponent(editingItem.id)}
+                                                            className="p-3 bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all"
+                                                        >
+                                                            <Plus size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
                                             </tbody>
-                                            {(() => {
-                                                const item = activePlan[type][editingItem.id] || {};
-                                                const total = item.total || 0;
-                                                if (!item.components || item.components.length === 0) return null;
-                                                return (
-                                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200">
-                                                        <tr>
-                                                            <td colSpan={5} className="px-6 py-5 font-black text-[11px] uppercase tracking-widest italic text-slate-500">Total Akumulasi Rincian</td>
-                                                            <td className="px-6 py-5 text-right font-black text-sm italic text-slate-900">{formatRupiah(total)}</td>
-                                                            <td></td>
-                                                        </tr>
-                                                    </tfoot>
-                                                );
-                                            })()}
+                                            <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                                                <tr>
+                                                    <td colSpan={5} className="px-6 py-5 font-black text-[11px] uppercase tracking-widest italic text-slate-500">Total Akumulasi Rincian</td>
+                                                    <td className="px-6 py-5 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total || 0)}</td>
+                                                    <td></td>
+                                                </tr>
+                                            </tfoot>
                                         </table>
                                     </div>
-                                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                        <Info size={16} className="text-amber-600 shrink-0" />
-                                        <p className="text-[10px] font-bold text-amber-800 tracking-tight leading-relaxed italic">
-                                            Periksa kembali daftar di atas. Total Akumulasi Rincian harus sama dengan alokasi bulanan yang Anda tentukan di bawah ini.
-                                        </p>
-                                    </div>
+
+                                    {/* Mismatch Warning */}
+                                    {(() => {
+                                        const monthlyTotal = Object.values(item.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                        const isMismatch = Math.abs(monthlyTotal - (item.total || 0)) > 10;
+                                        if (!isMismatch) return null;
+                                        return (
+                                            <div className="flex items-center gap-3 p-4 bg-rose-50 rounded-2xl border border-rose-100 animate-pulse">
+                                                <AlertCircle size={18} className="text-rose-600 shrink-0" />
+                                                <p className="text-[10px] font-black text-rose-800 tracking-tight leading-relaxed italic uppercase">
+                                                    PERINGATAN: Total Rincian ({formatRupiah(item.total)}) tidak sama dengan Total Alokasi Bulanan ({formatRupiah(monthlyTotal)}).
+                                                </p>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 {/* Monthly Breakdown Table */}
