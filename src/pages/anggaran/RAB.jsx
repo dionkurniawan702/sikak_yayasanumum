@@ -176,13 +176,30 @@ export default function RAB() {
         const planId = `${selectedYearId}-${selectedUnitId}`;
         const existingPlan = (rabPlans || []).find(p => p.id === planId);
 
-        // ONLY overwrite currentPlan if we switched to a DIFFERENT plan
-        // This prevents background syncs from wiping unsaved local work on the same plan
         if (lastPlanIdRef.current !== planId) {
             if (existingPlan) {
+                // Migration logic: convert single objects to arrays if detected
+                const rawExpense = existingPlan.expense || {};
+                const migratedExpense = {};
+                
+                Object.entries(rawExpense).forEach(([itemId, data]) => {
+                    if (Array.isArray(data)) {
+                        migratedExpense[itemId] = data;
+                    } else if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+                        // Convert old single plan to array with a permanent ID
+                        migratedExpense[itemId] = [{
+                            id: `P-${itemId}-LEGACY`,
+                            itemId: itemId,
+                            ...data
+                        }];
+                    } else {
+                        migratedExpense[itemId] = [];
+                    }
+                });
+
                 setCurrentPlan({
                     income: existingPlan.income || {},
-                    expense: existingPlan.expense || {},
+                    expense: migratedExpense,
                     status: existingPlan.status || 'DRAFT',
                     rejectionReason: existingPlan.rejectionReason || null
                 });
@@ -237,26 +254,19 @@ export default function RAB() {
                         }
                     }
                 });
-                // Merge Expense
+                // Merge Expense (Now handles Arrays of plans per item)
                 const planExpense = plan.expense || {};
-                Object.entries(planExpense).forEach(([itemId, data]) => {
-                    if (!data) return;
+                Object.entries(planExpense).forEach(([itemId, dataArray]) => {
+                    if (!dataArray || !Array.isArray(dataArray)) return;
+                    
                     if (!consolidated.expense[itemId]) {
-                        consolidated.expense[itemId] = JSON.parse(JSON.stringify(data));
+                        consolidated.expense[itemId] = JSON.parse(JSON.stringify(dataArray));
                     } else {
-                        const existing = consolidated.expense[itemId];
-                        existing.total = (existing.total || 0) + (data.total || 0);
-                        if (data.months) {
-                            if (!existing.months) existing.months = {};
-                            Object.entries(data.months).forEach(([mId, mData]) => {
-                                if (!mData) return;
-                                const currentM = existing.months[mId] || { jumlah: 0, m: false };
-                                existing.months[mId] = {
-                                    jumlah: (currentM.jumlah || 0) + (parseFloat(mData.jumlah) || 0),
-                                    m: currentM.m || mData.m
-                                };
-                            });
-                        }
+                        // Concatenate plans from different units for the same item master
+                        consolidated.expense[itemId] = [
+                            ...consolidated.expense[itemId],
+                            ...JSON.parse(JSON.stringify(dataArray))
+                        ];
                     }
                 });
             });
@@ -1218,94 +1228,76 @@ export default function RAB() {
                         return true;
                     }).filter(item => {
                         if (fundSourceFilter === 'Yayasan') {
-                            // Hide items that are strictly BOS OR items that have a BOS allocation for this unit
                             return item.sourceOfFunds !== 'BOS' && !bosItemMap[item.id];
                         }
                         if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
                         return true;
-                    }).map((item, index) => {
-                        const detail = activePlan.expense[item.id] || { total: 0, semester: '1', bosAmount: 0, useBos: false };
-                        
+                    }).flatMap((itemMaster, index) => {
+                        const plans = activePlan.expense[itemMaster.id] || [];
                         const allocated = fundSourceFilter === 'BOS' 
-                            ? (bosItemMap[item.id] || 0) 
-                            : (rapData.itemAllocations[item.id] || 0);
+                            ? (bosItemMap[itemMaster.id] || 0) 
+                            : (rapData.itemAllocations[itemMaster.id] || 0);
 
-                        const draftValue = fundSourceFilter === 'BOS' 
-                            ? (parseFloat(detail.bosAmount) || 0) 
-                            : (detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
+                        // If no plans, show one placeholder row with a Plus button
+                        if (plans.length === 0) {
+                            return [{ 
+                                itemMaster, 
+                                plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
+                                allocated,
+                                isFirst: true,
+                                planIndex: 0
+                            }];
+                        }
 
+                        // Return a row for each plan
+                        return plans.map((plan, pIdx) => ({
+                            itemMaster,
+                            plan,
+                            allocated,
+                            isFirst: pIdx === 0,
+                            planIndex: pIdx
+                        }));
+                    }).map((rowData, index) => {
+                        const { itemMaster, plan, allocated, isFirst } = rowData;
+                        const draftValue = plan.total || 0;
                         const isOver = draftValue > (allocated + 100);
-                        const progress = allocated > 0 ? (draftValue / allocated * 100) : 0;
                         
                         return (
-                            <tr key={item.id} className="group bg-white hover:bg-slate-50 transition-all duration-300">
+                            <tr key={plan.id || index} className="group bg-white hover:bg-slate-50 transition-all duration-300">
                                 <td className="px-6 py-4 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
                                     {(index + 1).toString().padStart(2, '0')}
                                 </td>
-                                <td className="px-6 py-4 border-y border-slate-100">
+                                <td className={`px-6 py-4 border-y border-slate-100 ${!isFirst ? 'opacity-40' : ''}`}>
                                     <div className="flex items-center gap-4">
-                                        <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${detail.total > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>
+                                        <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${draftValue > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>
                                             <TrendingUp size={18} />
                                         </div>
                                         <div>
-                                            <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{item.name}</p>
+                                            <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
                                             <div className="flex items-center gap-2 mt-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">{item.sourceOfFunds || 'Yayasan'}</p>
-                                                {detail.useBos && (
-                                                    <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-md border border-emerald-100 text-[8px] font-black uppercase tracking-widest flex items-center gap-1">
-                                                        <Wallet size={10} />
-                                                        BOS: {formatRupiah(detail.bosAmount)}
-                                                    </span>
-                                                )}
+                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
+                                                    {plan.description ? plan.description.substring(0, 40) + (plan.description.length > 40 ? '...' : '') : (itemMaster.sourceOfFunds || 'Yayasan')}
+                                                </p>
                                             </div>
                                         </div>
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 border-y border-slate-100 text-center">
-                                    <span className="px-3 py-1 bg-slate-50 rounded-full font-black text-[9px] text-slate-400">SMT {detail.semester || '1'}</span>
+                                    <span className={`px-3 py-1 rounded-full font-black text-[9px] ${plan.isEmpty ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'}`}>
+                                        SMT {plan.semester || '1'}
+                                    </span>
                                 </td>
                                 <td className="px-6 py-4 border-y border-slate-100 text-right">
-                                    <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>
+                                    {isFirst && <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>}
                                 </td>
                                 <td className="px-6 py-4 border-y border-slate-100 text-right">
                                     <div className="flex flex-col items-end gap-1">
                                         <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (draftValue > 0 ? 'text-indigo-600' : 'text-slate-300')}`}>
                                             {formatRupiah(draftValue)}
                                         </p>
-                                        {allocated > 0 && (
-                                            <div className="w-24 h-1 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className={`h-full transition-all ${isOver ? 'bg-rose-500' : 'bg-emerald-500'}`} style={{ width: `${Math.min(progress, 100)}%` }} />
-                                            </div>
-                                        )}
                                     </div>
                                 </td>
                                 <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
-                                    <button 
-                                        onClick={() => setEditingItem(item)}
-                                        disabled={(() => {
-                                            if (isSuperAdmin) return false;
-                                            if (isLocked) return true;
-
-                                            const isAdminUnit = currentUser?.role === 'admin_unit';
-                                            const isAdminBidang = currentUser?.role === 'admin_bidang';
-                                            const sdmField = fields.find(f => f.name === 'Bidang SDM');
-                                            const isSdmAdmin = isAdminBidang && currentUser?.fieldId === sdmField?.id;
-
-                                            const financeField = fields.find(f => f.name === 'Bidang Keuangan');
-                                            const isFinanceAdmin = isAdminBidang && currentUser?.fieldId === financeField?.id;
-
-                                            const sarprasField = fields.find(f => f.name === 'Bidang Sarpras');
-                                            const isSarprasAdmin = isAdminBidang && currentUser?.fieldId === sarprasField?.id;
-
-                                            // Special Logic: Shared Edit for Building/Sarpras
-                                            if (item.name === 'Gedung' || item.name === 'Perawatan Sarpras dan Bangunan') {
-                                                if (isAdminUnit || isSarprasAdmin) return false;
-                                            }
-
-                                            // Special Logic: Shared Edit for Payroll (Penggajian)
-                                            if (item.name === 'Penggajian') {
-                                                if (isAdminUnit || isSdmAdmin) return false;
-                                            }
 
                                             // Special Logic: Development (Pengembangan (umum))
                                             if (item.name === 'Pengembangan (umum)') {
@@ -1532,23 +1524,6 @@ export default function RAB() {
                                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95"
                             >
                                 KIRIM KE YAYASAN
-                            </button>
-                        )}
-                        {!isConsolidation && !isLocked && (
-                            <button 
-                                onClick={() => {
-                                    const tempId = `temp-${Date.now()}`;
-                                    setEditingItem({ 
-                                        id: tempId, 
-                                        name: '', 
-                                        sourceOfFunds: fundSourceFilter === 'all' ? 'Yayasan' : fundSourceFilter, 
-                                        isNew: true 
-                                    });
-                                }}
-                                className="bg-indigo-600 hover:bg-slate-900 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-indigo-100 flex items-center gap-3 active:scale-95"
-                            >
-                                <PlusCircle size={18} />
-                                TAMBAH RENCANA BARU
                             </button>
                         )}
                     </div>
@@ -2383,57 +2358,43 @@ export default function RAB() {
                                     <div className="flex flex-col items-end gap-2">
                                          <button 
                                             onClick={async () => {
-                                                // Validation for new items
-                                                if (editingItem.isNew) {
-                                                    if (!editingItem.name || editingItem.name.trim().length === 0) {
-                                                        alert('Silakan isi Nama Rencana Belanja terlebih dahulu.');
-                                                        return;
-                                                    }
+                                                const monthsData = item.months || {};
+                                                const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                                
+                                                setCurrentPlan(prev => {
+                                                    const itemId = editingItem.itemId || editingItem.id;
+                                                    const existingPlans = prev.expense[itemId] || [];
                                                     
-                                                    // Convert temp ID to real ID
-                                                    const realId = `EXP-${Date.now()}`;
-                                                    const newMasterItem = {
-                                                        id: realId,
-                                                        name: editingItem.name,
-                                                        sourceOfFunds: editingItem.sourceOfFunds || 'Yayasan',
-                                                        unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId),
-                                                        fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                                                        isField: selectedUnitId.startsWith('FIELD-'),
-                                                        lastUpdated: new Date().toISOString()
-                                                    };
-
-                                                    // 1. Add to master data (expenseItems)
-                                                    dispatch({ type: 'ADD_EXPENSE_ITEM', payload: newMasterItem });
-                                                    
-                                                    // 2. Transfer data from temp ID to real ID in currentPlan
-                                                    setCurrentPlan(prev => {
-                                                        const tempData = prev[type][editingItem.id] || {};
-                                                        const newExpense = { ...prev.expense };
-                                                        delete newExpense[editingItem.id]; // Remove temp
-                                                        newExpense[realId] = {
-                                                            ...tempData,
-                                                            total: monthlyTotal,
-                                                            programId: tempData.programId,
-                                                            semester: tempData.semester || '1'
-                                                        };
-                                                        return { ...prev, expense: newExpense };
-                                                    });
-                                                } else {
-                                                    // Standard Update logic
-                                                    setCurrentPlan(prev => {
-                                                        const itemData = prev[type][editingItem.id];
-                                                        return {
-                                                            ...prev,
-                                                            [type]: {
-                                                                ...prev[type],
-                                                                [editingItem.id]: {
-                                                                    ...itemData,
-                                                                    total: monthlyTotal
-                                                                }
+                                                    let updatedPlans;
+                                                    if (editingItem.isNewPlan) {
+                                                        // Adding a NEW plan to an existing item
+                                                        updatedPlans = [
+                                                            ...existingPlans,
+                                                            {
+                                                                ...item,
+                                                                id: editingItem.id,
+                                                                itemId: itemId,
+                                                                total: monthlyTotal
                                                             }
-                                                        };
-                                                    });
-                                                }
+                                                        ];
+                                                    } else {
+                                                        // Editing an EXISTING plan
+                                                        updatedPlans = existingPlans.map(p => 
+                                                            p.id === editingItem.planId || p.id === editingItem.id
+                                                                ? { ...p, ...item, total: monthlyTotal }
+                                                                : p
+                                                        );
+                                                    }
+
+                                                    return {
+                                                        ...prev,
+                                                        expense: {
+                                                            ...prev.expense,
+                                                            [itemId]: updatedPlans
+                                                        }
+                                                    };
+                                                });
+                                                
                                                 handleCloseModal();
                                             }}
                                             className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
