@@ -12,6 +12,7 @@ import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
 import { calculateRAP } from '../../utils/budgetEngine';
+import BudgetRow from '../../components/BudgetRow';
 
 // Helper to generate 12 months for an academic year (July to June)
 const generateMonths = (academicYearName) => {
@@ -81,6 +82,26 @@ export default function RAB() {
     // States for Journal-style component entry
     const [entryForm, setEntryForm] = useState({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
+    const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
+    const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
+    const [expandedDetailItems, setExpandedDetailItems] = useState({});
+
+    const toggleReviewPlan = (id) => setExpandedReviewPlans(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleDashboardPlan = (id) => setExpandedDashboardPlans(prev => ({ ...prev, [id]: !prev[id] }));
+    const toggleDetailItem = (parentId, itemId) => {
+        const key = `${parentId}-${itemId}`;
+        setExpandedDetailItems(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const formatCurrency = (val) => {
+        const num = parseFloat(val) || 0;
+        return `Rp ${num.toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+    };
+
+    const getUnitName = (id) => {
+        const u = units.find(u => u.id === id);
+        return u ? u.name : 'Unknown';
+    };
     const [searchParams] = useSearchParams();
     const sourceParam = searchParams.get('source');
     const labelInputRef = useRef(null);
@@ -999,114 +1020,156 @@ export default function RAB() {
         setShowStatusModal(false);
     };
 
-    const renderReviewView = () => (
-        <div className="space-y-8 animate-in fade-in duration-500">
-            <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
-                <div className="flex items-center gap-4 mb-6">
-                    <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
-                        <ShieldCheck size={20} />
-                    </div>
-                    <div>
-                        <h4 className="font-black text-slate-900 uppercase tracking-tight italic">Review Pengajuan Unit</h4>
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Daftar unit yang telah mengirimkan rancangan anggaran</p>
-                    </div>
-                </div>
+    const renderReviewView = () => {
+        const pendingPlans = rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId);
 
-                <div className="grid grid-cols-1 gap-4">
-                    {rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId).length === 0 ? (
-                        <div className="p-12 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
-                            <CheckCircle2 size={40} className="mx-auto text-emerald-400 mb-4 opacity-50" />
-                            <p className="font-black text-slate-400 text-xs uppercase tracking-widest italic">Tidak ada pengajuan yang perlu di-review!</p>
+        return (
+            <div className="space-y-8 animate-in fade-in duration-500">
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center gap-4 mb-6">
+                        <div className="p-3 bg-indigo-50 rounded-2xl text-indigo-600">
+                            <ShieldCheck size={20} />
                         </div>
-                    ) : (
-                        rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId).map(plan => {
-                            const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
-                            const total = Object.values(plan.expense || {}).reduce((sum, v) => sum + (v.total || 0), 0);
-                            return (
-                                <div key={plan.id} onClick={() => { setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION')); setActiveTab('EXPENSE'); setShowDashboard(false); }} className="p-6 bg-slate-50 border border-slate-100 rounded-[2rem] flex items-center justify-between hover:border-indigo-200 hover:bg-indigo-50/30 transition-all cursor-pointer">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-3 bg-white rounded-xl shadow-sm text-slate-400">
-                                            {plan.fieldId ? <Layers size={18} /> : <Building2 size={18} />}
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-slate-900 text-sm tracking-tight">{unit?.name}</p>
-                                            <p className="text-[10px] font-bold text-slate-400 bg-white px-2 py-0.5 rounded-full inline-block mt-1">
-                                                TOTAL: {formatRupiah(total)}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center gap-3">
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleApproval(plan.id, 'APPROVED');
-                                            }}
-                                            className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-emerald-100 hover:scale-105 active:scale-95 transition-all"
-                                        >
-                                            SETUJUI (ACC)
-                                        </button>
-                                        <button 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setShowRejectionInput(plan.id);
-                                            }}
-                                            className="px-6 py-3 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase shadow-lg shadow-rose-100 hover:scale-105 active:scale-95 transition-all"
-                                        >
-                                            TOLAK / REVISI
-                                        </button>
-                                        <button 
-                                            onClick={() => {
-                                                setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION'));
-                                                setActiveTab('EXPENSE');
-                                                setShowDashboard(false);
-                                            }}
-                                            className="p-3 bg-white text-slate-400 border border-slate-200 rounded-xl hover:text-indigo-600 transition-all"
-                                        >
-                                            <ChevronRight size={18} />
-                                        </button>
-                                    </div>
-                                </div>
-                            );
-                        })
-                    )}
-                </div>
-            </div>
-            
-            {showRejectionInput && (
-                <div className="bg-rose-50 p-8 rounded-[2rem] border border-rose-100 animate-in slide-in-from-top-4 duration-500">
-                    <div className="flex items-start gap-4 mb-6">
-                        <div className="p-3 bg-rose-100 rounded-2xl text-rose-600"><AlertCircle size={20} /></div>
                         <div>
-                            <h4 className="font-black text-rose-900 uppercase tracking-tight italic">Alasan Penolakan</h4>
-                            <p className="text-rose-400 text-[10px] font-black uppercase tracking-widest mt-1">Sertilkan masukan anda agar unit dapat memperbaiki anggaran</p>
+                            <h4 className="font-black text-slate-900 uppercase tracking-tight italic">Review Pengajuan Unit</h4>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Daftar unit yang telah mengirimkan rancangan anggaran</p>
                         </div>
                     </div>
-                    <textarea 
-                        className="w-full p-5 bg-white border border-rose-200 rounded-2xl font-medium text-rose-800 outline-none focus:ring-4 focus:ring-rose-100 transition-all min-h-[120px]"
-                        placeholder="Tuliskan catatan revisi di sini..."
-                        value={rejectionReason}
-                        onChange={e => setRejectionReason(e.target.value)}
-                    />
-                    <div className="flex gap-4 mt-6 justify-end">
-                        <button 
-                            onClick={() => setShowRejectionInput(null)}
-                            className="px-6 py-3 text-rose-400 font-black text-xs uppercase"
-                        >
-                            Batal
-                        </button>
-                        <button 
-                            onClick={() => handleApproval(showRejectionInput, 'REJECTED', rejectionReason)}
-                            disabled={!rejectionReason.trim()}
-                            className="bg-rose-600 text-white px-10 py-3 rounded-xl font-black text-xs uppercase shadow-xl shadow-rose-200 disabled:opacity-50"
-                        >
-                            KIRIM PENOLAKAN
-                        </button>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full border-separate border-spacing-y-2">
+                            <thead>
+                                <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                                    <th className="px-6 py-2 text-left">Unit / Bidang</th>
+                                    <th className="px-6 py-2 text-right">Limit (RAP)</th>
+                                    <th className="px-6 py-2 text-right">Total RAB</th>
+                                    <th className="px-6 py-2 text-right">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pendingPlans.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="p-12 text-center bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                                            <CheckCircle2 size={40} className="mx-auto text-emerald-400 mb-4 opacity-50" />
+                                            <p className="font-black text-slate-400 text-xs uppercase tracking-widest italic">Tidak ada pengajuan yang perlu di-review!</p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    pendingPlans.map(plan => {
+                                        const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
+                                        const total = Object.values(plan.expense || {}).reduce((sum, v) => sum + (v.total || 0), 0);
+                                        
+                                        // Calculate RAP for this specific plan's unit/field for the row display
+                                        let unitId = null;
+                                        let fieldId = null;
+                                        if (plan.fieldId) fieldId = plan.fieldId;
+                                        else unitId = plan.unitId;
+                                        
+                                        const planRAP = calculateRAP(state, selectedYearId, unitId, fieldId);
+                                        
+                                        const rowData = {
+                                            id: plan.id,
+                                            name: unit?.name || 'Unknown',
+                                            status: plan.status,
+                                            rap: planRAP.totalTarget,
+                                            rab: total,
+                                            sisa: planRAP.totalTarget - total,
+                                            breakdown: Object.entries(plan.expense || {})
+                                                .map(([id, detail]) => ({
+                                                    id,
+                                                    name: (expenseItems.find(e => e.id === id)?.name || id),
+                                                    rab: detail.total || 0,
+                                                    rap: planRAP.itemAllocations[id] || 0,
+                                                    sisa: (planRAP.itemAllocations[id] || 0) - (detail.total || 0)
+                                                }))
+                                                .sort((a, b) => b.rab - a.rab)
+                                                .slice(0, 5)
+                                        };
+
+                                        return (
+                                            <BudgetRow 
+                                                key={plan.id}
+                                                data={rowData}
+                                                isExpanded={!!expandedReviewPlans[plan.id]}
+                                                onToggle={() => toggleReviewPlan(plan.id)}
+                                                formatCurrency={formatCurrency}
+                                                expandedDetailItems={expandedDetailItems}
+                                                onToggleDetailItem={toggleDetailItem}
+                                                getUnitName={getUnitName}
+                                                isField={!!plan.fieldId}
+                                                actions={
+                                                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                        <button 
+                                                            onClick={() => handleApproval(plan.id, 'APPROVED')}
+                                                            className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                            title="SETUJUI (ACC)"
+                                                        >
+                                                            <CheckCircle2 size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => setShowRejectionInput(plan.id)}
+                                                            className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                                            title="TOLAK / REVISI"
+                                                        >
+                                                            <XCircle size={14} />
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => {
+                                                                setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION'));
+                                                                setActiveTab('EXPENSE');
+                                                                setShowDashboard(false);
+                                                            }}
+                                                            className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                            title="LIHAT RINCIAN"
+                                                        >
+                                                            <ChevronRight size={14} />
+                                                        </button>
+                                                    </div>
+                                                }
+                                            />
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            )}
-        </div>
-    );
+                
+                {showRejectionInput && (
+                    <div className="bg-rose-50 p-8 rounded-[2rem] border border-rose-100 animate-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-start gap-4 mb-6">
+                            <div className="p-3 bg-rose-100 rounded-2xl text-rose-600"><AlertCircle size={20} /></div>
+                            <div>
+                                <h4 className="font-black text-rose-900 uppercase tracking-tight italic">Alasan Penolakan</h4>
+                                <p className="text-rose-400 text-[10px] font-black uppercase tracking-widest mt-1">Sertilkan masukan anda agar unit dapat memperbaiki anggaran</p>
+                            </div>
+                        </div>
+                        <textarea 
+                            className="w-full p-5 bg-white border border-rose-200 rounded-2xl font-medium text-rose-800 outline-none focus:ring-4 focus:ring-rose-100 transition-all min-h-[120px]"
+                            placeholder="Tuliskan catatan revisi di sini..."
+                            value={rejectionReason}
+                            onChange={e => setRejectionReason(e.target.value)}
+                        />
+                        <div className="flex gap-4 mt-6 justify-end">
+                            <button 
+                                onClick={() => setShowRejectionInput(null)}
+                                className="px-6 py-3 text-rose-400 font-black text-xs uppercase"
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                onClick={() => handleApproval(showRejectionInput, 'REJECTED', rejectionReason)}
+                                disabled={!rejectionReason.trim()}
+                                className="bg-rose-600 text-white px-10 py-3 rounded-xl font-black text-xs uppercase shadow-xl shadow-rose-200 disabled:opacity-50"
+                            >
+                                KIRIM PENOLAKAN
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
 
     const renderBudgetTable = () => (
         <div className="overflow-x-auto">
@@ -1561,11 +1624,16 @@ export default function RAB() {
                     </div>
 
                     {/* Unit Status Grid */}
-                    <div className="space-y-6">
-                        <div className="flex items-center justify-between border-b border-slate-100 pb-4">
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 tracking-tight italic uppercase">Status Pengajuan Unit</h3>
-                                <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mt-1 italic">Pantau progres pengisian RAB setiap unit pendidikan</p>
+                    <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm relative overflow-hidden">
+                        <div className="flex items-center justify-between mb-8">
+                            <div className="flex items-center gap-5">
+                                <div className="p-4 bg-blue-50 rounded-[1.5rem] text-blue-600 shadow-sm">
+                                    <BarChart3 size={24} />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none italic uppercase">Monitoring Status Anggaran</h3>
+                                    <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1.5 italic">Ringkasan Unit dan Bidang Pendidikan</p>
+                                </div>
                             </div>
                             <div className="flex items-center gap-4 text-[9px] font-black text-slate-400 uppercase tracking-widest">
                                 <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Disetujui</span>
@@ -1574,63 +1642,74 @@ export default function RAB() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                            {[...units.filter(u => !u.isDeleted), ...fields.map(f => ({ ...f, isField: true }))].map(item => {
-                                const planId = `${selectedYearId}-${item.isField ? `FIELD-${item.id}` : item.id}`;
-                                const plan = rabPlans.find(p => p.id === planId);
-                                const status = plan?.status || 'EMPTY';
-                                const total = Object.values(plan?.expense || {}).reduce((sum, v) => sum + (v?.total || 0), 0);
-
-                                return (
-                                    <div 
-                                        key={item.id}
-                                        onClick={() => {
-                                            setSelectedUnitId(item.isField ? `FIELD-${item.id}` : item.id);
-                                            setShowDashboard(false);
-                                        }}
-                                        className="group cursor-pointer bg-white border border-slate-100 rounded-[2rem] p-6 transition-all hover:border-blue-200 hover:shadow-2xl hover:shadow-blue-500/5 active:scale-95 relative"
-                                    >
-                                        {status === 'PENDING' && (
-                                            <div className="absolute top-4 right-4 flex items-center justify-center">
-                                                <div className="w-6 h-6 bg-rose-500 rounded-full animate-ping absolute opacity-20" />
-                                                <div className="w-6 h-6 bg-rose-600 rounded-full relative flex items-center justify-center text-[10px] font-black text-white shadow-lg shadow-rose-200">
-                                                    {Object.keys(plan?.expense || {}).length}
-                                                </div>
-                                            </div>
-                                        )}
+                        <div className="overflow-x-auto">
+                            <table className="w-full border-separate border-spacing-y-2">
+                                <thead>
+                                    <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                                        <th className="px-6 py-2 text-left">Unit / Bidang</th>
+                                        <th className="px-6 py-2 text-right">Target (RAP)</th>
+                                        <th className="px-6 py-2 text-right">Realisasi RAB</th>
+                                        <th className="px-6 py-2 text-right">Status / Sisa</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {[...units.filter(u => !u.isDeleted), ...fields.map(f => ({ ...f, isField: true }))].map(item => {
+                                        const planId = `${selectedYearId}-${item.isField ? `FIELD-${item.id}` : item.id}`;
+                                        const plan = rabPlans.find(p => p.id === planId);
+                                        const status = plan?.status || 'EMPTY';
+                                        const total = Object.values(plan?.expense || {}).reduce((sum, v) => sum + (v?.total || 0), 0);
                                         
-                                        <div className="space-y-4">
-                                            <div className="p-2.5 bg-slate-50 w-fit rounded-xl group-hover:bg-blue-50 transition-colors">
-                                                {item.isField ? <Layers size={20} className="text-slate-400 group-hover:text-blue-500" /> : <Building2 size={20} className="text-slate-400 group-hover:text-blue-500" />}
-                                            </div>
-                                            
-                                            <div>
-                                                <h4 className="font-black text-slate-900 text-base leading-tight mb-1 group-hover:text-blue-700 transition-colors">
-                                                    {item.name}
-                                                </h4>
-                                                <span className={`px-3 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${
-                                                    status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-                                                    (status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
-                                                }`}>
-                                                    {status === 'APPROVED' ? 'Disetujui' : (status === 'PENDING' ? 'Menunggu Review' : 'Draft / Awal')}
-                                                </span>
-                                            </div>
+                                        // Dynamic RAP calculation for the row
+                                        const itemRAP = calculateRAP(state, selectedYearId, item.isField ? null : item.id, item.isField ? item.id : null);
 
-                                            <div className="pt-4 border-t border-slate-50 flex items-center justify-between group-hover:border-blue-50">
-                                                <div>
-                                                    <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Total Diajukan</p>
-                                                    <p className="font-black text-slate-900 text-sm italic transform transition-transform group-hover:scale-105 origin-left">
-                                                        {formatRupiah(total)}
-                                                    </p>
-                                                </div>
-                                                <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-blue-500 group-hover:text-white transition-all transform group-hover:translate-x-1">
-                                                    <ChevronRight size={14} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
+                                        const rowData = {
+                                            id: item.isField ? `FIELD-${item.id}` : item.id,
+                                            name: item.name,
+                                            status: status,
+                                            rap: itemRAP.totalTarget,
+                                            rab: total,
+                                            sisa: itemRAP.totalTarget - total,
+                                            breakdown: plan ? Object.entries(plan.expense || {})
+                                                .map(([id, detail]) => ({
+                                                    id,
+                                                    name: (expenseItems.find(e => e.id === id)?.name || id),
+                                                    rab: detail.total || 0,
+                                                    rap: itemRAP.itemAllocations[id] || 0,
+                                                    sisa: (itemRAP.itemAllocations[id] || 0) - (detail.total || 0)
+                                                }))
+                                                .sort((a, b) => b.rab - a.rab)
+                                                .slice(0, 5) : []
+                                        };
+
+                                        return (
+                                            <BudgetRow 
+                                                key={rowData.id}
+                                                data={rowData}
+                                                isExpanded={!!expandedDashboardPlans[rowData.id]}
+                                                onToggle={() => toggleDashboardPlan(rowData.id)}
+                                                formatCurrency={formatCurrency}
+                                                expandedDetailItems={expandedDetailItems}
+                                                onToggleDetailItem={toggleDetailItem}
+                                                getUnitName={getUnitName}
+                                                isField={!!item.isField}
+                                                actions={
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setSelectedUnitId(rowData.id);
+                                                            setShowDashboard(false);
+                                                        }}
+                                                        className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                        title="INPUT ANGGARAN"
+                                                    >
+                                                        <ChevronRight size={14} />
+                                                    </button>
+                                                }
+                                            />
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, Building2, Layers, Download, FileSpreadsheet
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
+import BudgetRow from '../../components/BudgetRow';
 
 export default function BudgetDashboard() {
     const { state, dispatch } = useApp();
@@ -415,89 +416,8 @@ export default function BudgetDashboard() {
         XLSX.writeFile(wb, `Dasbor-Anggaran-${selectedAcademicYearName}.xlsx`);
     };
 
-    // ========== Table Row Component (Premium Look) ==========
-    const BudgetRow = ({ data, isExpanded, onToggle }) => (
-        <>
-            <tr 
-                className="budget-row cursor-pointer hover:bg-slate-50 transition-colors group"
-                onClick={onToggle}
-            >
-                <td className="budget-cell budget-cell-name">
-                    <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </span>
-                        <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
-                    </div>
-                </td>
-                <td className="budget-cell budget-cell-number font-black text-slate-900">
-                    {formatCurrency(data.rap)}
-                </td>
-                <td className="budget-cell budget-cell-number font-bold text-slate-500">
-                    {formatCurrency(data.rab)}
-                </td>
-                <td className="budget-cell budget-cell-number budget-cell-sisa">
-                    <span className={`font-black px-3 py-1 rounded-full text-[12px] ${data.sisa < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                        {formatCurrency(data.sisa)}
-                    </span>
-                </td>
-            </tr>
-            {isExpanded && data.breakdown.map(item => {
-                const hasSources = item.sources && Object.keys(item.sources).length > 0;
-                const isDetailExpanded = !!expandedDetailItems[`${data.id}-${item.id}`];
+    // BudgetRow local definition removed. Using shared component.
 
-                return (
-                    <React.Fragment key={item.id}>
-                        <tr 
-                            className={`budget-row-detail group ${hasSources ? 'cursor-pointer hover:bg-indigo-50/50' : ''}`}
-                            onClick={() => hasSources && toggleDetailItem(data.id, item.id)}
-                        >
-                            <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }}>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-slate-300">└</span>
-                                    {hasSources && (
-                                        <span className="text-indigo-400 group-hover:text-indigo-600">
-                                            {isDetailExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                                        </span>
-                                    )}
-                                    <span className={`${hasSources ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px]`}>
-                                        {item.name}
-                                    </span>
-                                </div>
-                            </td>
-                            <td className="budget-cell budget-cell-number text-slate-400 text-[11px] font-bold">
-                                {formatCurrency(item.rap)}
-                            </td>
-                            <td className="budget-cell budget-cell-number text-slate-400 text-[11px] font-bold">
-                                {formatCurrency(item.rab)}
-                            </td>
-                            <td className={`budget-cell budget-cell-number budget-cell-sisa text-[11px] font-black ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
-                                {formatCurrency(item.sisa)}
-                            </td>
-                        </tr>
-                        {isDetailExpanded && hasSources && Object.entries(item.sources).map(([unitId, amount]) => (
-                            <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300">
-                                <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
-                                    <div className="flex items-center gap-1.5 py-0.5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                            {getUnitName(unitId)}
-                                        </span>
-                                    </div>
-                                </td>
-                                <td className="budget-cell budget-cell-number">
-                                    <span className="text-[10px] font-black text-indigo-400">
-                                        {formatCurrency(amount)}
-                                    </span>
-                                </td>
-                                <td colSpan="2" className="budget-cell" />
-                            </tr>
-                        ))}
-                    </React.Fragment>
-                );
-            })}
-        </>
-    );
 
     return (
         <div className="p-8 animate-in pb-20">
@@ -554,7 +474,12 @@ export default function BudgetDashboard() {
                                                 key={b.id} 
                                                 data={b} 
                                                 isExpanded={!!expandedFields[b.id]} 
-                                                onToggle={() => toggleField(b.id)} 
+                                                onToggle={() => toggleField(b.id)}
+                                                formatCurrency={formatCurrency}
+                                                expandedDetailItems={expandedDetailItems}
+                                                onToggleDetailItem={toggleDetailItem}
+                                                getUnitName={getUnitName}
+                                                isField={true}
                                             />
                                         ))}
                                         <tr className="budget-row-total bg-slate-50">
@@ -602,7 +527,11 @@ export default function BudgetDashboard() {
                                                 key={u.id} 
                                                 data={u} 
                                                 isExpanded={!!expandedUnits[u.id]} 
-                                                onToggle={() => toggleUnit(u.id)} 
+                                                onToggle={() => toggleUnit(u.id)}
+                                                formatCurrency={formatCurrency}
+                                                expandedDetailItems={expandedDetailItems}
+                                                onToggleDetailItem={toggleDetailItem}
+                                                getUnitName={getUnitName}
                                             />
                                         ))}
                                         <tr className="budget-row-total bg-slate-50">
@@ -649,6 +578,11 @@ export default function BudgetDashboard() {
                                         data={u}
                                         isExpanded={!!expandedBosUnits[u.id]}
                                         onToggle={() => toggleBosUnit(u.id)}
+                                        formatCurrency={formatCurrency}
+                                        expandedDetailItems={expandedDetailItems}
+                                        onToggleDetailItem={toggleDetailItem}
+                                        getUnitName={getUnitName}
+                                        isBos={true}
                                     />
                                 ))}
                                 <tr className="budget-row-total bg-emerald-50/20">

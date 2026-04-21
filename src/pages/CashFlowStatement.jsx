@@ -4,6 +4,7 @@ import { hitungSaldoAkun } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { Download, Printer, Activity, TrendingUp, TrendingDown, Landmark, Banknote, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import ReportRow from '../components/ReportRow';
 import * as XLSX from 'xlsx';
 
 export default function CashFlowStatement() {
@@ -12,9 +13,14 @@ export default function CashFlowStatement() {
     const journals = state.journals.filter(j => !j.isDeleted);
     const assets = state.assets.filter(a => !a.isDeleted);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [expandedRows, setExpandedRows] = useState({ 'OPERATING': true }); // Default expand operating
     const reportRef = useRef(null);
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const toggleRow = (id) => {
+        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const exportToExcel = () => {
         const data = [];
@@ -138,80 +144,67 @@ export default function CashFlowStatement() {
 
                 <div className="space-y-12">
                     {/* OPERATING */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-6 pb-2 border-b-2 border-emerald-500 w-fit">
-                            <Activity size={20} className="text-emerald-600" />
-                            <h3 className="text-sm font-black text-emerald-800 uppercase tracking-widest">ARUS KAS DARI AKTIVITAS OPERASI</h3>
-                        </div>
-                        <div className="space-y-2">
-                             <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Penerimaan Kas:</p>
-                             {operatingReceipts.map((item, idx) => (
-                                 <div key={idx} className="flex justify-between px-8 py-1 text-sm font-medium text-slate-600">
-                                     <span>{item.label}</span>
-                                     <span className="font-bold text-slate-900"><CurrencyDisplay value={item.value} /></span>
-                                 </div>
-                             ))}
-                             <p className="px-4 mt-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pengeluaran Kas:</p>
-                             {operatingPayments.map((item, idx) => (
-                                 <div key={idx} className="flex justify-between px-8 py-1 text-sm font-medium text-slate-600">
-                                     <span>{item.label}</span>
-                                     <span className="font-bold text-rose-600"><CurrencyDisplay value={-item.value} /></span>
-                                 </div>
-                             ))}
-                             <div className="mt-4 p-4 bg-emerald-50 rounded-2xl flex justify-between items-center">
-                                 <span className="text-xs font-black text-emerald-800 uppercase tracking-widest">Arus Kas Bersih Operasional</span>
-                                 <span className="text-lg font-black text-emerald-900"><CurrencyDisplay value={netOperatingCash} /></span>
-                             </div>
-                        </div>
+                    <div className="overflow-hidden bg-white rounded-[32px] border border-slate-100 p-2">
+                        <table className="w-full text-left border-separate border-spacing-y-1">
+                            <tbody>
+                                {/* OPERATING */}
+                                <ReportRow 
+                                    id="OPERATING"
+                                    name="ARUS KAS DARI AKTIVITAS OPERASI"
+                                    valCurr={netOperatingCash}
+                                    valPrev={0}
+                                    type="category"
+                                    isParent={true}
+                                    isExpanded={!!expandedRows['OPERATING']}
+                                    onToggle={toggleRow}
+                                />
+                                {expandedRows['OPERATING'] && (
+                                    <Fragment>
+                                        <ReportRow name="Penerimaan Kas" valCurr={totalReceipts} type="header" level={1} />
+                                        {operatingReceipts.map((item, idx) => (
+                                            <ReportRow key={`rec-${idx}`} name={item.label} valCurr={item.value} level={2} />
+                                        ))}
+                                        <ReportRow name="Pengeluaran Kas" valCurr={-totalPayments} type="header" level={1} />
+                                        {operatingPayments.map((item, idx) => (
+                                            <ReportRow key={`pay-${idx}`} name={item.label} valCurr={-item.value} level={2} />
+                                        ))}
+                                    </Fragment>
+                                )}
+
+                                {/* INVESTING */}
+                                <ReportRow 
+                                    id="INVESTING"
+                                    name="ARUS KAS DARI AKTIVITAS INVESTASI"
+                                    valCurr={netInvestingCash}
+                                    valPrev={0}
+                                    type="category"
+                                    isParent={true}
+                                    isExpanded={!!expandedRows['INVESTING']}
+                                    onToggle={toggleRow}
+                                />
+                                {expandedRows['INVESTING'] && investingActivities.map((item, idx) => (
+                                    <ReportRow key={`inv-${idx}`} name={item.label} valCurr={item.value} level={1} />
+                                ))}
+
+                                {/* FINANCING */}
+                                <ReportRow 
+                                    id="FINANCING"
+                                    name="ARUS KAS DARI AKTIVITAS PENDANAAN"
+                                    valCurr={netFinancingCash}
+                                    valPrev={0}
+                                    type="category"
+                                    isParent={true}
+                                    isExpanded={!!expandedRows['FINANCING']}
+                                    onToggle={toggleRow}
+                                />
+                                {expandedRows['FINANCING'] && financingActivities.map((item, idx) => (
+                                    <ReportRow key={`fin-${idx}`} name={item.label} valCurr={item.value} level={1} />
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
 
-                    {/* INVESTING */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-6 pb-2 border-b-2 border-blue-500 w-fit">
-                            <TrendingUp size={20} className="text-blue-600" />
-                            <h3 className="text-sm font-black text-blue-800 uppercase tracking-widest">ARUS KAS DARI AKTIVITAS INVESTASI</h3>
-                        </div>
-                        {investingActivities.length > 0 ? (
-                            <div className="space-y-2">
-                                {investingActivities.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between px-8 py-1 text-sm font-medium text-slate-600">
-                                        <span>{item.label}</span>
-                                        <span className="font-bold text-slate-900"><CurrencyDisplay value={item.value} /></span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="px-8 text-xs text-slate-400 italic font-medium">Tidak ada aktivitas investasi periode ini</p>
-                        )}
-                        <div className="mt-4 p-4 bg-blue-50 rounded-2xl flex justify-between items-center">
-                            <span className="text-xs font-black text-blue-800 uppercase tracking-widest">Arus Kas Bersih Investasi</span>
-                            <span className="text-lg font-black text-blue-900"><CurrencyDisplay value={netInvestingCash} /></span>
-                        </div>
-                    </div>
-
-                    {/* FINANCING */}
-                    <div>
-                        <div className="flex items-center gap-3 mb-6 pb-2 border-b-2 border-slate-800 w-fit">
-                            <Landmark size={20} className="text-slate-800" />
-                            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest">ARUS KAS DARI AKTIVITAS PENDANAAN</h3>
-                        </div>
-                        {financingActivities.length > 0 ? (
-                            <div className="space-y-2">
-                                {financingActivities.map((item, idx) => (
-                                    <div key={idx} className="flex justify-between px-8 py-1 text-sm font-medium text-slate-600">
-                                        <span>{item.label}</span>
-                                        <span className="font-bold text-slate-900"><CurrencyDisplay value={item.value} /></span>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="px-8 text-xs text-slate-400 italic font-medium">Tidak ada aktivitas pendanaan periode ini</p>
-                        )}
-                        <div className="mt-4 p-4 bg-slate-50 rounded-2xl flex justify-between items-center">
-                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Arus Kas Bersih Pendanaan</span>
-                            <span className="text-lg font-black text-slate-900"><CurrencyDisplay value={netFinancingCash} /></span>
-                        </div>
-                    </div>
+                    <div className="space-y-0"></div>
 
                     {/* SUMMARY */}
                     <div className="pt-12 border-t-2 border-slate-900">

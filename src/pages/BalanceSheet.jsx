@@ -4,6 +4,7 @@ import { hitungSaldoPerTipe, buildHierarchyAccounts } from '../utils/accounting'
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { Landmark, TrendingDown, Printer, Download, FileText, PieChart, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import ReportRow from '../components/ReportRow';
 import * as XLSX from 'xlsx';
 
 export default function BalanceSheet() {
@@ -12,9 +13,14 @@ export default function BalanceSheet() {
     const journals = state.journals.filter(j => !j.isDeleted);
     const assets = state.assets.filter(a => !a.isDeleted);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [expandedRows, setExpandedRows] = useState({});
     const reportRef = useRef(null);
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const toggleRow = (id) => {
+        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const exportToExcel = () => {
         const data = [];
@@ -139,30 +145,55 @@ export default function BalanceSheet() {
                         </div>
                         <Landmark size={32} className="opacity-40" />
                     </div>
-                    <div className="p-4">
-                        <table className="w-full text-left">
-                            <thead className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                    <div className="p-2">
+                        <table className="w-full text-left border-separate border-spacing-y-1">
+                            <thead className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
                                 <tr>
-                                    <th className="px-4 py-4">Uraian Aset</th>
-                                    <th className="px-4 py-4 text-right">{currentYearStr}</th>
-                                    <th className="px-4 py-4 text-right opacity-40">{prevYearStr}</th>
+                                    <th className="px-6 py-4">Uraian Aset</th>
+                                    <th className="px-6 py-4 text-right">Tahun {currentYearStr}</th>
+                                    <th className="px-6 py-4 text-right opacity-40">Tahun {prevYearStr}</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-50">
+                            <tbody>
                                 {hierAset.map(st => (
                                     <Fragment key={st.name}>
-                                        <tr className="bg-slate-50/50">
-                                            <td className="px-4 py-3 font-black text-[10px] text-slate-500 uppercase tracking-widest">{st.name}</td>
-                                            <td className="px-4 py-3 text-right font-black text-slate-900"><CurrencyDisplay value={st.saldo} /></td>
-                                            <td className="px-4 py-3 text-right font-bold text-slate-300"><CurrencyDisplay value={st.saldoPrev} /></td>
-                                        </tr>
-                                        {st.headers.map(h => h.children.map(c => (
-                                            <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
-                                                <td className="px-8 py-2 text-sm font-medium text-slate-600">{c.name}</td>
-                                                <td className="px-4 py-2 text-right text-sm font-bold text-slate-800"><CurrencyDisplay value={c.saldo} /></td>
-                                                <td className="px-4 py-2 text-right text-sm font-medium text-slate-300"><CurrencyDisplay value={c.saldoPrev} /></td>
-                                            </tr>
-                                        )))}
+                                        <ReportRow 
+                                            id={st.name}
+                                            name={st.name}
+                                            valCurr={st.saldo}
+                                            valPrev={st.saldoPrev}
+                                            type="category"
+                                            isParent={true}
+                                            isExpanded={!!expandedRows[st.name]}
+                                            onToggle={toggleRow}
+                                        />
+                                        
+                                        {expandedRows[st.name] && st.headers.map(h => (
+                                            <Fragment key={h.id}>
+                                                <ReportRow 
+                                                    id={h.id}
+                                                    name={h.name}
+                                                    valCurr={h.saldo}
+                                                    valPrev={h.saldoPrev}
+                                                    level={1}
+                                                    type="header"
+                                                    isParent={true}
+                                                    isExpanded={!!expandedRows[h.id]}
+                                                    onToggle={toggleRow}
+                                                />
+                                                {expandedRows[h.id] && h.children.map(c => (
+                                                    <ReportRow 
+                                                        key={c.id}
+                                                        id={c.id}
+                                                        name={c.name}
+                                                        valCurr={c.saldo}
+                                                        valPrev={c.saldoPrev}
+                                                        level={2}
+                                                        type="detail"
+                                                    />
+                                                ))}
+                                            </Fragment>
+                                        ))}
                                     </Fragment>
                                 ))}
                             </tbody>
@@ -188,17 +219,51 @@ export default function BalanceSheet() {
                             </div>
                             <TrendingDown size={32} className="opacity-40" />
                         </div>
-                        <div className="p-4">
-                            <table className="w-full text-left">
-                                <tbody className="divide-y divide-slate-50">
+                        <div className="p-2">
+                            <table className="w-full text-left border-separate border-spacing-y-1">
+                                <tbody>
                                     {hierKew.length === 0 ? (
                                         <tr><td className="px-4 py-8 text-center text-slate-400 text-xs italic font-medium">Tidak ada saldo liabilitas tercatat</td></tr>
-                                    ) : hierKew.map(st => st.headers.map(h => h.children.map(c => (
-                                        <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
-                                            <td className="px-4 py-3 text-sm font-medium text-slate-600">{c.name}</td>
-                                            <td className="px-4 py-3 text-right text-sm font-bold text-slate-800"><CurrencyDisplay value={Math.abs(c.saldo)} /></td>
-                                        </tr>
-                                    ))))}
+                                    ) : hierKew.map(st => (
+                                        <Fragment key={st.name}>
+                                            <ReportRow 
+                                                id={st.name}
+                                                name={st.name}
+                                                valCurr={Math.abs(st.saldo)}
+                                                valPrev={Math.abs(st.saldoPrev)}
+                                                type="category"
+                                                isParent={true}
+                                                isExpanded={!!expandedRows[st.name]}
+                                                onToggle={toggleRow}
+                                            />
+                                            {expandedRows[st.name] && st.headers.map(h => (
+                                                <Fragment key={h.id}>
+                                                    <ReportRow 
+                                                        id={h.id}
+                                                        name={h.name}
+                                                        valCurr={Math.abs(h.saldo)}
+                                                        valPrev={Math.abs(h.saldoPrev)}
+                                                        level={1}
+                                                        type="header"
+                                                        isParent={true}
+                                                        isExpanded={!!expandedRows[h.id]}
+                                                        onToggle={toggleRow}
+                                                    />
+                                                    {expandedRows[h.id] && h.children.map(c => (
+                                                        <ReportRow 
+                                                            key={c.id}
+                                                            id={c.id}
+                                                            name={c.name}
+                                                            valCurr={Math.abs(c.saldo)}
+                                                            valPrev={Math.abs(c.saldoPrev)}
+                                                            level={2}
+                                                            type="detail"
+                                                        />
+                                                    ))}
+                                                </Fragment>
+                                            ))}
+                                        </Fragment>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
@@ -217,21 +282,55 @@ export default function BalanceSheet() {
                             </div>
                             <PieChart size={32} className="opacity-40" />
                         </div>
-                        <div className="p-4">
-                            <table className="w-full text-left">
-                                <tbody className="divide-y divide-slate-50">
-                                    {hierNeto.map(st => st.headers.map(h => h.children.map(c => (
-                                        <tr key={c.id} className="hover:bg-slate-50/30 transition-colors">
-                                            <td className="px-4 py-3 text-sm font-medium text-slate-600">{c.name}</td>
-                                            <td className="px-4 py-3 text-right text-sm font-bold text-slate-800"><CurrencyDisplay value={Math.abs(c.saldo)} /></td>
-                                        </tr>
-                                    ))))}
-                                    <tr className="bg-emerald-50/50">
-                                        <td className="px-4 py-3 text-sm font-black text-emerald-800 italic">Surplus (Defisit) Aktivitas Berjalan</td>
-                                        <td className="px-4 py-3 text-right font-black text-emerald-900 border-l border-emerald-100">
-                                            <CurrencyDisplay value={surplusCurr} />
-                                        </td>
-                                    </tr>
+                        <div className="p-2">
+                            <table className="w-full text-left border-separate border-spacing-y-1">
+                                <tbody>
+                                    {hierNeto.map(st => (
+                                        <Fragment key={st.name}>
+                                            <ReportRow 
+                                                id={st.name}
+                                                name={st.name}
+                                                valCurr={Math.abs(st.saldo)}
+                                                valPrev={Math.abs(st.saldoPrev)}
+                                                type="category"
+                                                isParent={true}
+                                                isExpanded={!!expandedRows[st.name]}
+                                                onToggle={toggleRow}
+                                            />
+                                            {expandedRows[st.name] && st.headers.map(h => (
+                                                <Fragment key={h.id}>
+                                                    <ReportRow 
+                                                        id={h.id}
+                                                        name={h.name}
+                                                        valCurr={Math.abs(h.saldo)}
+                                                        valPrev={Math.abs(h.saldoPrev)}
+                                                        level={1}
+                                                        type="header"
+                                                        isParent={true}
+                                                        isExpanded={!!expandedRows[h.id]}
+                                                        onToggle={toggleRow}
+                                                    />
+                                                    {expandedRows[h.id] && h.children.map(c => (
+                                                        <ReportRow 
+                                                            key={c.id}
+                                                            id={c.id}
+                                                            name={c.name}
+                                                            valCurr={Math.abs(c.saldo)}
+                                                            valPrev={Math.abs(c.saldoPrev)}
+                                                            level={2}
+                                                            type="detail"
+                                                        />
+                                                    ))}
+                                                </Fragment>
+                                            ))}
+                                        </Fragment>
+                                    ))}
+                                    <ReportRow 
+                                        name="Surplus (Defisit) Aktivitas Berjalan"
+                                        valCurr={surplusCurr}
+                                        valPrev={surplusPrev}
+                                        type="header"
+                                    />
                                 </tbody>
                             </table>
                         </div>

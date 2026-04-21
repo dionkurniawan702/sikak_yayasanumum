@@ -4,6 +4,7 @@ import { hitungSaldoAkun } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { Download, Printer, TrendingUp, Landmark, RefreshCw, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import ReportRow from '../components/ReportRow';
 import * as XLSX from 'xlsx';
 
 export default function StatementOfChangesInNetAssets() {
@@ -12,8 +13,13 @@ export default function StatementOfChangesInNetAssets() {
     const journals = state.journals.filter(j => !j.isDeleted);
     const assets = state.assets.filter(a => !a.isDeleted);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [expandedRows, setExpandedRows] = useState({});
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const toggleRow = (id) => {
+        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const exportToExcel = () => {
         const data = reportData.map(d => ({
@@ -104,39 +110,59 @@ export default function StatementOfChangesInNetAssets() {
                     <p className="text-sm font-medium text-slate-400 mt-2 lowercase tracking-widest">Untuk Tahun yang Berakhir pada 31 Desember {currentYearStr}</p>
                 </div>
 
-                <div className="overflow-hidden bg-slate-50 rounded-[32px] border border-slate-100 mb-12">
-                    <table className="w-full text-left">
-                        <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">
+                <div className="overflow-hidden bg-white rounded-[32px] border border-slate-100 mb-12 p-2">
+                    <table className="w-full text-left border-separate border-spacing-y-1">
+                        <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
                             <tr>
-                                <th className="px-8 py-6">Klasifikasi Aset Neto</th>
-                                <th className="px-8 py-6 text-right">Saldo Awal (1 Jan)</th>
-                                <th className="px-8 py-6 text-right">Surplus / (Defisit)</th>
-                                <th className="px-8 py-6 text-right bg-white">Saldo Akhir (31 Des)</th>
+                                <th className="px-6 py-4">Klasifikasi Aset Neto</th>
+                                <th className="px-6 py-4 text-right">Saldo Awal (1 Jan)</th>
+                                <th className="px-6 py-4 text-right">Surplus / (Defisit)</th>
+                                <th className="px-6 py-4 text-right bg-slate-50/50">Saldo Akhir (31 Des)</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-100">
+                        <tbody>
                             {reportData.map(data => (
-                                <tr key={data.id} className="hover:bg-blue-50/50 transition-colors">
-                                    <td className="px-8 py-5">
-                                        <p className="font-black text-slate-900 tracking-tight uppercase">{data.name}</p>
-                                        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1">Sesuai Klasifikasi PSAK 35</p>
-                                    </td>
-                                    <td className="px-8 py-5 text-right font-bold text-slate-600">
-                                        <CurrencyDisplay value={data.awal} useColor={false} />
-                                    </td>
-                                    <td className="px-8 py-5 text-right font-black text-emerald-600">
-                                        <CurrencyDisplay value={data.surplus} />
-                                    </td>
-                                    <td className="px-8 py-5 text-right font-black text-slate-900 bg-white/50">
-                                        <CurrencyDisplay value={data.akhir} useColor={false} />
-                                    </td>
-                                </tr>
+                                <Fragment key={data.id}>
+                                    <ReportRow 
+                                        id={data.id}
+                                        name={data.name}
+                                        valCurr={data.akhir}
+                                        valPrev={data.awal}
+                                        type="category"
+                                        // This report is special, it shows Awal, Surplus, Akhir.
+                                        // ReportRow expects valCurr and valPrev for standard comparison.
+                                        // I'll override the rendering slightly or use a custom row for this specific report if needed.
+                                        // Actually, I'll use standard ReportRow but custom columns for this one.
+                                    />
+                                    <tr className="hover:bg-blue-50/30 transition-colors group">
+                                        <td className="px-8 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-7 h-7 flex items-center justify-center">
+                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-slate-900 tracking-tight uppercase text-sm">{data.name}</p>
+                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Sesuai Klasifikasi PSAK 35</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-bold text-slate-500 tabular-nums">
+                                            <CurrencyDisplay value={data.awal} useColor={false} />
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-black text-emerald-600 tabular-nums">
+                                            <CurrencyDisplay value={data.surplus} />
+                                        </td>
+                                        <td className="px-6 py-4 text-right font-black text-slate-900 bg-blue-50/30 tabular-nums">
+                                            <CurrencyDisplay value={data.akhir} useColor={false} />
+                                        </td>
+                                    </tr>
+                                </Fragment>
                             ))}
                             <tr className="bg-slate-900 text-white font-black">
                                 <td className="px-8 py-8 text-xs uppercase tracking-[0.3em] opacity-60">Total Seluruh Aset Neto</td>
-                                <td className="px-8 py-8 text-right"><CurrencyDisplay value={totalAwal} useColor={false} /></td>
-                                <td className="px-8 py-8 text-right"><CurrencyDisplay value={totalSurplus} useColor={false} /></td>
-                                <td className="px-8 py-8 text-right text-xl"><CurrencyDisplay value={totalAkhir} useColor={false} /></td>
+                                <td className="px-6 py-8 text-right"><CurrencyDisplay value={totalAwal} useColor={false} /></td>
+                                <td className="px-6 py-8 text-right"><CurrencyDisplay value={totalSurplus} useColor={false} /></td>
+                                <td className="px-6 py-8 text-right text-xl"><CurrencyDisplay value={totalAkhir} useColor={false} /></td>
                             </tr>
                         </tbody>
                     </table>

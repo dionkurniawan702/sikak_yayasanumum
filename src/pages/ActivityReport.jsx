@@ -4,6 +4,7 @@ import { hitungSaldoPerTipe, buildHierarchyAccounts } from '../utils/accounting'
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { TrendingUp, TrendingDown, Printer, Download, Filter, Activity, FileSpreadsheet } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import ReportRow from '../components/ReportRow';
 import * as XLSX from 'xlsx';
 
 export default function ActivityReport() {
@@ -12,9 +13,14 @@ export default function ActivityReport() {
     const journals = state.journals.filter(j => !j.isDeleted);
     const assets = state.assets.filter(a => !a.isDeleted);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
+    const [expandedRows, setExpandedRows] = useState({});
     const reportRef = useRef(null);
     const currentYearStr = selectedYear;
     const prevYearStr = (parseInt(selectedYear) - 1).toString();
+
+    const toggleRow = (id) => {
+        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+    };
 
     const exportToExcel = () => {
         const data = [];
@@ -120,29 +126,43 @@ export default function ActivityReport() {
                         </div>
                         <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">PENDAPATAN</h3>
                     </div>
-                    <div className="space-y-4">
-                        {pendapatan.map(h => (
-                            <div key={h.id} className="group">
-                                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl group-hover:bg-blue-50/50 transition-colors">
-                                    <span className="font-bold text-slate-700">{h.name}</span>
-                                    <div className="text-right flex gap-8">
-                                        <span className="font-black text-slate-900 w-32"><CurrencyDisplay value={Math.abs(h.saldo)} /></span>
-                                        <span className="font-bold text-slate-300 w-32 text-xs"><CurrencyDisplay value={Math.abs(h.saldoPrev)} /></span>
-                                    </div>
-                                </div>
-                                <div className="mt-1 space-y-1">
-                                    {h.children.map(c => (
-                                        <div key={c.id} className="flex justify-between items-center px-8 py-1">
-                                            <span className="text-xs text-slate-500 font-medium">{c.name}</span>
-                                            <div className="text-right flex gap-8">
-                                                <span className="text-xs font-bold text-slate-600 w-32"><CurrencyDisplay value={Math.abs(c.saldo)} /></span>
-                                                <span className="text-[10px] font-medium text-slate-200 w-32"><CurrencyDisplay value={Math.abs(c.saldoPrev)} /></span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                    <div className="overflow-hidden bg-white rounded-[32px] border border-slate-100 p-2">
+                        <table className="w-full text-left border-separate border-spacing-y-1">
+                            <thead className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                                <tr>
+                                    <th className="px-6 py-4">Uraian Pendapatan</th>
+                                    <th className="px-6 py-4 text-right">Tahun {currentYearStr}</th>
+                                    <th className="px-6 py-4 text-right opacity-40">Tahun {prevYearStr}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {pendapatan.map(h => (
+                                    <Fragment key={h.id}>
+                                        <ReportRow 
+                                            id={h.id}
+                                            name={h.name}
+                                            valCurr={Math.abs(h.saldo)}
+                                            valPrev={Math.abs(h.saldoPrev)}
+                                            type="category"
+                                            isParent={true}
+                                            isExpanded={!!expandedRows[h.id]}
+                                            onToggle={toggleRow}
+                                        />
+                                        {expandedRows[h.id] && h.children.map(c => (
+                                            <ReportRow 
+                                                key={c.id}
+                                                id={c.id}
+                                                name={c.name}
+                                                valCurr={Math.abs(c.saldo)}
+                                                valPrev={Math.abs(c.saldoPrev)}
+                                                level={1}
+                                                type="detail"
+                                            />
+                                        ))}
+                                    </Fragment>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                     <div className="mt-4 p-6 bg-blue-600 rounded-3xl text-white flex justify-between items-center shadow-lg shadow-blue-500/20">
                         <span className="font-black text-xs uppercase tracking-[0.2em] opacity-60">Total Pendapatan Terakumulasi</span>
@@ -161,29 +181,43 @@ export default function ActivityReport() {
                         </div>
                         <h3 className="text-xl font-black text-slate-800 uppercase tracking-widest">BEBAN & PENGELUARAN</h3>
                     </div>
-                    <div className="space-y-4">
-                        {beban.map(h => (
-                            <div key={h.id} className="group">
-                                <div className="flex justify-between items-center p-4 bg-slate-50 rounded-2xl group-hover:bg-rose-50/50 transition-colors">
-                                    <span className="font-bold text-slate-700">{h.name}</span>
-                                    <div className="text-right flex gap-8">
-                                        <span className="font-black text-rose-600 w-32"><CurrencyDisplay value={h.saldo} /></span>
-                                        <span className="font-bold text-slate-300 w-32 text-xs"><CurrencyDisplay value={h.saldoPrev} /></span>
-                                    </div>
-                                </div>
-                                <div className="mt-1 space-y-1">
-                                    {h.children.map(c => (
-                                        <div key={c.id} className="flex justify-between items-center px-8 py-1">
-                                            <span className="text-xs text-slate-500 font-medium">{c.name}</span>
-                                            <div className="text-right flex gap-8">
-                                                <span className="text-[10px] font-bold text-rose-400 w-32"><CurrencyDisplay value={c.saldo} /></span>
-                                                <span className="text-[10px] font-medium text-slate-200 w-32"><CurrencyDisplay value={c.saldoPrev} /></span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                    <div className="overflow-hidden bg-white rounded-[32px] border border-slate-100 p-2">
+                        <table className="w-full text-left border-separate border-spacing-y-1">
+                            <thead className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">
+                                <tr>
+                                    <th className="px-6 py-4">Uraian Beban</th>
+                                    <th className="px-6 py-4 text-right">Tahun {currentYearStr}</th>
+                                    <th className="px-6 py-4 text-right opacity-40">Tahun {prevYearStr}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {beban.map(h => (
+                                    <Fragment key={h.id}>
+                                        <ReportRow 
+                                            id={h.id}
+                                            name={h.name}
+                                            valCurr={h.saldo}
+                                            valPrev={h.saldoPrev}
+                                            type="category"
+                                            isParent={true}
+                                            isExpanded={!!expandedRows[h.id]}
+                                            onToggle={toggleRow}
+                                        />
+                                        {expandedRows[h.id] && h.children.map(c => (
+                                            <ReportRow 
+                                                key={c.id}
+                                                id={c.id}
+                                                name={c.name}
+                                                valCurr={c.saldo}
+                                                valPrev={c.saldoPrev}
+                                                level={1}
+                                                type="detail"
+                                            />
+                                        ))}
+                                    </Fragment>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                     <div className="mt-4 p-6 bg-slate-800 rounded-3xl text-white flex justify-between items-center">
                         <span className="font-black text-xs uppercase tracking-[0.2em] opacity-40">Total Beban & Pengeluaran</span>
