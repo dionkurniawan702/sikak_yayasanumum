@@ -40,7 +40,7 @@ const generateMonths = (ay) => {
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
                     name: `${monthNames[monthIdx]}-${year}`,
-                    label: monthNames[monthIdx],
+                    label: `${monthNames[monthIdx]} '${String(year).slice(-2)}`,
                     shortLabel: monthNames[monthIdx].substring(0, 3).toUpperCase(),
                     year: year
                 });
@@ -62,7 +62,7 @@ const generateMonths = (ay) => {
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
                     name: `${monthNames[monthNum - 1]}-${year}`,
-                    label: monthNames[monthNum - 1],
+                    label: `${monthNames[monthNum - 1]} '${String(year).slice(-2)}`,
                     shortLabel: monthNames[monthNum - 1].substring(0, 3).toUpperCase(),
                     year: year
                 });
@@ -2152,13 +2152,10 @@ export default function RAB() {
                                                         : 'bg-slate-50 border-slate-100'
                                                 }`}>
                                                     <div className="flex items-center justify-between">
-                                                        <span className={`text-[10px] font-black uppercase tracking-widest flex items-center gap-1 ${
+                                                        <span className={`text-[10px] font-black uppercase tracking-widest ${
                                                             jumlahVal > 0 ? 'text-blue-600' : 'text-slate-400'
                                                         }`}>
                                                             {m.label}
-                                                            <span className={`font-bold normal-case tracking-normal ${jumlahVal > 0 ? 'text-blue-400' : 'text-slate-300'}`}>
-                                                                '{String(m.year).slice(-2)}
-                                                            </span>
                                                         </span>
                                                         <input 
                                                             type="checkbox"
