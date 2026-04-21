@@ -110,9 +110,15 @@ export default function RAB() {
     const [showRejectionInput, setShowRejectionInput] = useState(null); // planId if reviewing
     const [searchTerm, setSearchTerm] = useState('');
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
-    const [editingItem, setEditingItem] = useState(null); // { id, name, sourceOfFunds }
-    const [isAddingItem, setIsAddingItem] = useState(false);
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
+    const [modalStep, setModalStep] = useState(1); // 1: Details Entry, 2: Program & Monthly Allocation
+
+    useEffect(() => {
+        if (editingItem) {
+            // New Plan starts at step 1, Existing plan (Edit) starts at step 2
+            setModalStep(editingItem.isNewPlan ? 1 : 2);
+        }
+    }, [editingItem]);
 
     // States for Journal-style component entry
     const [entryForm, setEntryForm] = useState({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
@@ -1007,6 +1013,7 @@ export default function RAB() {
     };
 
     const renderReviewView = () => {
+        const incomePrograms = useMemo(() => programs.filter(p => p.type === 'INCOME'), [programs]);
         const pendingPlans = rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId);
 
         return (
@@ -1797,6 +1804,34 @@ export default function RAB() {
                                     TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
                                 </p>
                             </div>
+
+                            {/* Step Indicator (Progress Bar) */}
+                            {editingItem.isNewPlan && (
+                                <div className="hidden lg:flex items-center gap-10">
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-all ${modalStep === 1 ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' : 'bg-emerald-100 text-emerald-600'}`}>
+                                            {modalStep === 1 ? '1' : <CheckCircle2 size={20} />}
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap 1</span>
+                                            <span className={`text-xs font-black uppercase tracking-tighter ${modalStep === 1 ? 'text-slate-900' : 'text-slate-400'}`}>Daftar Rincian</span>
+                                        </div>
+                                    </div>
+                                    <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className={`h-full bg-blue-600 transition-all duration-500 ${modalStep === 2 ? 'w-full' : 'w-0'}`} />
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black transition-all ${modalStep === 2 ? 'bg-blue-600 text-white shadow-xl shadow-blue-200' : 'bg-slate-100 text-slate-400'}`}>
+                                            2
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Tahap 2</span>
+                                            <span className={`text-xs font-black uppercase tracking-tighter ${modalStep === 2 ? 'text-slate-900' : 'text-slate-400'}`}>Program & Alokasi</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex items-center gap-4">
                                 {(() => {
                                     const detail = item;
@@ -1828,10 +1863,10 @@ export default function RAB() {
                             </div>
                         </div>
 
-                        {/* Modal Body */}
-                        <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
-                            {/* Section 1: Basic Info & Program (Tidied Up) */}
-                            <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6">
+                        <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
+                            {/* Section 1: Basic Info & Program (Staged) */}
+                            {modalStep === 2 && (
+                                <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6 animate-in fade-in slide-in-from-top-4 duration-500">
                                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                                     <div className="lg:col-span-1 space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja Utama</label>
@@ -1963,11 +1998,12 @@ export default function RAB() {
                                     return null;
                                 })()}
                             </div>
+                        )}
 
                                 {/* INLINE EDITING ENABLED - TOP FORM HIDDEN */}
 
-                                {/* Unit Peruntukan (Bottom-Full width in Section 1) */}
-                                {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
+                                {/* Unit Peruntukan (Bottom-Full width in Section 1) - Staged */}
+                                {modalStep === 2 && selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
                                     <div className="md:col-span-2 space-y-2 pt-2 border-t border-slate-100 animate-in slide-in-from-bottom-2">
                                         <label className="text-[10px] font-black text-blue-500 uppercase tracking-widest ml-1 flex items-center gap-2">
                                             <Building2 size={12} />
@@ -2192,8 +2228,9 @@ export default function RAB() {
                                     })()}
                                 </div>
 
-                                {/* Monthly Breakdown Table */}
-                                <div className="space-y-6">
+                                {/* Monthly Breakdown Table (Staged) */}
+                                {modalStep === 2 && (
+                                    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pt-10 border-t border-slate-100">
                                     <div className="flex items-center justify-between">
                                         <div className="flex items-center gap-4">
                                             <h4 className="text-sm font-black text-slate-900 uppercase tracking-tight italic">Rincian Alokasi Per Bulan</h4>
@@ -2292,7 +2329,8 @@ export default function RAB() {
                                             </div>
                                         );
                                     })()}
-                                </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -2308,56 +2346,76 @@ export default function RAB() {
                                         <h3 className="text-3xl font-black italic">{formatRupiah(monthlyTotal)}</h3>
                                     </div>
                                     <div className="flex flex-col items-end gap-2">
-                                         <button 
-                                            onClick={async () => {
-                                                const finalMonthsData = item.months || {};
-                                                const finalMonthlyTotal = Object.values(finalMonthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                                
-                                                setCurrentPlan(prev => {
-                                                    const mId = editingItem.itemId || editingItem.id;
-                                                    const existingPlans = prev.expense[mId] || [];
-                                                    
-                                                    let updatedPlans;
-                                                    if (editingItem.isNewPlan) {
-                                                        // Ensure the new plan is added correctly
-                                                        const newPlan = {
-                                                            ...item,
-                                                            id: editingItem.id,
-                                                            itemId: mId,
-                                                            total: finalMonthlyTotal
-                                                        };
+                                         {modalStep === 1 ? (
+                                             <button 
+                                                onClick={() => setModalStep(2)}
+                                                className="group flex items-center gap-4 bg-blue-600 text-white px-12 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-2xl shadow-blue-200"
+                                            >
+                                                <span>LANJUT KE PENGISIAN PROGRAM</span>
+                                                <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                                            </button>
+                                         ) : (
+                                             <div className="flex items-center gap-4">
+                                                 {editingItem.isNewPlan && (
+                                                     <button 
+                                                        onClick={() => setModalStep(1)}
+                                                        className="px-6 py-5 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white transition-all"
+                                                     >
+                                                         Kembali ke Rincian
+                                                     </button>
+                                                 )}
+                                                 <button 
+                                                    onClick={async () => {
+                                                        const finalMonthsData = item.months || {};
+                                                        const finalMonthlyTotal = Object.values(finalMonthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                                         
-                                                        // Check if it already exists (to avoid duplicates if saved twice)
-                                                        const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
-                                                        if (alreadyExists) {
-                                                            updatedPlans = existingPlans.map(p => p.id === editingItem.id ? newPlan : p);
-                                                        } else {
-                                                            updatedPlans = [...existingPlans, newPlan];
-                                                        }
-                                                    } else {
-                                                        // Editing an EXISTING plan
-                                                        updatedPlans = existingPlans.map(p => 
-                                                            p.id === editingItem.id
-                                                                ? { ...p, ...item, total: finalMonthlyTotal }
-                                                                : p
-                                                        );
-                                                    }
+                                                        setCurrentPlan(prev => {
+                                                            const mId = editingItem.itemId || editingItem.id;
+                                                            const existingPlans = prev.expense[mId] || [];
+                                                            
+                                                            let updatedPlans;
+                                                            if (editingItem.isNewPlan) {
+                                                                // Ensure the new plan is added correctly
+                                                                const newPlan = {
+                                                                    ...item,
+                                                                    id: editingItem.id,
+                                                                    itemId: mId,
+                                                                    total: finalMonthlyTotal
+                                                                };
+                                                                
+                                                                // Check if it already exists (to avoid duplicates if saved twice)
+                                                                const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
+                                                                if (alreadyExists) {
+                                                                    updatedPlans = existingPlans.map(p => p.id === editingItem.id ? newPlan : p);
+                                                                } else {
+                                                                    updatedPlans = [...existingPlans, newPlan];
+                                                                }
+                                                            } else {
+                                                                // Editing an EXISTING plan
+                                                                updatedPlans = existingPlans.map(p => 
+                                                                    p.id === editingItem.id
+                                                                        ? { ...p, ...item, total: finalMonthlyTotal }
+                                                                        : p
+                                                                );
+                                                            }
 
-                                                    return {
-                                                        ...prev,
-                                                        expense: {
-                                                            ...prev.expense,
-                                                            [mId]: updatedPlans
-                                                        }
-                                                    };
-                                                });
-                                                
-                                                handleCloseModal();
-                                            }}
-                                            className="px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
-                                        >
-                                            SIMPAN PERUBAHAN
-                                        </button>
+                                                            return {
+                                                                ...prev,
+                                                                expense: {
+                                                                    ...prev.expense,
+                                                                    [mId]: updatedPlans
+                                                                }
+                                                            };
+                                                        });
+                                                        
+                                                        handleCloseModal();
+                                                    }}
+                                                    className="px-12 py-5 rounded-[2rem] font-black text-sm uppercase tracking-tight transition-all shadow-xl shadow-black/20 bg-white text-slate-900 hover:bg-emerald-400 hover:text-white"
+                                                >
+                                                    {editingItem.isNewPlan ? 'SELESAI & SIMPAN RENCANA' : 'SIMPAN PERUBAHAN'}
+                                                </button>
+                                             </div>
+                                         )}
                                     </div>
                                 </div>
                             );
