@@ -227,6 +227,7 @@ app.post('/api/sync', async (req, res) => {
                     }
                     if (model === 'field') delete cleanItem.fieldId;
                     if (model === 'academicYear') {
+                        console.log(`[Sync Detail] AcademicYear ${cleanItem.id}: startDate=${cleanItem.startDate}, endDate=${cleanItem.endDate}`);
                         if (cleanItem.startDate) cleanItem.startDate = new Date(cleanItem.startDate);
                         if (cleanItem.endDate) cleanItem.endDate = new Date(cleanItem.endDate);
                     }

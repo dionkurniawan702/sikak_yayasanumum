@@ -299,6 +299,15 @@ export const api = {
                 case 'DELETE_USER':
                     await syncItem('users', payload, null, 'DELETE');
                     break;
+                case 'ADD_ACADEMIC_YEAR':
+                    await syncItem('academic-years', payload.id, payload);
+                    break;
+                case 'EDIT_ACADEMIC_YEAR':
+                    await syncItem('academic-years', payload.id, payload);
+                    break;
+                case 'DELETE_ACADEMIC_YEAR':
+                    await syncItem('academic-years', payload, null, 'DELETE');
+                    break;
                 case 'RESTORE_FROM_TRASH': {
                     const { id, type } = payload;
                     const mapping = {

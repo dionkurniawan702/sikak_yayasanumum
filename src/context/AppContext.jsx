@@ -103,7 +103,6 @@ function loadState() {
             // Migration: Ensure Academic Years have valid dates (Fix for "Invalid Date" sync issue)
             // Migration: Replace slash (/) with dash (-) in academic year names and IDs
             if (merged.academicYears && Array.isArray(merged.academicYears)) {
-                const currentYear = new Date().getFullYear();
                 merged.academicYears = merged.academicYears.map(ay => {
                     const newName = ay.name ? ay.name.replace(/\//g, '-') : ay.name;
                     const newId = ay.id ? ay.id.replace(/\//g, '-') : ay.id;
@@ -111,8 +110,6 @@ function loadState() {
                         ...ay,
                         id: newId,
                         name: newName,
-                        startDate: ay.startDate || null,
-                        endDate: ay.endDate || null,
                         isCurrent: ay.isCurrent || false,
                         isActive: ay.isActive !== undefined ? ay.isActive : true
                     };

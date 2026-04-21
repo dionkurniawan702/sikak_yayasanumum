@@ -419,5 +419,73 @@ router.put('/budgets/:id', async (req, res) => {
     }
 });
 
+// --- ACADEMIC YEARS ---
+router.get('/academic-years', async (req, res) => {
+    try {
+        const data = await getPrisma(req).academicYear.findMany({
+            where: { isDeleted: false },
+            orderBy: { name: 'desc' }
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/academic-years', async (req, res) => {
+    try {
+        const { id, name, startDate, endDate, isCurrent, isActive } = req.body;
+        const data = await getPrisma(req).academicYear.create({
+            data: {
+                id, name,
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined,
+                isCurrent: !!isCurrent,
+                isActive: isActive !== undefined ? !!isActive : true
+            }
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/academic-years/:id', async (req, res) => {
+    try {
+        const { name, startDate, endDate, isCurrent, isActive, isDeleted } = req.body;
+        const data = await getPrisma(req).academicYear.update({
+            where: { id: req.params.id },
+            data: {
+                name,
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined,
+                isCurrent: isCurrent !== undefined ? !!isCurrent : undefined,
+                isActive: isActive !== undefined ? !!isActive : undefined,
+                isDeleted: isDeleted !== undefined ? !!isDeleted : undefined
+            }
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/academic-years/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+        if (isPermanent) {
+            await getPrisma(req).academicYear.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).academicYear.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;
 
