@@ -61,8 +61,8 @@ export default function GenericMasterManagement({
                 const updatedItem = { 
                     ...editingItem, 
                     name: formData.name,
-                    startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
-                    endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
+                    startDate: formData.startDate ? `${formData.startDate}-01T00:00:00.000Z` : null,
+                    endDate: formData.endDate ? `${formData.endDate}-01T00:00:00.000Z` : null
                 };
                 dispatch({ type: `EDIT_${actionPrefix}`, payload: updatedItem });
                 await api.pushAction({ type: `EDIT_${actionPrefix}`, payload: updatedItem }, state);
@@ -70,8 +70,8 @@ export default function GenericMasterManagement({
             } else {
                 const defaultDates = actionPrefix === 'ACADEMIC_YEAR' ? {
                     isCurrent: false,
-                    startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
-                    endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
+                    startDate: formData.startDate ? `${formData.startDate}-01T00:00:00.000Z` : null,
+                    endDate: formData.endDate ? `${formData.endDate}-01T00:00:00.000Z` : null
                 } : {};
 
                 const newItem = {

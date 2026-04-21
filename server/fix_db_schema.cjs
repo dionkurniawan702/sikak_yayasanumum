@@ -31,6 +31,23 @@ async function fixSchema() {
       } else {
         console.log(`Table ${m.table} already has isDeleted column.`);
       }
+
+      // Special check for AcademicYear Dates
+      if (m.name === 'AcademicYear') {
+        const hasStartDate = columns.some(c => c.Field === 'startDate');
+        const hasEndDate = columns.some(c => c.Field === 'endDate');
+
+        if (!hasStartDate) {
+          console.log(`Adding startDate to ${m.table}...`);
+          await prisma.$executeRawUnsafe(`ALTER TABLE \`${m.table}\` ADD COLUMN startDate DATETIME NULL`);
+          console.log(`SUCCESS: startDate added to ${m.table}`);
+        }
+        if (!hasEndDate) {
+          console.log(`Adding endDate to ${m.table}...`);
+          await prisma.$executeRawUnsafe(`ALTER TABLE \`${m.table}\` ADD COLUMN endDate DATETIME NULL`);
+          console.log(`SUCCESS: endDate added to ${m.table}`);
+        }
+      }
     } catch (err) {
       console.error(`ERROR on ${m.table}:`, err.message);
     }
