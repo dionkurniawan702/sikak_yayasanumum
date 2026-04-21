@@ -2022,7 +2022,6 @@ export default function RAB() {
                                         </select>
                                     </div>
                                 )}
-                            </div>
 
                             {/* Section 2: Calculation Breakdown (Journal Style) */}
                             <div className="p-8 bg-white rounded-[2.5rem] border border-slate-100 shadow-sm space-y-10">
