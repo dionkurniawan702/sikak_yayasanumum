@@ -412,6 +412,7 @@ export default function RAB() {
             }
             
             // Special logic if semester changes: auto-toggle checkboxes
+            if (field === 'semester') {
                 const ay = academicYears.find(ay => ay.id === selectedYearId);
                 const yearMonths = generateMonths(ay);
                 const monthsData = { ...(updatedItem.months || {}) };
