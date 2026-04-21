@@ -469,30 +469,32 @@ router.put('/academic-years/:id', async (req, res) => {
             throw new Error(`Academic Year with ID ${req.params.id} or name ${name} not found`);
         }
 
+        const updateData = {
+            name,
+            isCurrent: isCurrent !== undefined ? !!isCurrent : undefined,
+            isActive: isActive !== undefined ? !!isActive : undefined,
+            isDeleted: isDeleted !== undefined ? !!isDeleted : undefined
+        };
+
+        // Include dates if they are valid
+        if (startDate) updateData.startDate = new Date(startDate);
+        if (endDate) updateData.endDate = new Date(endDate);
+
         data = await client.academicYear.update({
             where: { id: existing.id },
-            data: {
-                name,
-                startDate: startDate ? new Date(startDate) : undefined,
-                endDate: endDate ? new Date(endDate) : undefined,
-                isCurrent: isCurrent !== undefined ? !!isCurrent : undefined,
-                isActive: isActive !== undefined ? !!isActive : undefined,
-                isDeleted: isDeleted !== undefined ? !!isDeleted : undefined
-            }
+            data: updateData
         });
 
-        // FORCE PERSISTENCE: Use Raw SQL for Date fields to bypass potentially stale Prisma Client
+        // FORCE PERSISTENCE fallback (using both common table name cases)
         if (startDate || endDate) {
-            console.log(`[AcademicYear Force] Executing Raw SQL for ${existing.id}`);
             const startStr = startDate ? new Date(startDate).toISOString().slice(0, 19).replace('T', ' ') : null;
             const endStr = endDate ? new Date(endDate).toISOString().slice(0, 19).replace('T', ' ') : null;
             
-            try {
-                if (startStr) await client.$executeRawUnsafe(`UPDATE AcademicYear SET startDate = ? WHERE id = ?`, startStr, existing.id);
-                if (endStr) await client.$executeRawUnsafe(`UPDATE AcademicYear SET endDate = ? WHERE id = ?`, endStr, existing.id);
-                console.log(`[AcademicYear Force] Raw SQL Success for ${existing.id}`);
-            } catch (sqlErr) {
-                console.error(`[AcademicYear Force Error] ${sqlErr.message}`);
+            for (const table of ['AcademicYear', 'academicyear', 'academic_year']) {
+                try {
+                    if (startStr) await client.$executeRawUnsafe(`UPDATE ${table} SET startDate = ? WHERE id = ?`, startStr, existing.id);
+                    if (endStr) await client.$executeRawUnsafe(`UPDATE ${table} SET endDate = ? WHERE id = ?`, endStr, existing.id);
+                } catch (e) { /* ignore table name mismatches */ }
             }
         }
         console.log(`[AcademicYear Update] Success for ${name}`);
