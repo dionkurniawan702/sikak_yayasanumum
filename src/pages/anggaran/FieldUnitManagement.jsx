@@ -150,6 +150,8 @@ export default function FieldUnitManagement() {
             if (targetUnitIdForFinance) {
                 const targetUnit = units.find(u => u.id === targetUnitIdForFinance) || (type === 'UNIT' ? payload : null);
 
+                // 3. Save Financial Config (BATCH Update)
+                const allSettingsToPush = [];
                 for (const incomeId of selectedIncomeItems) {
                     const settings = (unitDistributions[incomeId] || []).map(rule => {
                         const ruleDestId = rule.destType === 'field' ? (rule.destId || (type === 'UNIT' ? formData.fieldId : editingItem.id)) : targetUnitIdForFinance;
@@ -171,31 +173,19 @@ export default function FieldUnitManagement() {
                             expenseItemId: rule.expenseItemId
                         };
                     });
-
-                    // Push to server explicitly
-                    await api.pushAction({
-                        type: 'UPDATE_DISTRIBUTION_SETTINGS',
-                        payload: { unitId: targetUnitIdForFinance, incomeItemId: incomeId, settings }
-                    }, state);
-
-                    // Update local state
-                    dispatch({
-                        type: 'UPDATE_DISTRIBUTION_SETTINGS',
-                        payload: { unitId: targetUnitIdForFinance, incomeItemId: incomeId, settings }
-                    });
+                    
+                    allSettingsToPush.push(...settings);
                 }
 
-                // 3b. Clear settings for UNSELECTED items that were previously configured
-                // (To ensure they don't reappear after refresh)
-                const itemsPreviouslyConfigured = [...new Set(distributionSettings.filter(s => s.unitId === targetUnitIdForFinance).map(s => s.incomeItemId))];
-                const itemsToClear = itemsPreviouslyConfigured.filter(id => !selectedIncomeItems.includes(id));
-
-                for (const incomeId of itemsToClear) {
-                    await api.pushAction({
-                        type: 'UPDATE_DISTRIBUTION_SETTINGS',
-                        payload: { unitId: targetUnitIdForFinance, incomeItemId: incomeId, settings: [] }
-                    }, state);
-                }
+                // Push all settings in ONE batch call to avoid Deadlocks/Write Conflicts
+                await api.pushAction({
+                    type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                    payload: { 
+                        unitId: targetUnitIdForFinance, 
+                        settings: allSettingsToPush,
+                        batch: true // Tell backend to clear all old settings for this unit first
+                    }
+                }, state);
 
                 // 4. Refresh fresh data
                 const freshData = await api.fetchAllData();
