@@ -14,6 +14,9 @@ export default function SyncStatus() {
     else if (syncResults && Object.values(syncResults).some(r => r.status === 'error')) status = 'partial';
     else status = 'success';
 
+    // Hide if success or idle to keep UI clean, as per user request
+    if (status === 'success' || status === 'idle' || status === 'never') return null;
+
     const getStatusContent = () => {
         switch (status) {
             case 'syncing':
