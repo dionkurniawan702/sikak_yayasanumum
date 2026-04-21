@@ -185,6 +185,18 @@ export default function FieldUnitManagement() {
                     });
                 }
 
+                // 3b. Clear settings for UNSELECTED items that were previously configured
+                // (To ensure they don't reappear after refresh)
+                const itemsPreviouslyConfigured = [...new Set(distributionSettings.filter(s => s.unitId === targetUnitIdForFinance).map(s => s.incomeItemId))];
+                const itemsToClear = itemsPreviouslyConfigured.filter(id => !selectedIncomeItems.includes(id));
+
+                for (const incomeId of itemsToClear) {
+                    await api.pushAction({
+                        type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                        payload: { unitId: targetUnitIdForFinance, incomeItemId: incomeId, settings: [] }
+                    }, state);
+                }
+
                 // 4. Refresh fresh data
                 const freshData = await api.fetchAllData();
                 if (freshData) {
