@@ -829,36 +829,70 @@ const ensureAcademicYears = async () => {
 const healAcademicYearIds = async () => {
     try {
         const client = getPrisma();
-        console.log('[Self-Healing] Checking for ID mismatches in AcademicYears...');
+        console.log('[Self-Healing] Starting RELATIONAL migration for AcademicYears...');
         const years = await client.academicYear.findMany();
         
         for (const year of years) {
-            // If ID is a UUID (doesn't start with AY-), we need to fix it
+            // Check if ID is non-standard (doesn't start with AY-)
             if (!year.id.startsWith('AY-')) {
                 const standardId = `AY-${year.name.replace(/\//g, '-')}`;
-                console.log(`[Self-Healing] Migrating UUID ${year.id} to standard ID ${standardId} for year ${year.name}`);
+                console.log(`[Self-Healing] MIGRATE: ${year.id} -> ${standardId} (${year.name})`);
                 
+                // 1. Create/Update standard record with ALL original data (Dates, etc.)
+                const { id, ...data } = year;
+                await client.academicYear.upsert({
+                    where: { id: standardId },
+                    update: { ...data },
+                    create: { ...data, id: standardId }
+                });
+
+                // 2. Re-link Related Tables
                 try {
-                    // We can't update a Primary Key directly in Prisma safely, 
-                    // so we create a new one with the same data and delete the old one
-                    const { id, ...data } = year;
-                    await client.academicYear.upsert({
-                        where: { id: standardId },
-                        update: { ...data },
-                        create: { ...data, id: standardId }
+                    // A. Students
+                    await client.student.updateMany({
+                        where: { academicYearId: year.id },
+                        data: { academicYearId: standardId }
                     });
                     
-                    // Don't delete yet to avoid foreign key issues, 
-                    // but the next sync will clean it up or merge it
-                } catch (e) {
-                    console.error(`[Self-Healing Error] Could not migrate ${year.id}: ${e.message}`);
+                    // B. BosStages & Allocations
+                    await client.bosStage.updateMany({
+                        where: { academicYearId: year.id },
+                        data: { academicYearId: standardId }
+                    });
+                    await client.bosAllocation.updateMany({
+                        where: { academicYearId: year.id },
+                        data: { academicYearId: standardId }
+                    });
+
+                    // C. RabPlans (Primary Table for budgets)
+                    const plans = await client.rabPlan.findMany({ where: { academicYearId: year.id } });
+                    for (const plan of plans) {
+                        const unitSuffix = plan.id.split('-').slice(1).join('-'); 
+                        if (!unitSuffix) continue;
+                        const newPlanId = `${standardId}-${unitSuffix}`;
+                        
+                        const { id: oldPlanId, ...planData } = plan;
+                        await client.rabPlan.upsert({
+                            where: { id: newPlanId },
+                            update: { ...planData, academicYearId: standardId },
+                            create: { ...planData, id: newPlanId, academicYearId: standardId }
+                        });
+                        
+                        await client.rabPlan.delete({ where: { id: oldPlanId } });
+                    }
+
+                    // 3. Cleanup: Delete the old non-standard academic year
+                    await client.academicYear.delete({ where: { id: year.id } });
+                    console.log(`[Self-Healing] SUCCESS: ${year.name} fully migrated to ${standardId}.`);
+                } catch (relErr) {
+                    console.error(`[Self-Healing Detail Error] Mismatch on ${year.name}: ${relErr.message}`);
                 }
             }
         }
     } catch (error) {
         console.error(`[Self-Healing Error] AcademicYear IDs: ${error.message}`);
     }
-}
+};
 
 const ensureSuperAdmin = async () => {
     try {
