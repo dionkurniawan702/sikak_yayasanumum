@@ -1883,10 +1883,9 @@ export default function RAB() {
                         {/* Modal Body */}
                         <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
                             {/* Section 1: Basic Info & Program (Tidied Up) */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 bg-slate-50/30 p-8 rounded-[2.5rem] border border-slate-100/50 shadow-sm relative overflow-hidden">
-                                {/* Left Side: Configuration */}
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
+                            <div className="p-8 bg-slate-50/30 rounded-[2.5rem] border border-slate-100/50 shadow-sm space-y-6">
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div className="lg:col-span-1 space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja</label>
                                         <select 
                                             className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
@@ -1900,117 +1899,104 @@ export default function RAB() {
                                         </select>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
-                                            <select 
-                                                className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.semester || '1'}
-                                                onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
-                                            >
-                                                <option value="1">Semester 1</option>
-                                                <option value="2">Semester 2</option>
-                                            </select>
-                                        </div>
-                                        <div className="space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Status Persetujuan</label>
-                                            <div className={`p-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 h-[58px] ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-slate-100 text-slate-400 border border-slate-200'}`}>
-                                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-3 h-3 rounded-full border-2 border-slate-300 animate-pulse" />}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
+                                        <select 
+                                            className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.semester || '1'}
+                                            onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
+                                        >
+                                            <option value="1">Semester 1 (Ganjil)</option>
+                                            <option value="2">Semester 2 (Genap)</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Sumber Dana & Status</label>
+                                        <div className="flex items-center gap-3 h-[58px]">
+                                            {isBosRecipient && fundSourceFilter === 'all' && (
+                                                <button 
+                                                    onClick={() => {
+                                                        const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                        const nextState = !detail.useBos;
+                                                        handleItemUpdate(editingItem.id, 'useBos', nextState);
+                                                        if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(editingItem.id, 'bosAmount', 0);
+                                                    }}
+                                                    className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 ${
+                                                        currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos 
+                                                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' 
+                                                            : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
+                                                    }`}
+                                                >
+                                                    <Wallet size={14} />
+                                                    {currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
+                                                </button>
+                                            )}
+                                            <div className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
+                                                {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={14}/> : <div className="w-2 h-2 rounded-full bg-slate-300 animate-pulse" />}
                                                 {currentPlan.status === 'APPROVED' ? 'Disetujui' : 'Draft'}
                                             </div>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Right Side: Sumber Dana */}
-                                <div className="space-y-4">
-                                    <div className="p-6 bg-white border border-slate-100 rounded-[2rem] shadow-sm space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber Dana Belanja</p>
-                                            {isBosRecipient && fundSourceFilter === 'all' && (
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Gunakan Dana BOS?</span>
-                                                    <button 
-                                                        onClick={() => {
-                                                            const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                                            const nextState = !detail.useBos;
-                                                            handleItemUpdate(editingItem.id, 'useBos', nextState);
-                                                            if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(editingItem.id, 'bosAmount', 0);
-                                                        }}
-                                                        className={`w-12 h-6 rounded-full transition-all relative ${currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'bg-emerald-500' : 'bg-slate-200'}`}
-                                                    >
-                                                        <div className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-all ${currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'left-7' : 'left-1'}`} />
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
+                                {(() => {
+                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                    const isBosView = fundSourceFilter === 'BOS';
+                                    const isYayasanView = fundSourceFilter === 'Yayasan';
+                                    const showBos = isBosView || (detail.useBos && !isYayasanView);
 
-                                        <div className="space-y-4">
-                                            {(() => {
-                                                const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                                const isBosView = fundSourceFilter === 'BOS';
-                                                const isYayasanView = fundSourceFilter === 'Yayasan';
-                                                const showBos = isBosView || (detail.useBos && !isYayasanView);
-
-                                                if (showBos) {
-                                                    return (
-                                                        <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                            {!isBosView && (
-                                                                <div className="space-y-2">
-                                                                    <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 flex justify-between">
-                                                                        Porsi Dana BOS (Rp)
-                                                                        <span className="text-[9px] font-black text-blue-500 lowercase italic">
-                                                                            Beban Yayasan: {formatRupiah(Math.max(0, (detail.total || 0) - (detail.bosAmount || 0)))}
-                                                                        </span>
-                                                                    </label>
-                                                                    <input 
-                                                                        type="text"
-                                                                        className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
-                                                                        value={parseInt(detail.bosAmount || 0).toLocaleString('id-ID')}
-                                                                        onChange={e => handleItemUpdate(editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
-                                                                    />
-                                                                </div>
-                                                            )}
-                                                            <div className="grid grid-cols-2 gap-4">
-                                                                <select 
-                                                                    className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                                    value={detail.bosPosId || ''}
-                                                                    onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
-                                                                >
-                                                                    <option value="">Pilih POS...</option>
-                                                                    {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
-                                                                        <option key={p.id} value={p.id}>{p.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                                <select 
-                                                                    className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
-                                                                    value={detail.bosStageId || ''}
-                                                                    onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
-                                                                >
-                                                                    <option value="">Pilih Tahap...</option>
-                                                                    {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
-                                                                        <option key={s.id} value={s.id}>{s.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
-                                                            {isBosView && (
-                                                                <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest text-center bg-emerald-50 py-2 rounded-xl border border-emerald-100">
-                                                                    Sumber Dana: BOS (100%)
-                                                                </p>
-                                                            )}
+                                    if (showBos) {
+                                        return (
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-6 border-t border-slate-100/50 animate-in fade-in slide-in-from-top-2 duration-300">
+                                                {!isBosView && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1 flex justify-between">
+                                                            Porsi Dana BOS (Rp)
+                                                        </label>
+                                                        <div className="relative">
+                                                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-400 font-black text-xs italic">Rp</span>
+                                                            <input 
+                                                                type="text"
+                                                                className="w-full p-4 pl-10 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 outline-none focus:border-emerald-500 transition-all"
+                                                                value={parseInt(detail.bosAmount || 0).toLocaleString('id-ID')}
+                                                                onChange={e => handleItemUpdate(editingItem.id, 'bosAmount', parseInt(e.target.value.replace(/\D/g, '') || 0))}
+                                                            />
                                                         </div>
-                                                    );
-                                                }
-
-                                                return (
-                                                    <div className="py-8 border-2 border-dashed border-slate-200 rounded-2xl text-center">
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber: Dana Yayasan 100%</p>
                                                     </div>
-                                                );
-                                            })()}
-                                        </div>
-                                    </div>
-                                </div>
+                                                )}
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">POS BOS</label>
+                                                    <select 
+                                                        className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                        value={detail.bosPosId || ''}
+                                                        onChange={e => handleItemUpdate(editingItem.id, 'bosPosId', e.target.value)}
+                                                    >
+                                                        <option value="">Pilih POS...</option>
+                                                        {bosPosList?.filter(p => !p?.isDeleted)?.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest ml-1">Tahap Pencairan</label>
+                                                    <select 
+                                                        className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl font-black text-slate-700 text-xs outline-none focus:border-emerald-500 transition-all shadow-sm"
+                                                        value={detail.bosStageId || ''}
+                                                        onChange={e => handleItemUpdate(editingItem.id, 'bosStageId', e.target.value)}
+                                                    >
+                                                        <option value="">Pilih Tahap...</option>
+                                                        {bosStages?.filter(s => !s?.isDeleted && (s?.academicYearId === selectedYearId || !s?.academicYearId))?.map(s => (
+                                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                            </div>
 
                                 {/* Unit Peruntukan (Bottom-Full width in Section 1) */}
                                 {selectedUnitId.startsWith('FIELD-') && ['Penggajian', 'Gedung', 'Perawatan Sarpras'].some(n => editingItem.name.includes(n)) && (
