@@ -69,7 +69,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.5.7'
+        version: '1.5.8'
     });
 });
 
@@ -94,7 +94,7 @@ app.get('/api/check-db', async (req, res) => {
             table: targetTable, 
             columns, 
             data,
-            version: '1.5.6',
+            version: '1.5.8',
             serverTime: new Date().toISOString() 
         });
     } catch (e) {
@@ -278,8 +278,11 @@ app.post('/api/sync', async (req, res) => {
                             });
 
                             if (existing) {
-                                // Double check: if server has dates but payload doesn't, keep server dates
+                                // DOUBLE PROTECT: Never allow NULL to overwrite an existing date on the server
                                 const finalUpdate = { ...cleanItem, id: undefined };
+                                
+                                // Explicit check: If incoming is null/undefined but server HAS data, keep server data
+                                if (!cleanItem.name) delete finalUpdate.name; // Don't wipe name
                                 if (!cleanItem.startDate && existing.startDate) delete finalUpdate.startDate;
                                 if (!cleanItem.endDate && existing.endDate) delete finalUpdate.endDate;
 
