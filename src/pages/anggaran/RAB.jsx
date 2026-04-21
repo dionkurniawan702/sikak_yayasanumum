@@ -15,28 +15,51 @@ import { calculateRAP } from '../../utils/budgetEngine';
 import BudgetRow from '../../components/BudgetRow';
 
 // Helper to generate 12 months for an academic year (July to June)
-const generateMonths = (academicYearName) => {
-    if (!academicYearName) return [];
-    const [startYearStr, endYearStr] = academicYearName.split(academicYearName.includes('/') ? '/' : '-');
-    const startYear = parseInt(startYearStr);
-    const endYear = parseInt(endYearStr);
+const generateMonths = (ay) => {
+    if (!ay) return [];
     
     const months = [];
     const monthNames = [
-        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
-        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni'
+        'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+        'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
     ];
 
-    monthNames.forEach((name, index) => {
-        const year = index < 6 ? startYear : endYear;
-        const monthNum = index < 6 ? (index + 7) : (index - 5);
-        months.push({
-            id: `${year}-${String(monthNum).padStart(2, '0')}`,
-            name: `${name}-${year}`,
-            label: name,
-            year: year
+    if (ay.startDate && ay.endDate) {
+        let current = new Date(ay.startDate);
+        const end = new Date(ay.endDate);
+        
+        // Loop through each month between start and end
+        while (current <= end) {
+            const year = current.getFullYear();
+            const monthIdx = current.getMonth();
+            const monthNum = monthIdx + 1;
+            
+            months.push({
+                id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                name: `${monthNames[monthIdx]}-${year}`,
+                label: monthNames[monthIdx],
+                year: year
+            });
+            
+            current.setMonth(current.getMonth() + 1);
+        }
+    } else {
+        // Fallback: July to June based on name (e.g. 2026-2027)
+        const [startYearStr, endYearStr] = (ay.name || '').split((ay.name || '').includes('/') ? '/' : '-');
+        const startYear = parseInt(startYearStr) || new Date().getFullYear();
+        const endYear = parseInt(endYearStr) || (startYear + 1);
+        
+        const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+        sequence.forEach((monthNum) => {
+            const year = monthNum >= 7 ? startYear : endYear;
+            months.push({
+                id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                name: `${monthNames[monthNum - 1]}-${year}`,
+                label: monthNames[monthNum - 1],
+                year: year
+            });
         });
-    });
+    }
     return months;
 };
 
@@ -389,9 +412,8 @@ export default function RAB() {
             }
             
             // Special logic if semester changes: auto-toggle checkboxes
-            if (field === 'semester') {
-                const yearName = academicYears.find(ay => ay.id === selectedYearId)?.name;
-                const yearMonths = generateMonths(yearName);
+                const ay = academicYears.find(ay => ay.id === selectedYearId);
+                const yearMonths = generateMonths(ay);
                 const monthsData = { ...(updatedItem.months || {}) };
                 
                 yearMonths.forEach((m, idx) => {
@@ -725,7 +747,7 @@ export default function RAB() {
 
     const months = useMemo(() => {
         const selectedYear = academicYears.find(ay => ay.id === selectedYearId);
-        return generateMonths(selectedYear?.name);
+        return generateMonths(selectedYear);
     }, [selectedYearId, academicYears]);
 
     const handleAddItem = async () => {

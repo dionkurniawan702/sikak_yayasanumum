@@ -226,7 +226,6 @@ app.post('/api/sync', async (req, res) => {
                         cleanItem.destId = cleanItem.destId || null;
                     }
                     if (model === 'field') delete cleanItem.fieldId;
-                    if (model === 'academicYear') { delete cleanItem.startDate; delete cleanItem.endDate; }
                     if (model === 'classGroup') delete cleanItem.unitId;
                     if (model === 'account') {
                         if (cleanItem.initialBalance !== undefined) cleanItem.balance = parseFloat(cleanItem.initialBalance) || 0;

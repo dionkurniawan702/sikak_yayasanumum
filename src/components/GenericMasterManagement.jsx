@@ -29,7 +29,7 @@ export default function GenericMasterManagement({
     const [searchTerm, setSearchTerm] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
-    const [formData, setFormData] = useState({ name: '' });
+    const [formData, setFormData] = useState({ name: '', startDate: '', endDate: '' });
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
@@ -44,15 +44,20 @@ export default function GenericMasterManagement({
 
         try {
             if (editingItem) {
-                const { startDate, endDate, ...cleanEditingItem } = editingItem;
-                const updatedItem = { ...cleanEditingItem, name: formData.name };
+                const updatedItem = { 
+                    ...editingItem, 
+                    name: formData.name,
+                    startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+                    endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
+                };
                 dispatch({ type: `EDIT_${actionPrefix}`, payload: updatedItem });
                 await api.pushAction({ type: `EDIT_${actionPrefix}`, payload: updatedItem }, state);
                 setMessage({ type: 'success', text: `${title} berhasil diperbarui` });
             } else {
-                const currentYear = new Date().getFullYear();
                 const defaultDates = actionPrefix === 'ACADEMIC_YEAR' ? {
-                    isCurrent: false
+                    isCurrent: false,
+                    startDate: formData.startDate ? new Date(formData.startDate).toISOString() : null,
+                    endDate: formData.endDate ? new Date(formData.endDate).toISOString() : null
                 } : {};
 
                 const newItem = {
@@ -66,7 +71,7 @@ export default function GenericMasterManagement({
             }
             setIsModalOpen(false);
             setEditingItem(null);
-            setFormData({ name: '' });
+            setFormData({ name: '', startDate: '', endDate: '' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         } finally {
@@ -213,7 +218,11 @@ export default function GenericMasterManagement({
                                             <button 
                                                 onClick={() => {
                                                     setEditingItem(item);
-                                                    setFormData({ name: item.name });
+                                                    setFormData({ 
+                                                        name: item.name,
+                                                        startDate: item.startDate ? item.startDate.substring(0, 7) : '',
+                                                        endDate: item.endDate ? item.endDate.substring(0, 7) : ''
+                                                    });
                                                     setIsModalOpen(true);
                                                 }}
                                                 className="p-2.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all"
@@ -273,6 +282,31 @@ export default function GenericMasterManagement({
                                     placeholder={`Masukkan nama ${title.toLowerCase()}...`}
                                 />
                             </div>
+
+                            {entity === 'academicYears' && (
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Bulan Mulai</label>
+                                        <input 
+                                            type="month" 
+                                            required
+                                            value={formData.startDate}
+                                            onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                            className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Bulan Selesai</label>
+                                        <input 
+                                            type="month" 
+                                            required
+                                            value={formData.endDate}
+                                            onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                                            className="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:bg-white outline-none transition-all font-bold text-slate-900"
+                                        />
+                                    </div>
+                                </div>
+                            )}
 
                             <div className="flex gap-3 pt-4">
                                 <button 

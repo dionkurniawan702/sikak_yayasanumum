@@ -222,6 +222,8 @@ model ExpenseItem {
 model AcademicYear {
   id        String   @id @default(uuid())
   name      String   @unique // e.g., 2023/2024
+  startDate DateTime?
+  endDate   DateTime?
   isCurrent Boolean  @default(false)
   isActive  Boolean  @default(true)
   isDeleted Boolean  @default(false)
