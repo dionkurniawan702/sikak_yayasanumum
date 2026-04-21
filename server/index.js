@@ -808,6 +808,30 @@ const healAcademicYearIds = async () => {
     }
 }
 
+const ensureSuperAdmin = async () => {
+    try {
+        const client = getPrisma();
+        const count = await client.user.count({ where: { isDeleted: false } });
+        
+        if (count === 0) {
+            console.log('[Seed] Database is empty. Creating default superadmin...');
+            // Default: adminsdit1 / admin123
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            await client.user.create({
+                data: {
+                    username: 'adminsdit1',
+                    password: hashedPassword,
+                    name: 'Super Admin',
+                    role: 'superadmin'
+                }
+            });
+            console.log('[Seed] Default superadmin created successfully.');
+        }
+    } catch (error) {
+        console.error(`[Seed Error] SuperAdmin: ${error.message}`);
+    }
+};
+
 // Server Listening with Robust Error Handling
 const ensureRabPlansColumns = async () => {
     try {
@@ -895,6 +919,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     const startBackgroundTasks = async () => {
         try {
             await ensureSoftDeleteColumns();
+            await ensureSuperAdmin();
             await ensureFundSources();
             await ensureAcademicYears();
             await healAcademicYearIds();
