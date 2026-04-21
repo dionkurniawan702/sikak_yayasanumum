@@ -33,6 +33,20 @@ export default function GenericMasterManagement({
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState(null);
 
+    const formatMonthYear = (dateStr) => {
+        if (!dateStr) return '-';
+        try {
+            const date = new Date(dateStr);
+            const monthNames = [
+                'Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun',
+                'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'
+            ];
+            return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
+        } catch (e) {
+            return '-';
+        }
+    };
+
     const filteredItems = items.filter(item => 
         (item.name || '').toLowerCase().includes(searchTerm.toLowerCase())
     );
@@ -170,7 +184,11 @@ export default function GenericMasterManagement({
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider w-24">ID</th>
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider">{title}</th>
                                 {entity === 'academicYears' && (
-                                    <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                    <>
+                                        <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">Mulai</th>
+                                        <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">Selesai</th>
+                                        <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-center">Status</th>
+                                    </>
                                 )}
                                 <th className="px-8 py-5 text-sm font-bold text-slate-500 uppercase tracking-wider text-right">Aksi</th>
                             </tr>
@@ -197,21 +215,33 @@ export default function GenericMasterManagement({
                                         </div>
                                     </td>
                                     {entity === 'academicYears' && (
-                                        <td className="px-8 py-5">
-                                            <div className="flex justify-center">
-                                                <button 
-                                                    onClick={() => handleToggleActive(item)}
-                                                    className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
-                                                        item.isActive 
-                                                            ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
-                                                            : 'bg-slate-50 text-slate-400 border border-slate-200'
-                                                    }`}
-                                                >
-                                                    {item.isActive ? <Eye size={12} /> : <EyeOff size={12} />}
-                                                    {item.isActive ? 'Aktif' : 'Non-Aktif'}
-                                                </button>
-                                            </div>
-                                        </td>
+                                        <>
+                                            <td className="px-8 py-5 text-center">
+                                                <span className="text-[11px] font-black text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                                                    {formatMonthYear(item.startDate)}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-5 text-center">
+                                                <span className="text-[11px] font-black text-slate-500 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-100">
+                                                    {formatMonthYear(item.endDate)}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-5">
+                                                <div className="flex justify-center">
+                                                    <button 
+                                                        onClick={() => handleToggleActive(item)}
+                                                        className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                                                            item.isActive 
+                                                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' 
+                                                                : 'bg-slate-50 text-slate-400 border border-slate-200'
+                                                        }`}
+                                                    >
+                                                        {item.isActive ? <Eye size={12} /> : <EyeOff size={12} />}
+                                                        {item.isActive ? 'Aktif' : 'Non-Aktif'}
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </>
                                     )}
                                     <td className="px-8 py-5">
                                         <div className="flex items-center justify-end gap-2">
