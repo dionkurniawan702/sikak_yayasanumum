@@ -473,6 +473,8 @@ router.put('/academic-years/:id', async (req, res) => {
             where: { id: existing.id },
             data: {
                 name,
+                startDate: startDate ? new Date(startDate) : undefined,
+                endDate: endDate ? new Date(endDate) : undefined,
                 isCurrent: isCurrent !== undefined ? !!isCurrent : undefined,
                 isActive: isActive !== undefined ? !!isActive : undefined,
                 isDeleted: isDeleted !== undefined ? !!isDeleted : undefined
