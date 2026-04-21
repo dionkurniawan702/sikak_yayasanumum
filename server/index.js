@@ -69,7 +69,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.5.1'
+        version: '1.5.6'
     });
 });
 
@@ -94,7 +94,7 @@ app.get('/api/check-db', async (req, res) => {
             table: targetTable, 
             columns, 
             data,
-            version: '1.5.5',
+            version: '1.5.6',
             serverTime: new Date().toISOString() 
         });
     } catch (e) {
@@ -923,6 +923,37 @@ const ensureSuperAdmin = async () => {
     }
 };
 
+const emergencyRestoreYears = async () => {
+    try {
+        const client = getPrisma();
+        const targets = ['2026-2027', '2025-2026'];
+        console.log(`[EMERGENCY-RECOVERY] Checking for hidden data: ${targets.join(', ')}`);
+        
+        for (const name of targets) {
+            const year = await client.academicYear.findFirst({
+                where: { name: name }
+            });
+            
+            if (year) {
+                console.log(`[EMERGENCY-RECOVERY] Restoring ${name} (ID: ${year.id})...`);
+                await client.academicYear.update({
+                    where: { id: year.id },
+                    data: { isDeleted: false, isActive: true }
+                });
+                
+                // Ensure related students are also visible if they were linked
+                await client.student.updateMany({
+                    where: { academicYearId: year.id, isDeleted: true },
+                    data: { isDeleted: false }
+                });
+            }
+        }
+        console.log('[EMERGENCY-RECOVERY] Restoration tasks completed.');
+    } catch (error) {
+        console.error(`[EMERGENCY-RECOVERY ERROR] ${error.message}`);
+    }
+};
+
 // Server Listening with Robust Error Handling
 const ensureRabPlansColumns = async () => {
     try {
@@ -1011,6 +1042,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
         try {
             // 1. CRITICAL: Fixed broken startup chain by prioritizing healing
             await healAcademicYearIds(); 
+            await emergencyRestoreYears(); // Emergency Recovery for 2026-2027
             
             // 2. Regular Seeding & Setup
             await ensureSuperAdmin();
