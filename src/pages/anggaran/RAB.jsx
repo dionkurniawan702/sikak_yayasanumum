@@ -6,7 +6,7 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter, 
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X,
-    Calculator, Trash2, Pencil
+    Calculator, Trash2, Pencil, DollarSign
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
@@ -1157,34 +1157,43 @@ export default function RAB() {
         );
     };
 
-    const renderBudgetTable = () => (
-        <div className="overflow-x-auto">
-            <table className="w-full border-separate border-spacing-y-4">
-                <thead>
-                    <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
-                        <th className="px-6 py-1 text-left w-12">#</th>
-                        <th className="px-6 py-1 text-left">Item pengeluaran</th>
-                        <th className="px-6 py-1 text-center">Semester</th>
-                        <th className="px-6 py-1 text-right">Limit</th>
-                        <th className="px-6 py-1 text-right">Draft RAB</th>
-                        <th className="px-6 py-2 text-right">Aksi</th>
-                    </tr>
-                </thead>
+    const renderBudgetTable = () => {
+        const isIncome = activeTab === 'INCOME';
+        const items = isIncome ? filteredIncomeItems : filteredExpenseItems;
+        const type = isIncome ? 'income' : 'expense';
+        const labelText = isIncome ? 'Item pendapatan' : 'Item pengeluaran';
+        
+        return (
+            <div className="overflow-x-auto">
+                <table className="w-full border-separate border-spacing-y-4">
+                    <thead>
+                        <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                            <th className="px-6 py-1 text-left w-12">#</th>
+                            <th className="px-6 py-1 text-left">{labelText}</th>
+                            <th className="px-6 py-1 text-center">Semester</th>
+                            <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
+                            <th className="px-6 py-1 text-right">Draft RAB</th>
+                            <th className="px-6 py-2 text-right">Aksi</th>
+                        </tr>
+                    </thead>
                 <tbody>
-                    {filteredExpenseItems.filter(item => {
+                    {items.filter(item => {
                         if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
                         return true;
                     }).filter(item => {
+                        if (isIncome) return true;
                         if (fundSourceFilter === 'Yayasan') {
                             return item.sourceOfFunds !== 'BOS' && !bosItemMap[item.id];
                         }
                         if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
                         return true;
                     }).flatMap((itemMaster, index) => {
-                        const plans = activePlan.expense[itemMaster.id] || [];
-                        const allocated = fundSourceFilter === 'BOS' 
-                            ? (bosItemMap[itemMaster.id] || 0) 
-                            : (rapData.itemAllocations[itemMaster.id] || 0);
+                        const plans = activePlan[type][itemMaster.id] || [];
+                        const allocated = isIncome 
+                            ? (rapData.incomeTotals[itemMaster.id] || 0)
+                            : (fundSourceFilter === 'BOS' 
+                                ? (bosItemMap[itemMaster.id] || 0) 
+                                : (rapData.itemAllocations[itemMaster.id] || 0));
 
                         if (plans.length === 0) {
                             return [{ 
@@ -1211,21 +1220,21 @@ export default function RAB() {
                                 <td className="px-6 py-4 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
                                     {(index + 1).toString().padStart(2, '0')}
                                 </td>
-                                <td className={`px-6 py-4 border-y border-slate-100 ${!isFirst ? 'opacity-40' : ''}`}>
-                                    <div className="flex items-center gap-4">
-                                        <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${draftValue > 0 ? 'text-indigo-600' : 'text-slate-300'}`}>
-                                            <TrendingUp size={18} />
-                                        </div>
-                                        <div>
-                                            <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
-                                            <div className="flex items-center gap-2 mt-1">
-                                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
-                                                    {plan.description ? plan.description.substring(0, 40) + (plan.description.length > 40 ? '...' : '') : (itemMaster.sourceOfFunds || 'Yayasan')}
-                                                </p>
+                                    <td className={`px-6 py-4 border-y border-slate-100 ${!isFirst ? 'opacity-40' : ''}`}>
+                                        <div className="flex items-center gap-4">
+                                            <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300'}`}>
+                                                {isIncome ? <DollarSign size={18} /> : <TrendingUp size={18} />}
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
+                                                        {plan.description ? plan.description.substring(0, 40) + (plan.description.length > 40 ? '...' : '') : (itemMaster.sourceOfFunds || (isIncome ? 'Penerimaan' : 'Yayasan'))}
+                                                    </p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
+                                    </td>
                                 <td className="px-6 py-4 border-y border-slate-100 text-center">
                                     <span className={`px-3 py-1 rounded-full font-black text-[9px] ${plan.isEmpty ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'}`}>
                                         SMT {plan.semester || '1'}
@@ -1234,13 +1243,13 @@ export default function RAB() {
                                 <td className="px-6 py-4 border-y border-slate-100 text-right">
                                     {isFirst && <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>}
                                 </td>
-                                <td className="px-6 py-4 border-y border-slate-100 text-right">
-                                    <div className="flex flex-col items-end gap-1">
-                                        <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (draftValue > 0 ? 'text-indigo-600' : 'text-slate-300')}`}>
-                                            {formatRupiah(draftValue)}
-                                        </p>
-                                    </div>
-                                </td>
+                                    <td className="px-6 py-4 border-y border-slate-100 text-right">
+                                        <div className="flex flex-col items-end gap-1">
+                                            <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300')}`}>
+                                                {formatRupiah(draftValue)}
+                                            </p>
+                                        </div>
+                                    </td>
                                 <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
                                     <div className="flex items-center justify-end gap-2">
                                         <button 
@@ -1260,44 +1269,51 @@ export default function RAB() {
                                             <Plus size={18} strokeWidth={3} />
                                         </button>
 
-                                        {!plan.isEmpty && (
-                                            <>
-                                                <button 
-                                                    onClick={() => setEditingItem({ ...itemMaster, planId: plan.id, itemId: itemMaster.id })}
-                                                    className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
-                                                    title="EDIT RENCANA"
-                                                >
-                                                    <Pencil size={18} />
-                                                </button>
-
-                                                {!isLocked && (
+                                                <>
                                                     <button 
-                                                        onClick={() => {
-                                                            if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                setCurrentPlan(prev => ({
-                                                                    ...prev,
-                                                                    expense: {
-                                                                        ...prev.expense,
-                                                                        [itemMaster.id]: (prev.expense[itemMaster.id] || []).filter(p => p.id !== plan.id)
-                                                                    }
-                                                                }));
-                                                            }
-                                                        }}
-                                                        className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
-                                                        title="HAPUS RENCANA"
+                                                        onClick={() => setEditingItem({ 
+                                                            ...itemMaster, 
+                                                            id: plan.id,
+                                                            itemId: itemMaster.id,
+                                                            planId: plan.id 
+                                                        })}
+                                                        className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+                                                        title="EDIT RENCANA"
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Pencil size={18} />
                                                     </button>
-                                                )}
-                                            </>
-                                        )}
-                                    </div>
-                                </td>
-                            </tr>
-                        );
-                    })}
-                </tbody>
-            </table>
+
+                                                    {!isLocked && (
+                                                        <button 
+                                                            onClick={() => {
+                                                                if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                    setCurrentPlan(prev => ({
+                                                                        ...prev,
+                                                                        [type]: {
+                                                                            ...prev[type],
+                                                                            [itemMaster.id]: (prev[type][itemMaster.id] || []).filter(p => p.id !== plan.id)
+                                                                        }
+                                                                    }));
+                                                                }
+                                                            }}
+                                                            className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                                                            title="HAPUS RENCANA"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
+                                                </>
+                                            )}
+                                        </div>
+                                    </td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
+                </table>
+            </div>
+        );
+    };
 
             {/* Sticky Table Footer / Save Bar */}
             <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
