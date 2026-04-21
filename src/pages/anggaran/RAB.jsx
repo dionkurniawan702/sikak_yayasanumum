@@ -130,6 +130,14 @@ export default function RAB() {
 
     const toggleReviewPlan = (id) => setExpandedReviewPlans(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleDashboardPlan = (id) => setExpandedDashboardPlans(prev => ({ ...prev, [id]: !prev[id] }));
+    
+    // Mapped data for the Review and Consolidated views (Extracted Hooks)
+    const incomePrograms = useMemo(() => programs.filter(p => !p.isDeleted && p.type === 'INCOME'), [programs]);
+    const pendingPlans = useMemo(() => 
+        rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId),
+        [rabPlans, selectedYearId]
+    );
+
     const toggleDetailItem = (parentId, itemId) => {
         const key = `${parentId}-${itemId}`;
         setExpandedDetailItems(prev => ({ ...prev, [key]: !prev[key] }));
@@ -1014,9 +1022,6 @@ export default function RAB() {
     };
 
     const renderReviewView = () => {
-        const incomePrograms = useMemo(() => programs.filter(p => p.type === 'INCOME'), [programs]);
-        const pendingPlans = rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId);
-
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
                 <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm relative overflow-hidden">
