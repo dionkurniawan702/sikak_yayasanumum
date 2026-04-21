@@ -829,68 +829,56 @@ const ensureAcademicYears = async () => {
 const healAcademicYearIds = async () => {
     try {
         const client = getPrisma();
-        console.log('[Self-Healing] Starting RELATIONAL migration for AcademicYears...');
-        const years = await client.academicYear.findMany();
+        console.log('[NUCLEAR-FIX] Starting direct database ID re-writing...');
         
-        for (const year of years) {
-            // Check if ID is non-standard (doesn't start with AY-)
-            if (!year.id.startsWith('AY-')) {
-                const standardId = `AY-${year.name.replace(/\//g, '-')}`;
-                console.log(`[Self-Healing] MIGRATE: ${year.id} -> ${standardId} (${year.name})`);
-                
-                // 1. Create/Update standard record with ALL original data (Dates, etc.)
-                const { id, ...data } = year;
-                await client.academicYear.upsert({
-                    where: { id: standardId },
-                    update: { ...data },
-                    create: { ...data, id: standardId }
-                });
+        // 1. Disable Foreign Key Checks to allow Primary Key updates
+        await client.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0;');
+        
+        try {
+            const tableVariations = ['AcademicYear', 'academicyear', 'academic_year'];
+            let targetTable = 'AcademicYear'; // fallback
+            const rawTables = await client.$queryRaw`SHOW TABLES`;
+            const tables = rawTables.map(t => Object.values(t)[0]);
+            targetTable = tables.find(t => tableVariations.includes(t)) || 'AcademicYear';
 
-                // 2. Re-link Related Tables
-                try {
-                    // A. Students
-                    await client.student.updateMany({
-                        where: { academicYearId: year.id },
-                        data: { academicYearId: standardId }
-                    });
+            const years = await client.academicYear.findMany();
+            for (const year of years) {
+                if (!year.id.startsWith('AY-')) {
+                    const standardId = `AY-${year.name.replace(/\//g, '-')}`;
+                    const oldId = year.id;
                     
-                    // B. BosStages & Allocations
-                    await client.bosStage.updateMany({
-                        where: { academicYearId: year.id },
-                        data: { academicYearId: standardId }
-                    });
-                    await client.bosAllocation.updateMany({
-                        where: { academicYearId: year.id },
-                        data: { academicYearId: standardId }
-                    });
-
-                    // C. RabPlans (Primary Table for budgets)
-                    const plans = await client.rabPlan.findMany({ where: { academicYearId: year.id } });
+                    console.log(`[NUCLEAR-FIX] Force Rename: ${oldId} -> ${standardId} (${year.name})`);
+                    
+                    // A. Update Related Tables directly
+                    await client.$executeRawUnsafe('UPDATE Student SET academicYearId = ? WHERE academicYearId = ?', standardId, oldId);
+                    await client.$executeRawUnsafe('UPDATE bos_stages SET academicYearId = ? WHERE academicYearId = ?', standardId, oldId);
+                    await client.$executeRawUnsafe('UPDATE bos_allocations SET academicYearId = ? WHERE academicYearId = ?', standardId, oldId);
+                    
+                    // B. Update RabPlans (Composite Primary Keys)
+                    const plans = await client.rabPlan.findMany({ where: { academicYearId: oldId } });
                     for (const plan of plans) {
-                        const unitSuffix = plan.id.split('-').slice(1).join('-'); 
+                        const parts = plan.id.split('-');
+                        const unitSuffix = parts.length > 1 ? parts.slice(1).join('-') : null;
                         if (!unitSuffix) continue;
                         const newPlanId = `${standardId}-${unitSuffix}`;
                         
-                        const { id: oldPlanId, ...planData } = plan;
-                        await client.rabPlan.upsert({
-                            where: { id: newPlanId },
-                            update: { ...planData, academicYearId: standardId },
-                            create: { ...planData, id: newPlanId, academicYearId: standardId }
-                        });
-                        
-                        await client.rabPlan.delete({ where: { id: oldPlanId } });
+                        await client.$executeRawUnsafe('UPDATE rab_plans SET id = ?, academicYearId = ? WHERE id = ?', newPlanId, standardId, plan.id);
                     }
-
-                    // 3. Cleanup: Delete the old non-standard academic year
-                    await client.academicYear.delete({ where: { id: year.id } });
-                    console.log(`[Self-Healing] SUCCESS: ${year.name} fully migrated to ${standardId}.`);
-                } catch (relErr) {
-                    console.error(`[Self-Healing Detail Error] Mismatch on ${year.name}: ${relErr.message}`);
+                    
+                    // C. Finally update the AcademicYear ID itself
+                    await client.$executeRawUnsafe(`UPDATE \`${targetTable}\` SET id = ? WHERE id = ?`, standardId, oldId);
+                    
+                    console.log(`[NUCLEAR-FIX] SUCCESS: ${year.name} migrated.`);
                 }
             }
+        } finally {
+            // 2. Re-enable Foreign Key Checks
+            await client.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1;');
         }
+        
+        console.log('[NUCLEAR-FIX] Migration complete.');
     } catch (error) {
-        console.error(`[Self-Healing Error] AcademicYear IDs: ${error.message}`);
+        console.error(`[NUCLEAR-FIX ERROR] ${error.message}`);
     }
 };
 
