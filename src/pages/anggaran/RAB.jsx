@@ -115,7 +115,7 @@ export default function RAB() {
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
 
     // States for Journal-style component entry
-    const [entryForm, setEntryForm] = useState({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
+    const [entryForm, setEntryForm] = useState({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
@@ -509,7 +509,7 @@ export default function RAB() {
         });
 
         // Reset Form & Refocus
-        setEntryForm({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
+        setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
         setEditingCompIdx(null);
         if (labelInputRef.current) labelInputRef.current.focus();
     };
@@ -527,7 +527,7 @@ export default function RAB() {
     };
 
     const handleCancelEdit = () => {
-        setEntryForm({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
+        setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
         setEditingCompIdx(null);
     };
 
@@ -612,7 +612,7 @@ export default function RAB() {
                 }
             }
         }));
-        setEntryForm({ label: '', volume: '', satuan: '', kali: 1, harga: '' });
+        setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
         setEditingCompIdx(null);
         setMessage({ type: 'success', text: 'Anggaran item telah dikosongkan.' });
         setTimeout(() => setMessage(null), 3000);
@@ -2076,7 +2076,7 @@ export default function RAB() {
                                                 className="w-full p-4 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
                                                 value={entryForm.volume}
                                                 onChange={e => setEntryForm({...entryForm, volume: e.target.value})}
-                                                placeholder="1"
+                                                placeholder="0"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -2096,7 +2096,7 @@ export default function RAB() {
                                                 className="w-full p-4 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
                                                 value={entryForm.kali}
                                                 onChange={e => setEntryForm({...entryForm, kali: e.target.value})}
-                                                placeholder="1"
+                                                placeholder="0"
                                             />
                                         </div>
                                         <div className="space-y-2">
@@ -2107,7 +2107,7 @@ export default function RAB() {
                                                     type="text"
                                                     inputMode="numeric"
                                                     className="w-full p-4 pl-10 bg-white border-2 border-transparent rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                                    value={entryForm.harga ? Number(entryForm.harga).toLocaleString('id-ID') : ''}
+                                                    value={entryForm.harga !== undefined && entryForm.harga !== null ? Number(entryForm.harga).toLocaleString('id-ID') : '0'}
                                                     onChange={e => {
                                                         const numeric = e.target.value.replace(/\D/g, '');
                                                         setEntryForm({...entryForm, harga: numeric ? parseFloat(numeric) : 0});
@@ -2129,6 +2129,93 @@ export default function RAB() {
                                                 {editingCompIdx !== null ? 'Perbarui Baris' : 'Tambahkan Baris'}
                                             </button>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* LIST OF SAVED COMPONENTS */}
+                                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian (Summary Table)</h4>
+                                    </div>
+                                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
+                                        <table className="w-full text-left">
+                                            <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
+                                                <tr>
+                                                    <th className="px-6 py-5">Keterangan / Rincian</th>
+                                                    <th className="px-6 py-5 text-center">Volume</th>
+                                                    <th className="px-6 py-5 text-center">Satuan</th>
+                                                    <th className="px-6 py-5 text-center">Kali</th>
+                                                    <th className="px-6 py-5 text-right">Harga Satuan</th>
+                                                    <th className="px-6 py-5 text-right">Subtotal</th>
+                                                    <th className="px-6 py-5 text-center">Aksi</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-100 italic">
+                                                {(() => {
+                                                    const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                    const comps = item.components || [];
+                                                    
+                                                    if (comps.length === 0) {
+                                                        return (
+                                                            <tr>
+                                                                <td colSpan={7} className="px-6 py-12 text-center text-slate-300 font-black text-xs uppercase tracking-widest italic opacity-50">
+                                                                    Belum ada rincian belanja terinput...
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
+                                                    return comps.map((comp, idx) => (
+                                                        <tr key={idx} className={`group hover:bg-slate-50 transition-colors ${editingCompIdx === idx ? 'bg-indigo-50/30' : ''}`}>
+                                                            <td className="px-6 py-4">
+                                                                <p className="font-black text-slate-800 text-xs tracking-tight">{comp.label}</p>
+                                                            </td>
+                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
+                                                            <td className="px-6 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan || '-'}</td>
+                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali || 1}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-slate-500 text-[11px]">{formatRupiah(comp.harga)}</td>
+                                                            <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
+                                                            <td className="px-6 py-4">
+                                                                <div className="flex items-center justify-center gap-2">
+                                                                    <button 
+                                                                        onClick={() => handleLoadToEdit(idx, comp)}
+                                                                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all"
+                                                                    >
+                                                                        <Pencil size={14} />
+                                                                    </button>
+                                                                    <button 
+                                                                        onClick={() => handleRemoveComponent(editingItem.id, idx)}
+                                                                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-all"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ));
+                                                })()}
+                                            </tbody>
+                                            {(() => {
+                                                const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                const total = item.total || 0;
+                                                if (!item.components || item.components.length === 0) return null;
+                                                return (
+                                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200">
+                                                        <tr>
+                                                            <td colSpan={5} className="px-6 py-5 font-black text-[11px] uppercase tracking-widest italic text-slate-500">Total Akumulasi Rincian</td>
+                                                            <td className="px-6 py-5 text-right font-black text-sm italic text-slate-900">{formatRupiah(total)}</td>
+                                                            <td></td>
+                                                        </tr>
+                                                    </tfoot>
+                                                );
+                                            })()}
+                                        </table>
+                                    </div>
+                                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+                                        <Info size={16} className="text-amber-600 shrink-0" />
+                                        <p className="text-[10px] font-bold text-amber-800 tracking-tight leading-relaxed italic">
+                                            Periksa kembali daftar di atas. Total Akumulasi Rincian harus sama dengan alokasi bulanan yang Anda tentukan di bawah ini.
+                                        </p>
                                     </div>
                                 </div>
 
@@ -2221,93 +2308,6 @@ export default function RAB() {
                                             </div>
                                         );
                                     })()}
-                                </div>
-
-                                {/* LIST OF SAVED COMPONENTS */}
-                                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian (Summary Table)</h4>
-                                    </div>
-                                    <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
-                                        <table className="w-full text-left">
-                                            <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
-                                                <tr>
-                                                    <th className="px-6 py-5">Keterangan / Rincian</th>
-                                                    <th className="px-6 py-5 text-center">Volume</th>
-                                                    <th className="px-6 py-5 text-center">Satuan</th>
-                                                    <th className="px-6 py-5 text-center">Kali</th>
-                                                    <th className="px-6 py-5 text-right">Harga Satuan</th>
-                                                    <th className="px-6 py-5 text-right">Subtotal</th>
-                                                    <th className="px-6 py-5 text-center">Aksi</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-slate-100 italic">
-                                                {(() => {
-                                                    const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                                    const comps = item.components || [];
-                                                    
-                                                    if (comps.length === 0) {
-                                                        return (
-                                                            <tr>
-                                                                <td colSpan={7} className="px-6 py-12 text-center text-slate-300 font-black text-xs uppercase tracking-widest italic opacity-50">
-                                                                    Belum ada rincian belanja terinput...
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    }
-
-                                                    return comps.map((comp, idx) => (
-                                                        <tr key={idx} className={`group hover:bg-slate-50 transition-colors ${editingCompIdx === idx ? 'bg-indigo-50/30' : ''}`}>
-                                                            <td className="px-6 py-4">
-                                                                <p className="font-black text-slate-800 text-xs tracking-tight">{comp.label}</p>
-                                                            </td>
-                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
-                                                            <td className="px-6 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan || '-'}</td>
-                                                            <td className="px-6 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali || 1}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-slate-500 text-[11px]">{formatRupiah(comp.harga)}</td>
-                                                            <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
-                                                            <td className="px-6 py-4">
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    <button 
-                                                                        onClick={() => handleLoadToEdit(idx, comp)}
-                                                                        className="p-2 text-slate-300 hover:text-blue-600 hover:bg-slate-100 rounded-lg transition-all"
-                                                                    >
-                                                                        <Pencil size={14} />
-                                                                    </button>
-                                                                    <button 
-                                                                        onClick={() => handleRemoveComponent(editingItem.id, idx)}
-                                                                        className="p-2 text-slate-300 hover:text-rose-600 hover:bg-slate-100 rounded-lg transition-all"
-                                                                    >
-                                                                        <Trash2 size={14} />
-                                                                    </button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ));
-                                                })()}
-                                            </tbody>
-                                            {(() => {
-                                                const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                                const total = item.total || 0;
-                                                if (!item.components || item.components.length === 0) return null;
-                                                return (
-                                                    <tfoot className="bg-slate-50 border-t-2 border-slate-200">
-                                                        <tr>
-                                                            <td colSpan={5} className="px-6 py-5 font-black text-[11px] uppercase tracking-widest italic text-slate-500">Total Akumulasi Rincian</td>
-                                                            <td className="px-6 py-5 text-right font-black text-sm italic text-slate-900">{formatRupiah(total)}</td>
-                                                            <td></td>
-                                                        </tr>
-                                                    </tfoot>
-                                                );
-                                            })()}
-                                        </table>
-                                    </div>
-                                    <div className="flex items-center gap-3 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                        <Info size={16} className="text-amber-600 shrink-0" />
-                                        <p className="text-[10px] font-bold text-amber-800 tracking-tight leading-relaxed italic">
-                                            Periksa kembali daftar di atas. Total Akumulasi Rincian harus sama dengan alokasi bulanan yang Anda tentukan di atasnya.
-                                        </p>
-                                    </div>
                                 </div>
                             </div>
                         </div>
