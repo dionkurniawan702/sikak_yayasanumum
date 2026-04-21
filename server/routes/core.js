@@ -308,47 +308,60 @@ router.post('/users', async (req, res) => {
 router.put('/users/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const updateData = { ...req.body };
         const prisma = getPrisma(req);
         
+        // Extract only the fields that exist in the User Prisma model
+        const { username, name, role, unitId, fieldId, isDeleted, password } = req.body;
+
+        console.log(`[Update User] ID: ${id}, Name: ${name}, Role: ${role}`);
+        
         // 1. If username is being changed, check for duplicates
-        if (updateData.username) {
+        if (username) {
             const existing = await prisma.user.findFirst({
                 where: { 
-                    username: updateData.username, 
+                    username, 
                     isDeleted: false,
                     id: { not: id } // Must not be the same user
                 }
             });
             if (existing) {
                 return res.status(400).json({ 
-                    error: `Gagal memperbarui: Username "${updateData.username}" sudah digunakan oleh orang lain.` 
+                    error: `Gagal memperbarui: Username "${username}" sudah digunakan oleh orang lain.` 
                 });
             }
         }
-        
-        // 2. Handle password if provided
-        if (updateData.password) {
-            updateData.password = await bcrypt.hash(updateData.password, 10);
-        } else {
-            delete updateData.password;
+
+        // 2. Build clean update payload — only schema fields
+        const updatePayload = {};
+        if (username !== undefined) updatePayload.username = username;
+        if (name !== undefined) updatePayload.name = name;
+        if (role !== undefined) updatePayload.role = role;
+        if (isDeleted !== undefined) updatePayload.isDeleted = isDeleted;
+        // unitId and fieldId can be set to null explicitly
+        updatePayload.unitId = unitId || null;
+        updatePayload.fieldId = fieldId || null;
+
+        // 3. Handle password — hash if provided, skip if empty
+        if (password) {
+            updatePayload.password = await bcrypt.hash(password, 10);
         }
 
-        // 3. Clean up fields that shouldn't be overridden by body
-        delete updateData.id;
+        console.log(`[Update User] Payload:`, JSON.stringify(updatePayload));
 
         const data = await prisma.user.update({
             where: { id },
-            data: { 
-                ...updateData, 
-                isDeleted: updateData.isDeleted !== undefined ? updateData.isDeleted : undefined 
-            }
+            data: updatePayload
         });
+
+        console.log(`[Update User] Success: ${data.name}`);
         res.json({ data });
     } catch (error) {
         console.error(`[Update User Error] ${error.message}`);
         if (error.code === 'P2002') {
             return res.status(400).json({ error: 'Username ini sudah digunakan oleh user lain.' });
+        }
+        if (error.code === 'P2025') {
+            return res.status(404).json({ error: `User dengan ID tersebut tidak ditemukan di database.` });
         }
         res.status(500).json({ error: error.message });
     }
