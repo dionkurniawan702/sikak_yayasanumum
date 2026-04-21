@@ -23,6 +23,7 @@ const getMonthName = (monthNum) => monthNames[monthNum - 1] || `Bulan ${monthNum
 
 // Helper to generate months for an academic year based on its settings
 const generateMonths = (ay) => {
+    const months = [];
 
     try {
         // Option 1: Use explicit start and end dates from settings
@@ -2337,9 +2338,11 @@ export default function RAB() {
                                         </button>
                                     </div>
                                 </div>
-                            </>
-                        );
-                    })()}
+                            );
+                        })()}
+                    </>
+                );
+            })()}
                     </div>
                 </div>
               )}
