@@ -514,7 +514,7 @@ export default function RAB() {
             };
 
             // If it's a BOS view/item, sync bosAmount too
-            if (fundSourceFilter === 'BOS' || itemDef?.sourceOfFunds === 'BOS') {
+            if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
                 updatedItem.useBos = true;
                 updatedItem.bosAmount = newTotal;
             }
@@ -571,7 +571,7 @@ export default function RAB() {
             };
 
             // If it's a BOS view/item, sync bosAmount too
-            if (fundSourceFilter === 'BOS' || itemDef?.sourceOfFunds === 'BOS') {
+            if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
                 updatedItem.useBos = true;
                 updatedItem.bosAmount = newTotal;
             }
@@ -600,7 +600,7 @@ export default function RAB() {
             };
 
             // If it's a BOS view/item, sync bosAmount too
-            if (fundSourceFilter === 'BOS' || itemDef?.sourceOfFunds === 'BOS') {
+            if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
                 updatedItem.useBos = true;
                 updatedItem.bosAmount = newTotal;
             }
@@ -2197,7 +2197,7 @@ export default function RAB() {
                                         const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                         const activeMonths = Object.values(monthsData).filter(m => m.m).length;
                                         const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
-                                        const itemTotal = (item.components && item.components.length > 0) 
+                                         
 
                                         return (
                                             <div className={`flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-6 rounded-3xl ${
