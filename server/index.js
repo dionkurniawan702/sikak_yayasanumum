@@ -83,11 +83,18 @@ app.get('/api/check-db', async (req, res) => {
         if (!targetTable) return res.status(404).json({ status: 'error', message: 'AcademicYear table not found' });
         
         const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+        const data = await client.academicYear.findMany({ 
+            take: 10,
+            where: { isDeleted: false },
+            orderBy: { name: 'asc' }
+        });
+
         res.json({ 
             status: 'ok', 
             table: targetTable, 
             columns, 
-            version: '1.5.1',
+            data,
+            version: '1.5.5',
             serverTime: new Date().toISOString() 
         });
     } catch (e) {
@@ -257,20 +264,28 @@ app.post('/api/sync', async (req, res) => {
                     }
                     if (model === 'field') delete cleanItem.fieldId;
                     if (model === 'academicYear') {
-                        console.log(`[Sync Detail] AcademicYear ${cleanItem.id}: startDate=${cleanItem.startDate}, endDate=${cleanItem.endDate}`);
-                        if (cleanItem.startDate) cleanItem.startDate = new Date(cleanItem.startDate);
-                        if (cleanItem.endDate) cleanItem.endDate = new Date(cleanItem.endDate);
+                        // Anti-Wipe: Only update dates if they are NOT null in the incoming payload
+                        // This prevents old/stale sync data from clearing valid dates
+                        if (!cleanItem.startDate) delete cleanItem.startDate;
+                        else cleanItem.startDate = new Date(cleanItem.startDate);
                         
-                        // Critical Fix: If ID mismatch, search by unique Name to avoid "Duplicate Entry" error
+                        if (!cleanItem.endDate) delete cleanItem.endDate;
+                        else cleanItem.endDate = new Date(cleanItem.endDate);
+                        
                         try {
                             const existing = await tx.academicYear.findFirst({
                                 where: { OR: [{ id: cleanItem.id }, { name: cleanItem.name }] }
                             });
 
                             if (existing) {
+                                // Double check: if server has dates but payload doesn't, keep server dates
+                                const finalUpdate = { ...cleanItem, id: undefined };
+                                if (!cleanItem.startDate && existing.startDate) delete finalUpdate.startDate;
+                                if (!cleanItem.endDate && existing.endDate) delete finalUpdate.endDate;
+
                                 await tx.academicYear.update({
-                                    where: existing.id ? { id: existing.id } : { name: cleanItem.name },
-                                    data: { ...cleanItem, id: undefined }
+                                    where: { id: existing.id },
+                                    data: finalUpdate
                                 });
                                 continue; 
                             }
