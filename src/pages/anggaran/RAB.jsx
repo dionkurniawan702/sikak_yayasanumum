@@ -1846,6 +1846,7 @@ export default function RAB() {
                     <div className="bg-white rounded-[3rem] w-full max-w-7xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
                         {(() => {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
+                            const item = activePlan[type][editingItem.id] || { total: 0, bosAmount: 0, useBos: false, components: [], months: {} };
                             return (
                                 <>
                         {/* Modal Header */}
@@ -2284,11 +2285,9 @@ export default function RAB() {
 
                                     {/* Live Running Total */}
                                     {(() => {
-                                        const monthsData = activePlan[type][editingItem.id]?.months || {};
+                                        const monthsData = item.months || {};
                                         const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                         const activeMonths = Object.values(monthsData).filter(m => m.m).length;
-                                        const item = activePlan[type][editingItem.id] || {};
-                                         
 
                                         return (
                                             <div className={`flex flex-col md:flex-row items-center justify-between gap-6 px-8 py-6 rounded-3xl ${
@@ -2318,8 +2317,7 @@ export default function RAB() {
 
                         {/* Modal Footer */}
                         {(() => {
-                            const type = activeTab === 'INCOME' ? 'income' : 'expense';
-                            const monthsData = activePlan[type][editingItem.id]?.months || {};
+                            const monthsData = item.months || {};
                             const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
 
                             return (
@@ -2333,14 +2331,13 @@ export default function RAB() {
                                             onClick={() => {
                                                 // Sync item total with monthly total on close/save
                                                 setCurrentPlan(prev => {
-                                                    const type = activeTab === 'INCOME' ? 'income' : 'expense';
-                                                    const item = prev[type][editingItem.id];
+                                                    const itemData = prev[type][editingItem.id];
                                                     return {
                                                         ...prev,
                                                         [type]: {
                                                             ...prev[type],
                                                             [editingItem.id]: {
-                                                                ...item,
+                                                                ...itemData,
                                                                 total: monthlyTotal
                                                             }
                                                         }
@@ -2354,6 +2351,9 @@ export default function RAB() {
                                         </button>
                                     </div>
                                 </div>
+                            );
+                        })()}
+                                </>
                             );
                         })()}
                     </div>
