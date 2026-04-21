@@ -453,6 +453,7 @@ router.post('/academic-years', async (req, res) => {
 router.put('/academic-years/:id', async (req, res) => {
     try {
         const { name, startDate, endDate, isCurrent, isActive, isDeleted } = req.body;
+        console.log(`[AcademicYear Update] ID: ${req.params.id}, Dates: ${startDate} to ${endDate}`);
         const data = await getPrisma(req).academicYear.update({
             where: { id: req.params.id },
             data: {
@@ -464,8 +465,10 @@ router.put('/academic-years/:id', async (req, res) => {
                 isDeleted: isDeleted !== undefined ? !!isDeleted : undefined
             }
         });
+        console.log(`[AcademicYear Update] Success for ${name}`);
         res.json({ data });
     } catch (error) {
+        console.error(`[AcademicYear Update Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
