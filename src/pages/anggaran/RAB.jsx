@@ -371,7 +371,7 @@ export default function RAB() {
     // - [x] Sinkronisasi handlePush & handleAdd
     // - [ ] Git commit & push
     const handleItemUpdate = (itemId, field, value) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || {
                 volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}, components: []
@@ -416,7 +416,7 @@ export default function RAB() {
     };
 
     const handleComponentUpdate = (itemId, index, field, value) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || { components: [] };
             const components = [...(currentItem.components || [])];
@@ -458,7 +458,7 @@ export default function RAB() {
             return;
         }
 
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 0) * (parseFloat(entryForm.harga) || 0);
         
         const newComp = {
@@ -532,7 +532,7 @@ export default function RAB() {
     };
 
     const handleAddComponent = (itemId) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || { components: [] };
             
@@ -567,7 +567,7 @@ export default function RAB() {
     };
 
     const handleRemoveComponent = (itemId, index) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || { components: [] };
             const components = (currentItem.components || []).filter((_, i) => i !== index);
@@ -596,7 +596,7 @@ export default function RAB() {
     };
 
     const handleResetBudget = (itemId) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         if (!window.confirm('Apakah Anda yakin ingin mengosongkan semua rincian dan alokasi bulanan untuk item ini?')) return;
         
         setCurrentPlan(prev => ({
@@ -619,7 +619,7 @@ export default function RAB() {
     };
 
     const handleSyncMonthly = (itemId) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || { total: 0, months: {} };
             const monthsData = { ...(currentItem.months || {}) };
@@ -711,7 +711,7 @@ export default function RAB() {
     };
 
     const handleMonthlyUpdate = (itemId, monthId, field, value) => {
-        const type = activeTab.toLowerCase();
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const currentItem = prev[type][itemId] || {
                 volume: 0, satuan: '', kali: 1, harga: 0, total: 0, months: {}
@@ -1844,6 +1844,10 @@ export default function RAB() {
                 <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setEditingItem(null)} />
                     <div className="bg-white rounded-[3rem] w-full max-w-7xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+                        {(() => {
+                            const type = activeTab === 'INCOME' ? 'income' : 'expense';
+                            return (
+                                <>
                         {/* Modal Header */}
                         <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                             <div>
@@ -1854,7 +1858,7 @@ export default function RAB() {
                             </div>
                             <div className="flex items-center gap-4">
                                 {(() => {
-                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || { total: 0, bosAmount: 0, useBos: false };
+                                    const detail = activePlan[type][editingItem.id] || { total: 0, bosAmount: 0, useBos: false };
                                     const allocated = rapData.itemAllocations[editingItem.id] || 0;
                                     const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
                                     const isOver = yayasanSpent > (allocated + 100);
@@ -1899,7 +1903,7 @@ export default function RAB() {
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Program Belanja</label>
                                         <select 
                                             className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.programId || ''}
+                                            value={activePlan[type][editingItem.id]?.programId || ''}
                                             onChange={e => handleItemUpdate(editingItem.id, 'programId', e.target.value)}
                                         >
                                             <option value="">Pilih Program Belanja...</option>
@@ -1913,7 +1917,7 @@ export default function RAB() {
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periode Semester</label>
                                         <select 
                                             className="w-full p-4 bg-white border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.semester || '1'}
+                                            value={activePlan[type][editingItem.id]?.semester || '1'}
                                             onChange={e => handleItemUpdate(editingItem.id, 'semester', e.target.value)}
                                         >
                                             <option value="1">Semester 1 (Ganjil)</option>
@@ -1927,19 +1931,19 @@ export default function RAB() {
                                             {isBosRecipient && fundSourceFilter === 'all' && (
                                                 <button 
                                                     onClick={() => {
-                                                        const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                        const detail = activePlan[type][editingItem.id] || {};
                                                         const nextState = !detail.useBos;
                                                         handleItemUpdate(editingItem.id, 'useBos', nextState);
                                                         if (nextState && (detail.bosAmount === undefined)) handleItemUpdate(editingItem.id, 'bosAmount', 0);
                                                     }}
                                                     className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all flex items-center justify-center gap-3 border-2 ${
-                                                        currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos 
+                                                        activePlan[type][editingItem.id]?.useBos 
                                                             ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg shadow-emerald-100' 
                                                             : 'bg-white border-slate-100 text-slate-400 hover:border-slate-200'
                                                     }`}
                                                 >
                                                     <Wallet size={14} />
-                                                    {currentPlan[activeTab.toLowerCase()][editingItem.id]?.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
+                                                    {activePlan[type][editingItem.id]?.useBos ? 'DANA BOS : ON' : 'DANA BOS : OFF'}
                                                 </button>
                                             )}
                                             <div className={`flex-1 h-full rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 border-2 ${currentPlan.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-100'}`}>
@@ -1951,7 +1955,7 @@ export default function RAB() {
                                 </div>
 
                                 {(() => {
-                                    const detail = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                    const detail = activePlan[type][editingItem.id] || {};
                                     const isBosView = fundSourceFilter === 'BOS';
                                     const isYayasanView = fundSourceFilter === 'Yayasan';
                                     const showBos = isBosView || (detail.useBos && !isYayasanView);
@@ -2017,7 +2021,7 @@ export default function RAB() {
                                         </label>
                                         <select 
                                             className="w-full p-4 bg-blue-50 border-2 border-blue-100 rounded-2xl font-black text-slate-700 outline-none focus:border-blue-500 transition-all"
-                                            value={currentPlan[activeTab.toLowerCase()][editingItem.id]?.targetUnitId || ''}
+                                            value={activePlan[type][editingItem.id]?.targetUnitId || ''}
                                             onChange={e => handleItemUpdate(editingItem.id, 'targetUnitId', e.target.value)}
                                         >
                                             <option value="">Pilih Unit Penerima Manfaat...</option>
@@ -2152,7 +2156,7 @@ export default function RAB() {
                                             </thead>
                                             <tbody className="divide-y divide-slate-100 italic">
                                                 {(() => {
-                                                    const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                    const item = activePlan[type][editingItem.id] || {};
                                                     const comps = item.components || [];
                                                     
                                                     if (comps.length === 0) {
@@ -2196,7 +2200,7 @@ export default function RAB() {
                                                 })()}
                                             </tbody>
                                             {(() => {
-                                                const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                                const item = activePlan[type][editingItem.id] || {};
                                                 const total = item.total || 0;
                                                 if (!item.components || item.components.length === 0) return null;
                                                 return (
@@ -2230,7 +2234,7 @@ export default function RAB() {
 
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                                         {months.map(m => {
-                                            const mData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
+                                            const mData = activePlan[type][editingItem.id]?.months?.[m.id] || { jumlah: 0, m: false };
                                             const jumlahVal = parseFloat(mData.jumlah) || 0;
                                             return (
                                                 <div key={m.id} className={`p-4 rounded-2xl border flex flex-col gap-3 transition-all ${
@@ -2280,10 +2284,10 @@ export default function RAB() {
 
                                     {/* Live Running Total */}
                                     {(() => {
-                                        const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
+                                        const monthsData = activePlan[type][editingItem.id]?.months || {};
                                         const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                         const activeMonths = Object.values(monthsData).filter(m => m.m).length;
-                                        const item = currentPlan[activeTab.toLowerCase()][editingItem.id] || {};
+                                        const item = activePlan[type][editingItem.id] || {};
                                          
 
                                         return (
@@ -2314,7 +2318,8 @@ export default function RAB() {
 
                         {/* Modal Footer */}
                         {(() => {
-                            const monthsData = currentPlan[activeTab.toLowerCase()][editingItem.id]?.months || {};
+                            const type = activeTab === 'INCOME' ? 'income' : 'expense';
+                            const monthsData = activePlan[type][editingItem.id]?.months || {};
                             const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
 
                             return (
@@ -2328,7 +2333,7 @@ export default function RAB() {
                                             onClick={() => {
                                                 // Sync item total with monthly total on close/save
                                                 setCurrentPlan(prev => {
-                                                    const type = activeTab.toLowerCase();
+                                                    const type = activeTab === 'INCOME' ? 'income' : 'expense';
                                                     const item = prev[type][editingItem.id];
                                                     return {
                                                         ...prev,
