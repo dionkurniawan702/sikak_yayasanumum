@@ -1269,41 +1269,42 @@ export default function RAB() {
                                             <Plus size={18} strokeWidth={3} />
                                         </button>
 
-                                                <>
-                                                    <button 
-                                                        onClick={() => setEditingItem({ 
-                                                            ...itemMaster, 
-                                                            id: plan.id,
-                                                            itemId: itemMaster.id,
-                                                            planId: plan.id 
-                                                        })}
-                                                        className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
-                                                        title="EDIT RENCANA"
-                                                    >
-                                                        <Pencil size={18} />
-                                                    </button>
+                                        {!plan.isEmpty && (
+                                            <>
+                                                <button 
+                                                    onClick={() => setEditingItem({ 
+                                                        ...itemMaster, 
+                                                        id: plan.id,
+                                                        itemId: itemMaster.id,
+                                                        planId: plan.id 
+                                                    })}
+                                                    className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+                                                    title="EDIT RENCANA"
+                                                >
+                                                    <Pencil size={18} />
+                                                </button>
 
-                                                    {!isLocked && (
-                                                        <button 
-                                                            onClick={() => {
-                                                                if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                    setCurrentPlan(prev => ({
-                                                                        ...prev,
-                                                                        [type]: {
-                                                                            ...prev[type],
-                                                                            [itemMaster.id]: (prev[type][itemMaster.id] || []).filter(p => p.id !== plan.id)
-                                                                        }
-                                                                    }));
-                                                                }
-                                                            }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
-                                                            title="HAPUS RENCANA"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    )}
-                                                </>
-                                            )}
+                                                {!isLocked && (
+                                                    <button 
+                                                        onClick={() => {
+                                                            if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                setCurrentPlan(prev => ({
+                                                                    ...prev,
+                                                                    [type]: {
+                                                                        ...prev[type],
+                                                                        [itemMaster.id]: (prev[type][itemMaster.id] || []).filter(p => p.id !== plan.id)
+                                                                    }
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                                                        title="HAPUS RENCANA"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
                                         </div>
                                     </td>
                                 </tr>
@@ -1311,38 +1312,36 @@ export default function RAB() {
                         })}
                     </tbody>
                 </table>
+
+                {/* Sticky Table Footer / Save Bar */}
+                <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                        <Save size={160} />
+                    </div>
+                    <div className="relative z-10 flex items-center gap-10">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
+                            <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                                {formatRupiah(balance)}
+                            </h4>
+                        </div>
+                    </div>
+                    {!isLocked && !isConsolidation && (
+                        <div className="relative z-10">
+                            <button 
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
+                            >
+                                <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
+                                {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
+                            </button>
+                        </div>
+                    )}
+                </div>
             </div>
         );
     };
-
-            {/* Sticky Table Footer / Save Bar */}
-            <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
-                <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                    <Save size={160} />
-                </div>
-                <div className="relative z-10 flex items-center gap-10">
-                    <div className="flex flex-col">
-                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
-                        <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-                            {formatRupiah(balance)}
-                        </h4>
-                    </div>
-                </div>
-                {!isLocked && !isConsolidation && (
-                    <div className="relative z-10">
-                        <button 
-                            onClick={handleSave}
-                            disabled={isSaving}
-                            className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
-                        >
-                            <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
-                            {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
-                        </button>
-                    </div>
-                )}
-            </div>
-        </div>
-    );
 
     const totalIncome = useMemo(() => 
         Object.values(activePlan?.income || {}).flat().reduce((sum, val) => sum + (val?.total || 0), 0)
