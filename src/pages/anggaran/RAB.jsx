@@ -2272,10 +2272,8 @@ export default function RAB() {
                                             </div>
                                         );
                                     })()}
-                                    </div>
-                                )}
+                                 )}
                             </div>
-                        </div>
 
                         {/* Modal Footer */}
                         {(() => {
@@ -2338,8 +2336,9 @@ export default function RAB() {
                                         </button>
                                     </div>
                                 </div>
-                            );
-                        })()}
+                            </>
+                        );
+                    })()}
                     </div>
                 </div>
               )}
