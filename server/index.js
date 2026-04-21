@@ -230,6 +230,23 @@ app.post('/api/sync', async (req, res) => {
                         console.log(`[Sync Detail] AcademicYear ${cleanItem.id}: startDate=${cleanItem.startDate}, endDate=${cleanItem.endDate}`);
                         if (cleanItem.startDate) cleanItem.startDate = new Date(cleanItem.startDate);
                         if (cleanItem.endDate) cleanItem.endDate = new Date(cleanItem.endDate);
+                        
+                        // Critical Fix: If ID mismatch, search by unique Name to avoid "Duplicate Entry" error
+                        try {
+                            const existing = await tx.academicYear.findUnique({
+                                where: cleanItem.id && cleanItem.id.startsWith('AY-') ? { id: cleanItem.id } : { name: cleanItem.name }
+                            }) || await tx.academicYear.findUnique({ where: { name: cleanItem.name } });
+
+                            if (existing) {
+                                await tx.academicYear.update({
+                                    where: { id: existing.id },
+                                    data: { ...cleanItem, id: undefined }
+                                });
+                                continue; // Skip the default upsert
+                            }
+                        } catch (e) {
+                            console.error(`[Sync Fix Error] ${e.message}`);
+                        }
                     }
                     if (model === 'classGroup') delete cleanItem.unitId;
                     if (model === 'account') {
