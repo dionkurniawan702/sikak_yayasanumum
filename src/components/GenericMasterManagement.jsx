@@ -74,8 +74,9 @@ export default function GenericMasterManagement({
                     endDate: formData.endDate ? `${formData.endDate}-01T00:00:00.000Z` : null
                 } : {};
 
+                const prefix = actionPrefix === 'ACADEMIC_YEAR' ? 'AY' : actionPrefix.substring(0,3);
                 const newItem = {
-                    id: `${actionPrefix.substring(0,3)}-${generateId()}`,
+                    id: `${prefix}-${generateId()}`,
                     name: formData.name,
                     ...defaultDates
                 };

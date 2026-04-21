@@ -484,19 +484,6 @@ router.put('/academic-years/:id', async (req, res) => {
             where: { id: existing.id },
             data: updateData
         });
-
-        // FORCE PERSISTENCE fallback (using both common table name cases)
-        if (startDate || endDate) {
-            const startStr = startDate ? new Date(startDate).toISOString().slice(0, 19).replace('T', ' ') : null;
-            const endStr = endDate ? new Date(endDate).toISOString().slice(0, 19).replace('T', ' ') : null;
-            
-            for (const table of ['AcademicYear', 'academicyear', 'academic_year']) {
-                try {
-                    if (startStr) await client.$executeRawUnsafe(`UPDATE ${table} SET startDate = ? WHERE id = ?`, startStr, existing.id);
-                    if (endStr) await client.$executeRawUnsafe(`UPDATE ${table} SET endDate = ? WHERE id = ?`, endStr, existing.id);
-                } catch (e) { /* ignore table name mismatches */ }
-            }
-        }
         console.log(`[AcademicYear Update] Success for ${name}`);
         res.json({ data });
     } catch (error) {

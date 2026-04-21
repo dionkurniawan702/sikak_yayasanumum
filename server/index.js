@@ -263,28 +263,15 @@ app.post('/api/sync', async (req, res) => {
                         
                         // Critical Fix: If ID mismatch, search by unique Name to avoid "Duplicate Entry" error
                         try {
-                            const existing = await tx.academicYear.findUnique({
-                                where: cleanItem.id && cleanItem.id.startsWith('AY-') ? { id: cleanItem.id } : { name: cleanItem.name }
-                            }) || await tx.academicYear.findUnique({ where: { name: cleanItem.name } });
+                            const existing = await tx.academicYear.findFirst({
+                                where: { OR: [{ id: cleanItem.id }, { name: cleanItem.name }] }
+                            });
 
                             if (existing) {
                                 await tx.academicYear.update({
-                                    where: { id: existing.id },
+                                    where: existing.id ? { id: existing.id } : { name: cleanItem.name },
                                     data: { ...cleanItem, id: undefined }
                                 });
-                                
-                                // FORCE PERSISTENCE fallback (using both common table name cases)
-                                if (item.startDate || item.endDate) {
-                                    const startStr = item.startDate ? new Date(item.startDate).toISOString().slice(0, 19).replace('T', ' ') : null;
-                                    const endStr = item.endDate ? new Date(item.endDate).toISOString().slice(0, 19).replace('T', ' ') : null;
-                                    
-                                    for (const table of ['AcademicYear', 'academicyear', 'academic_year']) {
-                                        try {
-                                            if (startStr) await tx.$executeRawUnsafe(`UPDATE ${table} SET startDate = ? WHERE id = ?`, startStr, existing.id);
-                                            if (endStr) await tx.$executeRawUnsafe(`UPDATE ${table} SET endDate = ? WHERE id = ?`, endStr, existing.id);
-                                        } catch (e) { /* ignore table name mismatches */ }
-                                    }
-                                }
                                 continue; 
                             }
                         } catch (e) {
