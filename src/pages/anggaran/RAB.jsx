@@ -393,33 +393,24 @@ export default function RAB() {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const plans = prev[type][itemId] || [];
-            
-            // For a NEW plan being filled in the modal for the first time
-            if (plans.length === 0 || !plans.find(p => p.id === planId)) {
-                // If it's a new plan not yet in the array, we'll handle it during SIMPAN.
-                // But for reactive UI, we need it in the state. 
-                // However, most metadata is edited in the modal.
-                // Let's ensure the array exists and find/add the plan.
-            }
+            let planFound = false;
 
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId && p.id !== itemId) return p;
+                planFound = true;
                 
                 const updatedPlan = { ...p, [field]: value };
                 
-                // Recalculate total if volume, kali, or harga changes (Legacy / Single Mode)
                 if (['volume', 'kali', 'harga'].includes(field)) {
                     updatedPlan.total = (parseFloat(updatedPlan.volume) || 0) * 
                                        (parseFloat(updatedPlan.kali) || 0) * 
                                        (parseFloat(updatedPlan.harga) || 0);
                 }
                 
-                // If we have components, the total is ALWAYS the sum of components
                 if (updatedPlan.components && updatedPlan.components.length > 0) {
                     updatedPlan.total = updatedPlan.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
                 }
                 
-                // Semester logic: auto-toggle checkboxes
                 if (field === 'semester') {
                     const ay = academicYears.find(a => a.id === selectedYearId);
                     const yearMonths = generateMonths(ay);
@@ -435,12 +426,21 @@ export default function RAB() {
                 return updatedPlan;
             });
 
-            // Special case: if planId is actually a NEW plan not yet in the array
-            if (plans.length > 0 && !plans.find(p => p.id === planId)) {
-                 // The Save button in the modal handles adding to the array, 
-                 // but for intermediate steps (like changing semester in a new plan), 
-                 // we might need a temporary entry or just update the Save logic.
-                 // For now, let's keep it simple and ensure Save is the source of truth for new additions.
+            // If it's a new plan and not yet in the array, add it now
+            if (!planFound && editingItem?.isNewPlan) {
+                const newPlan = {
+                    id: planId,
+                    itemId: itemId,
+                    total: 0,
+                    components: [],
+                    months: {},
+                    semester: editingItem.semester || '1',
+                    [field]: value
+                };
+                return {
+                    ...prev,
+                    [type]: { ...prev[type], [itemId]: [...plans, newPlan] }
+                };
             }
 
             return {
@@ -454,8 +454,11 @@ export default function RAB() {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const plans = prev[type][itemId] || [];
+            let planFound = false;
+
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
+                planFound = true;
                 
                 const components = [...(p.components || [])];
                 if (!components[index]) {
@@ -476,6 +479,27 @@ export default function RAB() {
                     total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0)
                 };
             });
+
+            if (!planFound && editingItem?.isNewPlan) {
+                const components = [{ label: '', volume: 0, satuan: '', kali: 1, harga: 0, total: 0 }];
+                const updatedComp = { ...components[0], [field]: value };
+                if (['volume', 'kali', 'harga'].includes(field)) {
+                    updatedComp.total = (parseFloat(updatedComp.volume) || 0) * 
+                                       (parseFloat(updatedComp.kali) || 0) * 
+                                       (parseFloat(updatedComp.harga) || 0);
+                }
+                components[0] = updatedComp;
+
+                const newPlan = {
+                    id: planId,
+                    itemId: itemId,
+                    total: updatedComp.total,
+                    components,
+                    months: {},
+                    semester: editingItem.semester || '1'
+                };
+                return { ...prev, [type]: { ...prev[type], [itemId]: [...plans, newPlan] } };
+            }
 
             return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
@@ -499,8 +523,11 @@ export default function RAB() {
 
         setCurrentPlan(prev => {
             const plans = prev[type][itemId] || [];
+            let planFound = false;
+
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
+                planFound = true;
                 
                 const components = p.components && p.components.length > 0 ? [...p.components] : [];
                 if (editingCompIdx !== null) components[editingCompIdx] = newComp;
@@ -516,6 +543,20 @@ export default function RAB() {
                 return updatedPlan;
             });
 
+            if (!planFound && editingItem?.isNewPlan) {
+                const newPlan = {
+                    id: planId,
+                    itemId: itemId,
+                    total: newComp.total,
+                    components: [newComp],
+                    months: {},
+                    semester: editingItem.semester || '1',
+                    useBos: fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS',
+                    bosAmount: (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') ? newComp.total : 0
+                };
+                return { ...prev, [type]: { ...prev[type], [itemId]: [...plans, newPlan] } };
+            }
+
             return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
 
@@ -527,8 +568,11 @@ export default function RAB() {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const plans = prev[type][itemId] || [];
+            let planFound = false;
+
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
+                planFound = true;
                 
                 const components = p.components && p.components.length > 0 ? [...p.components] : [];
                 components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
@@ -542,6 +586,21 @@ export default function RAB() {
                 }
                 return updatedPlan;
             });
+
+            if (!planFound && editingItem?.isNewPlan) {
+                const newComp = { label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 };
+                const newPlan = {
+                    id: planId,
+                    itemId: itemId,
+                    total: 0,
+                    components: [newComp],
+                    months: {},
+                    semester: editingItem.semester || '1',
+                    useBos: fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS',
+                    bosAmount: 0
+                };
+                return { ...prev, [type]: { ...prev[type], [itemId]: [...plans, newPlan] } };
+            }
 
             return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
@@ -683,27 +742,42 @@ export default function RAB() {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
             const plans = prev[type][itemId] || [];
+            let planFound = false;
+
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
+                planFound = true;
                 
                 const currentMonths = p.months || {};
                 const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
                 let updatedMonthData = { ...currentMonthData, [field]: value };
                 
-                // RESTORED LOGIC: If unchecking, zero out the amount
                 if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
-                // RESTORED LOGIC: If typing an amount > 0, auto-check the month
                 if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
-                // RESTORED LOGIC: If typing 0 or empty, uncheck the month
                 if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
                 
                 const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
-                
-                // Recalculate total based on monthly sum
                 const newTotal = Object.values(updatedMonths).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                 
                 return { ...p, months: updatedMonths, total: newTotal };
             });
+
+            if (!planFound && editingItem?.isNewPlan) {
+                const updatedMonthData = { jumlah: 0, m: false, [field]: value };
+                if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
+                if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
+                if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
+
+                const newPlan = {
+                    id: planId,
+                    itemId: itemId,
+                    total: updatedMonthData.m ? (parseFloat(updatedMonthData.jumlah) || 0) : 0,
+                    components: [],
+                    months: { [monthId]: updatedMonthData },
+                    semester: editingItem.semester || '1'
+                };
+                return { ...prev, [type]: { ...prev[type], [itemId]: [...plans, newPlan] } };
+            }
 
             return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
