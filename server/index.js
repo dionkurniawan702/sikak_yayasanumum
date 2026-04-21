@@ -69,7 +69,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.5.8'
+        version: '1.5.9'
     });
 });
 
@@ -94,7 +94,7 @@ app.get('/api/check-db', async (req, res) => {
             table: targetTable, 
             columns, 
             data,
-            version: '1.5.8',
+            version: '1.5.9',
             serverTime: new Date().toISOString() 
         });
     } catch (e) {

@@ -241,7 +241,16 @@ function appReducer(state, action) {
                 distributionSettings: serverData.distributionSettings || state.distributionSettings || [],
                 budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
                 budgetReports: serverData.budgetReports || state.budgetReports || [],
-                academicYears: serverData.academicYears || state.academicYears || [],
+                academicYears: (serverData.academicYears || state.academicYears || []).map(serverAy => {
+                    const localAy = (state.academicYears || []).find(lay => lay.id === serverAy.id);
+                    if (!localAy) return serverAy;
+                    // Armor: Proteksi agar data tanggal tidak terhapus oleh sinkronisasi NULL dari server
+                    return {
+                        ...serverAy,
+                        startDate: serverAy.startDate || localAy.startDate,
+                        endDate: serverAy.endDate || localAy.endDate
+                    };
+                }),
                 classGroups: serverData.classGroups || state.classGroups || [],
                 positions: serverData.positions || state.positions || [],
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
