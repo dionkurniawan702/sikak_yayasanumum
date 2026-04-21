@@ -73,6 +73,28 @@ app.get('/health', async (req, res) => {
     });
 });
 
+app.get('/api/check-db', async (req, res) => {
+    try {
+        const client = getPrisma();
+        const rawTables = await client.$queryRaw`SHOW TABLES`;
+        const tables = rawTables.map(t => Object.values(t)[0]);
+        const targetTable = tables.find(t => t.toLowerCase() === 'academicyear' || t.toLowerCase() === 'academic_year');
+        
+        if (!targetTable) return res.status(404).json({ status: 'error', message: 'AcademicYear table not found' });
+        
+        const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+        res.json({ 
+            status: 'ok', 
+            table: targetTable, 
+            columns, 
+            version: '1.5.0',
+            serverTime: new Date().toISOString() 
+        });
+    } catch (e) {
+        res.status(500).json({ status: 'error', message: e.message });
+    }
+});
+
 // Lazy Prisma Initialization
 let prisma;
 let lastSyncError = null;
