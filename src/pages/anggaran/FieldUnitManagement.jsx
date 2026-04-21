@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Building2, Plus, Edit2, Trash2, ChevronRight, ChevronDown, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Building2, Plus, Edit2, Trash2, ChevronRight, ChevronDown, LayoutGrid, Layers, Share2, Percent, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 
@@ -230,18 +230,83 @@ export default function FieldUnitManagement() {
         return (unitDistributions[incomeId] || []).reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
     };
 
-    const handleDeduplicate = async () => {
-        if (!window.confirm('Bersihkan semua data duplikat (Bidang/Unit dengan nama yang sama)? Proses ini akan menggabungkan data dan tidak bisa dibatalkan.')) return;
-        
+    const handleDuplicateUnit = async (sourceUnit) => {
+        const newName = window.prompt(`Masukkan nama unit baru (Duplikat dari ${sourceUnit.name}):`, `${sourceUnit.name} 2`);
+        if (!newName || !newName.trim()) return;
+
         setLoading(true);
+        setError(null);
+
+        const newUnitId = Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
+        const newUnitPayload = {
+            id: newUnitId,
+            name: newName,
+            fieldId: sourceUnit.fieldId,
+            receivesBos: !!sourceUnit.receivesBos
+        };
+
         try {
-            const response = await api.post('/repair/deduplicate');
-            window.alert(`${response.message}\n\nDetail:\n${response.details.join('\n')}`);
-            // Force refresh data
+            // 1. Create New Unit
+            await api.pushAction({ type: 'ADD_UNIT', payload: newUnitPayload }, state);
+            dispatch({ type: 'ADD_UNIT', payload: newUnitPayload });
+
+            // 2. Clone Distribution Settings
+            const sourceSettings = distributionSettings.filter(s => s.unitId === sourceUnit.id);
+            const incomeItemIds = [...new Set(sourceSettings.map(s => s.incomeItemId))];
+
+            for (const incomeId of incomeItemIds) {
+                const settingToClone = sourceSettings.filter(s => s.incomeItemId === incomeId).map(s => ({
+                    ...s,
+                    id: crypto.randomUUID(), // New distribution ID
+                    unitId: newUnitId,
+                    destId: s.destId === sourceUnit.id ? newUnitId : s.destId, // If target was the unit itself, point to new unit
+                    destName: s.destName === sourceUnit.name ? newName : s.destName
+                }));
+
+                await api.pushAction({
+                    type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                    payload: { unitId: newUnitId, incomeItemId: incomeId, settings: settingToClone }
+                }, state);
+                dispatch({
+                    type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                    payload: { unitId: newUnitId, incomeItemId: incomeId, settings: settingToClone }
+                });
+            }
+
+            // 3. Clone Expense Items (Structure only - no allocations)
+            const sourceExpenseItems = expenseItems.filter(ei => ei.unitId === sourceUnit.id);
+            for (const item of sourceExpenseItems) {
+                const newItem = {
+                    ...item,
+                    id: `EXP-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+                    unitId: newUnitId,
+                    allocations: [] // Explicitly clear allocations
+                };
+                await api.pushAction({ type: 'ADD_EXPENSE_ITEM', payload: newItem }, state);
+                dispatch({ type: 'ADD_EXPENSE_ITEM', payload: newItem });
+            }
+
+            // 4. Clone Classes
+            const sourceClasses = (state.classes || []).filter(c => c.unitId === sourceUnit.id);
+            for (const cls of sourceClasses) {
+                const newCls = {
+                    ...cls,
+                    id: `CLS-${Date.now().toString(36)}-${Math.random().toString(36).substr(2, 4)}`,
+                    unitId: newUnitId
+                };
+                await api.pushAction({ type: 'ADD_CLASS', payload: newCls }, state);
+                dispatch({ type: 'ADD_CLASS', payload: newCls });
+            }
+
+            // 5. Final Refresh
             const freshData = await api.fetchAllData();
             if (freshData) dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+
+            window.alert(`Unit "${newName}" berhasil diduplikasi dari "${sourceUnit.name}" beserta pengaturannya.`);
         } catch (err) {
-            window.alert('Gagal membersihkan duplikat: ' + err.message);
+            console.error('Duplication failed:', err.message);
+            setError(`Gagal duplikasi: ${err.message}`);
+            window.alert(`Gagal duplikasi: ${err.message}`);
         } finally {
             setLoading(false);
         }
@@ -363,6 +428,13 @@ export default function FieldUnitManagement() {
                                                     title="Edit Unit & Konfigurasi Dana"
                                                 >
                                                     <Edit2 size={18} />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDuplicateUnit(unit)} 
+                                                    className="p-3 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-2xl transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+                                                    title="Duplikat Unit (Beserta Konfigurasi)"
+                                                >
+                                                    <Copy size={18} />
                                                 </button>
                                                 <button onClick={() => handleDelete(unit.id)} className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all shadow-sm hover:shadow-md"><Trash2 size={18} /></button>
                                             </div>
