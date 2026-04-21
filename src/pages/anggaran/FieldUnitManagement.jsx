@@ -404,7 +404,7 @@ export default function FieldUnitManagement() {
                                         </div>
                                     </td>
                                     <td className="px-8 py-5 text-right">
-                                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                        <div className="flex justify-end gap-2 transition-all">
                                             <button onClick={() => handleOpenModal(field)} className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all shadow-sm hover:shadow-md"><Edit2 size={18} /></button>
                                             <button onClick={() => handleDelete(field.id)} className="p-3 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-2xl transition-all shadow-sm hover:shadow-md"><Trash2 size={18} /></button>
                                         </div>
@@ -440,7 +440,7 @@ export default function FieldUnitManagement() {
                                             </div>
                                         </td>
                                         <td className="px-8 py-5 text-right">
-                                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all transform translate-x-2 group-hover:translate-x-0">
+                                            <div className="flex justify-end gap-2 transition-all">
                                                 <button 
                                                     onClick={() => handleOpenModal(unit)} 
                                                     className="p-3 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-2xl transition-all shadow-sm hover:shadow-md flex items-center gap-2"
