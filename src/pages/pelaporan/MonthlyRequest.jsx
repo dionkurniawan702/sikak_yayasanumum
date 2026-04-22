@@ -17,22 +17,55 @@ export default function MonthlyRequest() {
     const yearMonths = useMemo(() => {
         if (!currentYear) return [];
         const months = [];
-        const [startYearStr, endYearStr] = (currentYear.name || '').split((currentYear.name || '').includes('/') ? '/' : '-');
-        const startYear = parseInt(startYearStr) || new Date().getFullYear();
-        const endYear = parseInt(endYearStr) || (startYear + 1);
 
-        const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-        sequence.forEach((monthNum, idx) => {
-            const year = monthNum >= 7 ? startYear : endYear;
-            const monthIdx = monthNum - 1;
-            const shortYear = String(year).slice(-2);
-            months.push({
-                id: `${year}-${String(monthNum).padStart(2, '0')}`,
-                label: `${monthNames[monthIdx]} '${shortYear}`,
-                year,
-                monthNum
-            });
-        });
+        try {
+            // Robust Generation from settings
+            if (currentYear.startDate && currentYear.endDate) {
+                const start = new Date(currentYear.startDate);
+                const end = new Date(currentYear.endDate);
+                const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+
+                let current = new Date(start);
+                let safetyCounter = 0;
+                while (current <= end && safetyCounter < 24) {
+                    const year = current.getFullYear();
+                    const monthIdx = current.getMonth();
+                    const monthNum = monthIdx + 1;
+                    const shortYear = String(year).slice(-2);
+
+                    months.push({
+                        id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                        label: `${monthNames[monthIdx]} '${shortYear}`,
+                        year,
+                        monthNum
+                    });
+                    current.setMonth(current.getMonth() + 1);
+                    safetyCounter++;
+                }
+            }
+
+            // Fallback to 12-month standard if still empty
+            if (months.length === 0) {
+                const [startYearStr, endYearStr] = (currentYear.name || '').split((currentYear.name || '').includes('/') ? '/' : '-');
+                const startYear = parseInt(startYearStr) || new Date().getFullYear();
+                const endYear = parseInt(endYearStr) || (startYear + 1);
+
+                const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+                sequence.forEach((monthNum) => {
+                    const year = monthNum >= 7 ? startYear : endYear;
+                    const monthIdx = monthNum - 1;
+                    const shortYear = String(year).slice(-2);
+                    months.push({
+                        id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                        label: `${monthNames[monthIdx]} '${shortYear}`,
+                        year,
+                        monthNum
+                    });
+                });
+            }
+        } catch (err) {
+            console.error('Error generating months:', err);
+        }
         return months;
     }, [currentYear]);
 
