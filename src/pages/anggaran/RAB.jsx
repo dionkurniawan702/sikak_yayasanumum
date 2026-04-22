@@ -1310,7 +1310,10 @@ export default function RAB() {
                                 ) : (
                                     pendingPlans.map(plan => {
                                         const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
-                                        const total = Object.values(plan.expense || {}).reduce((sum, v) => sum + (v.total || 0), 0);
+                                        // Calculate total by summing all plan totals in each expense category
+                                        const total = Object.values(plan.expense || {}).reduce((sum, plans) => {
+                                            return sum + (Array.isArray(plans) ? plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) : 0);
+                                        }, 0);
 
                                         // Calculate RAP for this specific plan's unit/field for the row display
                                         let unitId = null;
@@ -1328,14 +1331,21 @@ export default function RAB() {
                                             rab: total,
                                             sisa: planRAP.totalTarget - total,
                                             breakdown: Object.entries(plan.expense || {})
-                                                .map(([id, detail]) => ({
-                                                    id,
-                                                    name: (expenseItems.find(e => e.id === id)?.name || id),
-                                                    rab: detail.total || 0,
-                                                    rap: planRAP.itemAllocations[id] || 0,
-                                                    sisa: (planRAP.itemAllocations[id] || 0) - (detail.total || 0),
-                                                    components: detail.components || []
-                                                }))
+                                                .map(([id, plans]) => {
+                                                    const aggregatedTotal = Array.isArray(plans) ? plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) : 0;
+                                                    const aggregatedRap = planRAP.itemAllocations[id] || 0;
+                                                    // Collect all components from all plans for this item
+                                                    const allComponents = Array.isArray(plans) ? plans.flatMap(p => p.components || []) : [];
+
+                                                    return {
+                                                        id,
+                                                        name: (expenseItems.find(e => e.id === id)?.name || id),
+                                                        rab: aggregatedTotal,
+                                                        rap: aggregatedRap,
+                                                        sisa: aggregatedRap - aggregatedTotal,
+                                                        components: allComponents
+                                                    };
+                                                })
                                                 .sort((a, b) => b.rab - a.rab)
                                         };
 

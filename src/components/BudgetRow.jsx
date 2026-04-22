@@ -56,7 +56,7 @@ export default function BudgetRow({
                             <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
                             {data.status && (
                                 <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-                                        (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
+                                    (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
                                     }`}>
                                     {data.status === 'APPROVED' ? 'Disetujui' : (data.status === 'PENDING' ? 'Menunggu Review' : 'Draft')}
                                 </span>
@@ -81,7 +81,7 @@ export default function BudgetRow({
             </tr>
             {isExpanded && data.breakdown && data.breakdown.map((item, idx) => {
                 const hasSubLevel = (item.sources && Object.keys(item.sources).length > 0) || (item.components && item.components.length > 0);
-                const isDetailExpanded = !!expandedDetailItems[`${data.id}-${item.id}`];
+                const isDetailExpanded = !!expandedDetailItems[data.id]?.[item.id];
 
                 return (
                     <React.Fragment key={item.id || idx}>
