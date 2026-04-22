@@ -1385,25 +1385,18 @@ export default function RAB() {
                     <div className="h-8 w-px bg-slate-200/50" />
 
                     {/* Month Filter */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Bulan:</span>
-                        <div className="flex gap-1 overflow-x-auto pb-1 max-w-[400px] no-scrollbar">
-                            <button 
-                                onClick={() => setFilterMonth(null)}
-                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!filterMonth ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
-                            >
-                                Semua
-                            </button>
+                        <select 
+                            value={filterMonth || ''}
+                            onChange={(e) => setFilterMonth(e.target.value || null)}
+                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer flex-1"
+                        >
+                            <option value="">SELURUH TAHUN (TOTAL)</option>
                             {monthsOptions.map(m => (
-                                <button 
-                                    key={m.id}
-                                    onClick={() => setFilterMonth(m.id)}
-                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filterMonth === m.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
-                                >
-                                    {m.shortLabel}
-                                </button>
+                                <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
                             ))}
-                        </div>
+                        </select>
                     </div>
 
                     <div className="h-8 w-px bg-slate-200/50" />
@@ -1418,7 +1411,7 @@ export default function RAB() {
                         >
                             <option value="">SEMUA PROGRAM</option>
                             {allPrograms.map(p => (
-                                <option key={p.id} value={p.id}>{p.name}</option>
+                                <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
                             ))}
                         </select>
                     </div>
