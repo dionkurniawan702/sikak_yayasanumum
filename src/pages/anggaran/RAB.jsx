@@ -38,12 +38,17 @@ const generateMonths = (ay) => {
                 const monthIdx = current.getMonth();
                 const monthNum = monthIdx + 1;
                 
+                // Determine semester based on the position in the academic year
+                // Traditionally, the first 6 months are Semester 1, the rest are Semester 2
+                const semester = safetyCounter < 6 ? '1' : '2';
+
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
                     name: `${monthNames[monthIdx]}-${year}`,
                     label: `${monthNames[monthIdx]} '${String(year).slice(-2)}`,
                     shortLabel: monthNames[monthIdx].substring(0, 3).toUpperCase(),
-                    year: year
+                    year: year,
+                    semester
                 });
                 
                 current.setMonth(current.getMonth() + 1);
@@ -58,14 +63,16 @@ const generateMonths = (ay) => {
             const endYear = parseInt(endYearStr) || (startYear + 1);
             
             const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
-            sequence.forEach((monthNum) => {
+            sequence.forEach((monthNum, idx) => {
                 const year = monthNum >= 7 ? startYear : endYear;
+                const semester = idx < 6 ? '1' : '2';
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
                     name: `${monthNames[monthNum - 1]}-${year}`,
                     label: `${monthNames[monthNum - 1]} '${String(year).slice(-2)}`,
                     shortLabel: monthNames[monthNum - 1].substring(0, 3).toUpperCase(),
-                    year: year
+                    year: year,
+                    semester
                 });
             });
         }
@@ -2251,9 +2258,10 @@ export default function RAB() {
                                                             </div>
                                                             
                                                             <div className="grid grid-cols-2 gap-3 flex-1">
-                                                                {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m, idx) => {
+                                                                                                                                 {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m) => {
                                                                     const mData = entryForm.months?.[m.id] || { m: false, jumlah: 0 };
-                                                                    const isSelectable = (entryForm.semester === '1' && idx < 6) || (entryForm.semester === '2' && idx >= 6);
+                                                                    const isSelectable = m.semester === entryForm.semester;
+
                                                                     
                                                                     return (
                                                                         <div key={m.id} className={`p-3 rounded-2xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')}`}>
