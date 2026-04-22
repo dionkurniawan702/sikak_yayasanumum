@@ -27,20 +27,21 @@ const generateMonths = (ay) => {
 
     try {
         // Option 1: Use explicit start and end dates from settings
-        if (ay.startDate && ay.endDate) {
-            let current = new Date(ay.startDate);
+        if (ay?.startDate && ay?.endDate) {
+            const start = new Date(ay.startDate);
             const end = new Date(ay.endDate);
+            const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+            const monthsPerSemester = Math.ceil(diffMonths / 2);
             
-            // Limit to a reasonable range to prevent infinite loops (e.g., 24 months)
+            let current = new Date(start);
             let safetyCounter = 0;
+            
             while (current <= end && safetyCounter < 24) {
                 const year = current.getFullYear();
                 const monthIdx = current.getMonth();
                 const monthNum = monthIdx + 1;
                 
-                // Determine semester based on the position in the academic year
-                // Traditionally, the first 6 months are Semester 1, the rest are Semester 2
-                const semester = safetyCounter < 6 ? '1' : '2';
+                const semester = safetyCounter < monthsPerSemester ? '1' : '2';
 
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
