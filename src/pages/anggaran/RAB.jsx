@@ -143,6 +143,16 @@ export default function RAB() {
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
     const [expandedDetailItems, setExpandedDetailItems] = useState({});
+    const [selectedComponents, setSelectedComponents] = useState(new Set());
+
+    const toggleComponentSelection = (id) => {
+        setSelectedComponents(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
 
     const toggleReviewPlan = (id) => setExpandedReviewPlans(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleDashboardPlan = (id) => setExpandedDashboardPlans(prev => ({ ...prev, [id]: !prev[id] }));
@@ -1179,6 +1189,48 @@ export default function RAB() {
         }
     };
 
+    const handleBulkComponentAction = async (action) => {
+        if (selectedComponents.size === 0) return;
+        setIsSaving(true);
+
+        // Group selections by planId
+        const selectionsByPlan = {};
+        selectedComponents.forEach(id => {
+            const [planId, itemId, compIdx] = id.split('|');
+            if (!selectionsByPlan[planId]) selectionsByPlan[planId] = [];
+            selectionsByPlan[planId].push({ itemId, compIdx: parseInt(compIdx) });
+        });
+
+        try {
+            for (const [planId, items] of Object.entries(selectionsByPlan)) {
+                const plan = rabPlans.find(p => p.id === planId);
+                if (!plan) continue;
+
+                const nextExpense = { ...plan.expense };
+                items.forEach(({ itemId, compIdx }) => {
+                    const planItems = nextExpense[itemId] || [];
+                    // Update component isApproved status in the plan items
+                    planItems.forEach(pi => {
+                        if (pi.components && pi.components[compIdx]) {
+                            pi.components[compIdx].isApproved = (action === 'APPROVE');
+                        }
+                    });
+                });
+
+                const updatedPlan = { ...plan, expense: nextExpense, updatedAt: new Date().toISOString() };
+                dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+                await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+            }
+
+            setMessage({ type: 'success', text: `${selectedComponents.size} rincian berhasil ${action === 'APPROVE' ? 'disetujui' : 'dibatalkan'}.` });
+            setSelectedComponents(new Set());
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Gagal memproses perubahan massal.' });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
     const handleCancelApproval = async () => {
         if (!selectedYearId || !selectedUnitId) return;
         const planId = `${selectedYearId}-${selectedUnitId}`;
@@ -1281,10 +1333,10 @@ export default function RAB() {
                                                     name: (expenseItems.find(e => e.id === id)?.name || id),
                                                     rab: detail.total || 0,
                                                     rap: planRAP.itemAllocations[id] || 0,
-                                                    sisa: (planRAP.itemAllocations[id] || 0) - (detail.total || 0)
+                                                    sisa: (planRAP.itemAllocations[id] || 0) - (detail.total || 0),
+                                                    components: detail.components || []
                                                 }))
                                                 .sort((a, b) => b.rab - a.rab)
-                                                .slice(0, 5)
                                         };
 
                                         return (
@@ -1298,32 +1350,28 @@ export default function RAB() {
                                                 onToggleDetailItem={toggleDetailItem}
                                                 getUnitName={getUnitName}
                                                 isField={!!plan.fieldId}
+                                                selectable={true}
+                                                selectedComponents={selectedComponents}
+                                                onComponentToggle={toggleComponentSelection}
                                                 actions={
-                                                    <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                                                    <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={() => handleApproval(plan.id, 'APPROVED')}
-                                                            className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                                                            title="SETUJUI (ACC)"
-                                                        >
-                                                            <CheckCircle2 size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => setShowRejectionInput(plan.id)}
-                                                            className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                                                            title="TOLAK / REVISI"
-                                                        >
-                                                            <XCircle size={14} />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => {
-                                                                setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION'));
-                                                                setActiveTab('EXPENSE');
-                                                                setShowDashboard(false);
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleApproval(plan.id, 'APPROVED');
                                                             }}
-                                                            className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                            title="LIHAT RINCIAN"
+                                                            className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg active:scale-95"
                                                         >
-                                                            <ChevronRight size={14} />
+                                                            ACC SEMUA
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setShowRejectionInput(plan.id);
+                                                            }}
+                                                            className="px-4 py-1.5 bg-rose-100 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
+                                                        >
+                                                            REVISI
                                                         </button>
                                                     </div>
                                                 }
@@ -2537,6 +2585,48 @@ export default function RAB() {
                     </div>
                 </div>
             )}
+            {/* Bulk Action Bar */}
+            {selectedComponents.size > 0 && (
+                <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[5000] animate-in slide-in-from-bottom-20 duration-500">
+                    <div className="bg-slate-900 text-white px-8 py-6 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-8 ring-8 ring-white/10 backdrop-blur-md">
+                        <div className="flex items-center gap-4 border-r border-white/10 pr-8">
+                            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/20">
+                                {selectedComponents.size}
+                            </div>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rincian Terpilih</p>
+                                <p className="text-sm font-black italic">Siap untuk diproses</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <button
+                                onClick={() => handleBulkComponentAction('APPROVE')}
+                                disabled={isSaving}
+                                className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-3 disabled:opacity-50"
+                            >
+                                <CheckCircle2 size={18} />
+                                SETUJUI TERPILIH (ACC)
+                            </button>
+                            <button
+                                onClick={() => handleBulkComponentAction('REJECT')}
+                                disabled={isSaving}
+                                className="px-8 py-4 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-600/30 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50"
+                            >
+                                <XCircle size={18} />
+                                BATALKAN
+                            </button>
+                            <button
+                                onClick={() => setSelectedComponents(new Set())}
+                                className="ml-4 p-4 text-slate-400 hover:text-white transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
+

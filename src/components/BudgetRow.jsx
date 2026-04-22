@@ -16,30 +16,34 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
  * @param {boolean} props.isField - Whether this is a Field-themed row (indigo theme).
  * @param {React.ReactNode} props.actions - Optional extra actions to render on the main row.
  */
-export default function BudgetRow({ 
-    data, 
-    isExpanded, 
-    onToggle, 
-    formatCurrency, 
-    expandedDetailItems = {}, 
+export default function BudgetRow({
+    data,
+    isExpanded,
+    onToggle,
+    formatCurrency,
+    expandedDetailItems = {},
     onToggleDetailItem,
     getUnitName,
     isBos = false,
     isField = false,
-    actions = null
+    actions = null,
+    // Granular selection props
+    selectable = false,
+    selectedComponents = new Set(),
+    onComponentToggle
 }) {
     // Theme selection
-    const activeClass = isBos 
-        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100' 
+    const activeClass = isBos
+        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
         : (isField ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-blue-600 text-white shadow-lg shadow-blue-100');
-    
-    const sisaColor = data.sisa < 0 
-        ? 'bg-rose-50 text-rose-600' 
+
+    const sisaColor = data.sisa < 0
+        ? 'bg-rose-50 text-rose-600'
         : (isBos ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600');
 
     return (
         <>
-            <tr 
+            <tr
                 className="budget-row cursor-pointer hover:bg-slate-50 transition-colors group"
                 onClick={onToggle}
             >
@@ -51,10 +55,9 @@ export default function BudgetRow({
                         <div className="flex flex-col">
                             <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
                             {data.status && (
-                                <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${
-                                    data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-                                    (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
-                                }`}>
+                                <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                                        (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
+                                    }`}>
                                     {data.status === 'APPROVED' ? 'Disetujui' : (data.status === 'PENDING' ? 'Menunggu Review' : 'Draft')}
                                 </span>
                             )}
@@ -77,24 +80,24 @@ export default function BudgetRow({
                 </td>
             </tr>
             {isExpanded && data.breakdown && data.breakdown.map((item, idx) => {
-                const hasSources = item.sources && Object.keys(item.sources).length > 0;
+                const hasSubLevel = (item.sources && Object.keys(item.sources).length > 0) || (item.components && item.components.length > 0);
                 const isDetailExpanded = !!expandedDetailItems[`${data.id}-${item.id}`];
 
                 return (
                     <React.Fragment key={item.id || idx}>
-                        <tr 
-                            className={`budget-row-detail group ${hasSources ? 'cursor-pointer hover:bg-indigo-50/50' : ''}`}
-                            onClick={() => hasSources && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
+                        <tr
+                            className={`budget-row-detail group ${hasSubLevel ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                            onClick={() => hasSubLevel && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
                         >
                             <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-slate-300">└</span>
-                                    {hasSources && (
+                                    {hasSubLevel && (
                                         <span className="text-indigo-400 group-hover:text-indigo-600">
                                             {isDetailExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
                                         </span>
                                     )}
-                                    <span className={`${hasSources ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px] italic`}>
+                                    <span className={`${hasSubLevel ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px] italic`}>
                                         {item.name}
                                     </span>
                                 </div>
@@ -109,7 +112,60 @@ export default function BudgetRow({
                                 {formatRupiahShort(item.sisa, formatCurrency)}
                             </td>
                         </tr>
-                        {isDetailExpanded && hasSources && Object.entries(item.sources).map(([unitId, amount]) => (
+
+                        {/* Level 3: Components (Granular Review) */}
+                        {isDetailExpanded && item.components && item.components.map((comp, cIdx) => {
+                            const compId = `${data.id}|${item.id}|${cIdx}`;
+                            const isSelected = selectedComponents.has(compId);
+
+                            return (
+                                <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 ${isSelected ? 'bg-blue-50/50' : 'bg-white'}`}>
+                                    <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
+                                        <div className="flex items-center gap-3 py-1">
+                                            {selectable && (
+                                                <input
+                                                    type="checkbox"
+                                                    checked={isSelected}
+                                                    onChange={() => onComponentToggle && onComponentToggle(compId)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                />
+                                            )}
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-bold text-slate-700 italic">{comp.label}</span>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-1.5 py-0.5 rounded">
+                                                        {comp.volume} {comp.satuan} x {comp.kali}
+                                                    </span>
+                                                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${comp.useBos ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                        {comp.useBos ? 'BOS' : 'YAYASAN'}
+                                                    </span>
+                                                    {comp.isApproved && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500 text-white flex items-center gap-1">
+                                                            DI-ACC
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="budget-cell budget-cell-number">
+                                        <span className="text-[10px] font-black text-slate-400 italic">
+                                            @{formatCurrency(comp.harga)}
+                                        </span>
+                                    </td>
+                                    <td className="budget-cell budget-cell-number">
+                                        <span className="text-[10px] font-black text-slate-900 italic">
+                                            {formatCurrency(comp.total)}
+                                        </span>
+                                    </td>
+                                    <td className="budget-cell" />
+                                </tr>
+                            );
+                        })}
+
+                        {/* Traditional Source Breakdown (if no components) */}
+                        {isDetailExpanded && !item.components && item.sources && Object.entries(item.sources).map(([unitId, amount]) => (
                             <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300">
                                 <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
                                     <div className="flex items-center gap-1.5 py-0.5">
