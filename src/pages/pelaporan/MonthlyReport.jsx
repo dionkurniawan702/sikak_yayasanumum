@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { FileCheck, Receipt, Upload, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
