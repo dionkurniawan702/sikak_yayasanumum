@@ -301,6 +301,17 @@ app.post('/api/sync', async (req, res) => {
                         if (cleanItem.initialBalance !== undefined) cleanItem.balance = parseFloat(cleanItem.initialBalance) || 0;
                         delete cleanItem.initialBalance; delete cleanItem.normalBalance;
                     }
+                    if (model === 'budgetRequest') {
+                        if (cleanItem.date) cleanItem.date = new Date(cleanItem.date);
+                        if (cleanItem.totalAmount !== undefined && cleanItem.totalAmount !== null) cleanItem.totalAmount = parseFloat(cleanItem.totalAmount);
+                        if (cleanItem.amount !== undefined && cleanItem.amount !== null) cleanItem.amount = parseFloat(cleanItem.amount);
+                        if (cleanItem.reports) delete cleanItem.reports;
+                    }
+                    if (model === 'budgetReport') {
+                        if (cleanItem.date) cleanItem.date = new Date(cleanItem.date);
+                        if (cleanItem.amount !== undefined && cleanItem.amount !== null) cleanItem.amount = parseFloat(cleanItem.amount);
+                        if (cleanItem.budgetRequest) delete cleanItem.budgetRequest;
+                    }
 
                     await tx[model].upsert({
                         where: { id: item.id },

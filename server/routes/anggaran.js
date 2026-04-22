@@ -420,7 +420,12 @@ router.get('/budget-requests', async (req, res) => {
 
 router.post('/budget-requests', async (req, res) => {
     try {
-        const request = await getPrisma(req).budgetRequest.create({ data: req.body });
+        const data = { ...req.body };
+        if (data.date) data.date = new Date(data.date);
+        if (data.totalAmount !== undefined && data.totalAmount !== null) data.totalAmount = parseFloat(data.totalAmount);
+        if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
+
+        const request = await getPrisma(req).budgetRequest.create({ data });
         res.json({ data: request });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -429,11 +434,33 @@ router.post('/budget-requests', async (req, res) => {
 
 router.put('/budget-requests/:id', async (req, res) => {
     try {
+        const data = { ...req.body };
+        if (data.date) data.date = new Date(data.date);
+        if (data.totalAmount !== undefined && data.totalAmount !== null) data.totalAmount = parseFloat(data.totalAmount);
+        if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
+
         const request = await getPrisma(req).budgetRequest.update({
             where: { id: req.params.id },
-            data: req.body
+            data
         });
         res.json({ data: request });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/budget-requests/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true';
+        if (isPermanent) {
+            await getPrisma(req).budgetRequest.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).budgetRequest.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+        }
+        res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -723,8 +750,8 @@ createGenericRoutes('class-groups', 'classGroup');
 createGenericRoutes('positions', 'position');
 createGenericRoutes('student-statuses', 'studentStatus');
 createGenericRoutes('parent-statuses', 'parentStatus');
-createGenericRoutes('budget-requests', 'budgetRequest');
-createGenericRoutes('budget-reports', 'budgetReport');
+// budget-requests and budget-reports have their own custom routes above (with date parsing)
+// DO NOT add createGenericRoutes for them here
 // --- RAB PLANS (Custom upsert - DO NOT use createGenericRoutes which only uses .create()) ---
 router.get('/rab-plans', async (req, res) => {
     try {
