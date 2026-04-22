@@ -369,6 +369,18 @@ export default function MonthlyRequest() {
                                         </div>
                                         <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
                                         {isSuperAdmin && (
+                                            <div className="flex items-center gap-2 mb-2">
+                                                <div className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200">
+                                                    {req.unitId === 'FOUNDATION' ? 'YAYASAN' : (state.units.find(u => u.id === req.unitId)?.name || req.unitId)}
+                                                </div>
+                                                {req.fieldId && (
+                                                    <div className="px-2 py-0.5 bg-indigo-50 text-indigo-500 rounded text-[9px] font-black uppercase tracking-widest border border-indigo-100">
+                                                        {state.fields.find(f => f.id === req.fieldId)?.name || req.fieldId}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                        {isSuperAdmin && (
                                             <div className="flex items-center gap-2 text-indigo-600 text-[10px] font-black uppercase tracking-widest">
                                                 <Building2 size={12} />
                                                 {units.find(u => u.id === req.unitId)?.name || fields.find(f => f.id === req.fieldId)?.name}

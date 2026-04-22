@@ -10,13 +10,40 @@ export default function MonthlyReport() {
     // Mock approved requests waiting for report
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
 
-    const { budgetRequests = [], budgetReports = [], expenseItems = [], units = [] } = state;
+    const { budgetRequests = [], realizations = [], expenseItems = [], units = [], fields = [], globalAcademicYearId } = state;
+
+    const isSuperAdmin = state.currentUser?.role === 'superadmin';
+    const myUnitId = state.currentUser?.unitId;
+    const myFieldId = state.currentUser?.fieldId;
 
     // Filter requests that are approved but NOT YET reported
-    const reportedRequestIds = new Set(budgetReports.map(r => r.requestId));
-    const pendingReports = budgetRequests.filter(req => 
+    const reportedRequestIds = new Set(realizations.map(r => r.requestId));
+
+    const filteredRequests = useMemo(() => {
+        return (budgetRequests || []).filter(req => {
+            const isYear = req.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+            if (isSuperAdmin) return true;
+            if (myUnitId) return req.unitId === myUnitId;
+            if (myFieldId) return req.fieldId === myFieldId;
+            return false;
+        });
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+
+    const pendingReports = filteredRequests.filter(req =>
         req.status === 'APPROVED' && !reportedRequestIds.has(req.id)
     );
+
+    const filteredRealizations = useMemo(() => {
+        return (realizations || []).filter(rel => {
+            const isYear = rel.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+            if (isSuperAdmin) return true;
+            if (myUnitId) return rel.unitId === myUnitId;
+            if (myFieldId) return rel.fieldId === myFieldId;
+            return false;
+        });
+    }, [realizations, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -38,24 +65,25 @@ export default function MonthlyReport() {
 
     const handleReportSubmit = (e) => {
         e.preventDefault();
-        
+
         const reportData = {
-            id: crypto.randomUUID(),
+            id: `REL-${Date.now()}`,
             requestId: selectedRequest.id,
             unitId: selectedRequest.unitId,
-            expenseItemId: selectedRequest.expenseItemId,
+            fieldId: selectedRequest.fieldId,
+            academicYearId: globalAcademicYearId,
             amount: parseFloat(formData.amount),
             date: formData.date,
             description: formData.description,
-            attachment: formData.attachment,
+            category: selectedRequest.items?.[0]?.name || 'General',
             status: 'VERIFIED'
         };
 
         dispatch({
-            type: 'ADD_BUDGET_REPORT',
+            type: 'ADD_REALIZATION',
             payload: reportData
         });
-        
+
         setShowReportForm(false);
     };
 
@@ -68,13 +96,13 @@ export default function MonthlyReport() {
                     <p className="text-slate-500 font-medium italic">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
                 </div>
                 <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
-                    <button 
+                    <button
                         onClick={() => setActiveTab('pending')}
                         className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                     >
                         Perlu Dilaporkan
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('history')}
                         className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                     >
@@ -106,8 +134,8 @@ export default function MonthlyReport() {
 
                                     <div className="text-right">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Dana Cair</p>
-                                        <h4 className="text-2xl font-black text-blue-700 mb-6">Rp {req.amount.toLocaleString('id-ID')}</h4>
-                                        <button 
+                                        <h4 className="text-2xl font-black text-blue-700 mb-6">Rp {parseFloat(req.totalAmount || 0).toLocaleString('id-ID')}</h4>
+                                        <button
                                             onClick={() => handleOpenReportForm(req)}
                                             className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
                                         >
@@ -129,19 +157,24 @@ export default function MonthlyReport() {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Riwayat Laporan Realisasi Penggunaan Dana</span>
                             </div>
 
-                            {budgetReports.length > 0 ? budgetReports.map(report => (
+                            {filteredRealizations.length > 0 ? filteredRealizations.map(report => (
                                 <div key={report.id} className="card p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-emerald-200 transition-all border-l-8 border-l-emerald-500">
                                     <div>
-                                        <h4 className="font-black text-slate-900 text-lg mb-1">{expenseItems.find(i => i.id === report.expenseItemId)?.name || 'Laporan Pengeluaran'}</h4>
+                                        <h4 className="font-black text-slate-900 text-lg mb-1 italic uppercase tracking-tight">{report.category || 'Laporan Pengeluaran'}</h4>
                                         <div className="flex items-center gap-4 text-slate-400 text-[10px] font-black uppercase tracking-widest">
                                             <span>{report.date}</span>
+                                            {isSuperAdmin && (
+                                                <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">
+                                                    {report.unitId === 'FOUNDATION' ? 'YAYASAN' : (units.find(u => u.id === report.unitId)?.name || report.unitId)}
+                                                </span>
+                                            )}
                                             <span className="text-emerald-600">Terverifikasi Sistem</span>
                                         </div>
                                         <p className="mt-3 text-xs text-slate-500 font-medium line-clamp-1">{report.description}</p>
                                     </div>
 
                                     <div className="text-right">
-                                        <h4 className="text-xl font-black text-slate-900">Rp {report.amount.toLocaleString('id-ID')}</h4>
+                                        <h4 className="text-xl font-black text-slate-900">Rp {parseFloat(report.amount || 0).toLocaleString('id-ID')}</h4>
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Terpakai</p>
                                     </div>
                                 </div>
@@ -172,11 +205,11 @@ export default function MonthlyReport() {
                         <div className="space-y-6">
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-400">Total Cair</span>
-                                <span className="text-sm font-black text-slate-700">Rp {budgetRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + r.amount, 0).toLocaleString('id-ID')}</span>
+                                <span className="text-sm font-black text-slate-700">Rp {filteredRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0).toLocaleString('id-ID')}</span>
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-400">Total Lapor</span>
-                                <span className="text-sm font-black text-emerald-600">Rp {budgetReports.reduce((s, r) => s + r.amount, 0).toLocaleString('id-ID')}</span>
+                                <span className="text-sm font-black text-emerald-600">Rp {filteredRealizations.reduce((s, r) => s + parseFloat(r.amount || 0), 0).toLocaleString('id-ID')}</span>
                             </div>
                         </div>
                     </div>
@@ -196,7 +229,7 @@ export default function MonthlyReport() {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor</p>
-                                    <span className="text-lg font-black text-blue-700">Rp {selectedRequest.amount.toLocaleString('id-ID')}</span>
+                                    <span className="text-lg font-black text-blue-700">Rp {parseFloat(selectedRequest?.totalAmount || 0).toLocaleString('id-ID')}</span>
                                 </div>
                             </div>
 
@@ -204,22 +237,22 @@ export default function MonthlyReport() {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="form-label">Tanggal Pelaporan</label>
-                                        <input 
-                                            type="date" 
-                                            className="form-input" 
+                                        <input
+                                            type="date"
+                                            className="form-input"
                                             value={formData.date}
                                             onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                            required 
+                                            required
                                         />
                                     </div>
                                     <div>
                                         <label className="form-label">Jumlah Realisasi (Rp)</label>
-                                        <input 
-                                            type="number" 
-                                            className="form-input font-black text-blue-600" 
+                                        <input
+                                            type="number"
+                                            className="form-input font-black text-blue-600"
                                             value={formData.amount}
                                             onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                            required 
+                                            required
                                         />
                                     </div>
                                     <div>
@@ -234,15 +267,15 @@ export default function MonthlyReport() {
                                 <div className="space-y-6">
                                     <div>
                                         <label className="form-label">Keterangan Detail</label>
-                                        <textarea 
-                                            className="form-input h-[120px] !py-3" 
-                                            placeholder="Jelaskan penggunaan dana secara spesifik..." 
+                                        <textarea
+                                            className="form-input h-[120px] !py-3"
+                                            placeholder="Jelaskan penggunaan dana secara spesifik..."
                                             value={formData.description}
                                             onChange={e => setFormData({ ...formData, description: e.target.value })}
                                             required
                                         ></textarea>
                                     </div>
-                                    
+
                                     <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
                                         <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
                                             <Receipt size={14} /> Sinkronisasi Jurnal

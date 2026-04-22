@@ -31,10 +31,11 @@ const defaultState = {
     rabPlans: [],
     bosStages: [],
     bosPosList: [],
-    bosAllocations: [], 
+    bosAllocations: [],
     users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
     globalAcademicYearId: null, // Persisted globally
+    realizations: [], // { id, requestId, unitId, fieldId, academicYearId, date, amount, description, category }
     isSyncing: false,
     syncMessage: '',
     lastSyncedAt: null,
@@ -215,11 +216,11 @@ function appReducer(state, action) {
         case 'SET_ALL_DATA': {
             const serverData = action.payload || {};
             console.log('[Sync Diagnostic] Received Academic Years from Server:', serverData.academicYears);
-            
+
             // Safety Check: Don't overwrite with empty data if we already have local data
             const hasLocalData = state.accounts?.length > 15 || state.units?.length > 0;
             const hasServerData = serverData.accounts?.length > 0 || serverData.units?.length > 0;
-            
+
             if (hasLocalData && !hasServerData && state.isInitialized) {
                 console.warn('[Sync Safety] Server returned empty data while local state is populated. Ignoring SET_ALL_DATA to prevent data loss.');
                 return state;
@@ -317,7 +318,7 @@ function appReducer(state, action) {
                         }
                         return updated;
                     });
-                    
+
                     // Deduplicate if we fixed IDs (keep the most recently updated one)
                     if (fixId) {
                         const uniqueMap = new Map();
@@ -474,6 +475,15 @@ function appReducer(state, action) {
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
             break;
+        case 'ADD_REALIZATION':
+            newState = { ...state, realizations: [...state.realizations, action.payload] };
+            break;
+        case 'EDIT_REALIZATION':
+            newState = { ...state, realizations: state.realizations.map(r => r.id === action.payload.id ? action.payload : r) };
+            break;
+        case 'DELETE_REALIZATION':
+            newState = { ...state, realizations: state.realizations.filter(r => r.id !== action.payload) };
+            break;
 
         case 'ADD_ACADEMIC_YEAR': newState = { ...state, academicYears: [...state.academicYears, action.payload] }; break;
         case 'EDIT_ACADEMIC_YEAR': newState = { ...state, academicYears: state.academicYears.map(i => i.id === action.payload.id ? action.payload : i) }; break;
@@ -607,8 +617,8 @@ function appReducer(state, action) {
             return state;
     }
     saveState(newState);
-    return { 
-        ...newState, 
+    return {
+        ...newState,
         lastAction: action,
         isSyncing: action.type === 'SET_SYNCING' ? action.payload.status : state.isSyncing,
         syncMessage: action.type === 'SET_SYNCING' ? (action.payload.message || '') : state.syncMessage,
@@ -623,7 +633,7 @@ export function AppProvider({ children }) {
     useEffect(() => {
         const token = localStorage.getItem('jwt_token');
         const isLoginPage = window.location.pathname === '/login';
-        
+
         // Trigger fetch if we have a token AND (we are logged in OR we have no data)
         const needsData = state.accounts.length <= 5 || state.units.length === 0;
 
@@ -670,7 +680,7 @@ export function AppProvider({ children }) {
     // Auto-Sync Trigger (Background)
     useEffect(() => {
         if (!isRemote || !state.currentUser || !state.isInitialized) return;
-        
+
         // Debounce sync to avoid spamming the server
         const timer = setTimeout(async () => {
             dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
@@ -679,12 +689,12 @@ export function AppProvider({ children }) {
                 console.log('Payload:', state);
                 const response = await api.syncWholeState(state);
                 console.groupEnd();
-                dispatch({ 
-                    type: 'SET_SYNC_RESULT', 
-                    payload: { 
+                dispatch({
+                    type: 'SET_SYNC_RESULT',
+                    payload: {
                         timestamp: response.timestamp || new Date().toISOString(),
-                        results: response.results 
-                    } 
+                        results: response.results
+                    }
                 });
             } catch (err) {
                 console.warn('[Sync] Auto-Sync failed:', err.message);
@@ -694,7 +704,7 @@ export function AppProvider({ children }) {
         }, 3000); // Wait 3 seconds of inactivity before pushing
 
         return () => clearTimeout(timer);
-    }, [state.accounts, state.journals, state.assets, state.programs, state.units, state.fields, state.students, state.rabPlans, state.bosStages, state.bosPosList]); 
+    }, [state.accounts, state.journals, state.assets, state.programs, state.units, state.fields, state.students, state.rabPlans, state.bosStages, state.bosPosList]);
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>
