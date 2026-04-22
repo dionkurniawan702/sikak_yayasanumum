@@ -159,7 +159,10 @@ export default function RAB() {
 
     const activeYear = useMemo(() => academicYears.find(ay => ay.id === selectedYearId), [academicYears, selectedYearId]);
     const monthsOptions = useMemo(() => activeYear ? generateMonths(activeYear) : [], [activeYear]);
-    const allPrograms = useMemo(() => [...programs, ...expensePrograms].filter(p => !p.isDeleted), [programs, expensePrograms]);
+    const allPrograms = useMemo(() => {
+        if (activeTab === 'INCOME') return programs.filter(p => !p.isDeleted && p.type === 'INCOME');
+        return expensePrograms.filter(p => !p.isDeleted);
+    }, [programs, expensePrograms, activeTab]);
 
     const toggleDetailItem = (parentId, itemId) => {
         const key = `${parentId}-${itemId}`;
