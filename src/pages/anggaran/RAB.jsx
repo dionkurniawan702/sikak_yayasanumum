@@ -1671,8 +1671,9 @@ export default function RAB() {
                     )}
                 </div>
             </div>
-        );
-    };
+        </div>
+    );
+};
 
     const totalIncome = useMemo(() => {
         return Object.values(activePlan?.income || {}).flat().reduce((sum, val) => {
