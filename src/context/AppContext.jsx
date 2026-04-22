@@ -35,7 +35,7 @@ const defaultState = {
     users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
     globalAcademicYearId: null, // Persisted globally
-    realizations: [], // { id, requestId, unitId, fieldId, academicYearId, date, amount, description, category }
+    budgetReports: [], // { id, budgetRequestId, unitId, fieldId, academicYearId, date, amount, description, category }
     isSyncing: false,
     syncMessage: '',
     lastSyncedAt: null,
@@ -475,14 +475,11 @@ function appReducer(state, action) {
         case 'ADD_BUDGET_REPORT':
             newState = { ...state, budgetReports: [...state.budgetReports, action.payload] };
             break;
-        case 'ADD_REALIZATION':
-            newState = { ...state, realizations: [...state.realizations, action.payload] };
+        case 'EDIT_BUDGET_REPORT':
+            newState = { ...state, budgetReports: state.budgetReports.map(r => r.id === action.payload.id ? action.payload : r) };
             break;
-        case 'EDIT_REALIZATION':
-            newState = { ...state, realizations: state.realizations.map(r => r.id === action.payload.id ? action.payload : r) };
-            break;
-        case 'DELETE_REALIZATION':
-            newState = { ...state, realizations: state.realizations.filter(r => r.id !== action.payload) };
+        case 'DELETE_BUDGET_REPORT':
+            newState = { ...state, budgetReports: state.budgetReports.filter(r => r.id !== action.payload) };
             break;
 
         case 'ADD_ACADEMIC_YEAR': newState = { ...state, academicYears: [...state.academicYears, action.payload] }; break;

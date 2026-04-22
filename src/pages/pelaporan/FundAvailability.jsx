@@ -5,7 +5,7 @@ import { formatRupiah } from '../../utils/format';
 
 export default function FundAvailability() {
     const { state } = useApp();
-    const { currentUser, budgetRequests, realizations, units, globalAcademicYearId } = state;
+    const { currentUser, budgetRequests, budgetReports, units, globalAcademicYearId } = state;
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -23,8 +23,8 @@ export default function FundAvailability() {
         });
     }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
-    const relevantRealizations = useMemo(() => {
-        return (realizations || []).filter(rel => {
+    const relevantReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
             if (isSuperAdmin) return true;
@@ -32,7 +32,7 @@ export default function FundAvailability() {
             if (myFieldId) return rel.fieldId === myFieldId;
             return false;
         });
-    }, [realizations, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
     // Aggregate by Category (Expense Item)
     const fundPositions = useMemo(() => {
@@ -49,8 +49,8 @@ export default function FundAvailability() {
             });
         });
 
-        // 2. Subtract from Realizations
-        relevantRealizations.forEach(rel => {
+        // 2. Subtract from Reports
+        relevantReports.forEach(rel => {
             const category = rel.category || 'General';
             if (!positions[category]) {
                 positions[category] = { category, totalApproved: 0, totalUsed: 0 };
@@ -59,10 +59,10 @@ export default function FundAvailability() {
         });
 
         return Object.values(positions);
-    }, [relevantRequests, relevantRealizations]);
+    }, [relevantRequests, relevantReports]);
 
     const totalApproved = relevantRequests.filter(r => r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
-    const totalUsed = relevantRealizations.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+    const totalUsed = relevantReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
     const totalBalance = totalApproved - totalUsed;
     const pendingAmount = relevantRequests.filter(r => r.status === 'PENDING').reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
 

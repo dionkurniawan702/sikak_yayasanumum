@@ -64,7 +64,7 @@ app.get('/health', async (req, res) => {
         console.error(`[Health Check Error] Database: ${e.message}`);
     }
 
-    res.status(dbStatus === 'connected' ? 200 : 500).json({ 
+    res.status(dbStatus === 'connected' ? 200 : 500).json({
         status: dbStatus === 'connected' ? 'ok' : 'error',
         database: dbStatus,
         dbError: dbError,
@@ -79,23 +79,23 @@ app.get('/api/check-db', async (req, res) => {
         const rawTables = await client.$queryRaw`SHOW TABLES`;
         const tables = rawTables.map(t => Object.values(t)[0]);
         const targetTable = tables.find(t => t.toLowerCase() === 'academicyear' || t.toLowerCase() === 'academic_year');
-        
+
         if (!targetTable) return res.status(404).json({ status: 'error', message: 'AcademicYear table not found' });
-        
+
         const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
-        const data = await client.academicYear.findMany({ 
+        const data = await client.academicYear.findMany({
             take: 10,
             where: { isDeleted: false },
             orderBy: { name: 'asc' }
         });
 
-        res.json({ 
-            status: 'ok', 
-            table: targetTable, 
-            columns, 
+        res.json({
+            status: 'ok',
+            table: targetTable,
+            columns,
             data,
             version: '1.5.9',
-            serverTime: new Date().toISOString() 
+            serverTime: new Date().toISOString()
         });
     } catch (e) {
         res.status(500).json({ status: 'error', message: e.message });
@@ -245,13 +245,13 @@ app.post('/api/sync', async (req, res) => {
             for (const item of data) {
                 try {
                     let cleanItem = { ...item, isDeleted: !!item.isDeleted };
-                    
+
                     // Model-specific cleaning
                     if (model === 'program') {
                         const name = (item.name || '').toLowerCase();
-                        const isExpense = name.includes('ekskul') || name.includes('konsumsi') || 
-                                          name.includes('rapat') || name.includes('operasional') || 
-                                          name.includes('belanja');
+                        const isExpense = name.includes('ekskul') || name.includes('konsumsi') ||
+                            name.includes('rapat') || name.includes('operasional') ||
+                            name.includes('belanja');
                         cleanItem.type = isExpense ? 'Expense' : (item.type || 'Donation');
                         cleanItem.targetAmount = cleanItem.targetAmount ? parseFloat(cleanItem.targetAmount) : null;
                         delete cleanItem.initialDonationBalance;
@@ -268,10 +268,10 @@ app.post('/api/sync', async (req, res) => {
                         // This prevents old/stale sync data from clearing valid dates
                         if (!cleanItem.startDate) delete cleanItem.startDate;
                         else cleanItem.startDate = new Date(cleanItem.startDate);
-                        
+
                         if (!cleanItem.endDate) delete cleanItem.endDate;
                         else cleanItem.endDate = new Date(cleanItem.endDate);
-                        
+
                         try {
                             const existing = await tx.academicYear.findFirst({
                                 where: { OR: [{ id: cleanItem.id }, { name: cleanItem.name }] }
@@ -280,7 +280,7 @@ app.post('/api/sync', async (req, res) => {
                             if (existing) {
                                 // DOUBLE PROTECT: Never allow NULL to overwrite an existing date on the server
                                 const finalUpdate = { ...cleanItem, id: undefined };
-                                
+
                                 // Explicit check: If incoming is null/undefined but server HAS data, keep server data
                                 if (!cleanItem.name) delete finalUpdate.name; // Don't wipe name
                                 if (!cleanItem.startDate && existing.startDate) delete finalUpdate.startDate;
@@ -290,7 +290,7 @@ app.post('/api/sync', async (req, res) => {
                                     where: { id: existing.id },
                                     data: finalUpdate
                                 });
-                                continue; 
+                                continue;
                             }
                         } catch (e) {
                             console.error(`[Sync Fix Error] ${e.message}`);
@@ -397,7 +397,7 @@ app.post('/api/sync', async (req, res) => {
                     await tx.$executeRawUnsafe('DELETE FROM `Class`');
                     await tx.$executeRawUnsafe('DELETE FROM `class_groups`');
                 }
-                
+
                 await batchUpsert(tx, 'classGroup', classGroups);
                 await batchUpsert(tx, 'position', positions);
                 await batchUpsert(tx, 'studentStatus', studentStatuses);
@@ -448,8 +448,8 @@ app.post('/api/sync', async (req, res) => {
         }
 
         const overallSuccess = Object.values(results).every(r => r.status === 'success');
-        res.json({ 
-            status: overallSuccess ? 'ok' : 'partial', 
+        res.json({
+            status: overallSuccess ? 'ok' : 'partial',
             message: overallSuccess ? 'Sync Successful' : 'Sync completed with some group errors',
             results,
             timestamp: new Date().toISOString()
@@ -610,11 +610,11 @@ app.use((err, req, res, next) => {
     console.error(`[Global Error Handler] ${new Date().toISOString()} - ${err.message}`);
 
     // Robust identification of connection issues
-    const isConnError = 
-        err.message.includes('Can not connect to database') || 
+    const isConnError =
+        err.message.includes('Can not connect to database') ||
         err.message.includes('reach database server') ||
         err.message.includes('ECONNREFUSED');
-    
+
     if (err.message.includes('Authentication failed')) {
         return res.status(500).json({
             error: 'Database Authentication Failed',
@@ -644,7 +644,7 @@ const ensureDistributionColumns = async () => {
     try {
         const client = getPrisma();
         console.log(`[Self-Healing] Checking distribution_settings for destType/destId columns...`);
-        
+
         const tableNames = ['distribution_settings', 'DistributionSetting'];
         let targetTable = null;
 
@@ -653,7 +653,7 @@ const ensureDistributionColumns = async () => {
                 await client.$queryRawUnsafe(`DESCRIBE \`${name}\``);
                 targetTable = name;
                 break;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         if (targetTable) {
@@ -753,6 +753,43 @@ const ensureSoftDeleteColumns = async () => {
     }
 };
 
+const ensureBudgetOperationalColumns = async () => {
+    try {
+        const client = getPrisma();
+        console.log(`[Self-Healing] Checking budget tables for operational columns...`);
+
+        // 1. budget_requests
+        const reqCols = await client.$queryRaw`DESCRIBE \`budget_requests\``;
+        const reqFields = reqCols.map(c => c.Field || c.field);
+
+        if (!reqFields.includes('unitId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN unitId VARCHAR(255)');
+        if (!reqFields.includes('fieldId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN fieldId VARCHAR(255)');
+        if (!reqFields.includes('academicYearId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN academicYearId VARCHAR(255)');
+        if (!reqFields.includes('totalAmount')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN totalAmount DECIMAL(15, 2)');
+        if (!reqFields.includes('items')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN items JSON');
+
+        // Fix month column (might be Int, we want String for flexible month IDs like "2026-07")
+        const monthCol = reqCols.find(c => (c.Field === 'month' || c.field === 'month'));
+        if (monthCol && (monthCol.Type || monthCol.type).toLowerCase().includes('int')) {
+            console.log(`[Self-Healing] Converting budget_requests.month from Int to VarChar...`);
+            await client.$executeRawUnsafe('ALTER TABLE `budget_requests` MODIFY COLUMN month VARCHAR(50)');
+        }
+
+        // 2. budget_reports
+        const repCols = await client.$queryRaw`DESCRIBE \`budget_reports\``;
+        const repFields = repCols.map(c => c.Field || c.field);
+
+        if (!repFields.includes('unitId')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN unitId VARCHAR(255)');
+        if (!repFields.includes('fieldId')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN fieldId VARCHAR(255)');
+        if (!repFields.includes('academicYearId')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN academicYearId VARCHAR(255)');
+        if (!repFields.includes('category')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN category VARCHAR(255)');
+
+        console.log(`[Self-Healing] Budget tables check complete.`);
+    } catch (error) {
+        console.error(`[Self-Healing Error] Budget columns: ${error.message}`);
+    }
+};
+
 const ensureFundSources = async () => {
     const incomeItemsList = [
         'Gedung', 'Asrama', 'Lokal', 'Perlengkapan', 'Penggajian',
@@ -810,13 +847,13 @@ const ensureAcademicYears = async () => {
                     await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
                     targetTable = t;
                     break;
-                } catch (e) {}
+                } catch (e) { }
             }
 
             if (targetTable) {
                 const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
                 const hasCol = (name) => columns.some(c => (c.Field || c.field).toLowerCase() === name.toLowerCase());
-                
+
                 if (!hasCol('startDate')) {
                     console.log(`[Self-Healing] Adding startDate to ${targetTable}...`);
                     await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN startDate DATETIME NULL`);
@@ -848,10 +885,10 @@ const healAcademicYearIds = async () => {
     try {
         const client = getPrisma();
         console.log('[NUCLEAR-FIX] Starting direct database ID re-writing...');
-        
+
         // 1. Disable Foreign Key Checks to allow Primary Key updates
         await client.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 0;');
-        
+
         try {
             const tableVariations = ['AcademicYear', 'academicyear', 'academic_year'];
             let targetTable = 'AcademicYear'; // fallback
@@ -864,14 +901,14 @@ const healAcademicYearIds = async () => {
                 if (!year.id.startsWith('AY-')) {
                     const standardId = `AY-${year.name.replace(/\//g, '-')}`;
                     const oldId = year.id;
-                    
+
                     console.log(`[NUCLEAR-FIX] Force Rename: ${oldId} -> ${standardId} (${year.name})`);
-                    
+
                     // A. Update Related Tables directly
                     await client.$executeRawUnsafe('UPDATE Student SET academicYearId = ? WHERE academicYearId = ?', standardId, oldId);
                     await client.$executeRawUnsafe('UPDATE bos_stages SET academicYearId = ? WHERE academicYearId = ?', standardId, oldId);
                     await client.$executeRawUnsafe('UPDATE bos_allocations SET academicYearId = ? WHERE academicYearId = ?', standardId, oldId);
-                    
+
                     // B. Update RabPlans (Composite Primary Keys)
                     const plans = await client.rabPlan.findMany({ where: { academicYearId: oldId } });
                     for (const plan of plans) {
@@ -879,13 +916,13 @@ const healAcademicYearIds = async () => {
                         const unitSuffix = parts.length > 1 ? parts.slice(1).join('-') : null;
                         if (!unitSuffix) continue;
                         const newPlanId = `${standardId}-${unitSuffix}`;
-                        
+
                         await client.$executeRawUnsafe('UPDATE rab_plans SET id = ?, academicYearId = ? WHERE id = ?', newPlanId, standardId, plan.id);
                     }
-                    
+
                     // C. Finally update the AcademicYear ID itself
                     await client.$executeRawUnsafe(`UPDATE \`${targetTable}\` SET id = ? WHERE id = ?`, standardId, oldId);
-                    
+
                     console.log(`[NUCLEAR-FIX] SUCCESS: ${year.name} migrated.`);
                 }
             }
@@ -893,7 +930,7 @@ const healAcademicYearIds = async () => {
             // 2. Re-enable Foreign Key Checks
             await client.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1;');
         }
-        
+
         console.log('[NUCLEAR-FIX] Migration complete.');
     } catch (error) {
         console.error(`[NUCLEAR-FIX ERROR] ${error.message}`);
@@ -904,11 +941,11 @@ const ensureSuperAdmin = async () => {
     try {
         const client = getPrisma();
         console.log('[Seed] Ensuring superadmin "adminsdit1" exists (Force Upsert)...');
-        
+
         const hashedPassword = await bcrypt.hash('admin123', 10);
         await client.user.upsert({
             where: { username: 'adminsdit1' },
-            update: { 
+            update: {
                 password: hashedPassword, // Reset password if user exists
                 role: 'superadmin',
                 isDeleted: false
@@ -930,12 +967,12 @@ const recoverOrphanedStudents = async () => {
     try {
         const client = getPrisma();
         console.log('[STUDENT-RECOVERY] Starting relationship scan...');
-        
+
         // 1. Detect student table name
         const rawTables = await client.$queryRaw`SHOW TABLES`;
         const tables = rawTables.map(t => Object.values(t)[0]);
         const studentTable = tables.find(t => t.toLowerCase() === 'student' || t.toLowerCase() === 'students');
-        
+
         if (!studentTable) {
             console.error('[STUDENT-RECOVERY ERROR] Student table not found.');
             return;
@@ -943,7 +980,7 @@ const recoverOrphanedStudents = async () => {
 
         // 2. Map all current academic years (standard format)
         const activeYears = await client.academicYear.findMany({ where: { isDeleted: false } });
-        
+
         // 3. Perform a mass re-link for any student pointing to a non-existent ID
         // We match by checking if the old ID was recently migrated
         // Or simpler: Re-run the migration logic specifically for the student table
@@ -953,7 +990,7 @@ const recoverOrphanedStudents = async () => {
             // We'll re-link any student whose ID doesn't exist but who should be here
             await client.$executeRawUnsafe(`UPDATE \`${studentTable}\` SET academicYearId = ? WHERE academicYearId NOT IN (SELECT id FROM AcademicYear) AND academicYearId IS NOT NULL`, standardId);
         }
-        
+
         console.log('[STUDENT-RECOVERY] Relationship scan completed.');
     } catch (error) {
         console.error(`[STUDENT-RECOVERY ERROR] ${error.message}`);
@@ -965,19 +1002,19 @@ const emergencyRestoreYears = async () => {
         const client = getPrisma();
         const targets = ['2026-2027', '2025-2026'];
         console.log(`[EMERGENCY-RECOVERY] Checking for hidden data: ${targets.join(', ')}`);
-        
+
         for (const name of targets) {
             const year = await client.academicYear.findFirst({
                 where: { name: name }
             });
-            
+
             if (year) {
                 console.log(`[EMERGENCY-RECOVERY] Restoring ${name} (ID: ${year.id})...`);
                 await client.academicYear.update({
                     where: { id: year.id },
                     data: { isDeleted: false, isActive: true }
                 });
-                
+
                 // Ensure related students are also visible if they were linked
                 await client.student.updateMany({
                     where: { academicYearId: year.id, isDeleted: true },
@@ -1003,7 +1040,7 @@ const ensureRabPlansColumns = async () => {
                 await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
                 targetTable = t;
                 break;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         if (!targetTable) {
@@ -1015,12 +1052,12 @@ const ensureRabPlansColumns = async () => {
         const hasCol = (name) => columns.some(c => (c.Field || c.field) === name);
 
         const toAdd = [
-            { name: 'notified',        sql: `ADD COLUMN notified BOOLEAN NOT NULL DEFAULT FALSE` },
-            { name: 'updatedBy',       sql: `ADD COLUMN updatedBy VARCHAR(255)` },
+            { name: 'notified', sql: `ADD COLUMN notified BOOLEAN NOT NULL DEFAULT FALSE` },
+            { name: 'updatedBy', sql: `ADD COLUMN updatedBy VARCHAR(255)` },
             { name: 'rejectionReason', sql: `ADD COLUMN rejectionReason TEXT` },
-            { name: 'fieldId',         sql: `ADD COLUMN fieldId VARCHAR(255)` },
-            { name: 'unitId',          sql: `ADD COLUMN unitId VARCHAR(255)` },
-            { name: 'status',          sql: `ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'` },
+            { name: 'fieldId', sql: `ADD COLUMN fieldId VARCHAR(255)` },
+            { name: 'unitId', sql: `ADD COLUMN unitId VARCHAR(255)` },
+            { name: 'status', sql: `ADD COLUMN status VARCHAR(50) NOT NULL DEFAULT 'DRAFT'` },
         ];
 
         for (const col of toAdd) {
@@ -1047,7 +1084,7 @@ const ensureBosAllocationColumns = async () => {
                 await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
                 targetTable = t;
                 break;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         if (!targetTable) return;
@@ -1078,24 +1115,25 @@ const server = app.listen(PORT, '0.0.0.0', () => {
     const startBackgroundTasks = async () => {
         try {
             // 1. CRITICAL: Fixed broken startup chain by prioritizing healing
-            await healAcademicYearIds(); 
+            await healAcademicYearIds();
             await emergencyRestoreYears(); // Emergency Recovery for 2026-2027
             await recoverOrphanedStudents(); // Re-link students to corrected IDs
-            
+
             // 2. Regular Seeding & Setup
             await ensureSuperAdmin();
             await ensureFundSources();
             await ensureAcademicYears();
             await ensureDistributionColumns();
             await ensureRabPlansColumns();
+            await ensureBudgetOperationalColumns();
             await ensureBosAllocationColumns();
-            
+
             console.log('[Background Tasks] All startup checks completed successfully.');
         } catch (err) {
             console.error(`[Background Tasks Error] ${err.message}`);
         }
     };
-    
+
     startBackgroundTasks();
 });
 

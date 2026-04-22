@@ -10,14 +10,14 @@ export default function MonthlyReport() {
     // Mock approved requests waiting for report
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
 
-    const { budgetRequests = [], realizations = [], expenseItems = [], units = [], fields = [], globalAcademicYearId } = state;
+    const { budgetRequests = [], budgetReports = [], expenseItems = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
     const isSuperAdmin = state.currentUser?.role === 'superadmin';
     const myUnitId = state.currentUser?.unitId;
     const myFieldId = state.currentUser?.fieldId;
 
     // Filter requests that are approved but NOT YET reported
-    const reportedRequestIds = new Set(realizations.map(r => r.requestId));
+    const reportedRequestIds = new Set(budgetReports.map(r => r.budgetRequestId));
 
     const filteredRequests = useMemo(() => {
         return (budgetRequests || []).filter(req => {
@@ -34,8 +34,8 @@ export default function MonthlyReport() {
         req.status === 'APPROVED' && !reportedRequestIds.has(req.id)
     );
 
-    const filteredRealizations = useMemo(() => {
-        return (realizations || []).filter(rel => {
+    const filteredReports = React.useMemo(() => {
+        return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
             if (isSuperAdmin) return true;
@@ -43,7 +43,7 @@ export default function MonthlyReport() {
             if (myFieldId) return rel.fieldId === myFieldId;
             return false;
         });
-    }, [realizations, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -80,7 +80,7 @@ export default function MonthlyReport() {
         };
 
         dispatch({
-            type: 'ADD_REALIZATION',
+            type: 'ADD_BUDGET_REPORT',
             payload: reportData
         });
 
@@ -157,7 +157,7 @@ export default function MonthlyReport() {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Riwayat Laporan Realisasi Penggunaan Dana</span>
                             </div>
 
-                            {filteredRealizations.length > 0 ? filteredRealizations.map(report => (
+                            {filteredReports.length > 0 ? filteredReports.map(report => (
                                 <div key={report.id} className="card p-6 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-emerald-200 transition-all border-l-8 border-l-emerald-500">
                                     <div>
                                         <h4 className="font-black text-slate-900 text-lg mb-1 italic uppercase tracking-tight">{report.category || 'Laporan Pengeluaran'}</h4>
@@ -209,7 +209,7 @@ export default function MonthlyReport() {
                             </div>
                             <div className="flex justify-between items-center">
                                 <span className="text-xs font-bold text-slate-400">Total Lapor</span>
-                                <span className="text-sm font-black text-emerald-600">Rp {filteredRealizations.reduce((s, r) => s + parseFloat(r.amount || 0), 0).toLocaleString('id-ID')}</span>
+                                <span className="text-sm font-black text-emerald-600">Rp {filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0).toLocaleString('id-ID')}</span>
                             </div>
                         </div>
                     </div>

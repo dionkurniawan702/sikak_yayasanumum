@@ -7,7 +7,7 @@ const getPrisma = (req) => req.app.get('prisma');
 // --- FIELD & UNIT ---
 router.get('/fields', async (req, res) => {
     try {
-        const fields = await getPrisma(req).field.findMany({ 
+        const fields = await getPrisma(req).field.findMany({
             where: { isDeleted: false },
             include: { units: true }
         });
@@ -21,7 +21,7 @@ router.post('/fields', async (req, res) => {
     try {
         const data = { ...req.body };
         delete data.fieldId;
-        
+
         // Check for existing name to provide better error
         const existing = await getPrisma(req).field.findFirst({
             where: { name: data.name, isDeleted: false }
@@ -60,12 +60,12 @@ router.put('/fields/:id', async (req, res) => {
 router.delete('/fields/:id', async (req, res) => {
     try {
         const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
-        
+
         if (isPermanent) {
             const units = await getPrisma(req).unit.count({ where: { fieldId: req.params.id } });
             if (units > 0) {
-                return res.status(400).json({ 
-                    error: `Tidak bisa menghapus: Masih ada ${units} Unit yang terhubung ke Bidang ini. Hapus Unitnya terlebih dahulu.` 
+                return res.status(400).json({
+                    error: `Tidak bisa menghapus: Masih ada ${units} Unit yang terhubung ke Bidang ini. Hapus Unitnya terlebih dahulu.`
                 });
             }
             await getPrisma(req).field.delete({ where: { id: req.params.id } });
@@ -85,7 +85,7 @@ router.delete('/fields/:id', async (req, res) => {
 
 router.get('/units', async (req, res) => {
     try {
-        const units = await getPrisma(req).unit.findMany({ 
+        const units = await getPrisma(req).unit.findMany({
             where: { isDeleted: false },
             include: { field: true }
         });
@@ -130,9 +130,9 @@ router.put('/units/:id', async (req, res) => {
 router.delete('/units/:id', async (req, res) => {
     console.log(`[Backend Trace] DELETE /units/${req.params.id} request received`);
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true; 
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         console.log(`[Backend Trace] Deletion Mode: ${isPermanent ? 'Permanent' : 'Soft-delete'}`);
-        
+
         if (isPermanent) {
             await getPrisma(req).unit.delete({ where: { id: req.params.id } });
         } else {
@@ -154,15 +154,15 @@ router.delete('/units/:id', async (req, res) => {
 // --- STUDENT & INCOME ---
 router.get('/students', async (req, res) => {
     try {
-        const students = await getPrisma(req).student.findMany({ 
+        const students = await getPrisma(req).student.findMany({
             where: { isDeleted: false },
-            include: { 
-                unit: true, 
-                class: true, 
+            include: {
+                unit: true,
+                class: true,
                 academicYear: true,
                 status: true,
                 parentStatus: true,
-                incomeDetails: true 
+                incomeDetails: true
             }
         });
         res.json({ data: students });
@@ -173,12 +173,12 @@ router.get('/students', async (req, res) => {
 
 router.post('/students', async (req, res) => {
     try {
-        const { 
-            id, name, nis, unitId, 
-            classId, academicYearId, statusId, parentStatusId, 
-            incomeDetails 
+        const {
+            id, name, nis, unitId,
+            classId, academicYearId, statusId, parentStatusId,
+            incomeDetails
         } = req.body;
-        
+
         const student = await getPrisma(req).student.create({
             data: {
                 id, name, nis, unitId,
@@ -202,18 +202,18 @@ router.post('/students', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
     try {
-        const { 
-            name, nis, unitId, 
-            classId, academicYearId, statusId, parentStatusId, 
-            incomeDetails 
+        const {
+            name, nis, unitId,
+            classId, academicYearId, statusId, parentStatusId,
+            incomeDetails
         } = req.body;
-        
+
         // Transaction to update student and details
         const student = await getPrisma(req).$transaction(async (tx) => {
             if (incomeDetails) {
                 await tx.studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
             }
-            
+
             return tx.student.upsert({
                 where: { id: req.params.id },
                 update: {
@@ -245,7 +245,7 @@ router.put('/students/:id', async (req, res) => {
                 }
             });
         });
-        
+
         res.json({ data: student });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -318,7 +318,7 @@ router.delete('/income-items/:id', async (req, res) => {
 
 router.get('/expense-items', async (req, res) => {
     try {
-        const items = await getPrisma(req).expenseItem.findMany({ 
+        const items = await getPrisma(req).expenseItem.findMany({
             where: { isDeleted: false },
             include: { unit: true, field: true }
         });
@@ -380,7 +380,7 @@ router.post('/distribution-settings', async (req, res) => {
     try {
         const { unitId, incomeItemId, settings, batch = false } = req.body;
         console.log(`[Sync] Updating distributions for Unit ${unitId}. Batch: ${batch}. Rules: ${settings?.length}`);
-        
+
         await getPrisma(req).$transaction([
             getPrisma(req).distributionSetting.deleteMany({
                 where: batch ? { unitId } : { unitId, incomeItemId }
@@ -397,7 +397,7 @@ router.post('/distribution-settings', async (req, res) => {
                 }))
             })
         ]);
-        
+
         res.json({ message: 'Success' });
     } catch (error) {
         console.error('[Sync Error] Distribution update failed:', error.message);
@@ -443,19 +443,19 @@ router.post('/budget-reports', async (req, res) => {
     try {
         const { budgetRequestId, amount, description, date, expenseItemId } = req.body;
         const prisma = getPrisma(req);
-        
+
         const result = await prisma.$transaction(async (tx) => {
             // 1. Create Report
             const report = await tx.budgetReport.create({
                 data: { budgetRequestId, amount, description, date, expenseItemId }
             });
-            
+
             // 2. Fetch Expense Item to get Account Mapping
             const expenseItem = await tx.expenseItem.findUnique({
                 where: { id: expenseItemId },
                 include: { unit: true }
             });
-            
+
             // 3. Create Journal Entry
             if (expenseItem && expenseItem.accountId) {
                 const journal = await tx.journal.create({
@@ -477,20 +477,20 @@ router.post('/budget-reports', async (req, res) => {
                                 credit: parseFloat(amount)
                             }
                         ]),
-                        reference: `REPORT-${report.id.substring(0,8)}`
+                        reference: `REPORT-${report.id.substring(0, 8)}`
                     }
                 });
-                
+
                 // Update report with journal info
                 await tx.budgetReport.update({
                     where: { id: report.id },
                     data: { journalId: journal.id }
                 });
             }
-            
+
             return report;
         });
-        
+
         res.json({ data: result });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -502,21 +502,21 @@ router.get('/fund-availability/:unitId', async (req, res) => {
     try {
         const { unitId } = req.params;
         const prisma = getPrisma(req);
-        
+
         // 1. Get all distribution settings for this unit
         const settings = await prisma.distributionSetting.findMany({
             where: { unitId, isDeleted: false },
             include: { expenseItem: true, incomeItem: true }
         });
-        
+
         // 2. Get all payments for students in this unit
         const payments = await prisma.studentPayment.findMany({
-            where: { 
+            where: {
                 student: { unitId },
-                isDeleted: false 
+                isDeleted: false
             }
         });
-        
+
         // 3. Get all approved budget requests for these expense items
         const expenseItemIds = [...new Set(settings.map(s => s.expenseItemId))];
         const approvedRequests = await prisma.budgetRequest.findMany({
@@ -526,12 +526,12 @@ router.get('/fund-availability/:unitId', async (req, res) => {
                 isDeleted: false
             }
         });
-        
+
         // 4. Calculate
         const results = expenseItemIds.map(eid => {
             const itemSettings = settings.filter(s => s.expenseItemId === eid);
             const expenseItem = itemSettings[0]?.expenseItem;
-            
+
             // Total Allocated from Income
             let totalAllocated = 0;
             itemSettings.forEach(s => {
@@ -539,12 +539,12 @@ router.get('/fund-availability/:unitId', async (req, res) => {
                 const sumPayments = itemPayments.reduce((sum, p) => sum + parseFloat(p.amount), 0);
                 totalAllocated += (sumPayments * parseFloat(s.percentage) / 100);
             });
-            
+
             // Total Used (Approved Requests)
             const totalUsed = approvedRequests
                 .filter(r => r.expenseItemId === eid)
                 .reduce((sum, r) => sum + parseFloat(r.amount), 0);
-                
+
             return {
                 expenseItemId: eid,
                 expenseItemName: expenseItem?.name,
@@ -553,7 +553,7 @@ router.get('/fund-availability/:unitId', async (req, res) => {
                 available: totalAllocated - totalUsed
             };
         });
-        
+
         res.json({ data: results });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -615,7 +615,7 @@ const createGenericRoutes = (entityName, modelName) => {
                 try {
                     const columns = await prisma.$queryRawUnsafe(`DESCRIBE \`${tableName}\``);
                     const hasIsDeleted = columns.some(c => (c.Field === 'isDeleted' || c.field === 'isDeleted'));
-                    
+
                     if (!hasIsDeleted) {
                         console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
                         await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
@@ -639,8 +639,8 @@ const createGenericRoutes = (entityName, modelName) => {
             res.json({ data });
         } catch (error) {
             console.error(`[Generic API Error] GET /${entityName}:`, error);
-            res.status(500).json({ 
-                error: `Gagal mengambil data ${entityName}`, 
+            res.status(500).json({
+                error: `Gagal mengambil data ${entityName}`,
                 message: error.message,
                 code: error.code,
                 stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -663,7 +663,7 @@ const createGenericRoutes = (entityName, modelName) => {
         try {
             const id = req.params.id;
             const data = cleanDataForModel(modelName, { ...req.body, id });
-            
+
             // Ensure isDeleted is correctly handled
             if (req.body.isDeleted !== undefined) data.isDeleted = req.body.isDeleted;
 
@@ -693,14 +693,14 @@ const createGenericRoutes = (entityName, modelName) => {
             res.json({ message: 'Success' });
         } catch (error) {
             console.error(`[Generic API Error] DELETE /${entityName}/${req.params.id}:`, error);
-            
+
             if (error.code === 'P2003') {
-                return res.status(400).json({ 
-                    error: "Gagal menghapus permanen", 
-                    message: `Data ${entityName} ini masih digunakan oleh data lain (seperti Siswa, Transaksi, atau Relasi lainnya). Hapus atau pindahkan data terkait terlebih dahulu.` 
+                return res.status(400).json({
+                    error: "Gagal menghapus permanen",
+                    message: `Data ${entityName} ini masih digunakan oleh data lain (seperti Siswa, Transaksi, atau Relasi lainnya). Hapus atau pindahkan data terkait terlebih dahulu.`
                 });
             }
-            
+
             if (error.code === 'P2025') {
                 return res.status(404).json({
                     error: "Data tidak ditemukan",
@@ -708,8 +708,8 @@ const createGenericRoutes = (entityName, modelName) => {
                 });
             }
 
-            res.status(500).json({ 
-                error: `Gagal menghapus ${entityName}`, 
+            res.status(500).json({
+                error: `Gagal menghapus ${entityName}`,
                 message: error.message,
                 code: error.code,
                 stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
@@ -723,6 +723,8 @@ createGenericRoutes('class-groups', 'classGroup');
 createGenericRoutes('positions', 'position');
 createGenericRoutes('student-statuses', 'studentStatus');
 createGenericRoutes('parent-statuses', 'parentStatus');
+createGenericRoutes('budget-requests', 'budgetRequest');
+createGenericRoutes('budget-reports', 'budgetReport');
 // --- RAB PLANS (Custom upsert - DO NOT use createGenericRoutes which only uses .create()) ---
 router.get('/rab-plans', async (req, res) => {
     try {
@@ -745,7 +747,7 @@ router.post('/rab-plans', async (req, res) => {
         console.log('[DEBUG] Year:', payload.academicYearId);
         console.log('[DEBUG] Has Income:', !!payload.income, 'Keys:', payload.income ? Object.keys(payload.income).length : 0);
         console.log('[DEBUG] Has Expense:', !!payload.expense, 'Keys:', payload.expense ? Object.keys(payload.expense).length : 0);
-        
+
         // Detailed check for components in one expense item if exists
         if (payload.expense) {
             const firstKey = Object.keys(payload.expense)[0];
@@ -767,16 +769,16 @@ router.post('/rab-plans', async (req, res) => {
 
         // Sanitize - note: updatedAt is omitted here because Prisma handles it via @updatedAt
         const cleanPayload = {
-            id:              payload.id,
-            academicYearId:  payload.academicYearId, // required, NOT null
-            unitId:          payload.unitId  || null,
-            fieldId:         payload.fieldId || null,
-            income:          typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
-            expense:         typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
-            status:          payload.status || 'DRAFT',
+            id: payload.id,
+            academicYearId: payload.academicYearId, // required, NOT null
+            unitId: payload.unitId || null,
+            fieldId: payload.fieldId || null,
+            income: typeof payload.income === 'string' ? JSON.parse(payload.income) : (payload.income || {}),
+            expense: typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
+            status: payload.status || 'DRAFT',
             rejectionReason: payload.rejectionReason || null,
-            notified:        payload.notified ?? false,
-            updatedBy:       payload.updatedBy || null,
+            notified: payload.notified ?? false,
+            updatedBy: payload.updatedBy || null,
         };
 
         console.log('[RAB Plan POST] Clean payload to upsert:', JSON.stringify({
@@ -787,7 +789,7 @@ router.post('/rab-plans', async (req, res) => {
         }));
 
         const item = await prisma.rabPlan.upsert({
-            where:  { id: cleanPayload.id },
+            where: { id: cleanPayload.id },
             update: { ...cleanPayload, id: undefined },
             create: cleanPayload,
         });
@@ -812,19 +814,19 @@ router.put('/rab-plans/:id', async (req, res) => {
 
         const cleanPayload = {
             id,
-            academicYearId:  payload.academicYearId,
-            unitId:          payload.unitId  || null,
-            fieldId:         payload.fieldId || null,
-            income:          typeof payload.income  === 'string' ? JSON.parse(payload.income)  : (payload.income  || {}),
-            expense:         typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
-            status:          payload.status || 'DRAFT',
+            academicYearId: payload.academicYearId,
+            unitId: payload.unitId || null,
+            fieldId: payload.fieldId || null,
+            income: typeof payload.income === 'string' ? JSON.parse(payload.income) : (payload.income || {}),
+            expense: typeof payload.expense === 'string' ? JSON.parse(payload.expense) : (payload.expense || {}),
+            status: payload.status || 'DRAFT',
             rejectionReason: payload.rejectionReason || null,
-            notified:        payload.notified ?? false,
-            updatedBy:       payload.updatedBy || null,
+            notified: payload.notified ?? false,
+            updatedBy: payload.updatedBy || null,
         };
 
         const item = await prisma.rabPlan.upsert({
-            where:  { id },
+            where: { id },
             update: { ...cleanPayload, id: undefined },
             create: cleanPayload,
         });
@@ -840,7 +842,7 @@ router.put('/rab-plans/:id', async (req, res) => {
 // Classes (with Unit include)
 router.get('/classes', async (req, res) => {
     try {
-        const data = await getPrisma(req).class.findMany({ 
+        const data = await getPrisma(req).class.findMany({
             where: { isDeleted: false },
             include: { unit: true }
         });
@@ -895,7 +897,7 @@ router.delete('/classes/:id', async (req, res) => {
 // --- BOS STAGES ---
 router.get('/bos-stages', async (req, res) => {
     try {
-        const data = await getPrisma(req).bosStage.findMany({ 
+        const data = await getPrisma(req).bosStage.findMany({
             where: { isDeleted: false }
         });
         res.json({ data });
@@ -950,9 +952,9 @@ router.delete('/bos-stages/:id', async (req, res) => {
         console.error(`[API Error] DELETE /bos-stages/${req.params.id}:`, error);
 
         if (error.code === 'P2003') {
-            return res.status(400).json({ 
-                error: "Gagal menghapus permanen", 
-                message: "Tahap BOS ini masih memiliki data anggaran yang terhubung secara aktif. Hapus data anggaran tersebut terlebih dahulu atau kosongkan tempat sampah secara total." 
+            return res.status(400).json({
+                error: "Gagal menghapus permanen",
+                message: "Tahap BOS ini masih memiliki data anggaran yang terhubung secara aktif. Hapus data anggaran tersebut terlebih dahulu atau kosongkan tempat sampah secara total."
             });
         }
 
@@ -963,7 +965,7 @@ router.delete('/bos-stages/:id', async (req, res) => {
 // --- BOS POS ---
 router.get('/bos-pos', async (req, res) => {
     try {
-        const data = await getPrisma(req).bosPos.findMany({ 
+        const data = await getPrisma(req).bosPos.findMany({
             where: { isDeleted: false }
         });
         res.json({ data });
@@ -1018,9 +1020,9 @@ router.delete('/bos-pos/:id', async (req, res) => {
         console.error(`[API Error] DELETE /bos-pos/${req.params.id}:`, error);
 
         if (error.code === 'P2003') {
-            return res.status(400).json({ 
-                error: "Gagal menghapus permanen", 
-                message: "Pos BOS ini masih memiliki data anggaran yang terhubung. Hapus data anggaran tersebut terlebih dahulu." 
+            return res.status(400).json({
+                error: "Gagal menghapus permanen",
+                message: "Pos BOS ini masih memiliki data anggaran yang terhubung. Hapus data anggaran tersebut terlebih dahulu."
             });
         }
 

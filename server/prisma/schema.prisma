@@ -348,12 +348,17 @@ model BudgetAllocation {
 
 model BudgetRequest {
   id            String      @id @default(uuid())
-  expenseItemId String
-  expenseItem   ExpenseItem @relation(fields: [expenseItemId], references: [id])
-  amount        Decimal     @db.Decimal(15, 2)
+  expenseItemId String?
+  expenseItem   ExpenseItem? @relation(fields: [expenseItemId], references: [id])
+  unitId        String?
+  fieldId       String?
+  academicYearId String?
+  amount        Decimal?     @db.Decimal(15, 2)
+  totalAmount   Decimal?     @db.Decimal(15, 2)
+  items         Json?
   date          DateTime    @default(now())
-  month         Int
-  year          Int
+  month         String?
+  year          Int?
   description   String?
   status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
   isDeleted     Boolean     @default(false)
@@ -365,11 +370,15 @@ model BudgetRequest {
 
 model BudgetReport {
   id              String        @id @default(uuid())
-  budgetRequestId String
-  budgetRequest   BudgetRequest @relation(fields: [budgetRequestId], references: [id])
-  expenseItemId   String
-  expenseItem     ExpenseItem   @relation(fields: [expenseItemId], references: [id])
-  amount          Decimal       @db.Decimal(15, 2)
+  budgetRequestId String?
+  budgetRequest   BudgetRequest? @relation(fields: [budgetRequestId], references: [id])
+  expenseItemId   String?
+  expenseItem     ExpenseItem?   @relation(fields: [expenseItemId], references: [id])
+  unitId          String?
+  fieldId         String?
+  academicYearId  String?
+  category        String?
+  amount          Decimal?       @db.Decimal(15, 2)
   date            DateTime      @default(now())
   description     String?
   journalId       String?
