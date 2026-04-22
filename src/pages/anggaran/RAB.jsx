@@ -1430,11 +1430,9 @@ export default function RAB() {
         );
     };
 
-    const renderBudgetTable = () => {
-        const isIncome = activeTab === 'INCOME';
-        const items = isIncome ? filteredIncomeItems : filteredExpenseItems;
-        const type = isIncome ? 'income' : 'expense';
-        const labelText = isIncome ? 'Item pendapatan' : 'Item pengeluaran';
+    const renderBudgetTable = (type, labelText) => {
+        const isIncome = type === 'income';
+        const items = isIncome ? incomeItems : expenseItems;
 
         return (
             <div className="space-y-6">
@@ -1502,7 +1500,7 @@ export default function RAB() {
                                 <th className="px-6 py-1 text-center">Semester</th>
                                 <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
                                 <th className="px-6 py-1 text-right">Draft RAB</th>
-                                <th className="px-6 py-2 text-right">Aksi</th>
+                                <th className="px-6 py-1 text-right">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -1516,7 +1514,7 @@ export default function RAB() {
                                 }
                                 if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
                                 return true;
-                            }).flatMap((itemMaster, index) => {
+                            }).flatMap((itemMaster, mIdx) => {
                                 let plans = activePlan[type][itemMaster.id] || [];
 
                                 // 1. Program Filtering
@@ -1531,145 +1529,63 @@ export default function RAB() {
                                         : (rapData.itemAllocations[itemMaster.id] || 0));
 
                                 if (plans.length > 0) {
-                                    // Aggregate ALL plans into exactly one row display
-                                    const aggregatedPlan = {
-                                        id: plans[0].id,
-                                        total: plans.reduce((s, p) => {
-                                            if (filterMonth) return s + (parseFloat(p.months?.[filterMonth]?.jumlah) || 0);
-                                            return s + (p.total || 0);
-                                        }, 0),
-                                        bosAmount: plans.reduce((s, p) => {
-                                            if (filterMonth) {
-                                                // Approximate monthly BOS amount by looking at the components in that month
-                                                // or just use total if not granular.
-                                                // Since BOS is per-component, we should ideally check component useBos.
-                                                const monthTotal = parseFloat(p.months?.[filterMonth]?.jumlah) || 0;
-                                                if (p.useBos) return s + monthTotal;
-                                                return s;
-                                            }
-                                            return s + (p.bosAmount || 0);
-                                        }, 0),
-                                        description: Array.from(new Set(plans.flatMap(p => (p.description || '').split(', ')).filter(Boolean))).join(', '),
-                                        semester: plans[0].semester,
-                                        isAggregated: plans.length > 1,
-                                        isEmpty: false
-                                    };
+                                    return plans.map((plan, pIdx) => {
+                                        const rowData = {
+                                            id: plan.id,
+                                            name: plan.description || itemMaster.name,
+                                            status: plan.status,
+                                            rap: plan.limit || allocated,
+                                            rab: plan.total || 0,
+                                            sisa: (plan.limit || allocated) - (plan.total || 0),
+                                            breakdown: [{
+                                                id: itemMaster.id,
+                                                name: itemMaster.name,
+                                                rab: plan.total || 0,
+                                                rap: plan.limit || allocated,
+                                                components: plan.components || []
+                                            }]
+                                        };
 
-                                    // 2. Month Filtering (Hide if 0 in that month)
-                                    if (filterMonth && aggregatedPlan.total <= 0) return [];
-
-                                    return [{ itemMaster, plan: aggregatedPlan, allocated, isFirst: true }];
-                                }
-
-                                // If filtering by month/program, don't show empty items
-                                if (filterMonth || filterProgram) return [];
-
-                                return [{
-                                    itemMaster,
-                                    plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
-                                    allocated,
-                                    isFirst: true
-                                }];
-                            }).map((rowData, index) => {
-                                const { itemMaster, plan, allocated, isFirst } = rowData;
-                                const draftValue = plan.total || 0;
-                                const isOver = draftValue > (allocated + 100);
-
-                                return (
-                                    <tr key={plan.id || index} className="group bg-white hover:bg-slate-50 transition-all duration-300">
-                                        <td className="px-6 py-4 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
-                                            {(index + 1).toString().padStart(2, '0')}
-                                        </td>
-                                        <td className={`px-6 py-4 border-y border-slate-100 ${!isFirst ? 'opacity-40' : ''}`}>
-                                            <div className="flex items-center gap-4">
-                                                <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300'}`}>
-                                                    {isIncome ? <DollarSign size={18} /> : <TrendingUp size={18} />}
-                                                </div>
-                                                <div>
-                                                    <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
-                                                    <div className="flex items-center gap-2 mt-1">
-                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
-                                                            {itemMaster.sourceOfFunds || (isIncome ? 'Penerimaan' : 'Yayasan')}
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 border-y border-slate-100 text-center">
-                                            <span className={`px-3 py-1 rounded-full font-black text-[9px] ${plan.isEmpty ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'}`}>
-                                                SMT {plan.semester || '1'}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 border-y border-slate-100 text-right">
-                                            {isFirst && <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>}
-                                        </td>
-                                        <td className="px-6 py-4 border-y border-slate-100 text-right">
-                                            <div className="flex flex-col items-end gap-1">
-                                                <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300')}`}>
-                                                    {formatRupiah(draftValue)}
-                                                </p>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                <button
-                                                    onClick={() => {
-                                                        const existingPlans = activePlan[type][itemMaster.id] || [];
-                                                        if (existingPlans.length > 0) {
-                                                            // Instead of creating new, open the existing one for editing
-                                                            setEditingItem({
-                                                                ...itemMaster,
-                                                                id: existingPlans[0].id,
-                                                                itemId: itemMaster.id,
-                                                                planId: existingPlans[0].id
-                                                            });
-                                                        } else {
-                                                            const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
-                                                            setEditingItem({
-                                                                id: newPlanId,
-                                                                itemId: itemMaster.id,
-                                                                name: itemMaster.name,
-                                                                isNewPlan: true,
-                                                                semester: '1'
-                                                            });
-                                                        }
-                                                    }}
-                                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-slate-900 transition-all active:scale-95"
-                                                    title="TAMBAH RENCANA"
-                                                >
-                                                    <Plus size={18} strokeWidth={3} />
-                                                </button>
-
-                                                {!plan.isEmpty && (
-                                                    <>
+                                        return (
+                                            <BudgetRow
+                                                key={plan.id}
+                                                data={rowData}
+                                                isExpanded={!!expandedReviewPlans[plan.id]}
+                                                onToggle={() => toggleReviewPlan(plan.id)}
+                                                formatCurrency={formatRupiah}
+                                                expandedDetailItems={expandedDetailItems}
+                                                onToggleDetailItem={toggleDetailItem}
+                                                isBos={plan.useBos}
+                                                actions={
+                                                    <div className="flex items-center gap-2">
                                                         <button
-                                                            onClick={() => setEditingItem({
-                                                                ...itemMaster,
-                                                                id: plan.id,
-                                                                itemId: itemMaster.id,
-                                                                planId: plan.id
-                                                            })}
-                                                            className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingItem({
+                                                                    ...itemMaster,
+                                                                    isNewPlan: false,
+                                                                    planId: plan.id
+                                                                });
+                                                            }}
+                                                            className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                                                             title="EDIT RENCANA"
                                                         >
                                                             <Pencil size={18} />
                                                         </button>
-
                                                         {!isLocked && (
                                                             <button
-                                                                onClick={async () => {
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
                                                                     if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                        const updatedPlans = (currentPlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
+                                                                        const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
                                                                         const nextPlan = {
-                                                                            ...currentPlan,
+                                                                            ...activePlan,
                                                                             [type]: {
-                                                                                ...currentPlan[type],
+                                                                                ...activePlan[type],
                                                                                 [itemMaster.id]: updatedPlans
                                                                             }
                                                                         };
-
                                                                         setCurrentPlan(nextPlan);
-
                                                                         const planId = `${selectedYearId}-${selectedUnitId}`;
                                                                         const dbPlan = {
                                                                             id: planId,
@@ -1686,48 +1602,84 @@ export default function RAB() {
                                                                         await persistPlanToServer(dbPlan);
                                                                     }
                                                                 }}
-                                                                className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                                                                className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                                                                 title="HAPUS RENCANA"
                                                             >
                                                                 <Trash2 size={18} />
                                                             </button>
                                                         )}
-                                                    </>
-                                                )}
+                                                    </div>
+                                                }
+                                            />
+                                        );
+                                    });
+                                }
+
+                                if (filterMonth || filterProgram) return [];
+
+                                return (
+                                    <tr key={`TEMP-${itemMaster.id}`} className="group bg-white hover:bg-slate-50 transition-all duration-300">
+                                        <td className="px-6 py-4 border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">--</td>
+                                        <td className="px-6 py-4 border-y border-slate-100">
+                                            <div className="flex items-center gap-4 opacity-40">
+                                                <div className="p-4 rounded-2xl bg-slate-50 text-slate-300">
+                                                    {isIncome ? <DollarSign size={18} /> : <TrendingUp size={18} />}
+                                                </div>
+                                                <span className="font-black text-slate-800 text-sm">{itemMaster.name}</span>
                                             </div>
+                                        </td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-center text-slate-300 font-black text-[9px]">BELUM ADA INPUT</td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-right font-black text-slate-400 text-xs italic">{formatRupiah(allocated)}</td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-right font-black text-slate-300 text-sm italic">{formatRupiah(0)}</td>
+                                        <td className="px-6 py-4 border-y border-r border-slate-100 text-right">
+                                            <button
+                                                onClick={() => {
+                                                    const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                    setEditingItem({
+                                                        id: newPlanId,
+                                                        itemId: itemMaster.id,
+                                                        name: itemMaster.name,
+                                                        isNewPlan: true,
+                                                        semester: '1'
+                                                    });
+                                                }}
+                                                className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
+                                            >
+                                                <Plus size={18} strokeWidth={3} />
+                                            </button>
                                         </td>
                                     </tr>
                                 );
                             })}
                         </tbody>
                     </table>
+                </div>
 
-                    {/* Sticky Table Footer / Save Bar */}
-                    <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                            <Save size={160} />
-                        </div>
-                        <div className="relative z-10 flex items-center gap-10">
-                            <div className="flex flex-col">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
-                                <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-                                    {formatRupiah(balance)}
-                                </h4>
-                            </div>
-                        </div>
-                        {!isLocked && !isConsolidation && (
-                            <div className="relative z-10">
-                                <button
-                                    onClick={handleSave}
-                                    disabled={isSaving}
-                                    className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
-                                >
-                                    <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
-                                    {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
-                                </button>
-                            </div>
-                        )}
+                {/* Sticky Table Footer / Save Bar */}
+                <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                        <Save size={160} />
                     </div>
+                    <div className="relative z-10 flex items-center gap-10">
+                        <div className="flex flex-col">
+                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
+                            <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                                {formatRupiah(balance)}
+                            </h4>
+                        </div>
+                    </div>
+                    {!isLocked && !isConsolidation && (
+                        <div className="relative z-10">
+                            <button
+                                onClick={handleSave}
+                                disabled={isSaving}
+                                className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
+                            >
+                                <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
+                                {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         );
