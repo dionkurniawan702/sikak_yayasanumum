@@ -968,6 +968,18 @@ export default function RAB() {
             setTimeout(() => setMessage(null), 5000);
         }
     };
+    const persistPlanToServer = async (planData) => {
+        try {
+            dispatch({ type: 'SET_RAB_PLAN', payload: planData });
+            await api.pushAction({ type: 'SET_RAB_PLAN', payload: planData }, state);
+            return true;
+        } catch (error) {
+            console.error('Failed to persist RAB plan:', error);
+            setMessage({ type: 'error', text: 'Koneksi bermasalah: Data tersimpan di draf lokal, namun gagal sinkron ke server.' });
+            return false;
+        }
+    };
+
 
 
     const handleSave = async () => {
@@ -1040,8 +1052,7 @@ export default function RAB() {
         }
 
         try {
-            dispatch({ type: 'SET_RAB_PLAN', payload: newPlan });
-            await api.pushAction({ type: 'SET_RAB_PLAN', payload: newPlan }, state);
+            await persistPlanToServer(newPlan);
             setMessage({ type: 'success', text: 'Rencana Anggaran (RAB) berhasil disimpan secara permanen.' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal menyimpan RAB: ' + error.message });
@@ -1474,15 +1485,33 @@ export default function RAB() {
 
                                                 {!isLocked && (
                                                     <button 
-                                                        onClick={() => {
+                                                        onClick={async () => {
                                                             if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                setCurrentPlan(prev => ({
-                                                                    ...prev,
+                                                                const updatedPlans = (currentPlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
+                                                                const nextPlan = {
+                                                                    ...currentPlan,
                                                                     [type]: {
-                                                                        ...prev[type],
-                                                                        [itemMaster.id]: (prev[type][itemMaster.id] || []).filter(p => p.id !== plan.id)
+                                                                        ...currentPlan[type],
+                                                                        [itemMaster.id]: updatedPlans
                                                                     }
-                                                                }));
+                                                                };
+                                                                
+                                                                setCurrentPlan(nextPlan);
+
+                                                                const planId = `${selectedYearId}-${selectedUnitId}`;
+                                                                const dbPlan = {
+                                                                    id: planId,
+                                                                    academicYearId: selectedYearId,
+                                                                    unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                                                                    fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                                    income: nextPlan.income,
+                                                                    expense: nextPlan.expense,
+                                                                    status: nextPlan.status,
+                                                                    rejectionReason: nextPlan.rejectionReason,
+                                                                    updatedAt: new Date().toISOString(),
+                                                                    updatedBy: currentUser?.username
+                                                                };
+                                                                await persistPlanToServer(dbPlan);
                                                             }
                                                         }}
                                                         className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
@@ -2097,17 +2126,36 @@ export default function RAB() {
                                             return (
                                                 <button 
                                                     disabled={!canSave}
-                                                    onClick={() => { 
-                                                        setCurrentPlan(prev => {
-                                                            const mId = editingItem.itemId || editingItem.id;
-                                                            const existingPlans = prev.expense[mId] || [];
-                                                            const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
-                                                            const updatedPlans = alreadyExists 
-                                                                ? existingPlans.map(p => p.id === editingItem.id ? item : p)
-                                                                : [...existingPlans, item];
-                                                            return { ...prev, expense: { ...prev.expense, [mId]: updatedPlans } };
-                                                        });
+                                                    onClick={async () => { 
+                                                        const mId = editingItem.itemId || editingItem.id;
+                                                        const existingPlans = currentPlan.expense[mId] || [];
+                                                        const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
+                                                        const updatedPlans = alreadyExists 
+                                                            ? existingPlans.map(p => p.id === editingItem.id ? item : p)
+                                                            : [...existingPlans, item];
+                                                        
+                                                        const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: updatedPlans } };
+                                                        
+                                                        // Update Local UI State
+                                                        setCurrentPlan(nextPlan);
                                                         setEditingItem(null);
+
+                                                        // NEW: Auto-save to DB immediately
+                                                        const planId = `${selectedYearId}-${selectedUnitId}`;
+                                                        const dbPlan = {
+                                                            id: planId,
+                                                            academicYearId: selectedYearId,
+                                                            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                                                            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                            income: nextPlan.income,
+                                                            expense: nextPlan.expense,
+                                                            status: nextPlan.status,
+                                                            rejectionReason: nextPlan.rejectionReason,
+                                                            updatedAt: new Date().toISOString(),
+                                                            updatedBy: currentUser?.username
+                                                        };
+                                                        
+                                                        await persistPlanToServer(dbPlan);
                                                     }}
                                                     className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl transition-all active:scale-95 flex items-center gap-3 ${canSave ? 'bg-blue-600 text-white hover:bg-slate-900 shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                                                 >
