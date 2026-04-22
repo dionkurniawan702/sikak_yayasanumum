@@ -1450,7 +1450,7 @@ export default function RAB() {
 
     const renderBudgetTable = (type, labelText) => {
         const isIncome = type === 'income';
-        const items = isIncome ? incomeItems : expenseItems;
+        const items = isIncome ? filteredIncomeItems : filteredExpenseItems;
 
         return (
             <div className="space-y-6">
@@ -1524,13 +1524,6 @@ export default function RAB() {
                         <tbody>
                             {items.filter(item => {
                                 if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
-                                return true;
-                            }).filter(item => {
-                                if (isIncome) return true;
-                                if (fundSourceFilter === 'Yayasan') {
-                                    return item.sourceOfFunds !== 'BOS' && !bosItemMap[item.id];
-                                }
-                                if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
                                 return true;
                             }).flatMap((itemMaster, mIdx) => {
                                 let plans = activePlan[type][itemMaster.id] || [];
