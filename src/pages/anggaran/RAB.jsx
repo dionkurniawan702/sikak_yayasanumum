@@ -2101,9 +2101,10 @@ export default function RAB() {
                                                         setCurrentPlan(prev => {
                                                             const mId = editingItem.itemId || editingItem.id;
                                                             const existingPlans = prev.expense[mId] || [];
-                                                            const updatedPlans = editingItem.isNewPlan 
-                                                                ? [...existingPlans, item]
-                                                                : existingPlans.map(p => p.id === editingItem.id ? item : p);
+                                                            const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
+                                                            const updatedPlans = alreadyExists 
+                                                                ? existingPlans.map(p => p.id === editingItem.id ? item : p)
+                                                                : [...existingPlans, item];
                                                             return { ...prev, expense: { ...prev.expense, [mId]: updatedPlans } };
                                                         });
                                                         setEditingItem(null);
