@@ -17,7 +17,8 @@ router.delete('/empty', async (req, res) => {
                 'user', 'unit', 'field', 'student', 'class', 
                 'incomeItem', 'expenseItem', 'distributionSetting',
                 'academicYear', 'classGroup', 'position', 'studentStatus', 
-                'parentStatus', 'budgetRequest', 'budgetReport', 'rabPlan'
+                'parentStatus', 'budgetRequest', 'budgetReport', 'rabPlan',
+                'bosAllocation', 'bosStage', 'bosPos'
             ];
             
             for (const model of models) {

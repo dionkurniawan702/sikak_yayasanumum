@@ -928,12 +928,20 @@ router.put('/bos-stages/:id', async (req, res) => {
 });
 router.delete('/bos-stages/:id', async (req, res) => {
     try {
+        const prisma = getPrisma(req);
+        const id = req.params.id;
         const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+
         if (isPermanent) {
-            await getPrisma(req).bosStage.delete({ where: { id: req.params.id } });
+            await prisma.$transaction(async (tx) => {
+                // Delete associated allocations first
+                await tx.bosAllocation.deleteMany({ where: { stageId: id } });
+                // Delete the stage
+                await tx.bosStage.delete({ where: { id } });
+            });
         } else {
-            await getPrisma(req).bosStage.update({
-                where: { id: req.params.id },
+            await prisma.bosStage.update({
+                where: { id },
                 data: { isDeleted: true }
             });
         }
@@ -944,7 +952,7 @@ router.delete('/bos-stages/:id', async (req, res) => {
         if (error.code === 'P2003') {
             return res.status(400).json({ 
                 error: "Gagal menghapus permanen", 
-                message: "Tahap BOS ini masih memiliki data anggaran (BOS Allocation/RAP) yang terhubung. Hapus data anggaran tersebut terlebih dahulu." 
+                message: "Tahap BOS ini masih memiliki data anggaran yang terhubung secara aktif. Hapus data anggaran tersebut terlebih dahulu atau kosongkan tempat sampah secara total." 
             });
         }
 
@@ -988,18 +996,34 @@ router.put('/bos-pos/:id', async (req, res) => {
 });
 router.delete('/bos-pos/:id', async (req, res) => {
     try {
+        const prisma = getPrisma(req);
+        const id = req.params.id;
         const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+
         if (isPermanent) {
-            await getPrisma(req).bosPos.delete({ where: { id: req.params.id } });
+            await prisma.$transaction(async (tx) => {
+                // Delete associated allocations first
+                await tx.bosAllocation.deleteMany({ where: { posId: id } });
+                // Delete the pos
+                await tx.bosPos.delete({ where: { id } });
+            });
         } else {
-            await getPrisma(req).bosPos.update({
-                where: { id: req.params.id },
+            await prisma.bosPos.update({
+                where: { id },
                 data: { isDeleted: true }
             });
         }
         res.json({ message: 'Success' });
     } catch (error) {
         console.error(`[API Error] DELETE /bos-pos/${req.params.id}:`, error);
+
+        if (error.code === 'P2003') {
+            return res.status(400).json({ 
+                error: "Gagal menghapus permanen", 
+                message: "Pos BOS ini masih memiliki data anggaran yang terhubung. Hapus data anggaran tersebut terlebih dahulu." 
+            });
+        }
+
         res.status(500).json({ error: error.message });
     }
 });
