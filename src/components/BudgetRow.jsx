@@ -81,7 +81,7 @@ export default function BudgetRow({
             </tr>
             {isExpanded && data.breakdown && data.breakdown.map((item, idx) => {
                 const hasSubLevel = (item.sources && Object.keys(item.sources).length > 0) || (item.components && item.components.length > 0);
-                const isDetailExpanded = !!expandedDetailItems[data.id]?.[item.id];
+                const isDetailExpanded = !!expandedDetailItems[`${data.id}|${item.id}`];
 
                 return (
                     <React.Fragment key={item.id || idx}>
