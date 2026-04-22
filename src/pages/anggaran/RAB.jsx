@@ -116,7 +116,16 @@ export default function RAB() {
 
 
     // States for Journal-style component entry
-    const [entryForm, setEntryForm] = useState({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
+    const [entryForm, setEntryForm] = useState({ 
+        label: '', 
+        volume: 0, 
+        satuan: '', 
+        kali: 1, 
+        harga: 0, 
+        programId: '', 
+        semester: '1', 
+        months: {} 
+    });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
     const [showCompModal, setShowCompModal] = useState(false);
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
@@ -550,8 +559,9 @@ export default function RAB() {
                     itemId: itemId,
                     total: newComp.total,
                     components: [newComp],
-                    months: {},
-                    semester: editingItem.semester || '1',
+                    months: newComp.months || {},
+                    semester: newComp.semester || editingItem.semester || '1',
+                    programId: newComp.programId || '',
                     useBos: fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS',
                     bosAmount: (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') ? newComp.total : 0
                 };
@@ -561,7 +571,16 @@ export default function RAB() {
             return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
 
-        setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 });
+        setEntryForm({ 
+            label: '', 
+            volume: 0, 
+            satuan: '', 
+            kali: 1, 
+            harga: 0, 
+            programId: '', 
+            semester: '1', 
+            months: {} 
+        });
         setEditingCompIdx(null);
         setShowCompModal(false);
     };
@@ -608,6 +627,46 @@ export default function RAB() {
         });
     };
 
+    const handleEntryMonthlyUpdate = (monthId, field, value) => {
+        setEntryForm(prev => {
+            const currentMonths = prev.months || {};
+            const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
+            let updatedMonthData = { ...currentMonthData, [field]: value };
+            
+            if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
+            if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
+            if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
+            
+            return { ...prev, months: { ...currentMonths, [monthId]: updatedMonthData } };
+        });
+    };
+
+    const handleSyncEntryMonthly = () => {
+        const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0);
+        if (total <= 0) return;
+
+        const monthsData = { ...(entryForm.months || {}) };
+        const activeMonthIds = Object.keys(monthsData).filter(mId => monthsData[mId]?.m);
+        
+        if (activeMonthIds.length === 0) {
+            setMessage({ type: 'error', text: 'Pilih setidaknya satu bulan (centang) untuk membagi anggaran!' });
+            setTimeout(() => setMessage(null), 3000);
+            return;
+        }
+
+        const amountPerMonth = Math.floor(total / activeMonthIds.length);
+        const remainder = total % activeMonthIds.length;
+
+        activeMonthIds.forEach((mId, idx) => {
+            monthsData[mId] = {
+                ...monthsData[mId],
+                jumlah: amountPerMonth + (idx === 0 ? remainder : 0)
+            };
+        });
+
+        setEntryForm(prev => ({ ...prev, months: monthsData }));
+    };
+
     const handleRemoveComponent = (itemId, planId, index) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         setCurrentPlan(prev => {
@@ -617,7 +676,29 @@ export default function RAB() {
                 
                 const components = (p.components || []).filter((_, i) => i !== index);
                 const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-                const updatedPlan = { ...p, components, total: newTotal };
+                
+                // NEW: Aggregate months from remaining components
+                const aggregatedMonths = {};
+                let firstProgramId = '';
+                let firstSemester = '1';
+                components.forEach(c => {
+                    if (!firstProgramId && c.programId) firstProgramId = c.programId;
+                    if (c.semester) firstSemester = c.semester;
+                    Object.entries(c.months || {}).forEach(([mId, mData]) => {
+                        if (!mData.m) return;
+                        if (!aggregatedMonths[mId]) aggregatedMonths[mId] = { m: true, jumlah: 0 };
+                        aggregatedMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                    });
+                });
+
+                const updatedPlan = { 
+                    ...p, 
+                    components, 
+                    total: newTotal,
+                    months: aggregatedMonths,
+                    programId: firstProgramId,
+                    semester: firstSemester
+                };
                 
                 if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
                     updatedPlan.useBos = true;
@@ -1957,7 +2038,8 @@ export default function RAB() {
                                                                     <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
                                                                     <td className="px-4 py-4">
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => { setEntryForm({...comp}); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14}/></button>
+                                                                                                                                                         <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14}/></button>
+
                                                                             <button onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14}/></button>
                                                                         </div>
                                                                     </td>
@@ -1970,8 +2052,8 @@ export default function RAB() {
                                                             <td colSpan={5} className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] italic text-slate-400">Total Akumulasi Rincian</td>
                                                             <td className="px-6 py-6 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total)}</td>
                                                             <td className="px-4 py-6 text-center">
-                                                                <button 
-                                                                    onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0 }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                 <button 
+                                                                    onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {} }); setEditingCompIdx(null); setShowCompModal(true); }}
                                                                     className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:scale-110 transition-all mx-auto"
                                                                 >
                                                                     <Plus size={20} strokeWidth={3} />
@@ -2098,45 +2180,119 @@ export default function RAB() {
                                     {showCompModal && (
                                         <div className="absolute inset-0 z-[5000] flex items-center justify-center p-6 animate-in fade-in duration-200">
                                             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm rounded-[3.5rem]" onClick={() => setShowCompModal(false)} />
-                                            <div className="bg-white rounded-[3rem] w-full max-w-xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10">
+                                            <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[90vh]">
                                                 <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
                                                     <div>
-                                                        <h3 className="text-xl font-black italic uppercase italic tracking-tight">Detail Rincian</h3>
+                                                        <h3 className="text-xl font-black italic uppercase tracking-tight">Detail Rincian</h3>
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru'}</p>
                                                     </div>
                                                     <button onClick={() => setShowCompModal(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><X size={20}/></button>
                                                 </div>
-                                                <div className="p-8 space-y-6">
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
-                                                        <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({...entryForm, label: e.target.value})} />
-                                                    </div>
-                                                    <div className="grid grid-cols-3 gap-4">
-                                                        {['volume', 'satuan', 'kali'].map(field => (
-                                                            <div key={field} className="space-y-2">
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
-                                                                <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '')})} />
+                                                
+                                                <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
+                                                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                                        {/* Left Column: Basic Info */}
+                                                        <div className="space-y-6">
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
+                                                                <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({...entryForm, label: e.target.value})} />
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
-                                                        <div className="relative">
-                                                            <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
-                                                            <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})} />
+                                                            <div className="grid grid-cols-3 gap-4">
+                                                                {['volume', 'satuan', 'kali'].map(field => (
+                                                                    <div key={field} className="space-y-2">
+                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
+                                                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '')})} />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
+                                                                <div className="relative">
+                                                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
+                                                                    <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})} />
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="grid grid-cols-2 gap-6">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
+                                                                    <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none" value={entryForm.programId || ''} onChange={e => setEntryForm({...entryForm, programId: e.target.value})}>
+                                                                        <option value="">Pilih Program...</option>
+                                                                        {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                                    </select>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Semester</label>
+                                                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                                                                        {['1', '2'].map(s => (
+                                                                            <button key={s} onClick={() => setEntryForm({...entryForm, semester: s})} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${entryForm.semester === s ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
+                                                                    <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
+                                                                </div>
+                                                                <Calculator size={32} className="opacity-20" />
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                    <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
-                                                            <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
+
+                                                        {/* Right Column: Monthly Allocation */}
+                                                        <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col">
+                                                            <div className="flex items-center justify-between mb-6">
+                                                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] italic text-blue-400">Alokasi Bulanan Rincian</h4>
+                                                                <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2">
+                                                                    <RefreshCw size={12} />
+                                                                    Sync
+                                                                </button>
+                                                            </div>
+                                                            
+                                                            <div className="grid grid-cols-2 gap-3 flex-1">
+                                                                {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m, idx) => {
+                                                                    const mData = entryForm.months?.[m.id] || { m: false, jumlah: 0 };
+                                                                    const isSelectable = (entryForm.semester === '1' && idx < 6) || (entryForm.semester === '2' && idx >= 6);
+                                                                    
+                                                                    return (
+                                                                        <div key={m.id} className={`p-3 rounded-2xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')}`}>
+                                                                            <div className="flex items-center justify-between mb-1.5">
+                                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{m.shortLabel}</span>
+                                                                                <input type="checkbox" checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-blue-500" />
+                                                                            </div>
+                                                                            <input type="text" className="w-full bg-transparent font-black text-[11px] outline-none p-0 text-white placeholder-white/20" placeholder="Rp 0" value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} onChange={e => handleEntryMonthlyUpdate(m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} />
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+
+                                                            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
+                                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Terdistribusi</span>
+                                                                <span className="text-sm font-black italic">{formatRupiah(Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0))}</span>
+                                                            </div>
                                                         </div>
-                                                        <Calculator size={32} className="opacity-20" />
                                                     </div>
                                                 </div>
-                                                <div className="p-8 pt-0 flex gap-4">
-                                                    <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-200">BATAL</button>
-                                                    <button disabled={!entryForm.label || !entryForm.volume || !entryForm.harga} onClick={() => handlePushComponent(itemId, editingItem.id)} className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 ${(!entryForm.label || !entryForm.volume || !entryForm.harga) ? 'bg-slate-200 text-slate-400' : 'bg-blue-600 text-white hover:bg-slate-900'}`}>{editingCompIdx !== null ? 'UPDATE' : 'SIMPAN RINCIAN'}</button>
+                                                
+                                                <div className="p-8 pt-0 flex gap-4 bg-slate-50/50">
+                                                    <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all">BATAL</button>
+                                                    {(() => {
+                                                        const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0);
+                                                        const monthlyTotal = Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                                        const isBalanced = Math.abs(total - monthlyTotal) < 1.1;
+                                                        const canSave = entryForm.label && entryForm.volume && entryForm.harga && isBalanced;
+                                                        
+                                                        return (
+                                                            <button 
+                                                                disabled={!canSave} 
+                                                                onClick={() => handlePushComponent(itemId, editingItem.id)} 
+                                                                className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-slate-900'}`}
+                                                            >
+                                                                {!isBalanced && total > 0 ? 'ALOKASI BELUM SEIMBANG' : (editingCompIdx !== null ? 'PERBARUI RINCIAN' : 'SIMPAN RINCIAN')}
+                                                            </button>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
