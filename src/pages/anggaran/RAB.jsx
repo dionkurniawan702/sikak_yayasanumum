@@ -1551,7 +1551,7 @@ export default function RAB() {
                                     return plans.map((plan, pIdx) => {
                                         const rowData = {
                                             id: plan.id,
-                                            name: plan.description || itemMaster.name,
+                                            name: itemMaster.name,
                                             status: plan.status,
                                             rap: plan.limit || allocated,
                                             rab: plan.total || 0,
