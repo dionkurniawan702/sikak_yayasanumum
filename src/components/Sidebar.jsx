@@ -22,9 +22,9 @@ export default function Sidebar({ isOpen, onClose }) {
     const isAdminField = currentUser?.role === 'admin_bidang';
     const isAdminUnit = currentUser?.role === 'admin_unit';
 
-    const currentUserUnit = React.useMemo(() => 
+    const currentUserUnit = React.useMemo(() =>
         state.units?.find(u => u.id === currentUser?.unitId)
-    , [state.units, currentUser]);
+        , [state.units, currentUser]);
 
     const hasBos = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
 
@@ -36,13 +36,31 @@ export default function Sidebar({ isOpen, onClose }) {
         }
         if (isAdminUnit || isAdminField) {
             return state.rabPlans.filter(p => {
-                const isMine = (isAdminUnit && p.unitId === currentUser.unitId) || 
-                             (isAdminField && p.fieldId === currentUser.fieldId);
+                const isMine = (isAdminUnit && p.unitId === currentUser.unitId) ||
+                    (isAdminField && p.fieldId === currentUser.fieldId);
                 return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified;
             }).length;
         }
         return 0;
     }, [state.rabPlans, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
+
+    // Calculate Notifications for Fund Requests (Permintaan Dana)
+    const pendingFundRequestCount = React.useMemo(() => {
+        if (!state.budgetRequests) return 0;
+        if (isSuperAdmin) {
+            // Superadmin sees total PENDING requests waiting for approval
+            return state.budgetRequests.filter(r => r.status === 'PENDING').length;
+        }
+        if (isAdminUnit || isAdminField) {
+            // Unit/bidang admins see their requests that were recently ACC or REJECTED (not yet seen)
+            return state.budgetRequests.filter(r => {
+                const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
+                    (isAdminField && r.fieldId === currentUser.fieldId);
+                return isMine && r.status === 'PENDING';
+            }).length;
+        }
+        return 0;
+    }, [state.budgetRequests, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
 
     if (isSuperAdmin) {
         menuItems = [
@@ -72,7 +90,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
             { path: '/pelaporan/bos', label: 'BOS', icon: Landmark },
             { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
-            
+
             { section: 'PERENCANAAN (RAB)' },
             { path: '/anggaran/rab', label: 'RAB', icon: Target },
             { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
@@ -124,13 +142,13 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
             ...(hasBos ? [{ path: '/pelaporan/bos', label: 'BOS', icon: Landmark }] : []),
             { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
-            
+
             { section: 'PERENCANAAN (RAB)' },
-            ...(isAdminUnit 
+            ...(isAdminUnit
                 ? [
                     { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
                     ...(hasBos ? [{ path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark }] : [])
-                  ]
+                ]
                 : [{ path: '/anggaran/rab', label: 'RAB', icon: Target }]
             ),
             { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
@@ -162,7 +180,7 @@ export default function Sidebar({ isOpen, onClose }) {
             navigate('/login');
         }
     };
-    
+
     return (
         <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
@@ -221,6 +239,11 @@ export default function Sidebar({ isOpen, onClose }) {
                             {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabCount > 0 && (
                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
                                     {pendingRabCount}
+                                </span>
+                            )}
+                            {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
+                                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                    {pendingFundRequestCount}
                                 </span>
                             )}
                         </NavLink>
