@@ -982,17 +982,206 @@ export default function RAB() {
             income: currentPlan.income,
             expense: currentPlan.expense,
             status: currentPlan.status, // Preserve status
+            return {
+                ...prev,
+                [type]: {
+                    ...prev[type],
+                    [itemId]: { ...currentItem, months: monthsData }
+                }
+            };
+        });
+        setMessage({ type: 'success', text: 'Anggaran berhasil disinkronkan ke rincian bulanan.' });
+        setTimeout(() => setMessage(null), 3000);
+    };
+
+    const incomeExpenseBalances = useMemo(() => {
+        const balances = {};
+        const settings = state.distributionSettings || [];
+        const isField = selectedUnitId.startsWith('FIELD-');
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : selectedUnitId;
+        
+        (filteredIncomeItems || []).forEach(item => {
+            // Find distribution rules where this income item is the source
+            // Note: settings already has unitId/fieldId associations
+            const itemSettings = settings.filter(s => 
+                s.incomeItemId === item.id && 
+                s.unitId === (isField ? s.unitId : selectedUnitId) // If field, we look at all units contributing to the field? 
+                // Wait, if I'm viewing a field, I want to see how much of the field's income goes where.
+                // Actually, settings.unitId is the source unit.
+            );
+            
+            const totalSpent = itemSettings.reduce((sum, s) => {
+                // If the target (destId) matches our current context
+                const isMatch = s.destId === (isField ? fieldId : selectedUnitId);
+                if (!isMatch) return sum;
+
+                const expenseDetail = currentPlan.expense[s.expenseItemId] || { total: 0 };
+                const percentage = parseFloat(s.percentage) || 0;
+                return sum + ((expenseDetail.total || 0) * percentage / 100);
+            }, 0);
+            balances[item.id] = totalSpent;
+        });
+        return balances;
+    }, [filteredIncomeItems, state.distributionSettings, currentPlan.expense, selectedUnitId]);
+
+    // NEW: Calculate spending per unit for field-allocated items
+    const rabUnitBreakdown = useMemo(() => {
+        const breakdown = {}; // { [expenseItemId]: { [unitId]: totalAmount } }
+        
+        Object.entries(currentPlan.expense || {}).forEach(([itemId, detail]) => {
+            if (!detail.targetUnitId || !detail.total) return;
+            
+            if (!breakdown[itemId]) breakdown[itemId] = {};
+            breakdown[itemId][detail.targetUnitId] = (breakdown[itemId][detail.targetUnitId] || 0) + detail.total;
+        });
+        
+        return breakdown;
+    }, [currentPlan.expense]);
+
+    const handleCloseModal = () => {
+        setEditingItem(null);
+        setMessage({ type: 'success', text: 'Rincian sementara disimpan ke draft. Klik "SIMPAN DRAFT" di atas untuk menyimpan ke database!' });
+        setTimeout(() => setMessage(null), 8000);
+    };
+
+    const handleMonthlyUpdate = (itemId, planId, monthId, field, value) => {
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
+        setCurrentPlan(prev => {
+            const plans = prev[type][itemId] || [];
+            let planFound = false;
+
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                planFound = true;
+                
+                const currentMonths = p.months || {};
+                const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
+                let updatedMonthData = { ...currentMonthData, [field]: value };
+                
+                if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
+                if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
+                if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
+                
+                const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
+                const newTotal = Object.values(updatedMonths).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                
+                return { ...p, months: updatedMonths, total: newTotal };
+            });
+
+            if (!planFound && editingItem?.isNewPlan) {
+                const updatedMonthData = { jumlah: 0, m: false, [field]: value };
+                if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
+                if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
+                if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
+
+                const newPlan = {
+                    id: planId,
+                    itemId: itemId,
+                    total: updatedMonthData.m ? (parseFloat(updatedMonthData.jumlah) || 0) : 0,
+                    components: [],
+                    months: { [monthId]: updatedMonthData },
+                    semester: editingItem.semester || '1'
+                };
+                return { ...prev, [type]: { ...prev[type], [itemId]: [...plans, newPlan] } };
+            }
+
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
+        });
+    };
+
+
+
+    const months = useMemo(() => {
+        const selectedYear = academicYears.find(ay => ay.id === selectedYearId);
+        return generateMonths(selectedYear);
+    }, [selectedYearId, academicYears]);
+
+    const handleAddItem = async () => {
+        if (!newItemData.name || !newItemData.incomeItemId || !selectedUnitId) return;
+        setIsSaving(true);
+        
+        const isField = selectedUnitId.startsWith('FIELD-');
+        const unitId = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+        const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
+        
+        const incomeItem = incomeItems.find(ii => ii.id === newItemData.incomeItemId);
+        const expenseItemId = `EXP-${Date.now().toString(36).toUpperCase()}`;
+
+        const newExpenseItem = {
+            id: expenseItemId,
+            name: newItemData.name,
+            unitId: unitId,
+            fieldId: fieldId,
+            sourceOfFunds: newItemData.sourceOfFunds,
+            isDeleted: false
+        };
+
+        // Create 100% distribution rule automatically
+        const distributionRule = {
+            id: `DIST-${Date.now().toString(36).toUpperCase()}`,
+            unitId: isField ? (state.units.find(u => u.fieldId === fieldId)?.id || 'FOUNDATION') : selectedUnitId,
+            incomeItemId: newItemData.incomeItemId,
+            expenseItemId: expenseItemId,
+            percentage: 100,
+            destType: isField ? 'field' : 'unit',
+            destId: isField ? fieldId : selectedUnitId,
+            isDeleted: false
+        };
+
+        try {
+            // 1. Add Expense Item
+            dispatch({ type: 'ADD_EXPENSE_ITEM', payload: newExpenseItem });
+            await api.pushAction({ type: 'ADD_EXPENSE_ITEM', payload: newExpenseItem }, state);
+
+            // 2. Update Distribution Settings
+            // Note: UPDATE_DISTRIBUTION_SETTINGS usually takes an array of settings for a specific unit-income pair
+            // But we just want to add one. For simplicity and to avoid wiping others, we'll use the existing state.
+            const existingSettings = state.distributionSettings.filter(s => 
+                s.unitId === distributionRule.unitId && s.incomeItemId === distributionRule.incomeItemId
+            );
+            const updatedSettings = [...existingSettings, distributionRule];
+            
+            dispatch({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
+                unitId: distributionRule.unitId, 
+                incomeItemId: distributionRule.incomeItemId, 
+                settings: updatedSettings 
+            }});
+            await api.pushAction({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
+                unitId: distributionRule.unitId, 
+                incomeItemId: distributionRule.incomeItemId, 
+                settings: updatedSettings 
+            }}, state);
+
+            setMessage({ type: 'success', text: `Item "${newItemData.name}" berhasil ditambahkan ke RAB.` });
+            setIsAddingItem(false);
+            setNewItemData({ name: '', incomeItemId: '' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Gagal menambah item: ' + error.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 5000);
+        }
+    };
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        setMessage(null);
+
+        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const newPlan = {
+            id: planId,
+            academicYearId: selectedYearId,
+            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+            income: currentPlan.income,
+            expense: currentPlan.expense,
+            status: currentPlan.status, // Preserve status
             rejectionReason: currentPlan.rejectionReason,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
         };
 
-        console.log('[DEBUG] Saving RAB Plan:', planId);
-        console.table({
-            incomeItems: Object.keys(newPlan.income).length,
-            expenseItems: Object.keys(newPlan.expense).length,
-            isBos: isBosRecipient
-        });
+
 
         // 1. Strict Validation: BOS Limit
         if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
@@ -2067,8 +2256,7 @@ export default function RAB() {
                                                                     <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
                                                                     <td className="px-4 py-4">
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                                                                                                         <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14}/></button>
-
+                                                                            <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14}/></button>
                                                                             <button onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14}/></button>
                                                                         </div>
                                                                     </td>
@@ -2087,7 +2275,7 @@ export default function RAB() {
                                                                 >
                                                                     <Plus size={20} strokeWidth={3} />
                                                                 </button>
-                                                            </td>                                                             </td>
+                                                            </td>
                                                         </tr>
                                                     </tfoot>
                                                 </table>
