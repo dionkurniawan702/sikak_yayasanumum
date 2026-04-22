@@ -1432,7 +1432,7 @@ export default function RAB() {
                                                 <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
                                                 <div className="flex items-center gap-2 mt-1">
                                                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
-                                                        {plan.description ? plan.description.substring(0, 40) + (plan.description.length > 40 ? '...' : '') : (itemMaster.sourceOfFunds || (isIncome ? 'Penerimaan' : 'Yayasan'))}
+                                                        {itemMaster.sourceOfFunds || (isIncome ? 'Penerimaan' : 'Yayasan')}
                                                     </p>
                                                 </div>
                                             </div>
