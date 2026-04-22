@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { 
-    Calendar, Building2, Layers, Save, RefreshCw, 
+import {
+    Calendar, Building2, Layers, Save, RefreshCw,
     ArrowUpCircle, ArrowDownCircle, Info, ChevronRight,
-    TrendingUp, Wallet, ShieldCheck, Download, Filter, 
+    TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
     Calculator, Trash2, Pencil, DollarSign
@@ -32,15 +32,15 @@ const generateMonths = (ay) => {
             const end = new Date(ay.endDate);
             const diffMonths = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
             const monthsPerSemester = Math.ceil(diffMonths / 2);
-            
+
             let current = new Date(start);
             let safetyCounter = 0;
-            
+
             while (current <= end && safetyCounter < 24) {
                 const year = current.getFullYear();
                 const monthIdx = current.getMonth();
                 const monthNum = monthIdx + 1;
-                
+
                 const semester = safetyCounter < monthsPerSemester ? '1' : '2';
                 const shortYear = String(year).slice(-2);
 
@@ -52,18 +52,18 @@ const generateMonths = (ay) => {
                     year: year,
                     semester
                 });
-                
+
                 current.setMonth(current.getMonth() + 1);
                 safetyCounter++;
             }
-        } 
-        
+        }
+
         // Option 2: Fallback if months are still empty
         if (months.length === 0) {
             const [startYearStr, endYearStr] = (ay.name || '').split((ay.name || '').includes('/') ? '/' : '-');
             const startYear = parseInt(startYearStr) || new Date().getFullYear();
             const endYear = parseInt(endYearStr) || (startYear + 1);
-            
+
             const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
             sequence.forEach((monthNum, idx) => {
                 const year = monthNum >= 7 ? startYear : endYear;
@@ -82,18 +82,18 @@ const generateMonths = (ay) => {
     } catch (err) {
         console.error('[Month Generation Error]:', err);
     }
-    
+
     return months;
 };
 
 export default function RAB() {
     const { state, dispatch } = useApp();
     const lastPlanIdRef = React.useRef(null);
-    const { 
-        units = [], 
-        fields = [], 
-        academicYears = [], 
-        incomeItems = [], 
+    const {
+        units = [],
+        fields = [],
+        academicYears = [],
+        incomeItems = [],
         expenseItems = [],
         rabPlans = [],
         programs = [],
@@ -112,7 +112,7 @@ export default function RAB() {
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
-    const [showDashboard, setShowDashboard] = useState(isSuperAdmin); 
+    const [showDashboard, setShowDashboard] = useState(isSuperAdmin);
     const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState(null);
@@ -128,15 +128,15 @@ export default function RAB() {
 
 
     // States for Journal-style component entry
-    const [entryForm, setEntryForm] = useState({ 
-        label: '', 
-        volume: 0, 
-        satuan: '', 
-        kali: 1, 
-        harga: 0, 
-        programId: '', 
-        semester: '1', 
-        months: {} 
+    const [entryForm, setEntryForm] = useState({
+        label: '',
+        volume: 0,
+        satuan: '',
+        kali: 1,
+        harga: 0,
+        programId: '',
+        semester: '1',
+        months: {}
     });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
     const [showCompModal, setShowCompModal] = useState(false);
@@ -146,16 +146,16 @@ export default function RAB() {
 
     const toggleReviewPlan = (id) => setExpandedReviewPlans(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleDashboardPlan = (id) => setExpandedDashboardPlans(prev => ({ ...prev, [id]: !prev[id] }));
-    
+
     // Mapped data for the Review and Consolidated views (Extracted Hooks)
     const incomePrograms = useMemo(() => programs.filter(p => !p.isDeleted && p.type === 'INCOME'), [programs]);
-    const pendingPlans = useMemo(() => 
+    const pendingPlans = useMemo(() =>
         rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId),
         [rabPlans, selectedYearId]
     );
-    const filteredReviewPlans = useMemo(() => 
+    const filteredReviewPlans = useMemo(() =>
         pendingPlans.filter(p => p.academicYearId === selectedYearId),
-    [pendingPlans, selectedYearId]);
+        [pendingPlans, selectedYearId]);
 
     const activeYear = useMemo(() => academicYears.find(ay => ay.id === selectedYearId), [academicYears, selectedYearId]);
     const monthsOptions = useMemo(() => activeYear ? generateMonths(activeYear) : [], [activeYear]);
@@ -222,7 +222,7 @@ export default function RAB() {
                 // Migration logic: convert single objects to arrays if detected
                 const rawExpense = existingPlan.expense || {};
                 const migratedExpense = {};
-                
+
                 Object.entries(rawExpense).forEach(([itemId, data]) => {
                     if (Array.isArray(data)) {
                         migratedExpense[itemId] = data;
@@ -258,9 +258,9 @@ export default function RAB() {
     const consolidatedPlan = useMemo(() => {
         try {
             if (selectedUnitId !== 'FOUNDATION' || !selectedYearId) return null;
-            
-            const yearPlans = (rabPlans || []).filter(p => 
-                p && p.academicYearId === selectedYearId && 
+
+            const yearPlans = (rabPlans || []).filter(p =>
+                p && p.academicYearId === selectedYearId &&
                 p.unitId !== 'FOUNDATION'
             );
 
@@ -299,7 +299,7 @@ export default function RAB() {
                 const planExpense = plan.expense || {};
                 Object.entries(planExpense).forEach(([itemId, dataArray]) => {
                     if (!dataArray || !Array.isArray(dataArray)) return;
-                    
+
                     if (!consolidated.expense[itemId]) {
                         consolidated.expense[itemId] = JSON.parse(JSON.stringify(dataArray));
                     } else {
@@ -328,7 +328,7 @@ export default function RAB() {
     // Calculate RAP for the selected context
     const rapData = useMemo(() => {
         if (!selectedYearId || !selectedUnitId) return { totalTarget: 0, incomeTotals: {}, itemAllocations: {} };
-        
+
         let unitId = null;
         let fieldId = null;
 
@@ -344,7 +344,7 @@ export default function RAB() {
     // Filtered items based on unit configuration
     const filteredIncomeItems = useMemo(() => {
         if (selectedUnitId === 'FOUNDATION') return incomeItems;
-        
+
         const distributionSettings = state.distributionSettings || [];
         const isField = selectedUnitId.startsWith('FIELD-');
         const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
@@ -362,12 +362,12 @@ export default function RAB() {
 
     const filteredExpenseItems = useMemo(() => {
         if (selectedUnitId === 'FOUNDATION') return expenseItems.filter(ei => !ei.isDeleted);
-        
+
         const distributionSettings = state.distributionSettings || [];
         const isField = selectedUnitId.startsWith('FIELD-');
         const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
         const unitId = !isField && selectedUnitId !== 'FOUNDATION' ? selectedUnitId : null;
-        
+
         const activeIds = new Set();
 
         // Include items where this unit/field is the distribution destination
@@ -382,13 +382,13 @@ export default function RAB() {
         // Include items from BOS allocations
         const unitIdForBos = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
         if (selectedYearId) {
-            (bosAllocations || []).filter(a => 
-                !a.isDeleted && 
-                a.academicYearId === selectedYearId && 
+            (bosAllocations || []).filter(a =>
+                !a.isDeleted &&
+                a.academicYearId === selectedYearId &&
                 ((!isField && a.unitId === unitIdForBos) || (isField && a.fieldId === fieldId))
             ).forEach(a => activeIds.add(a.expenseItemId));
         }
-        
+
         return (expenseItems || []).filter(ei => {
             if (ei.isDeleted || !activeIds.has(ei.id)) return false;
 
@@ -430,19 +430,19 @@ export default function RAB() {
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId && p.id !== itemId) return p;
                 planFound = true;
-                
+
                 const updatedPlan = { ...p, [field]: value };
-                
+
                 if (['volume', 'kali', 'harga'].includes(field)) {
-                    updatedPlan.total = (parseFloat(updatedPlan.volume) || 0) * 
-                                       (parseFloat(updatedPlan.kali) || 0) * 
-                                       (parseFloat(updatedPlan.harga) || 0);
+                    updatedPlan.total = (parseFloat(updatedPlan.volume) || 0) *
+                        (parseFloat(updatedPlan.kali) || 0) *
+                        (parseFloat(updatedPlan.harga) || 0);
                 }
-                
+
                 if (updatedPlan.components && updatedPlan.components.length > 0) {
                     updatedPlan.total = updatedPlan.components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
                 }
-                
+
                 if (field === 'semester') {
                     const ay = academicYears.find(a => a.id === selectedYearId);
                     const yearMonths = generateMonths(ay);
@@ -454,7 +454,7 @@ export default function RAB() {
                     });
                     updatedPlan.months = monthsData;
                 }
-                
+
                 return updatedPlan;
             });
 
@@ -491,22 +491,22 @@ export default function RAB() {
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
                 planFound = true;
-                
+
                 const components = [...(p.components || [])];
                 if (!components[index]) {
                     components[index] = { label: '', volume: 0, satuan: '', kali: 1, harga: 0, total: 0 };
                 }
-                
+
                 const updatedComp = { ...components[index], [field]: value };
                 if (['volume', 'kali', 'harga'].includes(field)) {
-                    updatedComp.total = (parseFloat(updatedComp.volume) || 0) * 
-                                       (parseFloat(updatedComp.kali) || 0) * 
-                                       (parseFloat(updatedComp.harga) || 0);
+                    updatedComp.total = (parseFloat(updatedComp.volume) || 0) *
+                        (parseFloat(updatedComp.kali) || 0) *
+                        (parseFloat(updatedComp.harga) || 0);
                 }
                 components[index] = updatedComp;
-                
-                return { 
-                    ...p, 
+
+                return {
+                    ...p,
                     components,
                     total: components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0)
                 };
@@ -516,9 +516,9 @@ export default function RAB() {
                 const components = [{ label: '', volume: 0, satuan: '', kali: 1, harga: 0, total: 0 }];
                 const updatedComp = { ...components[0], [field]: value };
                 if (['volume', 'kali', 'harga'].includes(field)) {
-                    updatedComp.total = (parseFloat(updatedComp.volume) || 0) * 
-                                       (parseFloat(updatedComp.kali) || 0) * 
-                                       (parseFloat(updatedComp.harga) || 0);
+                    updatedComp.total = (parseFloat(updatedComp.volume) || 0) *
+                        (parseFloat(updatedComp.kali) || 0) *
+                        (parseFloat(updatedComp.harga) || 0);
                 }
                 components[0] = updatedComp;
 
@@ -560,14 +560,14 @@ export default function RAB() {
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
                 planFound = true;
-                
+
                 const components = p.components && p.components.length > 0 ? [...p.components] : [];
                 if (editingCompIdx !== null) components[editingCompIdx] = newComp;
                 else components.push(newComp);
-                
+
                 const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
                 const newBosAmount = components.reduce((sum, c) => sum + (c.useBos ? (parseFloat(c.total) || 0) : 0), 0);
-                
+
                 // Aggregate months from all components
                 const aggregatedMonths = {};
                 components.forEach(c => {
@@ -578,10 +578,10 @@ export default function RAB() {
                     });
                 });
 
-                const updatedPlan = { 
-                    ...p, 
-                    components, 
-                    total: newTotal, 
+                const updatedPlan = {
+                    ...p,
+                    components,
+                    total: newTotal,
                     bosAmount: newBosAmount,
                     useBos: newBosAmount > 0,
                     semester: components[0]?.semester || '1',
@@ -589,7 +589,7 @@ export default function RAB() {
                     description: components.map(c => c.label).join(', '),
                     months: aggregatedMonths
                 };
-                
+
                 return updatedPlan;
             });
 
@@ -612,15 +612,15 @@ export default function RAB() {
             return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
         });
 
-        setEntryForm({ 
-            label: '', 
-            volume: 0, 
-            satuan: '', 
-            kali: 1, 
-            harga: 0, 
-            programId: '', 
-            semester: '1', 
-            months: {} 
+        setEntryForm({
+            label: '',
+            volume: 0,
+            satuan: '',
+            kali: 1,
+            harga: 0,
+            programId: '',
+            semester: '1',
+            months: {}
         });
         setEditingCompIdx(null);
         setShowCompModal(false);
@@ -635,13 +635,13 @@ export default function RAB() {
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
                 planFound = true;
-                
+
                 const components = p.components && p.components.length > 0 ? [...p.components] : [];
                 components.push({ label: '', volume: 1, satuan: '', kali: 1, harga: 0, total: 0 });
-                
+
                 const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
                 const updatedPlan = { ...p, components, total: newTotal };
-                
+
                 if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
                     updatedPlan.useBos = true;
                     updatedPlan.bosAmount = newTotal;
@@ -673,11 +673,11 @@ export default function RAB() {
             const currentMonths = prev.months || {};
             const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
             let updatedMonthData = { ...currentMonthData, [field]: value };
-            
+
             if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
             if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
             if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
-            
+
             return { ...prev, months: { ...currentMonths, [monthId]: updatedMonthData } };
         });
     };
@@ -688,7 +688,7 @@ export default function RAB() {
 
         const monthsData = { ...(entryForm.months || {}) };
         const activeMonthIds = Object.keys(monthsData).filter(mId => monthsData[mId]?.m);
-        
+
         if (activeMonthIds.length === 0) {
             setMessage({ type: 'error', text: 'Pilih setidaknya satu bulan (centang) untuk membagi anggaran!' });
             setTimeout(() => setMessage(null), 3000);
@@ -714,11 +714,11 @@ export default function RAB() {
             const plans = prev[type][itemId] || [];
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
-                
+
                 const components = (p.components || []).filter((_, i) => i !== index);
                 const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
                 const newBosAmount = components.reduce((sum, c) => sum + (c.useBos ? (parseFloat(c.total) || 0) : 0), 0);
-                
+
                 // Aggregate months from remaining components
                 const aggregatedMonths = {};
                 let firstProgramId = '';
@@ -733,9 +733,9 @@ export default function RAB() {
                     });
                 });
 
-                const updatedPlan = { 
-                    ...p, 
-                    components, 
+                const updatedPlan = {
+                    ...p,
+                    components,
                     total: newTotal,
                     bosAmount: newBosAmount,
                     useBos: newBosAmount > 0,
@@ -744,7 +744,7 @@ export default function RAB() {
                     months: aggregatedMonths,
                     description: components.map(c => c.label).join(', ')
                 };
-                
+
                 return updatedPlan;
             });
 
@@ -755,7 +755,7 @@ export default function RAB() {
     const handleResetBudget = (itemId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         if (!window.confirm('Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)')) return;
-        
+
         setCurrentPlan(prev => ({
             ...prev,
             [type]: {
@@ -776,7 +776,7 @@ export default function RAB() {
             const currentItem = prev[type][itemId] || { total: 0, months: {} };
             const monthsData = { ...(currentItem.months || {}) };
             const activeMonthIds = Object.keys(monthsData).filter(mId => monthsData[mId]?.m);
-            
+
             if (activeMonthIds.length === 0) {
                 setMessage({ type: 'error', text: 'Pilih setidaknya satu bulan (centang) untuk membagi anggaran!' });
                 setTimeout(() => setMessage(null), 3000);
@@ -817,17 +817,17 @@ export default function RAB() {
         const settings = state.distributionSettings || [];
         const isField = selectedUnitId.startsWith('FIELD-');
         const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : selectedUnitId;
-        
+
         (filteredIncomeItems || []).forEach(item => {
             // Find distribution rules where this income item is the source
             // Note: settings already has unitId/fieldId associations
-            const itemSettings = settings.filter(s => 
-                s.incomeItemId === item.id && 
+            const itemSettings = settings.filter(s =>
+                s.incomeItemId === item.id &&
                 s.unitId === (isField ? s.unitId : selectedUnitId) // If field, we look at all units contributing to the field? 
                 // Wait, if I'm viewing a field, I want to see how much of the field's income goes where.
                 // Actually, settings.unitId is the source unit.
             );
-            
+
             const totalSpent = itemSettings.reduce((sum, s) => {
                 // If the target (destId) matches our current context
                 const isMatch = s.destId === (isField ? fieldId : selectedUnitId);
@@ -845,14 +845,14 @@ export default function RAB() {
     // NEW: Calculate spending per unit for field-allocated items
     const rabUnitBreakdown = useMemo(() => {
         const breakdown = {}; // { [expenseItemId]: { [unitId]: totalAmount } }
-        
+
         Object.entries(currentPlan.expense || {}).forEach(([itemId, detail]) => {
             if (!detail.targetUnitId || !detail.total) return;
-            
+
             if (!breakdown[itemId]) breakdown[itemId] = {};
             breakdown[itemId][detail.targetUnitId] = (breakdown[itemId][detail.targetUnitId] || 0) + detail.total;
         });
-        
+
         return breakdown;
     }, [currentPlan.expense]);
 
@@ -871,18 +871,18 @@ export default function RAB() {
             const updatedPlans = plans.map(p => {
                 if (p.id !== planId) return p;
                 planFound = true;
-                
+
                 const currentMonths = p.months || {};
                 const currentMonthData = currentMonths[monthId] || { jumlah: 0, m: false };
                 let updatedMonthData = { ...currentMonthData, [field]: value };
-                
+
                 if (field === 'm' && value === false) updatedMonthData.jumlah = 0;
                 if (field === 'jumlah' && (parseFloat(value) || 0) > 0) updatedMonthData.m = true;
                 if (field === 'jumlah' && (parseFloat(value) || 0) <= 0) updatedMonthData.m = false;
-                
+
                 const updatedMonths = { ...currentMonths, [monthId]: updatedMonthData };
                 const newTotal = Object.values(updatedMonths).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                
+
                 return { ...p, months: updatedMonths, total: newTotal };
             });
 
@@ -917,11 +917,11 @@ export default function RAB() {
     const handleAddItem = async () => {
         if (!newItemData.name || !newItemData.incomeItemId || !selectedUnitId) return;
         setIsSaving(true);
-        
+
         const isField = selectedUnitId.startsWith('FIELD-');
         const unitId = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
         const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
-        
+
         const incomeItem = incomeItems.find(ii => ii.id === newItemData.incomeItemId);
         const expenseItemId = `EXP-${Date.now().toString(36).toUpperCase()}`;
 
@@ -954,21 +954,25 @@ export default function RAB() {
             // 2. Update Distribution Settings
             // Note: UPDATE_DISTRIBUTION_SETTINGS usually takes an array of settings for a specific unit-income pair
             // But we just want to add one. For simplicity and to avoid wiping others, we'll use the existing state.
-            const existingSettings = state.distributionSettings.filter(s => 
+            const existingSettings = state.distributionSettings.filter(s =>
                 s.unitId === distributionRule.unitId && s.incomeItemId === distributionRule.incomeItemId
             );
             const updatedSettings = [...existingSettings, distributionRule];
-            
-            dispatch({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
-                unitId: distributionRule.unitId, 
-                incomeItemId: distributionRule.incomeItemId, 
-                settings: updatedSettings 
-            }});
-            await api.pushAction({ type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: { 
-                unitId: distributionRule.unitId, 
-                incomeItemId: distributionRule.incomeItemId, 
-                settings: updatedSettings 
-            }}, state);
+
+            dispatch({
+                type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: {
+                    unitId: distributionRule.unitId,
+                    incomeItemId: distributionRule.incomeItemId,
+                    settings: updatedSettings
+                }
+            });
+            await api.pushAction({
+                type: 'UPDATE_DISTRIBUTION_SETTINGS', payload: {
+                    unitId: distributionRule.unitId,
+                    incomeItemId: distributionRule.incomeItemId,
+                    settings: updatedSettings
+                }
+            }, state);
 
             setMessage({ type: 'success', text: `Item "${newItemData.name}" berhasil ditambahkan ke RAB.` });
             setIsAddingItem(false);
@@ -1015,9 +1019,9 @@ export default function RAB() {
 
         // 1. Strict Validation: BOS Limit
         if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
-            setMessage({ 
-                type: 'error', 
-                text: `DILARANG: Total rencana belanja BOS (${formatRupiah(totalExpenseBos)}) melebihi total alokasi BOS (${formatRupiah(totalBosAllocated)}).` 
+            setMessage({
+                type: 'error',
+                text: `DILARANG: Total rencana belanja BOS (${formatRupiah(totalExpenseBos)}) melebihi total alokasi BOS (${formatRupiah(totalBosAllocated)}).`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -1029,15 +1033,15 @@ export default function RAB() {
             const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
             if (detail.total <= 0 || allocated === 0) return false;
-            
+
             const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
             return yayasanSpent > (allocated + 100);
         }) : null;
 
         if (overBudgetItem) {
-            setMessage({ 
-                type: 'error', 
-                text: `DILARANG: Item "${overBudgetItem.name}" melebihi rencana penerimaan Yayasan (setelah dikurangi porsi BOS).` 
+            setMessage({
+                type: 'error',
+                text: `DILARANG: Item "${overBudgetItem.name}" melebihi rencana penerimaan Yayasan (setelah dikurangi porsi BOS).`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -1054,9 +1058,9 @@ export default function RAB() {
 
         if (overBosItem) {
             const itm = expenseItems.find(e => e.id === overBosItem);
-            setMessage({ 
-                type: 'error', 
-                text: `DILARANG: Item "${itm?.name || 'terkait'}" melebihi alokasi BOS (${formatRupiah(bosItemMap[overBosItem])}).` 
+            setMessage({
+                type: 'error',
+                text: `DILARANG: Item "${itm?.name || 'terkait'}" melebihi alokasi BOS (${formatRupiah(bosItemMap[overBosItem])}).`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -1091,9 +1095,9 @@ export default function RAB() {
 
         // 1. Strict Validation: BOS Limit for Submission
         if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
-            setMessage({ 
-                type: 'error', 
-                text: `PENGAJUAN DITOLAK: Total rencana belanja BOS melebihi alokasi tersedia (${formatRupiah(totalBosAllocated)}).` 
+            setMessage({
+                type: 'error',
+                text: `PENGAJUAN DITOLAK: Total rencana belanja BOS melebihi alokasi tersedia (${formatRupiah(totalBosAllocated)}).`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -1111,9 +1115,9 @@ export default function RAB() {
         });
 
         if (overBudgetItemSubmit) {
-            setMessage({ 
-                type: 'error', 
-                text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit Yayasan.` 
+            setMessage({
+                type: 'error',
+                text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit Yayasan.`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -1130,9 +1134,9 @@ export default function RAB() {
 
         if (overBosItemSubmit) {
             const itm = expenseItems.find(e => e.id === overBosItemSubmit);
-            setMessage({ 
-                type: 'error', 
-                text: `PENGAJUAN DITOLAK: Item "${itm?.name || 'terkait'}" melebihi alokasi BOS (${formatRupiah(bosItemMap[overBosItemSubmit])}).` 
+            setMessage({
+                type: 'error',
+                text: `PENGAJUAN DITOLAK: Item "${itm?.name || 'terkait'}" melebihi alokasi BOS (${formatRupiah(bosItemMap[overBosItemSubmit])}).`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
@@ -1255,15 +1259,15 @@ export default function RAB() {
                                     pendingPlans.map(plan => {
                                         const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
                                         const total = Object.values(plan.expense || {}).reduce((sum, v) => sum + (v.total || 0), 0);
-                                        
+
                                         // Calculate RAP for this specific plan's unit/field for the row display
                                         let unitId = null;
                                         let fieldId = null;
                                         if (plan.fieldId) fieldId = plan.fieldId;
                                         else unitId = plan.unitId;
-                                        
+
                                         const planRAP = calculateRAP(state, selectedYearId, unitId, fieldId);
-                                        
+
                                         const rowData = {
                                             id: plan.id,
                                             name: unit?.name || 'Unknown',
@@ -1284,7 +1288,7 @@ export default function RAB() {
                                         };
 
                                         return (
-                                            <BudgetRow 
+                                            <BudgetRow
                                                 key={plan.id}
                                                 data={rowData}
                                                 isExpanded={!!expandedReviewPlans[plan.id]}
@@ -1296,21 +1300,21 @@ export default function RAB() {
                                                 isField={!!plan.fieldId}
                                                 actions={
                                                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                                                        <button 
+                                                        <button
                                                             onClick={() => handleApproval(plan.id, 'APPROVED')}
                                                             className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
                                                             title="SETUJUI (ACC)"
                                                         >
                                                             <CheckCircle2 size={14} />
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={() => setShowRejectionInput(plan.id)}
                                                             className="p-2 bg-rose-50 text-rose-600 rounded-lg hover:bg-rose-600 hover:text-white transition-all shadow-sm"
                                                             title="TOLAK / REVISI"
                                                         >
                                                             <XCircle size={14} />
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={() => {
                                                                 setSelectedUnitId(plan.fieldId ? `FIELD-${plan.fieldId}` : (plan.unitId || 'FOUNDATION'));
                                                                 setActiveTab('EXPENSE');
@@ -1331,7 +1335,7 @@ export default function RAB() {
                         </table>
                     </div>
                 </div>
-                
+
                 {showRejectionInput && (
                     <div className="bg-rose-50 p-8 rounded-[2rem] border border-rose-100 animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-start gap-4 mb-6">
@@ -1341,20 +1345,20 @@ export default function RAB() {
                                 <p className="text-rose-400 text-[10px] font-black uppercase tracking-widest mt-1">Sertilkan masukan anda agar unit dapat memperbaiki anggaran</p>
                             </div>
                         </div>
-                        <textarea 
+                        <textarea
                             className="w-full p-5 bg-white border border-rose-200 rounded-2xl font-medium text-rose-800 outline-none focus:ring-4 focus:ring-rose-100 transition-all min-h-[120px]"
                             placeholder="Tuliskan catatan revisi di sini..."
                             value={rejectionReason}
                             onChange={e => setRejectionReason(e.target.value)}
                         />
                         <div className="flex gap-4 mt-6 justify-end">
-                            <button 
+                            <button
                                 onClick={() => setShowRejectionInput(null)}
                                 className="px-6 py-3 text-rose-400 font-black text-xs uppercase"
                             >
                                 Batal
                             </button>
-                            <button 
+                            <button
                                 onClick={() => handleApproval(showRejectionInput, 'REJECTED', rejectionReason)}
                                 disabled={!rejectionReason.trim()}
                                 className="bg-rose-600 text-white px-10 py-3 rounded-xl font-black text-xs uppercase shadow-xl shadow-rose-200 disabled:opacity-50"
@@ -1373,7 +1377,7 @@ export default function RAB() {
         const items = isIncome ? filteredIncomeItems : filteredExpenseItems;
         const type = isIncome ? 'income' : 'expense';
         const labelText = isIncome ? 'Item pendapatan' : 'Item pengeluaran';
-        
+
         return (
             <div className="space-y-6">
                 {/* Advanced Filter Bar */}
@@ -1390,7 +1394,7 @@ export default function RAB() {
                     {/* Month Filter */}
                     <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Bulan:</span>
-                        <select 
+                        <select
                             value={filterMonth || ''}
                             onChange={(e) => setFilterMonth(e.target.value || null)}
                             className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer flex-1"
@@ -1407,7 +1411,7 @@ export default function RAB() {
                     {/* Program Filter */}
                     <div className="flex items-center gap-2 flex-1 min-w-[200px]">
                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Program:</span>
-                        <select 
+                        <select
                             value={filterProgram || ''}
                             onChange={(e) => setFilterProgram(e.target.value || null)}
                             className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer flex-1"
@@ -1421,7 +1425,7 @@ export default function RAB() {
 
                     {/* Clear Button */}
                     {(filterMonth || filterProgram) && (
-                        <button 
+                        <button
                             onClick={() => { setFilterMonth(null); setFilterProgram(null); }}
                             className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all group"
                             title="RESET FILTER"
@@ -1432,244 +1436,244 @@ export default function RAB() {
                 </div>
 
                 <div className="overflow-x-auto">
-                <table className="w-full border-separate border-spacing-y-4">
-                    <thead>
-                        <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
-                            <th className="px-6 py-1 text-left w-12">#</th>
-                            <th className="px-6 py-1 text-left">{labelText}</th>
-                            <th className="px-6 py-1 text-center">Semester</th>
-                            <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
-                            <th className="px-6 py-1 text-right">Draft RAB</th>
-                            <th className="px-6 py-2 text-right">Aksi</th>
-                        </tr>
-                    </thead>
-                <tbody>
-                    {items.filter(item => {
-                        if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
-                        return true;
-                    }).filter(item => {
-                        if (isIncome) return true;
-                        if (fundSourceFilter === 'Yayasan') {
-                            return item.sourceOfFunds !== 'BOS' && !bosItemMap[item.id];
-                        }
-                        if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
-                        return true;
-                    }).flatMap((itemMaster, index) => {
-                        let plans = activePlan[type][itemMaster.id] || [];
-                        
-                        // 1. Program Filtering
-                        if (filterProgram) {
-                            plans = plans.filter(p => (p.programId === filterProgram) || (p.components?.some(c => c.programId === filterProgram)));
-                        }
+                    <table className="w-full border-separate border-spacing-y-4">
+                        <thead>
+                            <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                                <th className="px-6 py-1 text-left w-12">#</th>
+                                <th className="px-6 py-1 text-left">{labelText}</th>
+                                <th className="px-6 py-1 text-center">Semester</th>
+                                <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
+                                <th className="px-6 py-1 text-right">Draft RAB</th>
+                                <th className="px-6 py-2 text-right">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.filter(item => {
+                                if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
+                                return true;
+                            }).filter(item => {
+                                if (isIncome) return true;
+                                if (fundSourceFilter === 'Yayasan') {
+                                    return item.sourceOfFunds !== 'BOS' && !bosItemMap[item.id];
+                                }
+                                if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
+                                return true;
+                            }).flatMap((itemMaster, index) => {
+                                let plans = activePlan[type][itemMaster.id] || [];
 
-                        const allocated = isIncome 
-                            ? (rapData.incomeTotals[itemMaster.id] || 0)
-                            : (fundSourceFilter === 'BOS' 
-                                ? (bosItemMap[itemMaster.id] || 0) 
-                                : (rapData.itemAllocations[itemMaster.id] || 0));
+                                // 1. Program Filtering
+                                if (filterProgram) {
+                                    plans = plans.filter(p => (p.programId === filterProgram) || (p.components?.some(c => c.programId === filterProgram)));
+                                }
 
-                        if (plans.length > 0) {
-                            // Aggregate ALL plans into exactly one row display
-                            const aggregatedPlan = {
-                                id: plans[0].id,
-                                total: plans.reduce((s, p) => {
-                                    if (filterMonth) return s + (parseFloat(p.months?.[filterMonth]?.jumlah) || 0);
-                                    return s + (p.total || 0);
-                                }, 0),
-                                bosAmount: plans.reduce((s, p) => {
-                                    if (filterMonth) {
-                                        // Approximate monthly BOS amount by looking at the components in that month
-                                        // or just use total if not granular.
-                                        // Since BOS is per-component, we should ideally check component useBos.
-                                        const monthTotal = parseFloat(p.months?.[filterMonth]?.jumlah) || 0;
-                                        if (p.useBos) return s + monthTotal;
-                                        return s;
-                                    }
-                                    return s + (p.bosAmount || 0);
-                                }, 0),
-                                description: Array.from(new Set(plans.flatMap(p => (p.description || '').split(', ')).filter(Boolean))).join(', '),
-                                semester: plans[0].semester,
-                                isAggregated: plans.length > 1,
-                                isEmpty: false
-                            };
+                                const allocated = isIncome
+                                    ? (rapData.incomeTotals[itemMaster.id] || 0)
+                                    : (fundSourceFilter === 'BOS'
+                                        ? (bosItemMap[itemMaster.id] || 0)
+                                        : (rapData.itemAllocations[itemMaster.id] || 0));
 
-                            // 2. Month Filtering (Hide if 0 in that month)
-                            if (filterMonth && aggregatedPlan.total <= 0) return [];
+                                if (plans.length > 0) {
+                                    // Aggregate ALL plans into exactly one row display
+                                    const aggregatedPlan = {
+                                        id: plans[0].id,
+                                        total: plans.reduce((s, p) => {
+                                            if (filterMonth) return s + (parseFloat(p.months?.[filterMonth]?.jumlah) || 0);
+                                            return s + (p.total || 0);
+                                        }, 0),
+                                        bosAmount: plans.reduce((s, p) => {
+                                            if (filterMonth) {
+                                                // Approximate monthly BOS amount by looking at the components in that month
+                                                // or just use total if not granular.
+                                                // Since BOS is per-component, we should ideally check component useBos.
+                                                const monthTotal = parseFloat(p.months?.[filterMonth]?.jumlah) || 0;
+                                                if (p.useBos) return s + monthTotal;
+                                                return s;
+                                            }
+                                            return s + (p.bosAmount || 0);
+                                        }, 0),
+                                        description: Array.from(new Set(plans.flatMap(p => (p.description || '').split(', ')).filter(Boolean))).join(', '),
+                                        semester: plans[0].semester,
+                                        isAggregated: plans.length > 1,
+                                        isEmpty: false
+                                    };
 
-                            return [{ itemMaster, plan: aggregatedPlan, allocated, isFirst: true }];
-                        }
+                                    // 2. Month Filtering (Hide if 0 in that month)
+                                    if (filterMonth && aggregatedPlan.total <= 0) return [];
 
-                        // If filtering by month/program, don't show empty items
-                        if (filterMonth || filterProgram) return [];
+                                    return [{ itemMaster, plan: aggregatedPlan, allocated, isFirst: true }];
+                                }
 
-                        return [{ 
-                            itemMaster, 
-                            plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
-                            allocated,
-                            isFirst: true
-                        }];
-                    }).map((rowData, index) => {
-                        const { itemMaster, plan, allocated, isFirst } = rowData;
-                        const draftValue = plan.total || 0;
-                        const isOver = draftValue > (allocated + 100);
-                        
-                        return (
-                            <tr key={plan.id || index} className="group bg-white hover:bg-slate-50 transition-all duration-300">
-                                <td className="px-6 py-4 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
-                                    {(index + 1).toString().padStart(2, '0')}
-                                </td>
-                                    <td className={`px-6 py-4 border-y border-slate-100 ${!isFirst ? 'opacity-40' : ''}`}>
-                                        <div className="flex items-center gap-4">
-                                            <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300'}`}>
-                                                {isIncome ? <DollarSign size={18} /> : <TrendingUp size={18} />}
-                                            </div>
-                                            <div>
-                                                <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
-                                                        {itemMaster.sourceOfFunds || (isIncome ? 'Penerimaan' : 'Yayasan')}
-                                                    </p>
+                                // If filtering by month/program, don't show empty items
+                                if (filterMonth || filterProgram) return [];
+
+                                return [{
+                                    itemMaster,
+                                    plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
+                                    allocated,
+                                    isFirst: true
+                                }];
+                            }).map((rowData, index) => {
+                                const { itemMaster, plan, allocated, isFirst } = rowData;
+                                const draftValue = plan.total || 0;
+                                const isOver = draftValue > (allocated + 100);
+
+                                return (
+                                    <tr key={plan.id || index} className="group bg-white hover:bg-slate-50 transition-all duration-300">
+                                        <td className="px-6 py-4 first:rounded-l-[2rem] border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">
+                                            {(index + 1).toString().padStart(2, '0')}
+                                        </td>
+                                        <td className={`px-6 py-4 border-y border-slate-100 ${!isFirst ? 'opacity-40' : ''}`}>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`p-4 rounded-2xl bg-slate-50 group-hover:bg-white transition-all shadow-sm ${draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300'}`}>
+                                                    {isIncome ? <DollarSign size={18} /> : <TrendingUp size={18} />}
+                                                </div>
+                                                <div>
+                                                    <p className="font-black text-slate-800 text-sm tracking-tight mb-1 group-hover:text-indigo-900">{itemMaster.name}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest italic leading-none">
+                                                            {itemMaster.sourceOfFunds || (isIncome ? 'Penerimaan' : 'Yayasan')}
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                <td className="px-6 py-4 border-y border-slate-100 text-center">
-                                    <span className={`px-3 py-1 rounded-full font-black text-[9px] ${plan.isEmpty ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'}`}>
-                                        SMT {plan.semester || '1'}
-                                    </span>
-                                </td>
-                                <td className="px-6 py-4 border-y border-slate-100 text-right">
-                                    {isFirst && <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>}
-                                </td>
-                                    <td className="px-6 py-4 border-y border-slate-100 text-right">
-                                        <div className="flex flex-col items-end gap-1">
-                                            <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300')}`}>
-                                                {formatRupiah(draftValue)}
-                                            </p>
-                                        </div>
-                                    </td>
-                                <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
-                                    <div className="flex items-center justify-end gap-2">
-                                        <button 
-                                            onClick={() => {
-                                                const existingPlans = activePlan[type][itemMaster.id] || [];
-                                                if (existingPlans.length > 0) {
-                                                    // Instead of creating new, open the existing one for editing
-                                                    setEditingItem({ 
-                                                        ...itemMaster, 
-                                                        id: existingPlans[0].id,
-                                                        itemId: itemMaster.id,
-                                                        planId: existingPlans[0].id 
-                                                    });
-                                                } else {
-                                                    const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
-                                                    setEditingItem({ 
-                                                        id: newPlanId, 
-                                                        itemId: itemMaster.id, 
-                                                        name: itemMaster.name,
-                                                        isNewPlan: true,
-                                                        semester: '1'
-                                                    });
-                                                }
-                                            }}
-                                            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-slate-900 transition-all active:scale-95"
-                                            title="TAMBAH RENCANA"
-                                        >
-                                            <Plus size={18} strokeWidth={3} />
-                                        </button>
-
-                                        {!plan.isEmpty && (
-                                            <>
-                                                <button 
-                                                    onClick={() => setEditingItem({ 
-                                                        ...itemMaster, 
-                                                        id: plan.id,
-                                                        itemId: itemMaster.id,
-                                                        planId: plan.id 
-                                                    })}
-                                                    className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
-                                                    title="EDIT RENCANA"
+                                        </td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-center">
+                                            <span className={`px-3 py-1 rounded-full font-black text-[9px] ${plan.isEmpty ? 'bg-slate-50 text-slate-300' : 'bg-blue-50 text-blue-600'}`}>
+                                                SMT {plan.semester || '1'}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-right">
+                                            {isFirst && <p className="font-black text-slate-700 text-xs italic">{formatRupiah(allocated)}</p>}
+                                        </td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-right">
+                                            <div className="flex flex-col items-end gap-1">
+                                                <p className={`font-black text-sm italic ${isOver ? 'text-rose-600 animate-pulse' : (draftValue > 0 ? (isIncome ? 'text-emerald-600' : 'text-indigo-600') : 'text-slate-300')}`}>
+                                                    {formatRupiah(draftValue)}
+                                                </p>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 border-y border-r border-slate-100 last:rounded-r-[2rem] text-right">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <button
+                                                    onClick={() => {
+                                                        const existingPlans = activePlan[type][itemMaster.id] || [];
+                                                        if (existingPlans.length > 0) {
+                                                            // Instead of creating new, open the existing one for editing
+                                                            setEditingItem({
+                                                                ...itemMaster,
+                                                                id: existingPlans[0].id,
+                                                                itemId: itemMaster.id,
+                                                                planId: existingPlans[0].id
+                                                            });
+                                                        } else {
+                                                            const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                            setEditingItem({
+                                                                id: newPlanId,
+                                                                itemId: itemMaster.id,
+                                                                name: itemMaster.name,
+                                                                isNewPlan: true,
+                                                                semester: '1'
+                                                            });
+                                                        }
+                                                    }}
+                                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-slate-900 transition-all active:scale-95"
+                                                    title="TAMBAH RENCANA"
                                                 >
-                                                    <Pencil size={18} />
+                                                    <Plus size={18} strokeWidth={3} />
                                                 </button>
 
-                                                {!isLocked && (
-                                                    <button 
-                                                        onClick={async () => {
-                                                            if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                const updatedPlans = (currentPlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
-                                                                const nextPlan = {
-                                                                    ...currentPlan,
-                                                                    [type]: {
-                                                                        ...currentPlan[type],
-                                                                        [itemMaster.id]: updatedPlans
+                                                {!plan.isEmpty && (
+                                                    <>
+                                                        <button
+                                                            onClick={() => setEditingItem({
+                                                                ...itemMaster,
+                                                                id: plan.id,
+                                                                itemId: itemMaster.id,
+                                                                planId: plan.id
+                                                            })}
+                                                            className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+                                                            title="EDIT RENCANA"
+                                                        >
+                                                            <Pencil size={18} />
+                                                        </button>
+
+                                                        {!isLocked && (
+                                                            <button
+                                                                onClick={async () => {
+                                                                    if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                        const updatedPlans = (currentPlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
+                                                                        const nextPlan = {
+                                                                            ...currentPlan,
+                                                                            [type]: {
+                                                                                ...currentPlan[type],
+                                                                                [itemMaster.id]: updatedPlans
+                                                                            }
+                                                                        };
+
+                                                                        setCurrentPlan(nextPlan);
+
+                                                                        const planId = `${selectedYearId}-${selectedUnitId}`;
+                                                                        const dbPlan = {
+                                                                            id: planId,
+                                                                            academicYearId: selectedYearId,
+                                                                            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                                                                            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                                            income: nextPlan.income,
+                                                                            expense: nextPlan.expense,
+                                                                            status: nextPlan.status,
+                                                                            rejectionReason: nextPlan.rejectionReason,
+                                                                            updatedAt: new Date().toISOString(),
+                                                                            updatedBy: currentUser?.username
+                                                                        };
+                                                                        await persistPlanToServer(dbPlan);
                                                                     }
-                                                                };
-                                                                
-                                                                setCurrentPlan(nextPlan);
-
-                                                                const planId = `${selectedYearId}-${selectedUnitId}`;
-                                                                const dbPlan = {
-                                                                    id: planId,
-                                                                    academicYearId: selectedYearId,
-                                                                    unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-                                                                    fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                                                                    income: nextPlan.income,
-                                                                    expense: nextPlan.expense,
-                                                                    status: nextPlan.status,
-                                                                    rejectionReason: nextPlan.rejectionReason,
-                                                                    updatedAt: new Date().toISOString(),
-                                                                    updatedBy: currentUser?.username
-                                                                };
-                                                                await persistPlanToServer(dbPlan);
-                                                            }
-                                                        }}
-                                                        className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
-                                                        title="HAPUS RENCANA"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
+                                                                }}
+                                                                className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all active:scale-95"
+                                                                title="HAPUS RENCANA"
+                                                            >
+                                                                <Trash2 size={18} />
+                                                            </button>
+                                                        )}
+                                                    </>
                                                 )}
-                                            </>
-                                        )}
-                                        </div>
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
 
-                {/* Sticky Table Footer / Save Bar */}
-                <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                        <Save size={160} />
-                    </div>
-                    <div className="relative z-10 flex items-center gap-10">
-                        <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
-                            <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
-                                {formatRupiah(balance)}
-                            </h4>
+                    {/* Sticky Table Footer / Save Bar */}
+                    <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
+                            <Save size={160} />
                         </div>
-                    </div>
-                    {!isLocked && !isConsolidation && (
-                        <div className="relative z-10">
-                            <button 
-                                onClick={handleSave}
-                                disabled={isSaving}
-                                className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
-                            >
-                                <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
-                                {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
-                            </button>
+                        <div className="relative z-10 flex items-center gap-10">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
+                                <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                                    {formatRupiah(balance)}
+                                </h4>
+                            </div>
                         </div>
-                    )}
+                        {!isLocked && !isConsolidation && (
+                            <div className="relative z-10">
+                                <button
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                    className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
+                                >
+                                    <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
+                                    {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
+                                </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
-};
+        );
+    };
 
     const totalIncome = useMemo(() => {
         return Object.values(activePlan?.income || {}).flat().reduce((sum, val) => {
@@ -1691,10 +1695,10 @@ export default function RAB() {
     const totalBosAllocated = useMemo(() => {
         const unitId = selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
         if (!unitId || !selectedYearId) return 0;
-        
-        return (bosAllocations || []).filter(a => 
-            !a.isDeleted && 
-            a.academicYearId === selectedYearId && 
+
+        return (bosAllocations || []).filter(a =>
+            !a.isDeleted &&
+            a.academicYearId === selectedYearId &&
             a.unitId === unitId
         ).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
     }, [bosAllocations, selectedYearId, selectedUnitId]);
@@ -1702,10 +1706,10 @@ export default function RAB() {
     const bosItemMap = useMemo(() => {
         const unitId = selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
         if (!unitId || !selectedYearId) return {};
-        
-        return (bosAllocations || []).filter(a => 
-            !a.isDeleted && 
-            a.academicYearId === selectedYearId && 
+
+        return (bosAllocations || []).filter(a =>
+            !a.isDeleted &&
+            a.academicYearId === selectedYearId &&
             a.unitId === unitId
         ).reduce((acc, a) => {
             acc[a.expenseItemId] = (acc[a.expenseItemId] || 0) + (parseFloat(a.amount) || 0);
@@ -1744,19 +1748,18 @@ export default function RAB() {
                 <div className="flex items-center gap-4 flex-wrap">
                     {isSuperAdmin ? (
                         <div className="flex items-center gap-3">
-                            <button 
+                            <button
                                 onClick={() => setShowDashboard(!showDashboard)}
-                                className={`p-3 rounded-lg font-black text-xs transition-all flex items-center gap-2 shadow-sm ${
-                                    showDashboard 
-                                    ? 'bg-slate-900 text-white' 
-                                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-                                }`}
+                                className={`p-3 rounded-lg font-black text-xs transition-all flex items-center gap-2 shadow-sm ${showDashboard
+                                        ? 'bg-slate-900 text-white'
+                                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                    }`}
                             >
                                 <Layers size={16} />
                                 {showDashboard ? 'TUTUP IKHTISAR' : 'LIHAT SEMUA UNIT'}
                             </button>
 
-                            <select 
+                            <select
                                 className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[250px] shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
                                 value={selectedUnitId}
                                 onChange={e => {
@@ -1802,7 +1805,7 @@ export default function RAB() {
 
 
                     <div className="flex flex-col gap-1">
-                        <select 
+                        <select
                             className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
                             value={selectedYearId}
                             onChange={e => setSelectedYearId(e.target.value)}
@@ -1814,30 +1817,29 @@ export default function RAB() {
                     </div>
                 </div>
 
-                    <div className="flex items-center gap-3 ml-auto">
-                        {!isConsolidation && (
-                            <button 
-                                onClick={handleSubmitReview}
-                                disabled={isSaving || !selectedYearId || isLocked}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95"
-                            >
-                                KIRIM KE YAYASAN
-                            </button>
-                        )}
-                    </div>
+                <div className="flex items-center gap-3 ml-auto">
+                    {!isConsolidation && (
+                        <button
+                            onClick={handleSubmitReview}
+                            disabled={isSaving || !selectedYearId || isLocked}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95"
+                        >
+                            KIRIM KE YAYASAN
+                        </button>
+                    )}
+                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
                         <div className="flex items-center justify-between">
-                            <p className={`font-black uppercase tracking-tight ${
-                                activePlan.status === 'APPROVED' ? 'text-emerald-600' : 
-                                (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
-                            }`}>
+                            <p className={`font-black uppercase tracking-tight ${activePlan.status === 'APPROVED' ? 'text-emerald-600' :
+                                    (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
+                                }`}>
                                 {activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim')}
                             </p>
                             {isSuperAdmin && activePlan.status === 'APPROVED' && (
-                                <button 
+                                <button
                                     onClick={handleCancelApproval}
                                     disabled={isSaving}
                                     className="px-4 py-1.5 bg-rose-100 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95 disabled:opacity-50"
@@ -1882,11 +1884,11 @@ export default function RAB() {
                                 </span>
                                 <span className="text-slate-400 font-bold text-xs uppercase tracking-widest italic">Tahun Ajaran {academicYears.find(ay => ay.id === selectedYearId)?.name}</span>
                             </div>
-                            
+
                             <h2 className="text-4xl lg:text-5xl font-black tracking-tighter italic leading-none mb-8">
                                 Konsolidasi <span className="text-blue-400">Anggaran</span>
                             </h2>
-                            
+
                             <div className={`grid grid-cols-1 ${isBosRecipient ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-8`}>
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total RAP</p>
@@ -1910,7 +1912,7 @@ export default function RAB() {
                                 </div>
                             </div>
 
-                            <button 
+                            <button
                                 onClick={() => {
                                     setSelectedUnitId('FOUNDATION');
                                     setShowDashboard(false);
@@ -1958,7 +1960,7 @@ export default function RAB() {
                                         const plan = rabPlans.find(p => p.id === planId);
                                         const status = plan?.status || 'EMPTY';
                                         const total = Object.values(plan?.expense || {}).reduce((sum, v) => sum + (v?.total || 0), 0);
-                                        
+
                                         // Dynamic RAP calculation for the row
                                         const itemRAP = calculateRAP(state, selectedYearId, item.isField ? null : item.id, item.isField ? item.id : null);
 
@@ -1982,7 +1984,7 @@ export default function RAB() {
                                         };
 
                                         return (
-                                            <BudgetRow 
+                                            <BudgetRow
                                                 key={rowData.id}
                                                 data={rowData}
                                                 isExpanded={!!expandedDashboardPlans[rowData.id]}
@@ -1993,7 +1995,7 @@ export default function RAB() {
                                                 getUnitName={getUnitName}
                                                 isField={!!item.isField}
                                                 actions={
-                                                    <button 
+                                                    <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             setSelectedUnitId(rowData.id);
@@ -2025,7 +2027,7 @@ export default function RAB() {
                             </div>
                             <h3 className="text-lg font-black text-slate-900 text-center tracking-tight leading-tight">
                                 {isConsolidation ? 'Yayasan (Konsolidasi)' : (
-                                    selectedUnitId.startsWith('FIELD-') 
+                                    selectedUnitId.startsWith('FIELD-')
                                         ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
                                         : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
                                 )}
@@ -2037,24 +2039,24 @@ export default function RAB() {
 
                         {/* Quick Stats Cards in Sidebar */}
                         <div className="grid grid-cols-1 gap-3">
-                              <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
+                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
                                 <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">
                                     {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
                                 </p>
                                 <h3 className="text-xl font-black italic">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget)}
                                 </h3>
-                              </div>
-                              {isBosRecipient && fundSourceFilter === 'all' && (
-                                  <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
+                            </div>
+                            {isBosRecipient && fundSourceFilter === 'all' && (
+                                <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
                                     <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">RAP BOS</p>
                                     <h3 className="text-xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>
-                                  </div>
-                              )}
-                              <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
+                                </div>
+                            )}
+                            <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
                                 <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB (Total)</p>
                                 <h3 className="text-xl font-black italic">{formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}</h3>
-                              </div>
+                            </div>
                         </div>
 
                         {/* Financial Analysis Tooltip / Mini Panel */}
@@ -2064,7 +2066,7 @@ export default function RAB() {
                     <div className="flex-1 bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
                         {/* Tab Switcher */}
                         <div className="bg-slate-50/50 flex border-b border-slate-100">
-                            <button 
+                            <button
                                 onClick={() => setActiveTab('EXPENSE')}
                                 className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'EXPENSE' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                             >
@@ -2075,7 +2077,7 @@ export default function RAB() {
                                 </div>
                             </button>
                             {isSuperAdmin && (
-                                <button 
+                                <button
                                     onClick={() => setActiveTab('REVIEW')}
                                     className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'REVIEW' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
                                 >
@@ -2098,9 +2100,8 @@ export default function RAB() {
 
             {/* Float Info Box */}
             {message && (
-                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 duration-500 z-[2000] ${
-                    message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
-                }`}>
+                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 duration-500 z-[2000] ${message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                    }`}>
                     <div className="p-2 bg-white/20 rounded-xl">
                         {message.type === 'success' ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
                     </div>
@@ -2122,7 +2123,7 @@ export default function RAB() {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
                             const itemId = editingItem.itemId || editingItem.id;
                             const plans = activePlan[type][itemId] || [];
-                            
+
                             // If multiple plans exist for one item, merge them into one "workspace" item
                             let item;
                             if (plans.length > 1) {
@@ -2149,8 +2150,8 @@ export default function RAB() {
                                     description: Array.from(new Set(allComponents.map(c => c.label))).join(', ')
                                 };
                             } else {
-                                item = plans.find(p => p.id === editingItem.id) || { 
-                                    id: editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1' 
+                                item = plans.find(p => p.id === editingItem.id) || {
+                                    id: editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1'
                                 };
                             }
 
@@ -2173,7 +2174,7 @@ export default function RAB() {
                                                 const allocated = rapData.itemAllocations[itemId] || 0;
                                                 const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
                                                 const isOver = yayasanSpent > (allocated + 100);
-                                                
+
                                                 if (isOver) {
                                                     return (
                                                         <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
@@ -2189,7 +2190,7 @@ export default function RAB() {
                                                     </div>
                                                 );
                                             })()}
-                                            <button 
+                                            <button
                                                 onClick={() => setEditingItem(null)}
                                                 className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
                                             >
@@ -2207,7 +2208,7 @@ export default function RAB() {
                                                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian</h4>
                                                 </div>
                                             </div>
-                                            
+
                                             <div className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/20">
                                                 <table className="w-full text-left border-collapse">
                                                     <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
@@ -2244,8 +2245,8 @@ export default function RAB() {
                                                                     <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
                                                                     <td className="px-4 py-4">
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14}/></button>
-                                                                            <button onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14}/></button>
+                                                                            <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14} /></button>
+                                                                            <button onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14} /></button>
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -2257,8 +2258,8 @@ export default function RAB() {
                                                             <td colSpan={5} className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] italic text-slate-400">Total Akumulasi Rincian</td>
                                                             <td className="px-6 py-6 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total)}</td>
                                                             <td className="px-4 py-6 text-center">
-                                                                 <button 
-                                                                    onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {} }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                <button
+                                                                    onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setShowCompModal(true); }}
                                                                     className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:scale-110 transition-all mx-auto"
                                                                 >
                                                                     <Plus size={20} strokeWidth={3} />
@@ -2277,16 +2278,16 @@ export default function RAB() {
                                         {(() => {
                                             const canSave = item.total > 0;
                                             return (
-                                                <button 
+                                                <button
                                                     disabled={!canSave}
-                                                    onClick={async () => { 
+                                                    onClick={async () => {
                                                         const mId = editingItem.itemId || editingItem.id;
-                                                        
+
                                                         // Always collapse multiple plans into exactly ONE plan during save
                                                         const updatedPlans = [item];
-                                                        
+
                                                         const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: updatedPlans } };
-                                                        
+
                                                         // Update Local UI State
                                                         setCurrentPlan(nextPlan);
                                                         setEditingItem(null);
@@ -2305,7 +2306,7 @@ export default function RAB() {
                                                             updatedAt: new Date().toISOString(),
                                                             updatedBy: currentUser?.username
                                                         };
-                                                        
+
                                                         await persistPlanToServer(dbPlan);
                                                     }}
                                                     className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl transition-all active:scale-95 flex items-center gap-3 ${canSave ? 'bg-blue-600 text-white hover:bg-slate-900 shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
@@ -2323,101 +2324,107 @@ export default function RAB() {
                                             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm rounded-[3.5rem]" onClick={() => setShowCompModal(false)} />
                                             <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[90vh]">
                                                 <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
-<div>
+                                                    <div>
                                                         <h3 className="text-xl font-black italic uppercase tracking-tight">Detail Rincian</h3>
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru'}</p>
                                                     </div>
-                                                    <button onClick={() => setShowCompModal(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><X size={20}/></button>
+                                                    <button onClick={() => setShowCompModal(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><X size={20} /></button>
                                                 </div>
-                                                
+
                                                 <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                                                         {/* Left Column: Basic Info */}
-                        <div className="space-y-6">
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
-                                <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({...entryForm, label: e.target.value})} />
-                            </div>
-                            <div className="grid grid-cols-3 gap-4">
-                                {['volume', 'satuan', 'kali'].map(field => (
-                                    <div key={field} className="space-y-2">
-                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
-                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '')})} />
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="grid grid-cols-2 gap-6">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
-                                    <div className="relative">
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
-                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})} />
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Semester</label>
-                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
-                                        {['1', '2'].map(s => (
-                                            <button key={s} onClick={() => setEntryForm({...entryForm, semester: s})} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${entryForm.semester === s ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
-                                <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none" value={entryForm.programId || ''} onChange={e => setEntryForm({...entryForm, programId: e.target.value})}>
-                                    <option value="">Pilih Program...</option>
-                                    {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                </select>
-                            </div>
+                                                        <div className="space-y-6">
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
+                                                                <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({ ...entryForm, label: e.target.value })} />
+                                                            </div>
+                                                            <div className="grid grid-cols-3 gap-4">
+                                                                {['volume', 'satuan', 'kali'].map(field => (
+                                                                    <div key={field} className="space-y-2">
+                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
+                                                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({ ...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '') })} />
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-6">
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
+                                                                    <div className="relative">
+                                                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
+                                                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({ ...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0) })} />
+                                                                    </div>
+                                                                </div>
+                                                                <div className="space-y-2">
+                                                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Semester</label>
+                                                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                                                                        {['1', '2'].map(s => (
+                                                                            <button key={s} onClick={() => setEntryForm({ ...entryForm, semester: s })} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${entryForm.semester === s ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
+                                                                <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none" value={entryForm.programId || ''} onChange={e => setEntryForm({ ...entryForm, programId: e.target.value })}>
+                                                                    <option value="">Pilih Program...</option>
+                                                                    {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                                </select>
+                                                            </div>
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Sumber Dana</label>
-                                <div className="flex gap-2">
-                                    {isBosRecipient && fundSourceFilter === 'all' && (
-                                        <button 
-                                            onClick={() => setEntryForm({...entryForm, useBos: !entryForm.useBos})} 
-                                            className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase border-2 transition-all ${entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
-                                        >
-                                            BOS {entryForm.useBos ? 'ON' : 'OFF'}
-                                        </button>
-                                    )}
-                                    <div className="flex-1 py-3 rounded-2xl font-black text-[10px] bg-slate-50 text-slate-400 border-2 border-slate-100 text-center uppercase">YAYASAN</div>
-                                </div>
-                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Sumber Dana</label>
+                                                                <div className="flex gap-2">
+                                                                    {isBosRecipient && fundSourceFilter === 'all' ? (
+                                                                        <>
+                                                                            <button
+                                                                                onClick={() => setEntryForm({ ...entryForm, useBos: !entryForm.useBos })}
+                                                                                className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase border-2 transition-all ${entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                                                                            >
+                                                                                BOS {entryForm.useBos ? 'ON' : 'OFF'}
+                                                                            </button>
+                                                                            <div className="flex-1 py-3 rounded-2xl font-black text-[10px] bg-slate-50 text-slate-400 border-2 border-slate-100 text-center uppercase">YAYASAN</div>
+                                                                        </>
+                                                                    ) : (
+                                                                        <div className={`flex-1 py-3 rounded-2xl font-black text-[10px] border-2 text-center uppercase ${fundSourceFilter === 'BOS' || entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                                                                            {fundSourceFilter === 'BOS' || entryForm.useBos ? 'BOS' : 'YAYASAN'}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
 
-                            {entryForm.useBos && (
-                                <div className="grid grid-cols-2 gap-4 animate-in fade-in">
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">POS BOS</label>
-                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosPosId || ''} onChange={e => setEntryForm({...entryForm, bosPosId: e.target.value})}>
-                                            <option value="">Pilih POS...</option>
-                                            {bosPosList?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">Tahap BOS</label>
-                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosStageId || ''} onChange={e => setEntryForm({...entryForm, bosStageId: e.target.value})}>
-                                            <option value="">Pilih Tahap...</option>
-                                            {bosStages?.filter(s => !s?.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            )}
+                                                            {entryForm.useBos && (
+                                                                <div className="grid grid-cols-2 gap-4 animate-in fade-in">
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">POS BOS</label>
+                                                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosPosId || ''} onChange={e => setEntryForm({ ...entryForm, bosPosId: e.target.value })}>
+                                                                            <option value="">Pilih POS...</option>
+                                                                            {bosPosList?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                                                        </select>
+                                                                    </div>
+                                                                    <div className="space-y-1">
+                                                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">Tahap BOS</label>
+                                                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosStageId || ''} onChange={e => setEntryForm({ ...entryForm, bosStageId: e.target.value })}>
+                                                                            <option value="">Pilih Tahap...</option>
+                                                                            {bosStages?.filter(s => !s?.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            )}
 
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Catatan / Justifikasi</label>
-                                <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] italic font-medium min-h-[60px] outline-none focus:border-blue-500" value={entryForm.description || ''} onChange={e => setEntryForm({...entryForm, description: e.target.value})} placeholder="Alasan pengadaan rincian ini..." />
-                            </div>
+                                                            <div className="space-y-2">
+                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Catatan / Justifikasi</label>
+                                                                <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] italic font-medium min-h-[60px] outline-none focus:border-blue-500" value={entryForm.description || ''} onChange={e => setEntryForm({ ...entryForm, description: e.target.value })} placeholder="Alasan pengadaan rincian ini..." />
+                                                            </div>
 
-                            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
-                                <div className="flex flex-col">
-                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
-                                    <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
-                                </div>
-                                <Calculator size={32} className="opacity-20" />
-                            </div>
-                        </div>
+                                                            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
+                                                                    <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
+                                                                </div>
+                                                                <Calculator size={32} className="opacity-20" />
+                                                            </div>
+                                                        </div>
 
                                                         {/* Right Column: Monthly Allocation */}
                                                         <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col">
@@ -2428,13 +2435,13 @@ export default function RAB() {
                                                                     Sync
                                                                 </button>
                                                             </div>
-                                                            
+
                                                             <div className="grid grid-cols-2 gap-3 flex-1">
-                                                                                                                                 {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m) => {
+                                                                {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m) => {
                                                                     const mData = entryForm.months?.[m.id] || { m: false, jumlah: 0 };
                                                                     const isSelectable = true;
 
-                                                                    
+
                                                                     return (
                                                                         <div key={m.id} className={`p-3 rounded-2xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')}`}>
                                                                             <div className="flex items-center justify-between mb-1.5">
@@ -2454,7 +2461,7 @@ export default function RAB() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                
+
                                                 <div className="p-8 pt-0 flex gap-4 bg-slate-50/50">
                                                     <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all">BATAL</button>
                                                     {(() => {
@@ -2462,11 +2469,11 @@ export default function RAB() {
                                                         const monthlyTotal = Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
                                                         const isBalanced = Math.abs(total - monthlyTotal) < 1.1;
                                                         const canSave = entryForm.label && entryForm.volume && entryForm.harga && isBalanced;
-                                                        
+
                                                         return (
-                                                            <button 
-                                                                disabled={!canSave} 
-                                                                onClick={() => handlePushComponent(itemId, editingItem.id)} 
+                                                            <button
+                                                                disabled={!canSave}
+                                                                onClick={() => handlePushComponent(itemId, editingItem.id)}
                                                                 className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-slate-900'}`}
                                                             >
                                                                 {!isBalanced && total > 0 ? 'ALOKASI BELUM SEIMBANG' : (editingCompIdx !== null ? 'PERBARUI RINCIAN' : 'SIMPAN RINCIAN')}
@@ -2487,13 +2494,11 @@ export default function RAB() {
             {showStatusModal && (
                 <div className="fixed inset-0 z-[3000] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={handleAcknowledgeStatus} />
-                    <div className={`bg-white rounded-[3rem] w-full max-w-lg relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-b-[12px] ${
-                        currentPlan.status === 'APPROVED' ? 'border-emerald-500' : 'border-rose-500'
-                    }`}>
+                    <div className={`bg-white rounded-[3rem] w-full max-w-lg relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 border-b-[12px] ${currentPlan.status === 'APPROVED' ? 'border-emerald-500' : 'border-rose-500'
+                        }`}>
                         <div className="p-10 text-center">
-                            <div className={`w-24 h-24 mx-auto mb-6 rounded-[2rem] flex items-center justify-center shadow-2xl ${
-                                currentPlan.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
-                            }`}>
+                            <div className={`w-24 h-24 mx-auto mb-6 rounded-[2rem] flex items-center justify-center shadow-2xl ${currentPlan.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'
+                                }`}>
                                 {currentPlan.status === 'APPROVED' ? <CheckCircle2 size={48} strokeWidth={2.5} /> : <AlertCircle size={48} strokeWidth={2.5} />}
                             </div>
 
@@ -2501,7 +2506,7 @@ export default function RAB() {
                                 Anggaran {currentPlan.status === 'APPROVED' ? 'Telah Di-ACC!' : 'Perlu Revisi'}
                             </h2>
                             <p className="text-slate-500 font-medium mb-8">
-                                {currentPlan.status === 'APPROVED' 
+                                {currentPlan.status === 'APPROVED'
                                     ? `Alhamdulillah, rencana anggaran unit Anda untuk periode ${academicYears.find(ay => ay.id === selectedYearId)?.name} telah disetujui oleh Yayasan.`
                                     : 'Mohon maaf, rencana anggaran Anda belum dapat disetujui dan memerlukan beberapa perbaikan.'
                                 }
@@ -2519,13 +2524,12 @@ export default function RAB() {
                                 </div>
                             )}
 
-                            <button 
+                            <button
                                 onClick={handleAcknowledgeStatus}
-                                className={`w-full py-5 rounded-2xl font-black text-sm tracking-tight transition-all shadow-xl active:scale-95 ${
-                                    currentPlan.status === 'APPROVED' 
-                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200' 
+                                className={`w-full py-5 rounded-2xl font-black text-sm tracking-tight transition-all shadow-xl active:scale-95 ${currentPlan.status === 'APPROVED'
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
                                         : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
-                                }`}
+                                    }`}
                             >
                                 SAYA MENGERTI
                             </button>
