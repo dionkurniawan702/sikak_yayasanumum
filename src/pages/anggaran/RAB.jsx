@@ -6,7 +6,7 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
-    Calculator, Trash2, Pencil, DollarSign
+    Calculator, Trash2, Pencil, DollarSign, BarChart3
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
@@ -1751,8 +1751,8 @@ export default function RAB() {
                             <button
                                 onClick={() => setShowDashboard(!showDashboard)}
                                 className={`p-3 rounded-lg font-black text-xs transition-all flex items-center gap-2 shadow-sm ${showDashboard
-                                        ? 'bg-slate-900 text-white'
-                                        : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
+                                    ? 'bg-slate-900 text-white'
+                                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
                                     }`}
                             >
                                 <Layers size={16} />
@@ -1834,7 +1834,7 @@ export default function RAB() {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
                         <div className="flex items-center justify-between">
                             <p className={`font-black uppercase tracking-tight ${activePlan.status === 'APPROVED' ? 'text-emerald-600' :
-                                    (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
+                                (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
                                 }`}>
                                 {activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim')}
                             </p>
@@ -2527,8 +2527,8 @@ export default function RAB() {
                             <button
                                 onClick={handleAcknowledgeStatus}
                                 className={`w-full py-5 rounded-2xl font-black text-sm tracking-tight transition-all shadow-xl active:scale-95 ${currentPlan.status === 'APPROVED'
-                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
-                                        : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
+                                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
+                                    : 'bg-rose-600 hover:bg-rose-700 text-white shadow-rose-200'
                                     }`}
                             >
                                 SAYA MENGERTI
