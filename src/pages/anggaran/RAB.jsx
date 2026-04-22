@@ -175,7 +175,7 @@ export default function RAB() {
     }, [programs, expensePrograms, activeTab]);
 
     const toggleDetailItem = (parentId, itemId) => {
-        const key = `${parentId}-${itemId}`;
+        const key = `${parentId}|${itemId}`;
         setExpandedDetailItems(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
