@@ -2202,42 +2202,52 @@ export default function RAB() {
                                                 <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
                                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                                                         {/* Left Column: Basic Info */}
-                                                        <div className="space-y-6">
-                                                            <div className="space-y-2">
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
-                                                                <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({...entryForm, label: e.target.value})} />
-                                                            </div>
-                                                            <div className="grid grid-cols-3 gap-4">
-                                                                {['volume', 'satuan', 'kali'].map(field => (
-                                                                    <div key={field} className="space-y-2">
-                                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
-                                                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '')})} />
-                                                                    </div>
-                                                                ))}
-                                                            </div>
-<div className="space-y-2">
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
-                                                                <div className="relative">
-                                                                    <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
-                                                                    <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})} />
-                                                                </div>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
-                                                                <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none" value={entryForm.programId || ''} onChange={e => setEntryForm({...entryForm, programId: e.target.value})}>
-                                                                    <option value="">Pilih Program...</option>
-                                                                    {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                                </select>
-                                                            </div>
+                        <div className="space-y-6">
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
+                                <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({...entryForm, label: e.target.value})} />
+                            </div>
+                            <div className="grid grid-cols-3 gap-4">
+                                {['volume', 'satuan', 'kali'].map(field => (
+                                    <div key={field} className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
+                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '')})} />
+                                    </div>
+                                ))}
+                            </div>
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
+                                    <div className="relative">
+                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
+                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0)})} />
+                                    </div>
+                                </div>
+                                <div className="space-y-2">
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Semester</label>
+                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                                        {['1', '2'].map(s => (
+                                            <button key={s} onClick={() => setEntryForm({...entryForm, semester: s})} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${entryForm.semester === s ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
+                                <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none" value={entryForm.programId || ''} onChange={e => setEntryForm({...entryForm, programId: e.target.value})}>
+                                    <option value="">Pilih Program...</option>
+                                    {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                </select>
+                            </div>
 
-                                                            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
-                                                                    <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
-                                                                </div>
-                                                                <Calculator size={32} className="opacity-20" />
-                                                            </div>
-                                                        </div>
+                            <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Subtotal Terhitung</span>
+                                    <span className="text-xl font-black italic">{formatRupiah((parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0))}</span>
+                                </div>
+                                <Calculator size={32} className="opacity-20" />
+                            </div>
+                        </div>
 
                                                         {/* Right Column: Monthly Allocation */}
                                                         <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col">
