@@ -554,12 +554,30 @@ export default function RAB() {
                 else components.push(newComp);
                 
                 const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-                const updatedPlan = { ...p, components, total: newTotal };
+                const newBosAmount = components.reduce((sum, c) => sum + (c.useBos ? (parseFloat(c.total) || 0) : 0), 0);
                 
-                if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
-                    updatedPlan.useBos = true;
-                    updatedPlan.bosAmount = newTotal;
-                }
+                // Aggregate months from all components
+                const aggregatedMonths = {};
+                components.forEach(c => {
+                    Object.entries(c.months || {}).forEach(([mId, mData]) => {
+                        if (!mData.m) return;
+                        if (!aggregatedMonths[mId]) aggregatedMonths[mId] = { m: true, jumlah: 0 };
+                        aggregatedMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                    });
+                });
+
+                const updatedPlan = { 
+                    ...p, 
+                    components, 
+                    total: newTotal, 
+                    bosAmount: newBosAmount,
+                    useBos: newBosAmount > 0,
+                    semester: components[0]?.semester || '1',
+                    programId: components[0]?.programId || '',
+                    description: components.map(c => c.label).join(', '),
+                    months: aggregatedMonths
+                };
+                
                 return updatedPlan;
             });
 
@@ -570,10 +588,11 @@ export default function RAB() {
                     total: newComp.total,
                     components: [newComp],
                     months: newComp.months || {},
-                    semester: newComp.semester || editingItem.semester || '1',
+                    semester: newComp.semester || '1',
                     programId: newComp.programId || '',
-                    useBos: fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS',
-                    bosAmount: (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') ? newComp.total : 0
+                    useBos: !!newComp.useBos,
+                    bosAmount: newComp.useBos ? newComp.total : 0,
+                    description: newComp.label
                 };
                 return { ...prev, [type]: { ...prev[type], [itemId]: [...plans, newPlan] } };
             }
@@ -686,8 +705,9 @@ export default function RAB() {
                 
                 const components = (p.components || []).filter((_, i) => i !== index);
                 const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+                const newBosAmount = components.reduce((sum, c) => sum + (c.useBos ? (parseFloat(c.total) || 0) : 0), 0);
                 
-                // NEW: Aggregate months from remaining components
+                // Aggregate months from remaining components
                 const aggregatedMonths = {};
                 let firstProgramId = '';
                 let firstSemester = '1';
@@ -705,15 +725,14 @@ export default function RAB() {
                     ...p, 
                     components, 
                     total: newTotal,
-                    months: aggregatedMonths,
+                    bosAmount: newBosAmount,
+                    useBos: newBosAmount > 0,
+                    semester: firstSemester,
                     programId: firstProgramId,
-                    semester: firstSemester
+                    months: aggregatedMonths,
+                    description: components.map(c => c.label).join(', ')
                 };
                 
-                if (fundSourceFilter === 'BOS' || editingItem?.sourceOfFunds === 'BOS') {
-                    updatedPlan.useBos = true;
-                    updatedPlan.bosAmount = newTotal;
-                }
                 return updatedPlan;
             });
 
@@ -2068,101 +2087,19 @@ export default function RAB() {
                                                                 >
                                                                     <Plus size={20} strokeWidth={3} />
                                                                 </button>
-                                                            </td>
+                                                            </td>                                                             </td>
                                                         </tr>
                                                     </tfoot>
                                                 </table>
                                             </div>
                                         </div>
-
-                                        {/* Progressive Sections Grid */}
-                                        {((item.components && item.components.length > 0) || !editingItem.isNewPlan) && (
-                                            <>
-                                                <div className="p-8 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm space-y-8">
-                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                                                        <div className="space-y-4">
-                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Program Belanja</label>
-                                                            <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 outline-none" value={item.programId || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'programId', e.target.value)}>
-                                                                <option value="">Pilih Program...</option>
-                                                                {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                            </select>
-                                                        </div>
-                                                        <div className="space-y-4">
-                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Semester</label>
-                                                            <div className="flex bg-slate-100 p-2 rounded-[1.5rem]">
-                                                                {['1', '2'].map(s => (
-                                                                    <button key={s} onClick={() => handleItemUpdate(itemId, editingItem.id, 'semester', s)} className={`flex-1 py-3 rounded-xl font-black text-xs transition-all ${item.semester === s ? 'bg-white shadow-md text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
-                                                                ))}
-                                                            </div>
-                                                        </div>
-                                                        <div className="space-y-4">
-                                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Sumber Dana</label>
-                                                            <div className="flex items-center gap-3">
-                                                                {isBosRecipient && fundSourceFilter === 'all' && (
-                                                                    <button onClick={() => handleItemUpdate(itemId, editingItem.id, 'useBos', !item.useBos)} className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase border-2 ${item.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-white border-slate-100 text-slate-400'}`}>BOS {item.useBos ? 'ON' : 'OFF'}</button>
-                                                                )}
-                                                                <div className="flex-1 py-3 rounded-2xl font-black text-[10px] bg-slate-50 text-slate-400 border-2 border-slate-100 text-center uppercase">YAYASAN</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {item.useBos && (
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-slate-100 animate-in fade-in">
-                                                            <div className="space-y-2">
-                                                                <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">POS BOS</label>
-                                                                <select className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl text-xs font-black" value={item.bosPosId || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosPosId', e.target.value)}>
-                                                                    <option value="">Pilih POS...</option>
-                                                                    {bosPosList?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                                </select>
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <label className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Tahap BOS</label>
-                                                                <select className="w-full p-4 bg-emerald-50/50 border-2 border-emerald-100 rounded-2xl text-xs font-black" value={item.bosStageId || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'bosStageId', e.target.value)}>
-                                                                    <option value="">Pilih Tahap...</option>
-                                                                    {bosStages?.filter(s => !s?.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <div className="space-y-4 pt-4 border-t border-slate-100">
-                                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Catatan / Justifikasi</label>
-                                                        <textarea className="w-full p-6 bg-slate-50 border-2 border-slate-100 rounded-[2rem] text-sm italic font-medium min-h-[80px]" value={item.description || ''} onChange={e => handleItemUpdate(itemId, editingItem.id, 'description', e.target.value)} placeholder="Alasan pengadaan..." />
-                                                    </div>
-                                                </div>
-
-                                                {/* Monthly Spreading */}
-                                                <div className="p-10 bg-slate-900 rounded-[3rem] text-white space-y-8 shadow-2xl">
-                                                    <div className="flex items-center justify-between">
-                                                        <h4 className="text-xs font-black uppercase tracking-[0.2em] italic text-blue-400">Distribusi Alokasi Bulanan</h4>
-                                                        <button onClick={() => handleItemUpdate(itemId, editingItem.id, 'months', {})} className="text-[9px] font-black text-slate-500 uppercase hover:text-white transition-colors">RESET ALL</button>
-                                                    </div>
-                                                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                                                        {generateMonths(academicYears.find(a => a.id === selectedYearId)).map((m, idx) => {
-                                                            const mData = item.months?.[m.id] || { m: false, jumlah: 0 };
-                                                            const isSelectable = (item.semester === '1' && idx < 6) || (item.semester === '2' && idx >= 6);
-                                                            return (
-                                                                <div key={m.id} className={`p-4 rounded-3xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400 shadow-xl' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')}`}>
-                                                                    <div className="flex items-center justify-between mb-2">
-                                                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest group-hover:text-white">{m.shortLabel}</span>
-                                                                        <input type="checkbox" checked={mData.m} onChange={e => handleMonthlyUpdate(itemId, editingItem.id, m.id, 'm', e.target.checked)} className="w-4 h-4 rounded-lg bg-slate-800 border-slate-700 text-blue-500" />
-                                                                    </div>
-                                                                    <input type="text" className="w-full bg-transparent font-black text-xs outline-none p-0" placeholder="Rp 0" value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} onChange={e => handleMonthlyUpdate(itemId, editingItem.id, m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} />
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-                                            </>
-                                        )}
                                     </div>
 
                                     {/* Modal Footer */}
                                     <div className="p-10 border-t border-slate-100 bg-white flex items-center justify-between">
                                         <button onClick={() => setEditingItem(null)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase hover:bg-slate-200 transition-all">BATALKAN</button>
                                         {(() => {
-                                            const monthlyTotal = Object.values(item.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                            const canSave = item.total > 0 && Math.abs(item.total - monthlyTotal) < 1.1;
+                                            const canSave = item.total > 0;
                                             return (
                                                 <button 
                                                     disabled={!canSave}
@@ -2171,8 +2108,8 @@ export default function RAB() {
                                                             const mId = editingItem.itemId || editingItem.id;
                                                             const existingPlans = prev.expense[mId] || [];
                                                             const updatedPlans = editingItem.isNewPlan 
-                                                                ? [...existingPlans, { ...item, total: monthlyTotal }]
-                                                                : existingPlans.map(p => p.id === editingItem.id ? { ...item, total: monthlyTotal } : p);
+                                                                ? [...existingPlans, item]
+                                                                : existingPlans.map(p => p.id === editingItem.id ? item : p);
                                                             return { ...prev, expense: { ...prev.expense, [mId]: updatedPlans } };
                                                         });
                                                         setEditingItem(null);
@@ -2192,7 +2129,7 @@ export default function RAB() {
                                             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm rounded-[3.5rem]" onClick={() => setShowCompModal(false)} />
                                             <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[90vh]">
                                                 <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
-                                                    <div>
+<div>
                                                         <h3 className="text-xl font-black italic uppercase tracking-tight">Detail Rincian</h3>
                                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru'}</p>
                                                     </div>
@@ -2238,6 +2175,45 @@ export default function RAB() {
                                     <option value="">Pilih Program...</option>
                                     {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Sumber Dana</label>
+                                <div className="flex gap-2">
+                                    {isBosRecipient && fundSourceFilter === 'all' && (
+                                        <button 
+                                            onClick={() => setEntryForm({...entryForm, useBos: !entryForm.useBos})} 
+                                            className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase border-2 transition-all ${entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                                        >
+                                            BOS {entryForm.useBos ? 'ON' : 'OFF'}
+                                        </button>
+                                    )}
+                                    <div className="flex-1 py-3 rounded-2xl font-black text-[10px] bg-slate-50 text-slate-400 border-2 border-slate-100 text-center uppercase">YAYASAN</div>
+                                </div>
+                            </div>
+
+                            {entryForm.useBos && (
+                                <div className="grid grid-cols-2 gap-4 animate-in fade-in">
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">POS BOS</label>
+                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosPosId || ''} onChange={e => setEntryForm({...entryForm, bosPosId: e.target.value})}>
+                                            <option value="">Pilih POS...</option>
+                                            {bosPosList?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">Tahap BOS</label>
+                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosStageId || ''} onChange={e => setEntryForm({...entryForm, bosStageId: e.target.value})}>
+                                            <option value="">Pilih Tahap...</option>
+                                            {bosStages?.filter(s => !s?.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Catatan / Justifikasi</label>
+                                <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] italic font-medium min-h-[60px] outline-none focus:border-blue-500" value={entryForm.description || ''} onChange={e => setEntryForm({...entryForm, description: e.target.value})} placeholder="Alasan pengadaan rincian ini..." />
                             </div>
 
                             <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
