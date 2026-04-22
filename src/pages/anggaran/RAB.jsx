@@ -42,12 +42,13 @@ const generateMonths = (ay) => {
                 const monthNum = monthIdx + 1;
                 
                 const semester = safetyCounter < monthsPerSemester ? '1' : '2';
+                const shortYear = String(year).slice(-2);
 
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
                     name: `${monthNames[monthIdx]}-${year}`,
-                    label: `${monthNames[monthIdx]} '${String(year).slice(-2)}`,
-                    shortLabel: monthNames[monthIdx].substring(0, 3).toUpperCase(),
+                    label: `${monthNames[monthIdx]} '${shortYear}`,
+                    shortLabel: `${monthNames[monthIdx].substring(0, 3).toUpperCase()} ${shortYear}`,
                     year: year,
                     semester
                 });
@@ -67,11 +68,12 @@ const generateMonths = (ay) => {
             sequence.forEach((monthNum, idx) => {
                 const year = monthNum >= 7 ? startYear : endYear;
                 const semester = idx < 6 ? '1' : '2';
+                const shortYear = String(year).slice(-2);
                 months.push({
                     id: `${year}-${String(monthNum).padStart(2, '0')}`,
                     name: `${monthNames[monthNum - 1]}-${year}`,
-                    label: `${monthNames[monthNum - 1]} '${String(year).slice(-2)}`,
-                    shortLabel: monthNames[monthNum - 1].substring(0, 3).toUpperCase(),
+                    label: `${monthNames[monthNum - 1]} '${shortYear}`,
+                    shortLabel: `${monthNames[monthNum - 1].substring(0, 3).toUpperCase()} ${shortYear}`,
                     year: year,
                     semester
                 });
