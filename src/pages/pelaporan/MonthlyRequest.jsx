@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
+import { api } from '../../services/api';
 
 export default function MonthlyRequest() {
     const { state, dispatch } = useApp();
@@ -167,6 +168,7 @@ export default function MonthlyRequest() {
         };
 
         dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRequest });
+        api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newRequest }, state); // Immediate push
         setShowRequestModal(false);
         setSelectedComponents([]);
         alert('Permintaan dana berhasil diajukan');

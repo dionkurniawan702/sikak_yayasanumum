@@ -701,7 +701,31 @@ export function AppProvider({ children }) {
         }, 3000); // Wait 3 seconds of inactivity before pushing
 
         return () => clearTimeout(timer);
-    }, [state.accounts, state.journals, state.assets, state.programs, state.units, state.fields, state.students, state.rabPlans, state.bosStages, state.bosPosList]);
+    }, [
+        state.accounts,
+        state.journals,
+        state.assets,
+        state.programs,
+        state.expensePrograms,
+        state.units,
+        state.fields,
+        state.students,
+        state.rabPlans,
+        state.budgetRequests,
+        state.budgetReports,
+        state.bosStages,
+        state.bosPosList,
+        state.incomeItems,
+        state.expenseItems,
+        state.distributionSettings,
+        state.academicYears,
+        state.classes,
+        state.users,
+        state.classGroups,
+        state.positions,
+        state.studentStatuses,
+        state.parentStatuses
+    ]);
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>

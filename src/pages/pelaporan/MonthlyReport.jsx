@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { FileCheck, Receipt, Upload, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/api';
 
 export default function MonthlyReport() {
     const { state, dispatch } = useApp();
@@ -83,6 +84,7 @@ export default function MonthlyReport() {
             type: 'ADD_BUDGET_REPORT',
             payload: reportData
         });
+        api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state); // Immediate push
 
         setShowReportForm(false);
     };
