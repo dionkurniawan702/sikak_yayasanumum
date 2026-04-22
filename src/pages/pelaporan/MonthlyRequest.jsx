@@ -10,7 +10,40 @@ export default function MonthlyRequest() {
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Add month selection for the request
+    const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
     const currentYear = academicYears.find(y => y.id === globalAcademicYearId);
+
+    const yearMonths = useMemo(() => {
+        if (!currentYear) return [];
+        const months = [];
+        const [startYearStr, endYearStr] = (currentYear.name || '').split((currentYear.name || '').includes('/') ? '/' : '-');
+        const startYear = parseInt(startYearStr) || new Date().getFullYear();
+        const endYear = parseInt(endYearStr) || (startYear + 1);
+
+        const sequence = [7, 8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6];
+        sequence.forEach((monthNum, idx) => {
+            const year = monthNum >= 7 ? startYear : endYear;
+            const monthIdx = monthNum - 1;
+            const shortYear = String(year).slice(-2);
+            months.push({
+                id: `${year}-${String(monthNum).padStart(2, '0')}`,
+                label: `${monthNames[monthIdx]} '${shortYear}`,
+                year,
+                monthNum
+            });
+        });
+        return months;
+    }, [currentYear]);
+
+    // Set default month to current month if in the list, otherwise first month
+    const getDefaultMonth = () => {
+        const now = new Date();
+        const nowId = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        return yearMonths.find(m => m.id === nowId)?.id || yearMonths[0]?.id || '';
+    };
+
+    const [requestMonth, setRequestMonth] = useState(getDefaultMonth());
 
     // Filter unit/field
     const isSuperAdmin = currentUser?.role === 'superadmin';
@@ -28,7 +61,7 @@ export default function MonthlyRequest() {
 
     // Aggregate Approved components from RAB Plans that are NOT yet requested
     const approvedComponents = useMemo(() => {
-        if (!rabPlans) return [];
+        if (!rabPlans || !requestMonth) return [];
 
         const myPlans = rabPlans.filter(p => {
             if (isSuperAdmin) return true;
@@ -42,15 +75,20 @@ export default function MonthlyRequest() {
             Object.entries(plan.expense || {}).forEach(([itemId, itemPlans]) => {
                 itemPlans.forEach(p => {
                     (p.components || []).forEach(comp => {
-                        if (comp.isApproved) {
-                            // Check if already requested in budgetRequests
+                        // NEW: Filter by selected month's allocation
+                        const isScheduledInMonth = comp.months?.[requestMonth]?.m === true;
+                        const monthlyAmount = parseFloat(comp.months?.[requestMonth]?.jumlah) || 0;
+
+                        if (comp.isApproved && isScheduledInMonth && monthlyAmount > 0) {
+                            // Check if already requested in budgetRequests for THIS month
                             const alreadyRequested = (budgetRequests || []).some(req =>
-                                req.items?.some(reqItem => reqItem.componentId === comp.id)
+                                req.month === requestMonth && req.items?.some(reqItem => reqItem.componentId === comp.id)
                             );
 
                             if (!alreadyRequested) {
                                 components.push({
                                     ...comp,
+                                    total: monthlyAmount, // Only request the amount planned for THIS month
                                     planId: plan.id,
                                     itemMasterName: state.expenseItems.find(i => i.id === itemId)?.name || 'Item',
                                     planDescription: p.description
@@ -62,7 +100,7 @@ export default function MonthlyRequest() {
             });
         });
         return components;
-    }, [rabPlans, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, myFieldId, state.expenseItems]);
+    }, [rabPlans, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, myFieldId, state.expenseItems, requestMonth]);
 
     const stats = useMemo(() => {
         const approved = approvedComponents.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
@@ -82,6 +120,7 @@ export default function MonthlyRequest() {
             unitId: myUnitId || 'FOUNDATION',
             fieldId: myFieldId,
             academicYearId: globalAcademicYearId,
+            month: requestMonth, // Add target month
             date: new Date().toISOString().split('T')[0],
             status: 'PENDING',
             totalAmount,
@@ -151,7 +190,7 @@ export default function MonthlyRequest() {
 
                     <div class="content">
                         <p>Dengan hormat,</p>
-                        <p>Bersama ini kami mengajukan permintaan dana untuk keperluan rencana belanja yang telah disetujui (ACC) sebagai berikut:</p>
+                        <p>Bersama ini kami mengajukan permintaan dana untuk keperluan rencana belanja periode <b>${yearMonths.find(m => m.id === req.month)?.label || '-'}</b> yang telah disetujui (ACC) sebagai berikut:</p>
                         
                         <table>
                             <thead>
@@ -286,6 +325,14 @@ export default function MonthlyRequest() {
                                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ID: {req.id}</span>
                                             <span className="w-1 h-1 bg-slate-300 rounded-full" />
                                             <span className="text-[10px] font-bold text-slate-400">{req.date}</span>
+                                            {req.month && (
+                                                <>
+                                                    <span className="w-1 h-1 bg-slate-300 rounded-full" />
+                                                    <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded uppercase tracking-widest">
+                                                        {yearMonths.find(m => m.id === req.month)?.label || req.month}
+                                                    </span>
+                                                </>
+                                            )}
                                         </div>
                                         <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
                                         {isSuperAdmin && (
@@ -352,6 +399,25 @@ export default function MonthlyRequest() {
                             <div>
                                 <h2 className="text-3xl font-black text-slate-900 mb-1">Pilih Rincian Dana</h2>
                                 <p className="text-slate-500 font-medium italic">Hanya menampilkan rincian yang telah disetujui (ACC) oleh Superadmin.</p>
+
+                                <div className="flex items-center gap-4 mt-6">
+                                    <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner"><Calendar size={20} /></div>
+                                    <div className="flex flex-col">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Periode Pencairan Dana</label>
+                                        <select
+                                            value={requestMonth}
+                                            onChange={(e) => {
+                                                setRequestMonth(e.target.value);
+                                                setSelectedComponents([]);
+                                            }}
+                                            className="bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 text-sm font-black text-indigo-900 focus:ring-4 focus:ring-indigo-50 outline-none transition-all cursor-pointer shadow-sm"
+                                        >
+                                            {yearMonths.map(m => (
+                                                <option key={m.id} value={m.id}>BULAN: {m.label.toUpperCase()}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
                             <div className="relative">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
