@@ -123,6 +123,8 @@ export default function RAB() {
     const [fundSourceFilter, setFundSourceFilter] = useState('all');
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
     const [editingItem, setEditingItem] = useState(null);
+    const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
+    const [filterProgram, setFilterProgram] = useState(null); // programId
 
 
     // States for Journal-style component entry
@@ -151,6 +153,13 @@ export default function RAB() {
         rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId),
         [rabPlans, selectedYearId]
     );
+    const filteredReviewPlans = useMemo(() => 
+        pendingPlans.filter(p => p.academicYearId === selectedYearId),
+    [pendingPlans, selectedYearId]);
+
+    const activeYear = useMemo(() => academicYears.find(ay => ay.id === selectedYearId), [academicYears, selectedYearId]);
+    const monthsOptions = useMemo(() => activeYear ? generateMonths(activeYear) : [], [activeYear]);
+    const allPrograms = useMemo(() => [...programs, ...expensePrograms].filter(p => !p.isDeleted), [programs, expensePrograms]);
 
     const toggleDetailItem = (parentId, itemId) => {
         const key = `${parentId}-${itemId}`;
@@ -1363,7 +1372,70 @@ export default function RAB() {
         const labelText = isIncome ? 'Item pendapatan' : 'Item pengeluaran';
         
         return (
-            <div className="overflow-x-auto">
+            <div className="space-y-6">
+                {/* Advanced Filter Bar */}
+                <div className="p-5 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-2xl shadow-slate-200/50 flex flex-wrap items-center gap-6">
+                    <div className="flex items-center gap-4">
+                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <Filter size={18} />
+                        </div>
+                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">Filter Tampilan</h4>
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200/50" />
+
+                    {/* Month Filter */}
+                    <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Bulan:</span>
+                        <div className="flex gap-1 overflow-x-auto pb-1 max-w-[400px] no-scrollbar">
+                            <button 
+                                onClick={() => setFilterMonth(null)}
+                                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${!filterMonth ? 'bg-slate-900 text-white shadow-lg shadow-slate-200' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
+                            >
+                                Semua
+                            </button>
+                            {monthsOptions.map(m => (
+                                <button 
+                                    key={m.id}
+                                    onClick={() => setFilterMonth(m.id)}
+                                    className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap ${filterMonth === m.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                >
+                                    {m.shortLabel}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="h-8 w-px bg-slate-200/50" />
+
+                    {/* Program Filter */}
+                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Program:</span>
+                        <select 
+                            value={filterProgram || ''}
+                            onChange={(e) => setFilterProgram(e.target.value || null)}
+                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer flex-1"
+                        >
+                            <option value="">SEMUA PROGRAM</option>
+                            {allPrograms.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Clear Button */}
+                    {(filterMonth || filterProgram) && (
+                        <button 
+                            onClick={() => { setFilterMonth(null); setFilterProgram(null); }}
+                            className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all group"
+                            title="RESET FILTER"
+                        >
+                            <RotateCcw size={16} className="group-active:rotate-180 transition-transform duration-500" />
+                        </button>
+                    )}
+                </div>
+
+                <div className="overflow-x-auto">
                 <table className="w-full border-separate border-spacing-y-4">
                     <thead>
                         <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
@@ -1387,7 +1459,13 @@ export default function RAB() {
                         if (fundSourceFilter === 'BOS') return !!bosItemMap[item.id];
                         return true;
                     }).flatMap((itemMaster, index) => {
-                        const plans = activePlan[type][itemMaster.id] || [];
+                        let plans = activePlan[type][itemMaster.id] || [];
+                        
+                        // 1. Program Filtering
+                        if (filterProgram) {
+                            plans = plans.filter(p => (p.programId === filterProgram) || (p.components?.some(c => c.programId === filterProgram)));
+                        }
+
                         const allocated = isIncome 
                             ? (rapData.incomeTotals[itemMaster.id] || 0)
                             : (fundSourceFilter === 'BOS' 
@@ -1398,14 +1476,35 @@ export default function RAB() {
                             // Aggregate ALL plans into exactly one row display
                             const aggregatedPlan = {
                                 id: plans[0].id,
-                                total: plans.reduce((s, p) => s + (p.total || 0), 0),
-                                bosAmount: plans.reduce((s, p) => s + (p.bosAmount || 0), 0),
+                                total: plans.reduce((s, p) => {
+                                    if (filterMonth) return s + (parseFloat(p.months?.[filterMonth]?.jumlah) || 0);
+                                    return s + (p.total || 0);
+                                }, 0),
+                                bosAmount: plans.reduce((s, p) => {
+                                    if (filterMonth) {
+                                        // Approximate monthly BOS amount by looking at the components in that month
+                                        // or just use total if not granular.
+                                        // Since BOS is per-component, we should ideally check component useBos.
+                                        const monthTotal = parseFloat(p.months?.[filterMonth]?.jumlah) || 0;
+                                        if (p.useBos) return s + monthTotal;
+                                        return s;
+                                    }
+                                    return s + (p.bosAmount || 0);
+                                }, 0),
                                 description: Array.from(new Set(plans.flatMap(p => (p.description || '').split(', ')).filter(Boolean))).join(', '),
                                 semester: plans[0].semester,
-                                isAggregated: plans.length > 1
+                                isAggregated: plans.length > 1,
+                                isEmpty: false
                             };
+
+                            // 2. Month Filtering (Hide if 0 in that month)
+                            if (filterMonth && aggregatedPlan.total <= 0) return [];
+
                             return [{ itemMaster, plan: aggregatedPlan, allocated, isFirst: true }];
                         }
+
+                        // If filtering by month/program, don't show empty items
+                        if (filterMonth || filterProgram) return [];
 
                         return [{ 
                             itemMaster, 
@@ -1575,13 +1674,21 @@ export default function RAB() {
         );
     };
 
-    const totalIncome = useMemo(() => 
-        Object.values(activePlan?.income || {}).flat().reduce((sum, val) => sum + (val?.total || 0), 0)
-    , [activePlan?.income]);
+    const totalIncome = useMemo(() => {
+        return Object.values(activePlan?.income || {}).flat().reduce((sum, val) => {
+            if (filterProgram && val.programId !== filterProgram && !val.components?.some(c => c.programId === filterProgram)) return sum;
+            if (filterMonth) return sum + (parseFloat(val.months?.[filterMonth]?.jumlah) || 0);
+            return sum + (val?.total || 0);
+        }, 0);
+    }, [activePlan?.income, filterMonth, filterProgram]);
 
-    const totalExpense = useMemo(() => 
-        Object.values(activePlan?.expense || {}).flat().reduce((sum, val) => sum + (val?.total || 0), 0)
-    , [activePlan?.expense]);
+    const totalExpense = useMemo(() => {
+        return Object.values(activePlan?.expense || {}).flat().reduce((sum, val) => {
+            if (filterProgram && val.programId !== filterProgram && !val.components?.some(c => c.programId === filterProgram)) return sum;
+            if (filterMonth) return sum + (parseFloat(val.months?.[filterMonth]?.jumlah) || 0);
+            return sum + (val?.total || 0);
+        }, 0);
+    }, [activePlan?.expense, filterMonth, filterProgram]);
 
     // NEW: Calculate BOS Specifics
     const totalBosAllocated = useMemo(() => {
@@ -1611,9 +1718,14 @@ export default function RAB() {
 
     const totalExpenseBos = useMemo(() => {
         return Object.values(activePlan?.expense || {}).flat().reduce((sum, val) => {
+            if (filterProgram && val.programId !== filterProgram && !val.components?.some(c => c.programId === filterProgram)) return sum;
+            if (filterMonth) {
+                const monthTotal = parseFloat(val.months?.[filterMonth]?.jumlah) || 0;
+                return sum + (val?.useBos ? monthTotal : 0);
+            }
             return sum + (val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0);
         }, 0);
-    }, [activePlan?.expense]);
+    }, [activePlan?.expense, filterMonth, filterProgram]);
 
     const balance = useMemo(() => {
         if (fundSourceFilter === 'BOS') {
