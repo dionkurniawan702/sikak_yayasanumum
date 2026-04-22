@@ -29,10 +29,18 @@ export default function BOSMasterManagement() {
 
             if (activeTab === 'STAGES') {
                 actionType = editingItem ? 'EDIT_BOS_STAGE' : 'ADD_BOS_STAGE';
-                payload = { ...formData, id: editingItem ? editingItem.id : `BSTG-${generateId()}` };
+                payload = { 
+                    ...formData, 
+                    id: editingItem ? editingItem.id : `BSTG-${generateId()}`,
+                    isDeleted: false 
+                };
             } else if (activeTab === 'POS') {
                 actionType = editingItem ? 'EDIT_BOS_POS' : 'ADD_BOS_POS';
-                payload = { name: formData.name, id: editingItem ? editingItem.id : `BPOS-${generateId()}` };
+                payload = { 
+                    name: formData.name, 
+                    id: editingItem ? editingItem.id : `BPOS-${generateId()}`,
+                    isDeleted: false 
+                };
             }
 
             dispatch({ type: actionType, payload });

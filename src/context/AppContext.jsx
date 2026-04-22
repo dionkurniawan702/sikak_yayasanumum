@@ -503,11 +503,11 @@ function appReducer(state, action) {
             newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] };
             break;
         case 'ADD_BOS_STAGE': newState = { ...state, bosStages: [...state.bosStages, action.payload] }; break;
-        case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? { ...i, ...action.payload } : i) }; break;
         case 'DELETE_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
         case 'ADD_BOS_POS': newState = { ...state, bosPosList: [...state.bosPosList, action.payload] }; break;
-        case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? action.payload : i) }; break;
+        case 'EDIT_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload.id ? { ...i, ...action.payload } : i) }; break;
         case 'DELETE_BOS_POS': newState = { ...state, bosPosList: state.bosPosList.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
         case 'ADD_BOS_ALLOCATION': newState = { ...state, bosAllocations: [...state.bosAllocations, action.payload] }; break;
@@ -694,7 +694,7 @@ export function AppProvider({ children }) {
         }, 3000); // Wait 3 seconds of inactivity before pushing
 
         return () => clearTimeout(timer);
-    }, [state.accounts, state.journals, state.assets, state.programs, state.units, state.fields, state.students, state.rabPlans, state.bosStages]); 
+    }, [state.accounts, state.journals, state.assets, state.programs, state.units, state.fields, state.students, state.rabPlans, state.bosStages, state.bosPosList]); 
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>
