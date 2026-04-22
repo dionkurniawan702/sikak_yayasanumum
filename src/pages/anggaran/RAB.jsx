@@ -1394,21 +1394,25 @@ export default function RAB() {
                                 ? (bosItemMap[itemMaster.id] || 0) 
                                 : (rapData.itemAllocations[itemMaster.id] || 0));
 
-                        if (plans.length === 0) {
-                            return [{ 
-                                itemMaster, 
-                                plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
-                                allocated,
-                                isFirst: true
-                            }];
+                        if (plans.length > 0) {
+                            // Aggregate ALL plans into exactly one row display
+                            const aggregatedPlan = {
+                                id: plans[0].id,
+                                total: plans.reduce((s, p) => s + (p.total || 0), 0),
+                                bosAmount: plans.reduce((s, p) => s + (p.bosAmount || 0), 0),
+                                description: Array.from(new Set(plans.flatMap(p => (p.description || '').split(', ')).filter(Boolean))).join(', '),
+                                semester: plans[0].semester,
+                                isAggregated: plans.length > 1
+                            };
+                            return [{ itemMaster, plan: aggregatedPlan, allocated, isFirst: true }];
                         }
 
-                        return plans.map((plan, pIdx) => ({
-                            itemMaster,
-                            plan,
+                        return [{ 
+                            itemMaster, 
+                            plan: { id: `TEMP-${itemMaster.id}`, total: 0, semester: '1', isEmpty: true },
                             allocated,
-                            isFirst: pIdx === 0
-                        }));
+                            isFirst: true
+                        }];
                     }).map((rowData, index) => {
                         const { itemMaster, plan, allocated, isFirst } = rowData;
                         const draftValue = plan.total || 0;
@@ -1453,14 +1457,25 @@ export default function RAB() {
                                     <div className="flex items-center justify-end gap-2">
                                         <button 
                                             onClick={() => {
-                                                const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
-                                                setEditingItem({ 
-                                                    id: newPlanId, 
-                                                    itemId: itemMaster.id, 
-                                                    name: itemMaster.name,
-                                                    isNewPlan: true,
-                                                    semester: '1'
-                                                });
+                                                const existingPlans = activePlan[type][itemMaster.id] || [];
+                                                if (existingPlans.length > 0) {
+                                                    // Instead of creating new, open the existing one for editing
+                                                    setEditingItem({ 
+                                                        ...itemMaster, 
+                                                        id: existingPlans[0].id,
+                                                        itemId: itemMaster.id,
+                                                        planId: existingPlans[0].id 
+                                                    });
+                                                } else {
+                                                    const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                    setEditingItem({ 
+                                                        id: newPlanId, 
+                                                        itemId: itemMaster.id, 
+                                                        name: itemMaster.name,
+                                                        isNewPlan: true,
+                                                        semester: '1'
+                                                    });
+                                                }
                                             }}
                                             className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg shadow-blue-100 hover:bg-slate-900 transition-all active:scale-95"
                                             title="TAMBAH RENCANA"
@@ -1998,9 +2013,37 @@ export default function RAB() {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
                             const itemId = editingItem.itemId || editingItem.id;
                             const plans = activePlan[type][itemId] || [];
-                            const item = plans.find(p => p.id === editingItem.id) || { 
-                                id: editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1' 
-                            };
+                            
+                            // If multiple plans exist for one item, merge them into one "workspace" item
+                            let item;
+                            if (plans.length > 1) {
+                                // Merge multiple plans into one virtual plan
+                                const first = plans[0];
+                                const allComponents = plans.flatMap(p => p.components || []);
+                                const aggrMonths = {};
+                                plans.forEach(p => {
+                                    Object.entries(p.months || {}).forEach(([mId, mData]) => {
+                                        if (!mData.m) return;
+                                        if (!aggrMonths[mId]) aggrMonths[mId] = { m: true, jumlah: 0 };
+                                        aggrMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                                    });
+                                });
+
+                                item = {
+                                    ...first,
+                                    id: first.id, // Keep the first ID
+                                    total: plans.reduce((s, p) => s + (p.total || 0), 0),
+                                    bosAmount: plans.reduce((s, p) => s + (p.bosAmount || 0), 0),
+                                    useBos: plans.some(p => p.useBos),
+                                    components: allComponents,
+                                    months: aggrMonths,
+                                    description: Array.from(new Set(allComponents.map(c => c.label))).join(', ')
+                                };
+                            } else {
+                                item = plans.find(p => p.id === editingItem.id) || { 
+                                    id: editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1' 
+                                };
+                            }
 
                             return (
                                 <>
@@ -2009,8 +2052,9 @@ export default function RAB() {
                                         <div>
                                             <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
                                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
-                                                {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${editingItem.id} • `}
+                                                {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${item.id} • `}
                                                 TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
+                                                {plans.length > 1 && <span className="ml-2 text-indigo-500 font-bold">(KONSOLIDASI {plans.length} DATA)</span>}
                                             </p>
                                         </div>
 
@@ -2128,11 +2172,9 @@ export default function RAB() {
                                                     disabled={!canSave}
                                                     onClick={async () => { 
                                                         const mId = editingItem.itemId || editingItem.id;
-                                                        const existingPlans = currentPlan.expense[mId] || [];
-                                                        const alreadyExists = existingPlans.some(p => p.id === editingItem.id);
-                                                        const updatedPlans = alreadyExists 
-                                                            ? existingPlans.map(p => p.id === editingItem.id ? item : p)
-                                                            : [...existingPlans, item];
+                                                        
+                                                        // Always collapse multiple plans into exactly ONE plan during save
+                                                        const updatedPlans = [item];
                                                         
                                                         const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: updatedPlans } };
                                                         
@@ -2140,7 +2182,7 @@ export default function RAB() {
                                                         setCurrentPlan(nextPlan);
                                                         setEditingItem(null);
 
-                                                        // NEW: Auto-save to DB immediately
+                                                        // Auto-save to DB immediately
                                                         const planId = `${selectedYearId}-${selectedUnitId}`;
                                                         const dbPlan = {
                                                             id: planId,
