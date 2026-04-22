@@ -1526,15 +1526,19 @@ export default function RAB() {
                                 if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
                                 return true;
                             }).filter(itemMaster => {
-                                // 2. Context Selective Filtering: Hide 0 allocation items if no plans exist
-                                const allocated = isIncome
-                                    ? (rapData.incomeTotals[itemMaster.id] || 0)
-                                    : (fundSourceFilter === 'BOS' ? (bosItemMap[itemMaster.id] || 0) : (rapData.itemAllocations[itemMaster.id] || 0));
-                                const plans = activePlan[type][itemMaster.id] || [];
+                                if (isIncome) return true;
 
-                                return (allocated > 0 || plans.length > 0);
+                                const allocated = fundSourceFilter === 'BOS'
+                                    ? (bosItemMap[itemMaster.id] || 0)
+                                    : (rapData.itemAllocations[itemMaster.id] || 0);
+
+                                const plans = activePlan[type][itemMaster.id] || [];
+                                const relevantPlans = plans.filter(p => fundSourceFilter === 'all' || (fundSourceFilter === 'BOS' ? p.useBos : !p.useBos));
+
+                                return (allocated > 0 || relevantPlans.length > 0);
                             }).flatMap((itemMaster, mIdx) => {
-                                let plans = activePlan[type][itemMaster.id] || [];
+                                let allPlans = activePlan[type][itemMaster.id] || [];
+                                let plans = allPlans.filter(p => fundSourceFilter === 'all' || (fundSourceFilter === 'BOS' ? p.useBos : !p.useBos));
 
                                 // 1. Program Filtering
                                 if (filterProgram) {
