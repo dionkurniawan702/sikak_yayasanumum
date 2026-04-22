@@ -969,30 +969,6 @@ export default function RAB() {
         }
     };
 
-    const handleSave = async () => {
-        setIsSaving(true);
-        setMessage(null);
-
-        const planId = `${selectedYearId}-${selectedUnitId}`;
-        const newPlan = {
-            id: planId,
-            academicYearId: selectedYearId,
-            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-            income: currentPlan.income,
-            expense: currentPlan.expense,
-            status: currentPlan.status, // Preserve status
-            return {
-                ...prev,
-                [type]: {
-                    ...prev[type],
-                    [itemId]: { ...currentItem, months: monthsData }
-                }
-            };
-        });
-        setMessage({ type: 'success', text: 'Anggaran berhasil disinkronkan ke rincian bulanan.' });
-        setTimeout(() => setMessage(null), 3000);
-    };
 
     const incomeExpenseBalances = useMemo(() => {
         const balances = {};
@@ -1180,7 +1156,6 @@ export default function RAB() {
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
         };
-
 
 
         // 1. Strict Validation: BOS Limit
