@@ -1525,6 +1525,14 @@ export default function RAB() {
                             {items.filter(item => {
                                 if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
                                 return true;
+                            }).filter(itemMaster => {
+                                // 2. Context Selective Filtering: Hide 0 allocation items if no plans exist
+                                const allocated = isIncome
+                                    ? (rapData.incomeTotals[itemMaster.id] || 0)
+                                    : (fundSourceFilter === 'BOS' ? (bosItemMap[itemMaster.id] || 0) : (rapData.itemAllocations[itemMaster.id] || 0));
+                                const plans = activePlan[type][itemMaster.id] || [];
+
+                                return (allocated > 0 || plans.length > 0);
                             }).flatMap((itemMaster, mIdx) => {
                                 let plans = activePlan[type][itemMaster.id] || [];
 
@@ -1567,6 +1575,7 @@ export default function RAB() {
                                                 expandedDetailItems={expandedDetailItems}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
+                                                selectable={false}
                                                 actions={
                                                     <div className="flex items-center gap-2">
                                                         <button
