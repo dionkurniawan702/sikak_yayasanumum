@@ -333,7 +333,25 @@ export default function RAB() {
     const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : (currentPlan || { income: {}, expense: {}, status: 'DRAFT' });
 
     const isConsolidation = selectedUnitId === 'FOUNDATION';
+    const isField = selectedUnitId.startsWith('FIELD-');
+    const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
     const isLocked = activePlan?.status === 'APPROVED' || activePlan?.status === 'PENDING' || isConsolidation;
+
+    const bosItemMap = useMemo(() => {
+        const map = {};
+        if (!selectedYearId) return map;
+
+        const unitIdForBos = isField ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
+
+        (bosAllocations || []).filter(a =>
+            !a.isDeleted &&
+            a.academicYearId === selectedYearId &&
+            ((!isField && a.unitId === unitIdForBos) || (isField && a.fieldId === fieldId))
+        ).forEach(a => {
+            map[a.expenseItemId] = (map[a.expenseItemId] || 0) + (parseFloat(a.amount) || 0);
+        });
+        return map;
+    }, [bosAllocations, selectedYearId, selectedUnitId, isField, fieldId]);
 
     // Calculate RAP for the selected context
     const rapData = useMemo(() => {
@@ -1713,19 +1731,6 @@ export default function RAB() {
         ).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
     }, [bosAllocations, selectedYearId, selectedUnitId]);
 
-    const bosItemMap = useMemo(() => {
-        const unitId = selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? null : selectedUnitId);
-        if (!unitId || !selectedYearId) return {};
-
-        return (bosAllocations || []).filter(a =>
-            !a.isDeleted &&
-            a.academicYearId === selectedYearId &&
-            a.unitId === unitId
-        ).reduce((acc, a) => {
-            acc[a.expenseItemId] = (acc[a.expenseItemId] || 0) + (parseFloat(a.amount) || 0);
-            return acc;
-        }, {});
-    }, [bosAllocations, selectedYearId, selectedUnitId]);
 
     const totalExpenseBos = useMemo(() => {
         return Object.values(activePlan?.expense || {}).flat().reduce((sum, val) => {
@@ -2102,7 +2107,7 @@ export default function RAB() {
 
                         {/* Content Area */}
                         <div className="flex-1 p-8 lg:p-12">
-                            {activeTab === 'REVIEW' ? renderReviewView() : renderBudgetTable()}
+                            {activeTab === 'REVIEW' ? renderReviewView() : renderBudgetTable(activeTab === 'INCOME' ? 'income' : 'expense', activeTab === 'INCOME' ? 'Sumber Pendapatan' : 'Mata Anggaran (Biaya)')}
                         </div>
                     </div>
                 </div>
