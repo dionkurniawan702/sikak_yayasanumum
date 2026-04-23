@@ -38,7 +38,7 @@ import RAB from './pages/anggaran/RAB';
 import BOSRecipientUnitManagement from './pages/anggaran/BOSRecipientUnitManagement';
 import BOSDatabase from './pages/anggaran/BOSDatabase';
 import GenericMasterManagement from './components/GenericMasterManagement';
-import { 
+import {
     Calendar,
     Users2,
     Briefcase,
@@ -88,12 +88,12 @@ const SyncOverlay = ({ message }) => (
                     <Database className="text-white" size={14} />
                 </div>
             </div>
-            
+
             <h3 className="text-2xl font-black text-white mb-2 tracking-tight">Menyelaraskan Data</h3>
             <p className="text-blue-100/70 font-medium text-sm leading-relaxed">
                 {message || 'Sedang memproses data dengan server pusat. Mohon tunggu sebentar...'}
             </p>
-            
+
             <div className="mt-8 flex gap-1">
                 {[...Array(3)].map((_, i) => (
                     <div key={i} className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
@@ -109,13 +109,13 @@ function AppContent() {
         <BrowserRouter>
             <Routes>
                 <Route path="/login" element={<Login />} />
-                
+
                 <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
                     <Route index element={<RoleBasedIndex />} />
                     <Route path="daftar-akun" element={<ChartOfAccounts />} />
                     <Route path="jurnal" element={<JournalEntry />} />
 
-                    
+
                     {/* Reports & Management (Placeholders for now) */}
                     <Route path="profil" element={<Profile />} />
                     <Route path="aset-tetap" element={<FixedAssets />} />
@@ -131,7 +131,7 @@ function AppContent() {
                     <Route path="tutup-buku" element={<PeriodClosing />} />
                     <Route path="manajemen-user" element={<UserManagement />} />
                     <Route path="calk" element={<Placeholder title="Catatan Atas Laporan Keuangan" />} />
-                    
+
                     <Route path="pengaturan/backup-restore" element={<BackupRestore />} />
                     <Route path="pengaturan/audit-log" element={<AuditLog />} />
                     <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
@@ -140,12 +140,12 @@ function AppContent() {
                     <Route path="pelaporan/dashboard" element={<BudgetDashboard />} />
                     <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
                     <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
-                    <Route path="pelaporan/saldo" element={<Placeholder title="Informasi Saldo Dana" />} />
-                    
+                    <Route path="pelaporan/saldo" element={<FundAvailability />} />
+
                     <Route path="anggaran/rab" element={<RAB />} />
                     <Route path="anggaran/arsip-rab" element={<Placeholder title="Arsip RAB" />} />
                     <Route path="anggaran/distribusi" element={<DistributionSettings />} />
-                    
+
                     <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
                     <Route path="pelaporan/arsip-permintaan" element={<Placeholder title="Arsip Permintaan Dana" />} />
                     <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
@@ -157,38 +157,38 @@ function AppContent() {
 
                     <Route path="anggaran/unit-bidang" element={<FieldUnitManagement />} />
                     <Route path="anggaran/tahun-ajaran" element={
-                        <GenericMasterManagement 
-                            title="Tahun Ajaran" 
-                            entity="academicYears" 
-                            actionPrefix="ACADEMIC_YEAR" 
-                            icon={Calendar} 
+                        <GenericMasterManagement
+                            title="Tahun Ajaran"
+                            entity="academicYears"
+                            actionPrefix="ACADEMIC_YEAR"
+                            icon={Calendar}
                             description="Kelola periode tahun ajaran aktif dan mendatang"
                         />
                     } />
                     <Route path="anggaran/set-jabatan" element={
-                        <GenericMasterManagement 
-                            title="Set Jabatan" 
-                            entity="positions" 
-                            actionPrefix="POSITION" 
-                            icon={Briefcase} 
+                        <GenericMasterManagement
+                            title="Set Jabatan"
+                            entity="positions"
+                            actionPrefix="POSITION"
+                            icon={Briefcase}
                             description="Master data jabatan struktural unit dan yayasan"
                         />
                     } />
                     <Route path="anggaran/status-siswa" element={
-                        <GenericMasterManagement 
-                            title="Status Siswa" 
-                            entity="studentStatuses" 
-                            actionPrefix="STUDENT_STATUS" 
-                            icon={UserCheck} 
+                        <GenericMasterManagement
+                            title="Status Siswa"
+                            entity="studentStatuses"
+                            actionPrefix="STUDENT_STATUS"
+                            icon={UserCheck}
                             description="Master status keberadaan siswa (Aktif, Mutasi, dsb)"
                         />
                     } />
                     <Route path="anggaran/status-ortu" element={
-                        <GenericMasterManagement 
-                            title="Status Orang Tua" 
-                            entity="parentStatuses" 
-                            actionPrefix="PARENT_STATUS" 
-                            icon={UserCircle} 
+                        <GenericMasterManagement
+                            title="Status Orang Tua"
+                            entity="parentStatuses"
+                            actionPrefix="PARENT_STATUS"
+                            icon={UserCircle}
                             description="Master status ekonomi/sosial orang tua"
                         />
                     } />

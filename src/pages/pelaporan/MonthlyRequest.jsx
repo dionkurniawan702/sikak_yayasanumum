@@ -404,7 +404,11 @@ export default function MonthlyRequest() {
                                         {isSuperAdmin && req.status === 'PENDING' && (
                                             <>
                                                 <button
-                                                    onClick={() => dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: { ...req, status: 'APPROVED' } })}
+                                                    onClick={() => {
+                                                        const updated = { ...req, status: 'APPROVED', approvedAt: new Date().toISOString() };
+                                                        dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                                                        api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                    }}
                                                     className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                                                 >
                                                     <Check size={16} strokeWidth={3} />
@@ -413,7 +417,11 @@ export default function MonthlyRequest() {
                                                 <button
                                                     onClick={() => {
                                                         const reason = window.prompt('Alasan penolakan:');
-                                                        if (reason !== null) dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: { ...req, status: 'REJECTED', rejectionReason: reason } });
+                                                        if (reason !== null) {
+                                                            const updated = { ...req, status: 'REJECTED', rejectionReason: reason, rejectedAt: new Date().toISOString() };
+                                                            dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                                                            api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                        }
                                                     }}
                                                     className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                                                 >
