@@ -50,26 +50,42 @@ export default function MonthlyReport() {
         date: new Date().toISOString().split('T')[0],
         amount: 0,
         description: '',
-        attachment: ''
+        buktiTeks: '',
+        nomorNota: '',
+        volume: '',
+        satuan: '',
+        harga: '',
+        kategoriAset: 'NON_ASET',
+        umurEkonomis: ''
     });
 
     const handleOpenReportForm = (req) => {
         setSelectedRequest(req);
         setFormData({
             date: new Date().toISOString().split('T')[0],
-            amount: req.amount,
+            amount: req.totalAmount || req.amount || 0,
             description: req.description || '',
-            attachment: ''
+            buktiTeks: '',
+            nomorNota: '',
+            volume: '',
+            satuan: '',
+            harga: '',
+            kategoriAset: 'NON_ASET',
+            umurEkonomis: ''
         });
         setShowReportForm(true);
     };
 
     const handleReportSubmit = (e) => {
         e.preventDefault();
+        if (formData.kategoriAset === 'ASET' && !formData.umurEkonomis) {
+            return alert('Pilih umur ekonomis untuk kategori Aset.');
+        }
 
         const reportData = {
             id: `REL-${Date.now()}`,
             requestId: selectedRequest.id,
+            budgetRequestId: selectedRequest.id,
             unitId: selectedRequest.unitId,
             fieldId: selectedRequest.fieldId,
             academicYearId: globalAcademicYearId,
@@ -77,14 +93,19 @@ export default function MonthlyReport() {
             date: formData.date,
             description: formData.description,
             category: selectedRequest.items?.[0]?.name || 'General',
+            // Field baru
+            buktiTeks: formData.buktiTeks,
+            nomorNota: formData.nomorNota,
+            volume: formData.volume,
+            satuan: formData.satuan,
+            harga: formData.harga,
+            kategoriAset: formData.kategoriAset,
+            umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
             status: 'VERIFIED'
         };
 
-        dispatch({
-            type: 'ADD_BUDGET_REPORT',
-            payload: reportData
-        });
-        api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state); // Immediate push
+        dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
+        api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
 
         setShowReportForm(false);
     };
@@ -222,80 +243,168 @@ export default function MonthlyReport() {
             {showReportForm && (
                 <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowReportForm(false)} />
-                    <div className="bg-white rounded-[40px] w-full max-w-2xl relative z-10 shadow-2xl overflow-hidden animate-in">
-                        <div className="p-10">
-                            <div className="flex justify-between items-center mb-10">
-                                <div>
-                                    <h2 className="text-2xl font-black text-slate-900 font-display">Laporan Penggunaan Dana</h2>
-                                    <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest mt-1">Ref: {expenseItems.find(i => i.id === selectedRequest.expenseItemId)?.name}</p>
-                                </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor</p>
-                                    <span className="text-lg font-black text-blue-700">Rp {parseFloat(selectedRequest?.totalAmount || 0).toLocaleString('id-ID')}</span>
-                                </div>
+                    <div className="bg-white rounded-[40px] w-full max-w-3xl relative z-10 shadow-2xl overflow-hidden animate-in max-h-[92vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-start flex-shrink-0">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Laporan Penggunaan Dana</h2>
+                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ref: {selectedRequest?.description}</p>
                             </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor</p>
+                                <span className="text-lg font-black text-blue-700">Rp {parseFloat(selectedRequest?.totalAmount || 0).toLocaleString('id-ID')}</span>
+                            </div>
+                        </div>
 
-                            <form onSubmit={handleReportSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="space-y-6">
+                        {/* Scrollable body */}
+                        <div className="overflow-y-auto flex-1 custom-scrollbar">
+                            <form id="report-form" onSubmit={handleReportSubmit} className="p-8 space-y-6">
+
+                                {/* Row 1: Tanggal + Nomor Nota */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
-                                        <label className="form-label">Tanggal Pelaporan</label>
-                                        <input
-                                            type="date"
-                                            className="form-input"
-                                            value={formData.date}
-                                            onChange={e => setFormData({ ...formData, date: e.target.value })}
-                                            required
-                                        />
+                                        <label className="form-label">Tanggal Pelaporan <span className="text-rose-500">*</span></label>
+                                        <input type="date" className="form-input" value={formData.date}
+                                            onChange={e => setFormData({ ...formData, date: e.target.value })} required />
                                     </div>
                                     <div>
-                                        <label className="form-label">Jumlah Realisasi (Rp)</label>
-                                        <input
-                                            type="number"
-                                            className="form-input font-black text-blue-600"
-                                            value={formData.amount}
-                                            onChange={e => setFormData({ ...formData, amount: e.target.value })}
-                                            required
-                                        />
+                                        <label className="form-label">Nomor Urut Nota <span className="text-rose-500">*</span></label>
+                                        <input type="text" className="form-input" placeholder="Contoh: 001/IV/2026"
+                                            value={formData.nomorNota}
+                                            onChange={e => setFormData({ ...formData, nomorNota: e.target.value })} required />
                                     </div>
-                                    <div>
-                                        <label className="form-label">Bukti Transaksi (Pilihan)</label>
-                                        <div className="border-2 border-dashed border-slate-100 rounded-2xl p-6 flex flex-col items-center justify-center text-center hover:bg-slate-50 transition-all cursor-pointer">
-                                            <Upload className="text-slate-300 mb-2" size={24} />
-                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Simulasi Upload</span>
+                                </div>
+
+                                {/* Row 2: Volume + Satuan + Harga → auto Jumlah */}
+                                <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian Pembelian</p>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="form-label">Volume</label>
+                                            <input type="number" min="0" step="any" className="form-input" placeholder="Qty"
+                                                value={formData.volume}
+                                                onChange={e => {
+                                                    const vol = e.target.value;
+                                                    const total = parseFloat(vol || 0) * parseFloat(formData.harga || 0);
+                                                    setFormData({ ...formData, volume: vol, amount: total || formData.amount });
+                                                }} />
+                                        </div>
+                                        <div>
+                                            <label className="form-label">Satuan</label>
+                                            <input type="text" className="form-input" placeholder="Buah / Rim / Kg"
+                                                value={formData.satuan}
+                                                onChange={e => setFormData({ ...formData, satuan: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="form-label">Harga Satuan (Rp)</label>
+                                            <input type="number" min="0" className="form-input" placeholder="0"
+                                                value={formData.harga}
+                                                onChange={e => {
+                                                    const hrg = e.target.value;
+                                                    const total = parseFloat(formData.volume || 0) * parseFloat(hrg || 0);
+                                                    setFormData({ ...formData, harga: hrg, amount: total || formData.amount });
+                                                }} />
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="space-y-6">
-                                    <div>
-                                        <label className="form-label">Keterangan Detail</label>
-                                        <textarea
-                                            className="form-input h-[120px] !py-3"
-                                            placeholder="Jelaskan penggunaan dana secara spesifik..."
-                                            value={formData.description}
-                                            onChange={e => setFormData({ ...formData, description: e.target.value })}
-                                            required
-                                        ></textarea>
-                                    </div>
-
-                                    <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100">
-                                        <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3 flex items-center gap-2">
-                                            <Receipt size={14} /> Sinkronisasi Jurnal
-                                        </h5>
-                                        <p className="text-xs text-slate-600 leading-relaxed font-medium">
-                                            Sistem akan otomatis membuat entri di **Jurnal Umum** dan memperbarui **Buku Besar** setelah laporan ini dikonfirmasi.
-                                        </p>
+                                    {/* Auto total */}
+                                    <div className="flex items-center justify-between px-4 py-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                        <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Total Otomatis</span>
+                                        <span className="font-black text-indigo-700 text-base">
+                                            Rp {(parseFloat(formData.volume || 0) * parseFloat(formData.harga || 0)).toLocaleString('id-ID')}
+                                        </span>
                                     </div>
                                 </div>
 
-                                <div className="md:col-span-2 flex gap-4 pt-6 border-t border-slate-100">
-                                    <button type="button" onClick={() => setShowReportForm(false)} className="btn btn-secondary flex-1">Batal</button>
-                                    <button type="submit" className="btn btn-primary flex-1 shadow-blue-500/20 group">
-                                        <Save size={18} />
-                                        <span>Konfirmasi & Kirim Laporan</span>
-                                    </button>
+                                {/* Row 3: Jumlah Realisasi (editable override) */}
+                                <div>
+                                    <label className="form-label">Jumlah Realisasi (Rp) <span className="text-rose-500">*</span></label>
+                                    <input type="number" className="form-input font-black text-blue-600" placeholder="0"
+                                        value={formData.amount}
+                                        onChange={e => setFormData({ ...formData, amount: e.target.value })} required />
+                                    <p className="text-[10px] text-slate-400 mt-1 italic">*Otomatis terisi dari volume × harga. Bisa diubah manual.</p>
                                 </div>
+
+                                {/* Row 4: Keterangan Detail */}
+                                <div>
+                                    <label className="form-label">Keterangan Detail <span className="text-rose-500">*</span></label>
+                                    <textarea className="form-input h-[90px] !py-3" placeholder="Jelaskan penggunaan dana secara spesifik..."
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })} required />
+                                </div>
+
+                                {/* Row 5: Bukti Transaksi – teks */}
+                                <div>
+                                    <label className="form-label">Bukti Transaksi (Teks)</label>
+                                    <textarea className="form-input h-[80px] !py-3"
+                                        placeholder="Nomor kwitansi, nama toko, atau keterangan bukti transaksi lainnya..."
+                                        value={formData.buktiTeks}
+                                        onChange={e => setFormData({ ...formData, buktiTeks: e.target.value })} />
+                                </div>
+
+                                {/* Row 6: Kategori Aset */}
+                                <div className="p-5 rounded-3xl border-2 border-slate-100 space-y-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Penggunaan</p>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {[{ val: 'NON_ASET', label: 'Non Aset', sub: 'Habis pakai / Jasa' },
+                                        { val: 'ASET', label: 'Aset', sub: 'Barang inventaris / Tetap' }].map(opt => (
+                                            <div
+                                                key={opt.val}
+                                                onClick={() => setFormData({ ...formData, kategoriAset: opt.val, umurEkonomis: '' })}
+                                                className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${formData.kategoriAset === opt.val
+                                                        ? 'border-indigo-500 bg-indigo-50 text-indigo-700'
+                                                        : 'border-slate-100 hover:border-slate-200 text-slate-600'
+                                                    }`}
+                                            >
+                                                <p className="font-black text-sm">{opt.label}</p>
+                                                <p className="text-[10px] font-bold opacity-60 mt-0.5">{opt.sub}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Umur Ekonomis – muncul hanya jika ASET */}
+                                    {formData.kategoriAset === 'ASET' && (
+                                        <div>
+                                            <label className="form-label">Umur Ekonomis <span className="text-rose-500">*</span></label>
+                                            <div className="grid grid-cols-4 gap-3">
+                                                {['4', '8', '10', '20'].map(yr => (
+                                                    <button
+                                                        type="button"
+                                                        key={yr}
+                                                        onClick={() => setFormData({ ...formData, umurEkonomis: yr })}
+                                                        className={`py-3 rounded-2xl font-black text-sm border-2 transition-all ${formData.umurEkonomis === yr
+                                                                ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                                : 'border-slate-100 hover:border-slate-200 text-slate-500'
+                                                            }`}
+                                                    >
+                                                        {yr} Thn
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Sinkronisasi Jurnal Info */}
+                                <div className="p-5 bg-blue-50/60 rounded-3xl border border-blue-100">
+                                    <h5 className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Receipt size={14} /> Sinkronisasi Jurnal
+                                    </h5>
+                                    <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                                        Sistem akan otomatis membuat entri di <b>Jurnal Umum</b> dan memperbarui <b>Buku Besar</b> setelah laporan ini dikonfirmasi.
+                                        {formData.kategoriAset === 'ASET' && <span className="block mt-1 text-emerald-600 font-bold">✓ Aset baru akan tercatat dengan umur ekonomis {formData.umurEkonomis} tahun.</span>}
+                                    </p>
+                                </div>
+
                             </form>
+                        </div>
+
+                        {/* Fixed Footer */}
+                        <div className="p-8 border-t border-slate-100 flex gap-4 flex-shrink-0 bg-white">
+                            <button type="button" onClick={() => setShowReportForm(false)} className="btn btn-secondary flex-1">Batal</button>
+                            <button type="submit" form="report-form" className="btn btn-primary flex-1 shadow-blue-500/20">
+                                <Save size={18} />
+                                <span>Konfirmasi &amp; Kirim Laporan</span>
+                            </button>
                         </div>
                     </div>
                 </div>
