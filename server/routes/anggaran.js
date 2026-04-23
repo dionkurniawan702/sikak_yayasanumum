@@ -481,13 +481,35 @@ router.delete('/budget-requests/:id', async (req, res) => {
 
 router.post('/budget-reports', async (req, res) => {
     try {
-        const { budgetRequestId, amount, description, date, expenseItemId } = req.body;
+        const {
+            budgetRequestId, amount, description, date, expenseItemId,
+            unitId, fieldId, academicYearId, category,
+            buktiTeks, nomorNota, volume, satuan, harga, kategoriAset, umurEkonomis
+        } = req.body;
         const prisma = getPrisma(req);
 
         const result = await prisma.$transaction(async (tx) => {
-            // 1. Create Report
+            // 1. Create Report with all fields
             const report = await tx.budgetReport.create({
-                data: { budgetRequestId, amount, description, date, expenseItemId }
+                data: {
+                    budgetRequestId: budgetRequestId || null,
+                    amount: amount ? parseFloat(amount) : null,
+                    description: description || null,
+                    date: date ? new Date(date) : new Date(),
+                    expenseItemId: expenseItemId || null,
+                    unitId: unitId || null,
+                    fieldId: fieldId || null,
+                    academicYearId: academicYearId || null,
+                    category: category || null,
+                    // New fields
+                    buktiTeks: buktiTeks || null,
+                    nomorNota: nomorNota || null,
+                    volume: volume ? parseFloat(volume) : null,
+                    satuan: satuan || null,
+                    harga: harga ? parseFloat(harga) : null,
+                    kategoriAset: kategoriAset || 'NON_ASET',
+                    umurEkonomis: umurEkonomis ? parseInt(umurEkonomis) : null,
+                }
             });
 
             // 2. Fetch Expense Item to get Account Mapping

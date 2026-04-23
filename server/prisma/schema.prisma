@@ -383,6 +383,14 @@ model BudgetReport {
   description     String?
   journalId       String?
   isDeleted       Boolean       @default(false)
+  // New fields for enhanced laporan form
+  buktiTeks       String?       @db.Text
+  nomorNota       String?
+  volume          Decimal?      @db.Decimal(15, 4)
+  satuan          String?
+  harga           Decimal?      @db.Decimal(15, 2)
+  kategoriAset    String?       @default("NON_ASET")
+  umurEkonomis    Int?
 
   @@map("budget_reports")
 }
