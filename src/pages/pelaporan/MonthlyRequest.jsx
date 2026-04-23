@@ -405,7 +405,7 @@ export default function MonthlyRequest() {
                                             <>
                                                 <button
                                                     onClick={() => {
-                                                        const updated = { ...req, status: 'APPROVED', approvedAt: new Date().toISOString() };
+                                                        const updated = { ...req, status: 'APPROVED' };
                                                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                         api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
                                                     }}
@@ -418,7 +418,7 @@ export default function MonthlyRequest() {
                                                     onClick={() => {
                                                         const reason = window.prompt('Alasan penolakan:');
                                                         if (reason !== null) {
-                                                            const updated = { ...req, status: 'REJECTED', rejectionReason: reason, rejectedAt: new Date().toISOString() };
+                                                            const updated = { ...req, status: 'REJECTED', rejectionReason: reason };
                                                             dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                             api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
                                                         }

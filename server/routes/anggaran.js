@@ -434,10 +434,22 @@ router.post('/budget-requests', async (req, res) => {
 
 router.put('/budget-requests/:id', async (req, res) => {
     try {
-        const data = { ...req.body };
+        // Only pick fields that exist in the Prisma BudgetRequest schema
+        // Sending unknown fields (e.g. approvedAt, rejectedAt) causes Prisma to throw
+        const ALLOWED_FIELDS = ['status', 'rejectionReason', 'description', 'month', 'year',
+            'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
+            'date', 'expenseItemId', 'isDeleted'];
+
+        const data = {};
+        ALLOWED_FIELDS.forEach(f => {
+            if (req.body[f] !== undefined) data[f] = req.body[f];
+        });
+
         if (data.date) data.date = new Date(data.date);
         if (data.totalAmount !== undefined && data.totalAmount !== null) data.totalAmount = parseFloat(data.totalAmount);
         if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
+
+        console.log(`[API] Updating BudgetRequest ${req.params.id} → status: ${data.status}`);
 
         const request = await getPrisma(req).budgetRequest.update({
             where: { id: req.params.id },
@@ -445,6 +457,7 @@ router.put('/budget-requests/:id', async (req, res) => {
         });
         res.json({ data: request });
     } catch (error) {
+        console.error(`[API Error] PUT /budget-requests/${req.params.id}: ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
