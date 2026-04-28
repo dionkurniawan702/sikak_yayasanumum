@@ -135,8 +135,15 @@ export default function MonthlyReport() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
-    // Filter requests that are approved but NOT YET reported
-    const reportedRequestIds = new Set(budgetReports.map(r => r.budgetRequestId));
+    // Calculate total reported amount per request
+    const reportedAmounts = useMemo(() => {
+        const map = {};
+        (budgetReports || []).forEach(r => {
+            if (!map[r.budgetRequestId]) map[r.budgetRequestId] = 0;
+            map[r.budgetRequestId] += parseFloat(r.amount || 0);
+        });
+        return map;
+    }, [budgetReports]);
 
     const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
@@ -149,9 +156,11 @@ export default function MonthlyReport() {
         });
     }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
-    const pendingReports = requestsForYear.filter(req =>
-        req.status === 'APPROVED' && !reportedRequestIds.has(req.id)
-    );
+    const pendingReports = requestsForYear.filter(req => {
+        if (req.status !== 'APPROVED') return false;
+        const totalReported = reportedAmounts[req.id] || 0;
+        return totalReported < parseFloat(req.totalAmount || 0);
+    });
 
     const baseReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -200,9 +209,10 @@ export default function MonthlyReport() {
 
     const handleOpenReportForm = (req) => {
         setSelectedRequest(req);
+        const sisaDana = parseFloat(req.totalAmount || req.amount || 0) - (reportedAmounts[req.id] || 0);
         setFormData({
             date: new Date().toISOString().split('T')[0],
-            amount: req.totalAmount || req.amount || 0,
+            amount: sisaDana > 0 ? sisaDana : 0,
             description: req.description || '',
             buktiTeks: '',
             nomorNota: '',
@@ -219,6 +229,11 @@ export default function MonthlyReport() {
         e.preventDefault();
         if (formData.kategoriAset === 'ASET' && !formData.umurEkonomis) {
             return alert('Pilih umur ekonomis untuk kategori Aset.');
+        }
+
+        const sisaDana = parseFloat(selectedRequest.totalAmount || selectedRequest.amount || 0) - (reportedAmounts[selectedRequest.id] || 0);
+        if (parseFloat(formData.amount) > sisaDana) {
+            return alert(`Jumlah realisasi tidak boleh melebihi sisa dana (${formatRupiah(sisaDana)}).`);
         }
 
         const reportData = {
@@ -297,8 +312,9 @@ export default function MonthlyReport() {
                                 </div>
 
                                 <div className="text-right">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Dana Cair</p>
-                                    <h4 className="text-2xl font-black text-blue-700 mb-6">{formatRupiah(parseFloat(req.totalAmount || 0))}</h4>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Cair</p>
+                                    <h4 className="text-2xl font-black text-blue-700 mb-2">{formatRupiah(parseFloat(req.totalAmount || 0) - (reportedAmounts[req.id] || 0))}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 mb-4">Total: {formatRupiah(parseFloat(req.totalAmount || 0))}</p>
                                     <button
                                         onClick={() => handleOpenReportForm(req)}
                                         className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
@@ -463,8 +479,10 @@ export default function MonthlyReport() {
                                 <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ref: {selectedRequest?.description}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor</p>
-                                <span className="text-lg font-black text-blue-700">{formatRupiah(parseFloat(selectedRequest?.totalAmount || 0))}</span>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor (Sisa)</p>
+                                <span className="text-lg font-black text-blue-700">
+                                    {formatRupiah(parseFloat(selectedRequest?.totalAmount || selectedRequest?.amount || 0) - (reportedAmounts[selectedRequest?.id] || 0))}
+                                </span>
                             </div>
                         </div>
 
