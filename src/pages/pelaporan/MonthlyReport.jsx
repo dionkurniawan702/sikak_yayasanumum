@@ -210,6 +210,10 @@ export default function MonthlyReport() {
     const totalAset = filteredReports.filter(r => r.kategoriAset === 'ASET').length;
     const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET').length;
 
+    const totalCair = requestsForYear.filter(r => r.status === 'APPROVED').reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
+    const totalLapor = baseReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const totalSisa = totalCair - totalLapor;
+
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         amount: 0,
@@ -392,11 +396,15 @@ export default function MonthlyReport() {
                             <div className="space-y-6">
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-400">Total Cair</span>
-                                    <span className="text-sm font-black text-slate-700">{formatRupiah(requestsForYear.filter(r => r.status === 'APPROVED').reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0))}</span>
+                                    <span className="text-sm font-black text-slate-700">{formatRupiah(totalCair)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-400">Total Lapor</span>
-                                    <span className="text-sm font-black text-emerald-600">{formatRupiah(baseReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0))}</span>
+                                    <span className="text-sm font-black text-emerald-600">{formatRupiah(totalLapor)}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-t border-slate-100 pt-4">
+                                    <span className="text-xs font-bold text-slate-400">Total Sisa</span>
+                                    <span className="text-sm font-black text-amber-500">{formatRupiah(totalSisa)}</span>
                                 </div>
                             </div>
                         </div>
