@@ -68,6 +68,10 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-amber-50 text-amber-600 border border-amber-200">
                             Menunggu
                         </span>
+                    ) : report.status === 'DRAFT' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-600 border border-slate-300">
+                            Draft
+                        </span>
                     ) : report.status === 'REJECTED' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-200">
                             Ditolak
@@ -178,6 +182,17 @@ export default function MonthlyReport() {
         return (budgetReports || []).filter(rel => rel.status === 'PENDING' && rel.academicYearId === globalAcademicYearId);
     }, [budgetReports, globalAcademicYearId]);
 
+    const draftReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
+            if (rel.status !== 'DRAFT') return false;
+            if (rel.academicYearId !== globalAcademicYearId) return false;
+            if (isSuperAdmin) return false; // Superadmin doesn't usually make drafts for units, but just in case
+            if (myUnitId && rel.unitId !== myUnitId) return false;
+            if (myFieldId && rel.fieldId !== myFieldId) return false;
+            return true;
+        });
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+
     const baseReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;
@@ -275,13 +290,30 @@ export default function MonthlyReport() {
             harga: formData.harga,
             kategoriAset: formData.kategoriAset,
             umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
-            status: 'PENDING'
+            status: 'DRAFT'
         };
 
         dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
         api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
 
         setShowReportForm(false);
+    };
+
+    const handleSubmitDrafts = () => {
+        if (window.confirm(`Anda akan mengajukan ${draftReports.length} laporan ke Superadmin. Lanjutkan?`)) {
+            draftReports.forEach(draft => {
+                const updated = { ...draft, status: 'PENDING' };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            });
+        }
+    };
+
+    const handleDeleteDraft = (id) => {
+        if (window.confirm('Hapus nota (draft) ini? Saldo sisa dana akan kembali seperti semula.')) {
+            dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+            api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+        }
     };
 
     const handleApproveReport = (report) => {
@@ -340,10 +372,44 @@ export default function MonthlyReport() {
 
             {activeTab === 'pending' ? (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    {/* List of pending reports */}
-                    <div className="lg:col-span-2 space-y-4">
+                    {/* List of pending/draft reports */}
+                    <div className="lg:col-span-2 space-y-6">
+                        
+                        {/* DRAFTS SECTION */}
+                        {draftReports.length > 0 && (
+                            <div className="card p-6 bg-amber-50 border-amber-200 shadow-sm mb-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <div>
+                                        <h3 className="font-black text-amber-900 text-lg flex items-center gap-2">
+                                            <Package size={18} /> Nota Belum Diajukan (Draft)
+                                        </h3>
+                                        <p className="text-xs text-amber-700 font-medium">Laporan di bawah ini sudah memotong saldo, tetapi belum dikirim ke Superadmin.</p>
+                                    </div>
+                                    <button onClick={handleSubmitDrafts} className="px-4 py-2 bg-amber-500 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-600 transition-colors">
+                                        Ajukan {draftReports.length} Laporan
+                                    </button>
+                                </div>
+                                <div className="space-y-3">
+                                    {draftReports.map(draft => (
+                                        <div key={draft.id} className="flex items-center justify-between bg-white p-4 rounded-2xl border border-amber-100 shadow-sm">
+                                            <div>
+                                                <p className="text-sm font-black text-slate-800">{draft.description}</p>
+                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Nota: {draft.nomorNota || '-'} | Vol: {draft.volume} {draft.satuan}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="font-black text-amber-600 text-sm">{formatRupiah(parseFloat(draft.amount || 0))}</span>
+                                                <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-2 bg-rose-50 rounded-lg" title="Hapus Draft">
+                                                    Hapus
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-2 mb-2 px-2">
-                            <AlertCircle size={16} className="text-amber-500" />
+                            <AlertCircle size={16} className="text-blue-500" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana yang sudah dicairkan & Menunggu Laporan</span>
                         </div>
 
@@ -751,7 +817,7 @@ export default function MonthlyReport() {
                             <button type="button" onClick={() => setShowReportForm(false)} className="btn btn-secondary flex-1">Batal</button>
                             <button type="submit" form="report-form" className="btn btn-primary flex-1 shadow-blue-500/20">
                                 <Save size={18} />
-                                <span>Konfirmasi & Kirim Laporan</span>
+                                <span>Simpan Nota (Draft)</span>
                             </button>
                         </div>
                     </div>
