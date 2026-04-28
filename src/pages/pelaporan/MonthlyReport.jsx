@@ -402,7 +402,7 @@ export default function MonthlyReport() {
                         </div>
                     </div>
                 </div>
-            ) : (
+            ) : activeTab === 'history' ? (
                 /* HISTORY TAB */
                 <div className="space-y-6">
                     {/* Summary Strip */}
