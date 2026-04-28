@@ -481,7 +481,7 @@ export default function MonthlyReport() {
                                     </div>
                                     <div>
                                         <label className="form-label">Nomor Urut Nota <span className="text-rose-500">*</span></label>
-                                        <input type="text" className="form-input" placeholder="Contoh: 001/IV/2026"
+                                        <input type="text" className="form-input" placeholder="Contoh: 001"
                                             value={formData.nomorNota}
                                             onChange={e => setFormData({ ...formData, nomorNota: e.target.value })} required />
                                     </div>
