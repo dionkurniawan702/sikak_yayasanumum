@@ -64,9 +64,19 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
                     <AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} />
                 </td>
                 <td className="px-5 py-4 text-center">
-                    <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-600">
-                        ✓ Terverifikasi
-                    </span>
+                    {report.status === 'PENDING' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-amber-50 text-amber-600 border border-amber-200">
+                            Menunggu
+                        </span>
+                    ) : report.status === 'REJECTED' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-200">
+                            Ditolak
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-600 border border-emerald-200">
+                            ✓ Terverifikasi
+                        </span>
+                    )}
                 </td>
                 <td className="px-5 py-4 text-center">
                     {open
@@ -135,12 +145,14 @@ export default function MonthlyReport() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
-    // Calculate total reported amount per request
+    // Calculate total reported amount per request (only count PENDING, APPROVED, VERIFIED)
     const reportedAmounts = useMemo(() => {
         const map = {};
         (budgetReports || []).forEach(r => {
-            if (!map[r.budgetRequestId]) map[r.budgetRequestId] = 0;
-            map[r.budgetRequestId] += parseFloat(r.amount || 0);
+            if (r.status !== 'REJECTED') {
+                if (!map[r.budgetRequestId]) map[r.budgetRequestId] = 0;
+                map[r.budgetRequestId] += parseFloat(r.amount || 0);
+            }
         });
         return map;
     }, [budgetReports]);
@@ -161,6 +173,10 @@ export default function MonthlyReport() {
         const totalReported = reportedAmounts[req.id] || 0;
         return totalReported < parseFloat(req.totalAmount || 0);
     });
+
+    const verificationReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => rel.status === 'PENDING' && rel.academicYearId === globalAcademicYearId);
+    }, [budgetReports, globalAcademicYearId]);
 
     const baseReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -255,13 +271,29 @@ export default function MonthlyReport() {
             harga: formData.harga,
             kategoriAset: formData.kategoriAset,
             umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
-            status: 'VERIFIED'
+            status: 'PENDING'
         };
 
         dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
         api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
 
         setShowReportForm(false);
+    };
+
+    const handleApproveReport = (report) => {
+        if (window.confirm('Setujui laporan ini? Jurnal akan dicatat jika diperlukan.')) {
+            const updated = { ...report, status: 'APPROVED' };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+        }
+    };
+
+    const handleRejectReport = (report) => {
+        if (window.confirm('Tolak laporan ini? Saldo unit akan dikembalikan.')) {
+            const updated = { ...report, status: 'REJECTED' };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+        }
     };
 
     return (
@@ -275,7 +307,7 @@ export default function MonthlyReport() {
                 <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
                     <button
                         onClick={() => setActiveTab('pending')}
-                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-50'}`}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                     >
                         Perlu Dilaporkan
                         {pendingReports.length > 0 && (
@@ -288,6 +320,17 @@ export default function MonthlyReport() {
                     >
                         Riwayat Laporan
                     </button>
+                    {isSuperAdmin && (
+                        <button
+                            onClick={() => setActiveTab('verification')}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-indigo-600 shadow-sm shadow-indigo-500/5' : 'text-slate-500'}`}
+                        >
+                            Verifikasi Laporan
+                            {verificationReports.length > 0 && (
+                                <span className="ml-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{verificationReports.length}</span>
+                            )}
+                        </button>
+                    )}
                 </div>
             </div>
 
@@ -465,7 +508,71 @@ export default function MonthlyReport() {
                         </div>
                     </div>
                 </div>
-            )}
+            ) : activeTab === 'verification' && isSuperAdmin ? (
+                /* VERIFICATION TAB */
+                <div className="space-y-6">
+                    <div className="card p-6 bg-indigo-50 border-indigo-100 flex items-center gap-4">
+                        <AlertCircle size={24} className="text-indigo-600" />
+                        <div>
+                            <h3 className="font-black text-indigo-900 text-lg">Persetujuan Laporan Realisasi</h3>
+                            <p className="text-xs text-indigo-600 font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
+                        </div>
+                    </div>
+
+                    <div className="card overflow-hidden rounded-2xl border-0 shadow-xl">
+                        <div className="bg-slate-900 px-6 py-4 flex items-center gap-3">
+                            <CheckCircle2 size={14} className="text-emerald-400" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Daftar Menunggu Persetujuan</span>
+                            <span className="ml-auto text-[9px] text-slate-400 font-bold">{verificationReports.length} laporan</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100">
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Unit / Tgl</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Kategori</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {verificationReports.length > 0
+                                        ? verificationReports.map((report) => (
+                                            <tr key={report.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-1 mb-1">
+                                                        <Building2 size={10} className="text-slate-400" />
+                                                        <span className="text-[10px] font-black text-slate-600">{units.find(u => u.id === report.unitId)?.name || 'Umum'}</span>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-slate-400">{report.date}</span>
+                                                </td>
+                                                <td className="px-5 py-4 text-xs font-black text-indigo-600 font-mono">{report.nomorNota || '—'}</td>
+                                                <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={report.description}>{report.description}</td>
+                                                <td className="px-5 py-4 text-center text-xs font-bold text-slate-600">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                                <td className="px-5 py-4 text-right text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                                <td className="px-5 py-4 text-center"><AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} /></td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button onClick={() => handleApproveReport(report)} className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20">Setujui</button>
+                                                        <button onClick={() => handleRejectReport(report)} className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors">Tolak</button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                        : (
+                                            <tr>
+                                                <td colSpan="7" className="px-8 py-20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
+                                            </tr>
+                                        )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
 
             {/* Report Form Modal */}
             {showReportForm && (

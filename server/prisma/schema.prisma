@@ -382,6 +382,7 @@ model BudgetReport {
   date            DateTime      @default(now())
   description     String?
   journalId       String?
+  status          String        @default("PENDING") // PENDING, APPROVED, REJECTED
   isDeleted       Boolean       @default(false)
   // New fields for enhanced laporan form
   buktiTeks       String?       @db.Text
