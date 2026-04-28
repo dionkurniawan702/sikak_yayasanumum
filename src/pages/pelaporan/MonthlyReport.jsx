@@ -184,9 +184,13 @@ export default function MonthlyReport() {
 
     const draftReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
-            if (rel.status !== 'DRAFT') return false;
+            // Safety Catch: If status is missing but ID starts with REL-, treat as DRAFT
+            // This handles cases where the DB hasn't been updated with the status column yet
+            const effectiveStatus = rel.status || (rel.id?.startsWith('REL-') ? 'DRAFT' : 'APPROVED');
+            
+            if (effectiveStatus !== 'DRAFT') return false;
             if (rel.academicYearId !== globalAcademicYearId) return false;
-            if (isSuperAdmin) return false; // Superadmin doesn't usually make drafts for units, but just in case
+            if (isSuperAdmin) return false; 
             if (myUnitId && rel.unitId !== myUnitId) return false;
             if (myFieldId && rel.fieldId !== myFieldId) return false;
             return true;
