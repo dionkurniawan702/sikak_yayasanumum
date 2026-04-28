@@ -482,21 +482,30 @@ router.delete('/budget-requests/:id', async (req, res) => {
 router.post('/budget-reports', async (req, res) => {
     try {
         const {
-            budgetRequestId, amount, description, date, expenseItemId,
+            id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
             buktiTeks, nomorNota, volume, satuan, harga, kategoriAset, umurEkonomis
         } = req.body;
         const prisma = getPrisma(req);
 
         const result = await prisma.$transaction(async (tx) => {
+            let actualExpenseItemId = expenseItemId;
+            if (!actualExpenseItemId && budgetRequestId) {
+                const breq = await tx.budgetRequest.findUnique({ where: { id: budgetRequestId } });
+                if (breq && breq.expenseItemId) {
+                    actualExpenseItemId = breq.expenseItemId;
+                }
+            }
+
             // 1. Create Report with all fields
             const report = await tx.budgetReport.create({
                 data: {
+                    id: id || undefined,
                     budgetRequestId: budgetRequestId || null,
                     amount: amount ? parseFloat(amount) : null,
                     description: description || null,
                     date: date ? new Date(date) : new Date(),
-                    expenseItemId: expenseItemId || null,
+                    expenseItemId: actualExpenseItemId || null,
                     unitId: unitId || null,
                     fieldId: fieldId || null,
                     academicYearId: academicYearId || null,
@@ -513,10 +522,13 @@ router.post('/budget-reports', async (req, res) => {
             });
 
             // 2. Fetch Expense Item to get Account Mapping
-            const expenseItem = await tx.expenseItem.findUnique({
-                where: { id: expenseItemId },
-                include: { unit: true }
-            });
+            let expenseItem = null;
+            if (actualExpenseItemId) {
+                expenseItem = await tx.expenseItem.findUnique({
+                    where: { id: actualExpenseItemId },
+                    include: { unit: true }
+                });
+            }
 
             // 3. Create Journal Entry
             if (expenseItem && expenseItem.accountId) {
