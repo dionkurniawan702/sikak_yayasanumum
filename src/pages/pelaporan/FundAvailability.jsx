@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users } from 'lucide-react';
+import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
+import api from '../../services/api';
 
 // ────────────────────────────────────────────────────────────
 // Helper: hitung saldo satu entitas (unit atau bidang)
@@ -110,8 +111,13 @@ function EntityRow({ name, type, requests, reports }) {
 // Main Component
 // ────────────────────────────────────────────────────────────
 export default function FundAvailability() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const { currentUser, budgetRequests, budgetReports, units, fields, globalAcademicYearId } = state;
+
+    const [showReturnModal, setShowReturnModal] = useState(false);
+    const [returnForm, setReturnForm] = useState({ amount: '', buktiTeks: '', description: '' });
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [processingId, setProcessingId] = useState(null);
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -147,6 +153,60 @@ export default function FundAvailability() {
     const myBalance = myApproved - myUsed;
     const myPending = myRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
 
+    const handleSubmitReturn = async (e) => {
+        e.preventDefault();
+        const amt = parseFloat(returnForm.amount);
+        if (isNaN(amt) || amt <= 0) return alert('Nominal tidak valid!');
+        if (amt > myBalance) return alert('Nominal melebihi sisa saldo Anda!');
+        if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
+
+        setIsSubmitting(true);
+        const newReturn = {
+            id: 'RET-' + Date.now().toString(36).toUpperCase(),
+            unitId: myUnitId,
+            fieldId: myFieldId,
+            academicYearId: globalAcademicYearId,
+            date: new Date().toISOString().split('T')[0],
+            amount: amt,
+            description: returnForm.description || 'Pengembalian Sisa Dana Kas',
+            buktiTeks: returnForm.buktiTeks,
+            kategoriAset: 'PENGEMBALIAN',
+            status: 'PENDING',
+            notified: false
+        };
+
+        dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
+        await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+        
+        setIsSubmitting(false);
+        setShowReturnModal(false);
+        setReturnForm({ amount: '', buktiTeks: '', description: '' });
+        alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Superadmin.');
+    };
+
+    const handleApproveReturn = async (ret) => {
+        setProcessingId(ret.id);
+        const updated = { ...ret, status: 'APPROVED', notified: false };
+        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+        setProcessingId(null);
+        alert('Pengembalian dana berhasil di-ACC!');
+    };
+
+    const handleRejectReturn = async (ret) => {
+        const reason = window.prompt('Alasan penolakan pengembalian dana:');
+        if (reason !== null) {
+            setProcessingId(ret.id);
+            const updated = { ...ret, status: 'REJECTED', description: `${ret.description} (Ditolak: ${reason})`, notified: false };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            setProcessingId(null);
+            alert('Pengembalian dana ditolak.');
+        }
+    };
+
+    const pendingReturns = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'PENDING');
+
     // ── Daftar unit & bidang yang punya data (untuk superadmin)
     const activeUnits = useMemo(() => (units || []).filter(u => !u.isDeleted), [units]);
     const activeFields = useMemo(() => (fields || []).filter(f => !f.isDeleted), [fields]);
@@ -170,9 +230,23 @@ export default function FundAvailability() {
                         {isSuperAdmin ? 'Monitoring saldo kas seluruh unit kerja & bidang.' : `Status saldo kas ${unitName}.`}
                     </p>
                 </div>
-                <div className="flex items-center gap-3 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-100 shadow-sm">
-                    <ShieldCheck size={20} />
-                    <span className="text-xs font-black uppercase tracking-widest">Saldo Real-Time</span>
+                <div className="flex items-center gap-4">
+                    {!isSuperAdmin && statBalance > 0 && (
+                        <button 
+                            onClick={() => {
+                                setReturnForm(prev => ({ ...prev, amount: statBalance }));
+                                setShowReturnModal(true);
+                            }}
+                            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 font-bold text-xs"
+                        >
+                            <HandCoins size={18} />
+                            <span>KEMBALIKAN SISA DANA</span>
+                        </button>
+                    )}
+                    <div className="flex items-center gap-3 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-100 shadow-sm hidden md:flex">
+                        <ShieldCheck size={20} />
+                        <span className="text-xs font-black uppercase tracking-widest">Saldo Real-Time</span>
+                    </div>
                 </div>
             </div>
 
@@ -329,6 +403,62 @@ export default function FundAvailability() {
                 </div>
             )}
 
+            {/* ── SUPERADMIN: Verifikasi Pengembalian Dana */}
+            {isSuperAdmin && pendingReturns.length > 0 && (
+                <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] border-2 border-indigo-100">
+                    <div className="p-6 bg-indigo-600 text-white flex items-center justify-between">
+                        <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                            <HandCoins className="text-indigo-200" size={16} /> Antrean Pengembalian Sisa Dana
+                        </h3>
+                        <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black">{pendingReturns.length} Antrean</span>
+                    </div>
+                    <div className="p-6">
+                        <div className="space-y-4">
+                            {pendingReturns.map(ret => {
+                                const unitLabel = units.find(u => u.id === ret.unitId)?.name || fields.find(f => f.id === ret.fieldId)?.name || 'Unknown';
+                                return (
+                                    <div key={ret.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div>
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <span className="text-xs font-black text-slate-800">{unitLabel}</span>
+                                                <span className="text-[10px] font-bold text-slate-400">• {ret.date}</span>
+                                            </div>
+                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{ret.description}</p>
+                                            {ret.buktiTeks && (
+                                                <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg inline-flex items-center gap-2">
+                                                    <UploadCloud size={14} /> Bukti: {ret.buktiTeks}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-4">
+                                            <span className="text-lg font-black text-emerald-600">{formatRupiah(parseFloat(ret.amount || 0))}</span>
+                                            <div className="flex items-center gap-2">
+                                                <button 
+                                                    onClick={() => handleApproveReturn(ret)}
+                                                    disabled={processingId === ret.id}
+                                                    className="p-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl transition-colors disabled:opacity-50"
+                                                    title="Terima (ACC)"
+                                                >
+                                                    {processingId === ret.id ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleRejectReturn(ret)}
+                                                    disabled={processingId === ret.id}
+                                                    className="p-2 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white rounded-xl transition-colors disabled:opacity-50"
+                                                    title="Tolak Pengembalian"
+                                                >
+                                                    {processingId === ret.id ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Info Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100 flex items-start gap-4">
@@ -350,6 +480,70 @@ export default function FundAvailability() {
                     </div>
                 </div>
             </div>
+
+            {/* ── Modal Pengajuan Pengembalian Dana */}
+            {showReturnModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                <HandCoins className="text-indigo-600" size={20} /> Ajukan Pengembalian Saldo
+                            </h3>
+                            <button onClick={() => setShowReturnModal(false)} className="text-slate-400 hover:bg-slate-200 p-2 rounded-xl transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6">
+                            <form onSubmit={handleSubmitReturn} className="space-y-5">
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Nominal Dikembalikan</label>
+                                    <div className="relative">
+                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
+                                        <input 
+                                            type="number" 
+                                            value={returnForm.amount}
+                                            onChange={e => setReturnForm({...returnForm, amount: e.target.value})}
+                                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-black text-slate-700 outline-none transition-all"
+                                            placeholder="Contoh: 50000"
+                                            required
+                                            max={myBalance}
+                                        />
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 font-bold mt-2 px-1">Sisa Saldo Maksimal: <span className="text-indigo-600">{formatRupiah(myBalance)}</span></p>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Link / Teks Bukti Transfer</label>
+                                    <input 
+                                        type="text" 
+                                        value={returnForm.buktiTeks}
+                                        onChange={e => setReturnForm({...returnForm, buktiTeks: e.target.value})}
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 outline-none transition-all"
+                                        placeholder="Misal: Nomor Ref. Transfer / Link GDrive"
+                                        required
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Keterangan Tambahan</label>
+                                    <textarea 
+                                        value={returnForm.description}
+                                        onChange={e => setReturnForm({...returnForm, description: e.target.value})}
+                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 outline-none transition-all resize-none h-24"
+                                        placeholder="Penjelasan pengembalian dana..."
+                                    />
+                                </div>
+                                <button 
+                                    type="submit" 
+                                    disabled={isSubmitting}
+                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-200 active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                    <span>KIRIM PENGAJUAN</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

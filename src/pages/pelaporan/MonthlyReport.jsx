@@ -13,6 +13,13 @@ function AsetBadge({ kategori, umurEkonomis }) {
             </span>
         );
     }
+    if (kategori === 'PENGEMBALIAN') {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
+                <FileCheck size={10} /> Pengembalian
+            </span>
+        );
+    }
     return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 border border-slate-200">
             <Layers size={10} /> Non Aset
