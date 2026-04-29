@@ -1114,7 +1114,8 @@ export default function RAB() {
 
     const handleSubmitReview = async () => {
         setIsSaving(true);
-        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
         const submittedPlan = {
             id: planId,
             academicYearId: selectedYearId,
@@ -1342,26 +1343,49 @@ export default function RAB() {
                                             return sum + (Array.isArray(plans) ? plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) : 0);
                                         }, 0);
 
-                                        // Calculate RAP for this specific plan's unit/field for the row display
+                                        // Calculate RAP — BOS plans use bosAllocations, Yayasan plans use calculateRAP
                                         let unitId = null;
                                         let fieldId = null;
                                         if (plan.fieldId) fieldId = plan.fieldId;
                                         else unitId = plan.unitId;
 
-                                        const planRAP = calculateRAP(state, selectedYearId, unitId, fieldId);
+                                        const isBOSPlan = plan.id.endsWith('-BOS');
+                                        let rapLimit = 0;
+                                        let itemAllocations = {};
+
+                                        if (isBOSPlan) {
+                                            // Sum total BOS allocations for this unit from bosAllocations
+                                            rapLimit = (bosAllocations || []).filter(a =>
+                                                a.unitId === plan.unitId &&
+                                                a.academicYearId === selectedYearId &&
+                                                !a.isDeleted
+                                            ).reduce((sum, a) => sum + (parseFloat(a.amount) || 0), 0);
+                                            // Build per-item allocation from bosAllocations
+                                            (bosAllocations || []).filter(a =>
+                                                a.unitId === plan.unitId &&
+                                                a.academicYearId === selectedYearId &&
+                                                !a.isDeleted
+                                            ).forEach(a => {
+                                                itemAllocations[a.expenseItemId] = (itemAllocations[a.expenseItemId] || 0) + (parseFloat(a.amount) || 0);
+                                            });
+                                        } else {
+                                            const planRAP = calculateRAP(state, selectedYearId, unitId, fieldId);
+                                            rapLimit = planRAP.totalTarget;
+                                            itemAllocations = planRAP.itemAllocations;
+                                        }
 
                                         const rowData = {
                                             id: plan.id,
                                             name: unit?.name || 'Unknown',
-                                            typeLabel: plan.id.endsWith('-BOS') ? 'BOS' : 'YAYASAN',
+                                            typeLabel: isBOSPlan ? 'BOS' : 'YAYASAN',
                                             status: plan.status,
-                                            rap: planRAP.totalTarget,
+                                            rap: rapLimit,
                                             rab: total,
-                                            sisa: planRAP.totalTarget - total,
+                                            sisa: rapLimit - total,
                                             breakdown: Object.entries(plan.expense || {})
                                                 .map(([id, plans]) => {
                                                     const aggregatedTotal = Array.isArray(plans) ? plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) : 0;
-                                                    const aggregatedRap = planRAP.itemAllocations[id] || 0;
+                                                    const aggregatedRap = itemAllocations[id] || 0;
                                                     // Collect all components from all plans for this item
                                                     const allComponents = Array.isArray(plans) ? plans.flatMap(p => p.components || []) : [];
 
