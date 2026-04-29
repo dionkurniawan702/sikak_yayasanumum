@@ -20,7 +20,7 @@ function calcEntityBalance(requests, reports) {
 // ────────────────────────────────────────────────────────────
 function EntityRow({ name, type, requests, reports }) {
     const [open, setOpen] = useState(false);
-    const { approved, used, balance, pending } = calcEntityBalance(requests, reports);
+    const { approved, used, returned, balance, pending } = calcEntityBalance(requests, reports);
 
     // Rincian per kategori (item)
     const positions = useMemo(() => {
