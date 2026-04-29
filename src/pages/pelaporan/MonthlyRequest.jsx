@@ -420,6 +420,7 @@ export default function MonthlyRequest() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isSuperAdmin && req.status === 'PENDING' && (
+                                            <>
                                                 <button
                                                     onClick={async () => {
                                                         setProcessingId(req.id);
