@@ -2052,7 +2052,7 @@ export default function RAB() {
                                 )}
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Total Rencana Belanja</p>
-                                    <h3 className="text-2xl font-black italic">{formatRupiah(totalExpense)}</h3>
+                                    <h3 className="text-2xl font-black italic">{formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}</h3>
                                 </div>
                                 <div className="space-y-2">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60">Sisa Dana Strategis</p>
