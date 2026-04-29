@@ -723,7 +723,8 @@ export function AppProvider({ children }) {
         state.classGroups,
         state.positions,
         state.studentStatuses,
-        state.parentStatuses
+        state.parentStatuses,
+        state.bosAllocations
     ]);
 
     return (

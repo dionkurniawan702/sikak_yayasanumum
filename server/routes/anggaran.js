@@ -1200,6 +1200,55 @@ router.delete('/bos-pos/:id', async (req, res) => {
     }
 });
 
+// --- BOS ALLOCATIONS ---
+router.post('/bos-allocations', async (req, res) => {
+    try {
+        const data = { ...req.body };
+        if (data.amount !== undefined) data.amount = parseFloat(data.amount) || 0;
+        if (!data.id) data.id = `BALL-${Date.now()}-${Math.random().toString(36).substr(2,6)}`;
+        const item = await getPrisma(req).bosAllocation.upsert({
+            where: { id: data.id },
+            update: { ...data, id: undefined },
+            create: data
+        });
+        res.json({ data: item });
+    } catch (error) {
+        console.error('[API Error] POST /bos-allocations:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+router.put('/bos-allocations/:id', async (req, res) => {
+    try {
+        const data = { ...req.body, id: req.params.id };
+        if (data.amount !== undefined) data.amount = parseFloat(data.amount) || 0;
+        const item = await getPrisma(req).bosAllocation.upsert({
+            where: { id: req.params.id },
+            update: { ...data, id: undefined },
+            create: data
+        });
+        res.json({ data: item });
+    } catch (error) {
+        console.error('[API Error] PUT /bos-allocations:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+router.delete('/bos-allocations/:id', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const id = req.params.id;
+        const isPermanent = req.query.permanent === 'true';
+        if (isPermanent) {
+            await prisma.bosAllocation.delete({ where: { id } });
+        } else {
+            await prisma.bosAllocation.update({ where: { id }, data: { isDeleted: true } });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        console.error(`[API Error] DELETE /bos-allocations/${req.params.id}:`, error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // --- REPAIR & DEDUPLICATION ---
 router.post('/repair/deduplicate', async (req, res) => {
     try {
