@@ -140,6 +140,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
             { path: '/pelaporan/bos', label: 'BOS', icon: Landmark },
             { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
+            { path: '/pelaporan/saldo-bos', label: 'Saldo BOS', icon: Landmark },
 
             { section: 'PERENCANAAN (RAB)' },
             { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
@@ -193,6 +194,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
             ...(hasBos ? [{ path: '/pelaporan/bos', label: 'BOS', icon: Landmark }] : []),
             { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
+            ...(hasBos ? [{ path: '/pelaporan/saldo-bos', label: 'Saldo BOS', icon: Landmark }] : []),
 
             { section: 'PERENCANAAN (RAB)' },
             ...(isAdminUnit

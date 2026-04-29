@@ -37,6 +37,7 @@ import ClassManagement from './pages/anggaran/ClassManagement';
 import RAB from './pages/anggaran/RAB';
 import BOSRecipientUnitManagement from './pages/anggaran/BOSRecipientUnitManagement';
 import BOSDatabase from './pages/anggaran/BOSDatabase';
+import BOSSaldo from './pages/pelaporan/BOSSaldo';
 import GenericMasterManagement from './components/GenericMasterManagement';
 import {
     Calendar,
@@ -141,6 +142,7 @@ function AppContent() {
                     <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
                     <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
                     <Route path="pelaporan/saldo" element={<FundAvailability />} />
+                    <Route path="pelaporan/saldo-bos" element={<BOSSaldo />} />
 
                     <Route path="anggaran/rab" element={<RAB />} />
                     <Route path="anggaran/arsip-rab" element={<Placeholder title="Arsip RAB" />} />
