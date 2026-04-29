@@ -32,13 +32,13 @@ export default function Sidebar({ isOpen, onClose }) {
     const pendingRabYayasanCount = React.useMemo(() => {
         if (!state.rabPlans) return 0;
         if (isSuperAdmin) {
-            return state.rabPlans.filter(p => p.status === 'PENDING' && !p.id.endsWith('-BOS')).length;
+            return state.rabPlans.filter(p => p.status === 'PENDING' && p.id.endsWith('-YAYASAN')).length;
         }
         if (isAdminUnit || isAdminField) {
             return state.rabPlans.filter(p => {
                 const isMine = (isAdminUnit && p.unitId === currentUser.unitId) ||
                     (isAdminField && p.fieldId === currentUser.fieldId);
-                return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified && !p.id.endsWith('-BOS');
+                return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified && p.id.endsWith('-YAYASAN');
             }).length;
         }
         return 0;
