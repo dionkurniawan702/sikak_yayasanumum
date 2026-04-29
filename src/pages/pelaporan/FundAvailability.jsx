@@ -188,10 +188,10 @@ export default function FundAvailability() {
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Realisasi (Keluar)</p>
                     <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statUsed)}</h2>
                 </div>
-                <div className="card p-8 bg-indigo-600 text-white border-b-4 border-indigo-800 shadow-xl hover:translate-y-[-4px] transition-all">
-                    <div className="w-12 h-12 bg-white/20 text-white rounded-xl flex items-center justify-center mb-4"><Wallet size={24} /></div>
-                    <p className="text-[10px] font-black text-white/60 uppercase tracking-widest mb-1">Saldo Kas di Tangan</p>
-                    <h2 className="text-2xl font-black">{formatRupiah(statBalance)}</h2>
+                <div className="card p-8 bg-white border-b-4 border-indigo-500 shadow-lg hover:translate-y-[-4px] transition-all">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4"><Wallet size={24} /></div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana (Saldo)</p>
+                    <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statBalance)}</h2>
                 </div>
                 <div className="card p-8 bg-white border-b-4 border-amber-500 shadow-lg hover:translate-y-[-4px] transition-all">
                     <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4"><Clock size={24} /></div>
