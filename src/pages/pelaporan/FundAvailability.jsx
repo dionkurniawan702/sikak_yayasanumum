@@ -10,7 +10,7 @@ import { api } from '../../services/api';
 function calcEntityBalance(requests, reports) {
     const approved = requests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
     const used = reports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const returned = reports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const returned = reports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const pending = requests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
     return { approved, used, returned, balance: approved - used - returned, pending };
 }
@@ -146,22 +146,26 @@ export default function FundAvailability() {
     // ── Aggregate superadmin (total keseluruhan)
     const totalApproved = yearRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
     const totalUsed = yearReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const totalReturned = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalReturned = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const totalBalance = totalApproved - totalUsed - totalReturned;
-    const totalPending = yearRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
+    const totalPending = yearRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + 
+                         yearReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
     // ── Aggregate user biasa
     const myApproved = myRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
     const myUsed = myReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const myReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const myReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const myBalance = myApproved - myUsed - myReturned;
-    const myPending = myRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
+    const myPending = myRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + 
+                      myReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
     const handleSubmitReturn = async (e) => {
         e.preventDefault();
         const amt = parseFloat(returnForm.amount);
+        const myPendingReturns = myReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        
         if (isNaN(amt) || amt <= 0) return alert('Nominal tidak valid!');
-        if (amt > myBalance) return alert('Nominal melebihi sisa saldo Anda!');
+        if (amt > (myBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
         if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
 
         setIsSubmitting(true);
