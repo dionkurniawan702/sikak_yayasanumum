@@ -150,7 +150,7 @@ export default function MonthlyReport() {
     const myFieldId = currentUser?.fieldId;
 
     // Clear notifications for unit admin when they visit
-    useEffect(() => {
+    React.useEffect(() => {
         if (!isSuperAdmin && budgetReports?.length > 0) {
             const unnotified = budgetReports.filter(r => {
                 const isMine = (myUnitId && r.unitId === myUnitId) || (myFieldId && r.fieldId === myFieldId);
