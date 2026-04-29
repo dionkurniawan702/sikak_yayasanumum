@@ -425,6 +425,7 @@ export default function MonthlyRequest() {
                                                         const updated = { ...req, status: 'APPROVED', notified: false };
                                                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                         api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                        alert('Permintaan dana berhasil disetujui');
                                                     }}
                                                     className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                                                 >
@@ -438,6 +439,7 @@ export default function MonthlyRequest() {
                                                             const updated = { ...req, status: 'REJECTED', rejectionReason: reason, notified: false };
                                                             dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                             api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                            alert('Permintaan dana berhasil ditolak');
                                                         }
                                                     }}
                                                     className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"

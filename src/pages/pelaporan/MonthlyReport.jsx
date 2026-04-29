@@ -372,6 +372,7 @@ export default function MonthlyReport() {
             const updated = { ...report, status: 'APPROVED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            alert('Laporan berhasil disetujui');
         }
     };
 
@@ -380,6 +381,7 @@ export default function MonthlyReport() {
             const updated = { ...report, status: 'REJECTED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            alert('Laporan berhasil ditolak');
         }
     };
 
