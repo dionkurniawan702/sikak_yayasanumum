@@ -1933,6 +1933,95 @@ export default function RAB() {
             {isSuperAdmin && showDashboard ? (
                 /* DASHBOARD VIEW */
                 <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    {fundSourceFilter === 'BOS' ? (
+                        /* ===== BOS CONSOLIDATION DASHBOARD ===== */
+                        <>
+                            <div className="bg-gradient-to-r from-emerald-900 to-teal-950 rounded-[2.5rem] p-8 lg:p-12 text-white shadow-2xl relative overflow-hidden ring-8 ring-emerald-100/20">
+                                <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
+                                    <Database size={240} />
+                                </div>
+                                <div className="relative z-10 max-w-4xl">
+                                    <div className="flex items-center gap-4 mb-6">
+                                        <span className="px-5 py-2 bg-emerald-500 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+                                            IKHTISAR DANA BOS
+                                        </span>
+                                        <span className="text-emerald-400 font-bold text-xs uppercase tracking-widest italic">Tahun Ajaran {academicYears.find(ay => ay.id === selectedYearId)?.name}</span>
+                                    </div>
+                                    <h2 className="text-4xl lg:text-5xl font-black tracking-tighter italic leading-none mb-8">
+                                        Konsolidasi <span className="text-emerald-400">RAB BOS</span>
+                                    </h2>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest opacity-60">Total Alokasi BOS</p>
+                                            <h3 className="text-2xl font-black italic">{formatRupiah((bosAllocations || []).filter(a => a.academicYearId === selectedYearId && !a.isDeleted).reduce((s, a) => s + (parseFloat(a.amount) || 0), 0))}</h3>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest opacity-60">Total RAB BOS Diajukan</p>
+                                            <h3 className="text-2xl font-black italic">{formatRupiah((rabPlans || []).filter(p => p.id.endsWith('-BOS') && p.academicYearId === selectedYearId && p.status !== 'DRAFT').reduce((s, p) => s + Object.values(p.expense || {}).reduce((ps, pl) => ps + (Array.isArray(pl) ? pl.reduce((ss, i) => ss + (parseFloat(i.total) || 0), 0) : 0), 0), 0))}</h3>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest opacity-60">Unit Sudah Mengajukan</p>
+                                            <h3 className="text-2xl font-black italic">{(rabPlans || []).filter(p => p.id.endsWith('-BOS') && p.academicYearId === selectedYearId && (p.status === 'PENDING' || p.status === 'APPROVED')).length} Unit</h3>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* BOS Per-Unit Status Table */}
+                            <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+                                <div className="flex items-center gap-5 mb-8">
+                                    <div className="p-4 bg-emerald-50 rounded-[1.5rem] text-emerald-600 shadow-sm">
+                                        <BarChart3 size={24} />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-xl font-black text-slate-900 tracking-tight leading-none italic uppercase">Monitoring RAB BOS Per Unit</h3>
+                                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1.5 italic">Status pengajuan RAB BOS setiap unit penerima</p>
+                                    </div>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-separate border-spacing-y-2">
+                                        <thead>
+                                            <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
+                                                <th className="px-6 py-2 text-left">Unit</th>
+                                                <th className="px-6 py-2 text-right">Alokasi BOS</th>
+                                                <th className="px-6 py-2 text-right">RAB BOS Diajukan</th>
+                                                <th className="px-6 py-2 text-right">Status</th>
+                                                <th className="px-6 py-2 text-right">Aksi</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {units.filter(u => !u.isDeleted).map(u => {
+                                                const unitAlloc = (bosAllocations || []).filter(a => a.unitId === u.id && a.academicYearId === selectedYearId && !a.isDeleted).reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
+                                                const bosPlan = (rabPlans || []).find(p => p.id === `${selectedYearId}-${u.id}-BOS`);
+                                                const bosRab = bosPlan ? Object.values(bosPlan.expense || {}).reduce((s, pl) => s + (Array.isArray(pl) ? pl.reduce((ss, i) => ss + (parseFloat(i.total) || 0), 0) : 0), 0) : 0;
+                                                const status = bosPlan?.status || 'EMPTY';
+                                                if (unitAlloc === 0 && !bosPlan) return null;
+                                                return (
+                                                    <tr key={u.id} className="bg-slate-50/50 hover:bg-emerald-50/30 rounded-2xl transition-colors">
+                                                        <td className="px-6 py-4 font-black text-slate-800 text-sm rounded-l-2xl">{u.name}</td>
+                                                        <td className="px-6 py-4 text-right font-bold text-slate-600 text-sm">{formatRupiah(unitAlloc)}</td>
+                                                        <td className="px-6 py-4 text-right font-bold text-slate-800 text-sm">{formatRupiah(bosRab)}</td>
+                                                        <td className="px-6 py-4 text-right">
+                                                            <span className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${status === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' : status === 'PENDING' ? 'bg-indigo-100 text-indigo-700' : status === 'REJECTED' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {status === 'APPROVED' ? 'Disetujui' : status === 'PENDING' ? 'Menunggu Review' : status === 'REJECTED' ? 'Ditolak' : 'Belum Mengajukan'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 text-right rounded-r-2xl">
+                                                            <button onClick={(e) => { e.stopPropagation(); setSelectedUnitId(u.id); setShowDashboard(false); }} className="p-2 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-600 hover:text-white transition-all shadow-sm" title="Buka RAB BOS Unit">
+                                                                <ChevronRight size={14} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            }).filter(Boolean)}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        /* ===== YAYASAN CONSOLIDATION DASHBOARD ===== */
+                        <>
                     {/* Hero Card: Yayasan Consolidation */}
                     <div className="bg-gradient-to-r from-slate-900 to-indigo-950 rounded-[2.5rem] p-8 lg:p-12 text-white shadow-2xl relative overflow-hidden ring-8 ring-slate-100">
                         <div className="absolute top-0 right-0 p-12 opacity-10 pointer-events-none">
@@ -2017,12 +2106,11 @@ export default function RAB() {
                                 </thead>
                                 <tbody>
                                     {[...units.filter(u => !u.isDeleted), ...fields.map(f => ({ ...f, isField: true }))].map(item => {
-                                        const planId = `${selectedYearId}-${item.isField ? `FIELD-${item.id}` : item.id}`;
+                                        const planId = `${selectedYearId}-${item.isField ? `FIELD-${item.id}` : item.id}-YAYASAN`;
                                         const plan = rabPlans.find(p => p.id === planId);
                                         const status = plan?.status || 'EMPTY';
-                                        const total = Object.values(plan?.expense || {}).reduce((sum, v) => sum + (v?.total || 0), 0);
+                                        const total = Object.values(plan?.expense || {}).reduce((sum, v) => sum + (Array.isArray(v) ? v.reduce((s, i) => s + (parseFloat(i.total) || 0), 0) : 0), 0);
 
-                                        // Dynamic RAP calculation for the row
                                         const itemRAP = calculateRAP(state, selectedYearId, item.isField ? null : item.id, item.isField ? item.id : null);
 
                                         const rowData = {
@@ -2036,9 +2124,9 @@ export default function RAB() {
                                                 .map(([id, detail]) => ({
                                                     id,
                                                     name: (expenseItems.find(e => e.id === id)?.name || id),
-                                                    rab: detail.total || 0,
+                                                    rab: Array.isArray(detail) ? detail.reduce((s, i) => s + (parseFloat(i.total) || 0), 0) : (detail.total || 0),
                                                     rap: itemRAP.itemAllocations[id] || 0,
-                                                    sisa: (itemRAP.itemAllocations[id] || 0) - (detail.total || 0)
+                                                    sisa: (itemRAP.itemAllocations[id] || 0) - (Array.isArray(detail) ? detail.reduce((s, i) => s + (parseFloat(i.total) || 0), 0) : (detail.total || 0))
                                                 }))
                                                 .sort((a, b) => b.rab - a.rab)
                                                 .slice(0, 5) : []
@@ -2075,8 +2163,11 @@ export default function RAB() {
                             </table>
                         </div>
                     </div>
+                        </>
+                    )}
                 </div>
             ) : (
+
                 /* DETAIL VIEW (SIDEBAR + TABLE/REVIEW) */
                 <div className="flex flex-col lg:flex-row gap-6 min-h-[70vh]">
                     {/* Sidebar */}
