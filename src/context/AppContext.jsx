@@ -453,6 +453,9 @@ function appReducer(state, action) {
         case 'EDIT_BUDGET_REQUEST':
             newState = { ...state, budgetRequests: state.budgetRequests.map(r => r.id === action.payload.id ? action.payload : r) };
             break;
+        case 'DELETE_BUDGET_REQUEST':
+            newState = { ...state, budgetRequests: state.budgetRequests.filter(r => r.id !== action.payload) };
+            break;
         case 'ADD_INCOME_ITEM':
             newState = { ...state, incomeItems: [action.payload, ...state.incomeItems] };
             break;

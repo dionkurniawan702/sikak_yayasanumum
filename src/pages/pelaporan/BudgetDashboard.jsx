@@ -135,7 +135,10 @@ export default function BudgetDashboard() {
         // BUG FIX: Only use this as the single source for RAB to avoid double counting with requests
         rabPlans.filter(p => p.status === 'APPROVED' && p.academicYearId === selectedAcademicYearId).forEach(plan => {
             Object.entries(plan.expense || {}).forEach(([exId, detail]) => {
-                const amount = parseFloat(detail.total) || 0;
+                // EXCLUDE BOS portion from General RAB (Foundation) to ensure isolated views
+                const bosPortion = detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0;
+                const amount = (parseFloat(detail.total) || 0) - bosPortion;
+                
                 if (amount <= 0) return;
 
                 const exItem = expenseItems.find(e => e.id === exId);

@@ -1,8 +1,29 @@
 import express from 'express';
+import jwt from 'jsonwebtoken';
 const router = express.Router();
 
 // Helper to get Prisma Client from the request (attached in index.js)
 const getPrisma = (req) => req.app.get('prisma');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'sikak-yayasan-umum-secret-2026';
+
+// Middleware: Hanya superadmin yang boleh akses
+const requireSuperAdmin = (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan.' });
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Akses ditolak: Hanya Superadmin yang dapat melakukan operasi ini.' });
+        }
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
+    }
+};
 
 // --- FIELD & UNIT ---
 router.get('/fields', async (req, res) => {
@@ -462,7 +483,7 @@ router.put('/budget-requests/:id', async (req, res) => {
     }
 });
 
-router.delete('/budget-requests/:id', async (req, res) => {
+router.delete('/budget-requests/:id', requireSuperAdmin, async (req, res) => {
     try {
         const isPermanent = req.query.permanent === 'true';
         if (isPermanent) {
@@ -634,7 +655,7 @@ router.put('/budget-reports/:id', async (req, res) => {
     }
 });
 
-router.delete('/budget-reports/:id', async (req, res) => {
+router.delete('/budget-reports/:id', requireSuperAdmin, async (req, res) => {
     try {
         const isPermanent = req.query.permanent === 'true';
         const prisma = getPrisma(req);

@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Download, UploadCloud, AlertCircle, CheckCircle2, Database, RefreshCw, ShieldCheck, HardDrive } from 'lucide-react';
+import { Download, UploadCloud, AlertCircle, CheckCircle2, Database, RefreshCw, ShieldCheck, HardDrive, Trash2, RotateCcw } from 'lucide-react';
 import { api } from '../services/api';
 
 export default function BackupRestore() {
@@ -8,6 +8,76 @@ export default function BackupRestore() {
     const [uploadStatus, setUploadStatus] = useState({ type: '', message: '' });
     const [syncing, setSyncing] = useState(false);
     const fileInputRef = useRef(null);
+    const [resetTargetUnitId, setResetTargetUnitId] = useState('');
+    const [resetting, setResetting] = useState(false);
+    const [resetStatus, setResetStatus] = useState({ type: '', message: '' });
+
+    const { units = [], budgetReports = [], budgetRequests = [], currentUser } = state;
+    const isSuperAdmin = currentUser?.role === 'superadmin';
+    const activeUnits = units.filter(u => !u.isDeleted);
+
+    const handleResetRealisasi = async () => {
+        if (!resetTargetUnitId) {
+            setResetStatus({ type: 'error', message: 'Pilih unit terlebih dahulu.' });
+            return;
+        }
+        const unit = activeUnits.find(u => u.id === resetTargetUnitId);
+        const unitName = unit?.name || resetTargetUnitId;
+
+        const reportsToDelete = budgetReports.filter(r => r.unitId === resetTargetUnitId);
+        const requestsToDelete = budgetRequests.filter(r => r.unitId === resetTargetUnitId);
+        const total = reportsToDelete.length + requestsToDelete.length;
+
+        if (total === 0) {
+            setResetStatus({ type: 'info', message: `Unit "${unitName}" tidak memiliki data realisasi maupun pengajuan dana.` });
+            return;
+        }
+
+        const confirmed = window.confirm(
+            `⚠️ KONFIRMASI RESET\n\nAnda akan menghapus data berikut milik "${unitName}":\n- ${reportsToDelete.length} Laporan Realisasi\n- ${requestsToDelete.length} Pengajuan Dana\n\nData yang dihapus TIDAK BISA dikembalikan.\nLanjutkan?`
+        );
+        if (!confirmed) return;
+
+        setResetting(true);
+        setResetStatus({ type: 'info', message: `Menghapus ${total} record milik "${unitName}"...` });
+
+        let successCount = 0;
+        let failCount = 0;
+
+        try {
+            for (const report of reportsToDelete) {
+                try {
+                    await api.delete(`/budget-reports/${report.id}`);
+                    dispatch({ type: 'DELETE_BUDGET_REPORT', payload: report.id });
+                    successCount++;
+                } catch (e) {
+                    console.error('Gagal hapus report:', report.id, e);
+                    failCount++;
+                }
+            }
+            for (const req of requestsToDelete) {
+                try {
+                    await api.delete(`/budget-requests/${req.id}`);
+                    dispatch({ type: 'DELETE_BUDGET_REQUEST', payload: req.id });
+                    successCount++;
+                } catch (e) {
+                    console.error('Gagal hapus request:', req.id, e);
+                    failCount++;
+                }
+            }
+
+            if (failCount === 0) {
+                setResetStatus({ type: 'success', message: `✅ Berhasil! ${successCount} record data realisasi "${unitName}" telah dihapus.` });
+            } else {
+                setResetStatus({ type: 'error', message: `Selesai dengan error: ${successCount} berhasil, ${failCount} gagal dihapus.` });
+            }
+            setResetTargetUnitId('');
+        } catch (err) {
+            setResetStatus({ type: 'error', message: 'Gagal melakukan reset: ' + err.message });
+        } finally {
+            setResetting(false);
+        }
+    };
 
     const handleSyncToServer = async () => {
         setSyncing(true);
@@ -150,6 +220,67 @@ export default function BackupRestore() {
                     </div>
                     <Database size={180} className="absolute -bottom-10 -right-10 text-white/5 pointer-events-none" />
                 </div>
+
+                {/* Reset Data Realisasi — Superadmin Only */}
+                {isSuperAdmin && (
+                    <div className="lg:col-span-2 bg-white border-2 border-rose-100 p-10 rounded-[40px] shadow-xl relative overflow-hidden group">
+                        <div className="relative z-10 flex flex-col md:flex-row items-start gap-10">
+                            <div className="w-24 h-24 bg-rose-50 rounded-3xl flex items-center justify-center text-rose-500 shrink-0 group-hover:scale-105 transition-transform duration-300">
+                                <RotateCcw size={44} className={resetting ? 'animate-spin' : ''} />
+                            </div>
+                            <div className="flex-1">
+                                <div className="flex items-center gap-3 mb-2">
+                                    <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Reset Data Realisasi Per Unit</h3>
+                                    <span className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-[10px] font-black uppercase tracking-widest">Superadmin</span>
+                                </div>
+                                <p className="text-sm text-slate-500 font-medium italic mb-6 leading-relaxed max-w-xl">
+                                    Hapus seluruh <strong>Laporan Realisasi</strong> dan <strong>Pengajuan Dana</strong> milik unit tertentu untuk memulai ulang pencatatan. Data master (RAB, unit, user) tidak terpengaruh.
+                                </p>
+
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <select
+                                        value={resetTargetUnitId}
+                                        onChange={e => { setResetTargetUnitId(e.target.value); setResetStatus({ type: '', message: '' }); }}
+                                        disabled={resetting}
+                                        className="flex-1 min-w-[220px] p-3 bg-slate-50 border-2 border-slate-200 rounded-2xl font-bold text-slate-700 focus:ring-2 focus:ring-rose-200 focus:border-rose-400 outline-none transition-all disabled:opacity-50"
+                                    >
+                                        <option value="">-- Pilih Unit --</option>
+                                        {activeUnits.map(u => {
+                                            const reportCount = budgetReports.filter(r => r.unitId === u.id).length;
+                                            const requestCount = budgetRequests.filter(r => r.unitId === u.id).length;
+                                            return (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name} ({reportCount} realisasi, {requestCount} pengajuan)
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+
+                                    <button
+                                        onClick={handleResetRealisasi}
+                                        disabled={resetting || !resetTargetUnitId}
+                                        className="flex items-center gap-3 px-8 py-3 bg-rose-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-rose-100 hover:bg-rose-700 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                    >
+                                        <Trash2 size={18} />
+                                        {resetting ? 'Menghapus...' : 'Reset Realisasi'}
+                                    </button>
+                                </div>
+
+                                {resetStatus.message && (
+                                    <div className={`mt-5 p-4 rounded-2xl flex items-center gap-4 text-sm font-bold animate-in slide-in-from-bottom-2 duration-300 ${
+                                        resetStatus.type === 'error' ? 'bg-rose-50 text-rose-700 border border-rose-100' :
+                                        resetStatus.type === 'info' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
+                                        'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                    }`}>
+                                        {resetStatus.type === 'error' ? <AlertCircle size={18} /> : resetStatus.type === 'info' ? <RefreshCw size={18} className="animate-spin" /> : <CheckCircle2 size={18} />}
+                                        {resetStatus.message}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                        <Trash2 size={180} className="absolute -bottom-10 -right-10 text-rose-50 pointer-events-none" />
+                    </div>
+                )}
             </div>
 
             {/* Status Feedback */}

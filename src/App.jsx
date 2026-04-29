@@ -68,6 +68,12 @@ function PrivateRoute({ children }) {
     return state.currentUser ? children : <Navigate to="/login" />;
 }
 
+function SuperAdminRoute({ children }) {
+    const { state } = useApp();
+    if (!state.currentUser) return <Navigate to="/login" />;
+    return state.currentUser.role === 'superadmin' ? children : <Navigate to="/" />;
+}
+
 // Redirect non-superadmin users to the budget dashboard
 function RoleBasedIndex() {
     const { state } = useApp();
@@ -134,9 +140,9 @@ function AppContent() {
                     <Route path="manajemen-user" element={<UserManagement />} />
                     <Route path="calk" element={<Placeholder title="Catatan Atas Laporan Keuangan" />} />
 
-                    <Route path="pengaturan/backup-restore" element={<BackupRestore />} />
-                    <Route path="pengaturan/audit-log" element={<AuditLog />} />
-                    <Route path="pengaturan/tempat-sampah" element={<TrashBin />} />
+                    <Route path="pengaturan/backup-restore" element={<SuperAdminRoute><BackupRestore /></SuperAdminRoute>} />
+                    <Route path="pengaturan/audit-log" element={<SuperAdminRoute><AuditLog /></SuperAdminRoute>} />
+                    <Route path="pengaturan/tempat-sampah" element={<SuperAdminRoute><TrashBin /></SuperAdminRoute>} />
 
                     {/* ANGGARAN & PELAPORAN ROUTES */}
                     <Route path="pelaporan/dashboard" element={<BudgetDashboard />} />
