@@ -233,6 +233,7 @@ export default function MonthlyReport() {
     const totalLapor = baseReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
     const totalSisa = totalCair - totalLapor;
 
+    const [editingDraftId, setEditingDraftId] = useState(null);
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
         amount: 0,
@@ -247,6 +248,7 @@ export default function MonthlyReport() {
     });
 
     const handleOpenReportForm = (req) => {
+        setEditingDraftId(null);
         setSelectedRequest(req);
         const sisaDana = parseFloat(req.totalAmount || req.amount || 0) - (reportedAmounts[req.id] || 0);
         setFormData({
@@ -264,19 +266,41 @@ export default function MonthlyReport() {
         setShowReportForm(true);
     };
 
+    const handleEditDraft = (draft) => {
+        const req = budgetRequests.find(r => r.id === draft.budgetRequestId);
+        if (!req) return alert("Data induk tidak ditemukan!");
+        setSelectedRequest(req);
+        setEditingDraftId(draft.id);
+        setFormData({
+            date: draft.date ? draft.date.split('T')[0] : new Date().toISOString().split('T')[0],
+            amount: parseFloat(draft.amount || 0),
+            description: draft.description || '',
+            buktiTeks: draft.buktiTeks || '',
+            nomorNota: draft.nomorNota || '',
+            volume: draft.volume || '',
+            satuan: draft.satuan || '',
+            harga: draft.harga || '',
+            kategoriAset: draft.kategoriAset || 'NON_ASET',
+            umurEkonomis: draft.umurEkonomis || ''
+        });
+        setShowReportForm(true);
+    };
+
     const handleReportSubmit = (e) => {
         e.preventDefault();
         if (formData.kategoriAset === 'ASET' && !formData.umurEkonomis) {
             return alert('Pilih umur ekonomis untuk kategori Aset.');
         }
 
-        const sisaDana = parseFloat(selectedRequest.totalAmount || selectedRequest.amount || 0) - (reportedAmounts[selectedRequest.id] || 0);
+        const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
+        const sisaDana = parseFloat(selectedRequest.totalAmount || selectedRequest.amount || 0) - (reportedAmounts[selectedRequest.id] || 0) + currentDraftAmount;
+        
         if (parseFloat(formData.amount) > sisaDana) {
             return alert(`Jumlah realisasi tidak boleh melebihi sisa dana (${formatRupiah(sisaDana)}).`);
         }
 
         const reportData = {
-            id: `REL-${Date.now()}`,
+            id: editingDraftId || `REL-${Date.now()}`,
             requestId: selectedRequest.id,
             budgetRequestId: selectedRequest.id,
             unitId: selectedRequest.unitId,
@@ -297,10 +321,16 @@ export default function MonthlyReport() {
             status: 'DRAFT'
         };
 
-        dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
-        api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
+        if (editingDraftId) {
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: reportData });
+            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: reportData }, state);
+        } else {
+            dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
+            api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
+        }
 
         setShowReportForm(false);
+        setEditingDraftId(null);
     };
 
     const handleSubmitDrafts = () => {
@@ -402,7 +432,10 @@ export default function MonthlyReport() {
                                             </div>
                                             <div className="flex items-center gap-4">
                                                 <span className="font-black text-amber-600 text-sm">{formatRupiah(parseFloat(draft.amount || 0))}</span>
-                                                <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-2 bg-rose-50 rounded-lg" title="Hapus Draft">
+                                                <button onClick={() => handleEditDraft(draft)} className="text-indigo-500 hover:text-indigo-700 p-2 bg-indigo-50 rounded-lg font-bold text-xs" title="Edit Draft">
+                                                    Edit
+                                                </button>
+                                                <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-2 bg-rose-50 rounded-lg font-bold text-xs" title="Hapus Draft">
                                                     Hapus
                                                 </button>
                                             </div>
@@ -666,7 +699,7 @@ export default function MonthlyReport() {
                             <div className="text-right">
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor (Sisa)</p>
                                 <span className="text-lg font-black text-blue-700">
-                                    {formatRupiah(parseFloat(selectedRequest?.totalAmount || selectedRequest?.amount || 0) - (reportedAmounts[selectedRequest?.id] || 0))}
+                                    {formatRupiah(parseFloat(selectedRequest?.totalAmount || selectedRequest?.amount || 0) - (reportedAmounts[selectedRequest?.id] || 0) + (editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0))}
                                 </span>
                             </div>
                         </div>

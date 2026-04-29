@@ -607,6 +607,21 @@ router.put('/budget-reports/:id', async (req, res) => {
                     where: { id: updated.journalId },
                     data: { isDeleted: true }
                 }).catch(() => {});
+            } else if (data.amount !== undefined && updated.journalId) {
+                // If amount changed (e.g. editing a DRAFT), update the journal entries
+                const journal = await tx.journal.findUnique({ where: { id: updated.journalId } });
+                if (journal && journal.entries) {
+                    const entries = typeof journal.entries === 'string' ? JSON.parse(journal.entries) : journal.entries;
+                    const newEntries = entries.map(entry => ({
+                        ...entry,
+                        debit: entry.debit > 0 ? parseFloat(data.amount) : 0,
+                        credit: entry.credit > 0 ? parseFloat(data.amount) : 0
+                    }));
+                    await tx.journal.update({
+                        where: { id: journal.id },
+                        data: { entries: JSON.stringify(newEntries) }
+                    }).catch(() => {});
+                }
             }
             
             return updated;
