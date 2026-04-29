@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2 } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -11,6 +11,7 @@ export default function MonthlyRequest() {
     const [processingId, setProcessingId] = useState(null);
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
 
     // Add month selection for the request
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -104,12 +105,17 @@ export default function MonthlyRequest() {
 
     const filteredRequests = useMemo(() => {
         return (budgetRequests || []).filter(req => {
+            // Filter by source (Yayasan vs BOS)
+            const isBosRequest = req.source === 'BOS' || req.items?.some(i => i.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return false;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
+
             if (isSuperAdmin) return true;
             if (myUnitId) return req.unitId === myUnitId;
             if (myFieldId) return req.fieldId === myFieldId;
             return false;
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId]);
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, sourceMode]);
 
     // Aggregate Approved components from RAB Plans that are NOT yet requested
     const approvedComponents = useMemo(() => {
@@ -120,7 +126,12 @@ export default function MonthlyRequest() {
             if (myUnitId) return p.unitId === myUnitId;
             if (myFieldId) return p.fieldId === myFieldId;
             return false;
-        }).filter(p => p.academicYearId === globalAcademicYearId);
+        }).filter(p => {
+            const isBosPlan = p.id?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosPlan) return false;
+            if (sourceMode === 'YAYASAN' && isBosPlan) return false;
+            return p.academicYearId === globalAcademicYearId;
+        });
 
         const components = [];
         myPlans.forEach(plan => {
@@ -176,6 +187,7 @@ export default function MonthlyRequest() {
             date: new Date().toISOString().split('T')[0],
             status: 'PENDING',
             totalAmount,
+            source: sourceMode, // Tag as YAYASAN or BOS
             description: selectedData.map(c => c.label || c.name).join(', '),
             items: selectedData.map(c => ({
                 componentId: c.id,
@@ -226,7 +238,7 @@ export default function MonthlyRequest() {
                     </div>
 
                     <div class="info">
-                        <h2 style="text-align: center; text-decoration: underline;">SURAT PERMINTAAN DANA</h2>
+                        <h2 style="text-align: center; text-decoration: underline;">SURAT PERMINTAAN DANA (${req.source || 'YAYASAN'})</h2>
                         <p style="text-align: center;">Nomor: ${req.id}</p>
                         
                         <table style="margin-top: 20px;">
@@ -315,9 +327,27 @@ export default function MonthlyRequest() {
                     </div>
                     <div className="relative z-10">
                         <h1 className="text-3xl font-black mb-1">Permintaan Dana</h1>
-                        <p className="text-blue-100/70 font-medium mb-8 uppercase text-[10px] tracking-widest italic">
+                        <p className="text-blue-100/70 font-medium mb-4 uppercase text-[10px] tracking-widest italic">
                             TA {currentYear?.name || '-'} • {isSuperAdmin ? 'SELURUH YAYASAN' : (units.find(u => u.id === myUnitId)?.name || fields.find(f => f.id === myFieldId)?.name || 'Unit Saya')}
                         </p>
+
+                        <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/20 mb-8 inline-flex">
+                            <button 
+                                onClick={() => setSourceMode('YAYASAN')}
+                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                            >
+                                <Building2 size={12} className="inline mr-2" />
+                                Dana Yayasan
+                            </button>
+                            <button 
+                                onClick={() => setSourceMode('BOS')}
+                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                            >
+                                <Gem size={12} className="inline mr-2" />
+                                Dana BOS
+                            </button>
+                        </div>
+
                         {!isSuperAdmin ? (
                             <button
                                 onClick={() => setShowRequestModal(true)}
@@ -478,8 +508,8 @@ export default function MonthlyRequest() {
                     <div className="bg-slate-50 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl flex flex-col animate-in slide-in-from-bottom-8">
                         <div className="p-10 bg-white border-b border-slate-100 flex items-center justify-between">
                             <div>
-                                <h2 className="text-3xl font-black text-slate-900 mb-1">Pilih Rincian Dana</h2>
-                                <p className="text-slate-500 font-medium italic">Hanya menampilkan rincian yang telah disetujui (ACC) oleh Superadmin.</p>
+                                <h2 className="text-3xl font-black text-slate-900 mb-1">Rincian Dana {sourceMode === 'BOS' ? 'BOS' : 'Yayasan'}</h2>
+                                <p className="text-slate-500 font-medium italic">Hanya menampilkan rincian {sourceMode} yang telah disetujui (ACC) oleh Superadmin.</p>
 
                                 <div className="flex items-center gap-4 mt-6">
                                     <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl shadow-inner"><Calendar size={20} /></div>
@@ -571,10 +601,10 @@ export default function MonthlyRequest() {
                                 <button
                                     onClick={handleCreateRequest}
                                     disabled={selectedComponents.length === 0}
-                                    className="btn bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-indigo-100 hover:bg-slate-900 transition-all disabled:opacity-50 active:scale-95 flex items-center gap-3"
+                                    className={`btn ${sourceMode === 'BOS' ? 'bg-emerald-600' : 'bg-indigo-600'} text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-900 transition-all disabled:opacity-50 active:scale-95 flex items-center gap-3`}
                                 >
                                     <Send size={18} />
-                                    AJUKAN PENCAIRAN
+                                    AJUKAN PENCAIRAN {sourceMode}
                                 </button>
                             </div>
                         </div>
