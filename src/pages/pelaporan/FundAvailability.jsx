@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
@@ -143,6 +143,23 @@ export default function FundAvailability() {
     const myReports = useMemo(() => yearReports.filter(r =>
         myUnitId ? r.unitId === myUnitId : myFieldId ? r.fieldId === myFieldId : false
     ), [yearReports, myUnitId, myFieldId]);
+
+    // ── Clear notifications for unit/bidang when viewing this page
+    useEffect(() => {
+        if (!isSuperAdmin && budgetReports) {
+            const unnotified = budgetReports.filter(r => {
+                const isMine = (myUnitId && r.unitId === myUnitId) || (myFieldId && r.fieldId === myFieldId);
+                return isMine && r.kategoriAset === 'PENGEMBALIAN' && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+            });
+            if (unnotified.length > 0) {
+                unnotified.forEach(r => {
+                    const updated = { ...r, notified: true };
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                    api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                });
+            }
+        }
+    }, [isSuperAdmin, budgetReports, myUnitId, myFieldId, dispatch, state]);
 
     // ── Aggregate superadmin (total keseluruhan)
     const totalApproved = yearRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
