@@ -187,6 +187,7 @@ export default function MonthlyReport() {
         return map;
     }, [budgetReports]);
 
+    const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
             const isYear = req.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
