@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
-import api from '../../services/api';
+import { api } from '../../services/api';
 
 // ────────────────────────────────────────────────────────────
 // Helper: hitung saldo satu entitas (unit atau bidang)

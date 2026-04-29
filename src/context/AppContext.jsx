@@ -35,7 +35,6 @@ const defaultState = {
     users: [], // Ensure users is always initialized
     notifications: [], // { id, type, title, message, read: false, createdAt }
     globalAcademicYearId: null, // Persisted globally
-    budgetReports: [], // { id, budgetRequestId, unitId, fieldId, academicYearId, date, amount, description, category }
     isSyncing: false,
     syncMessage: '',
     lastSyncedAt: null,
