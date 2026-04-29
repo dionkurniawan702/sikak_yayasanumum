@@ -151,7 +151,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { section: 'OPERASIONAL DANA' },
             { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
             { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
-            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
+            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
 
             { section: 'DATABASE ANGGARAN' },
@@ -209,7 +209,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { section: 'OPERASIONAL DANA' },
             { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
             { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
-            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi', icon: FileText },
+            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
 
             { section: 'PENGATURAN' },
@@ -304,7 +304,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     {pendingFundRequestCount}
                                 </span>
                             )}
-                            {item.label === 'Laporan Realisasi' && pendingReportCount > 0 && (
+                            {item.label === 'Laporan Realisasi Yayasan' && pendingReportCount > 0 && (
                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
                                     {pendingReportCount}
                                 </span>
