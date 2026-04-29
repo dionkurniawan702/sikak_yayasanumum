@@ -149,6 +149,23 @@ export default function MonthlyReport() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
+    // Clear notifications for unit admin when they visit
+    useEffect(() => {
+        if (!isSuperAdmin && budgetReports?.length > 0) {
+            const unnotified = budgetReports.filter(r => {
+                const isMine = (myUnitId && r.unitId === myUnitId) || (myFieldId && r.fieldId === myFieldId);
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+            });
+            if (unnotified.length > 0) {
+                unnotified.forEach(r => {
+                    const updated = { ...r, notified: true };
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                    api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                });
+            }
+        }
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, dispatch, state]);
+
     // Calculate total reported amount per request (only count PENDING, APPROVED, VERIFIED)
     const reportedAmounts = useMemo(() => {
         const map = {};
@@ -352,7 +369,7 @@ export default function MonthlyReport() {
 
     const handleApproveReport = (report) => {
         if (window.confirm('Setujui laporan ini? Jurnal akan dicatat jika diperlukan.')) {
-            const updated = { ...report, status: 'APPROVED' };
+            const updated = { ...report, status: 'APPROVED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
         }
@@ -360,7 +377,7 @@ export default function MonthlyReport() {
 
     const handleRejectReport = (report) => {
         if (window.confirm('Tolak laporan ini? Saldo unit akan dikembalikan.')) {
-            const updated = { ...report, status: 'REJECTED' };
+            const updated = { ...report, status: 'REJECTED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
         }

@@ -361,6 +361,7 @@ model BudgetRequest {
   year          Int?
   description   String?
   status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
+  notified      Boolean     @default(false)
   isDeleted     Boolean     @default(false)
 
   reports       BudgetReport[]
@@ -383,6 +384,7 @@ model BudgetReport {
   description     String?
   journalId       String?
   status          String        @default("PENDING") // PENDING, APPROVED, REJECTED
+  notified        Boolean       @default(false)
   isDeleted       Boolean       @default(false)
   // New fields for enhanced laporan form
   buktiTeks       String?       @db.Text

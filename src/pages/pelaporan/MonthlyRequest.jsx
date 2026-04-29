@@ -84,6 +84,23 @@ export default function MonthlyRequest() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
+    // Clear notifications for unit admin when they visit
+    React.useEffect(() => {
+        if (!isSuperAdmin && budgetRequests?.length > 0) {
+            const unnotified = budgetRequests.filter(r => {
+                const isMine = (myUnitId && r.unitId === myUnitId) || (myFieldId && r.fieldId === myFieldId);
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+            });
+            if (unnotified.length > 0) {
+                unnotified.forEach(r => {
+                    const updated = { ...r, notified: true };
+                    dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                    api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                });
+            }
+        }
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, dispatch, state]);
+
     const filteredRequests = useMemo(() => {
         return (budgetRequests || []).filter(req => {
             if (isSuperAdmin) return true;
@@ -405,7 +422,7 @@ export default function MonthlyRequest() {
                                             <>
                                                 <button
                                                     onClick={() => {
-                                                        const updated = { ...req, status: 'APPROVED' };
+                                                        const updated = { ...req, status: 'APPROVED', notified: false };
                                                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                         api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
                                                     }}
@@ -418,7 +435,7 @@ export default function MonthlyRequest() {
                                                     onClick={() => {
                                                         const reason = window.prompt('Alasan penolakan:');
                                                         if (reason !== null) {
-                                                            const updated = { ...req, status: 'REJECTED', rejectionReason: reason };
+                                                            const updated = { ...req, status: 'REJECTED', rejectionReason: reason, notified: false };
                                                             dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                             api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
                                                         }

@@ -56,11 +56,29 @@ export default function Sidebar({ isOpen, onClose }) {
             return state.budgetRequests.filter(r => {
                 const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
                     (isAdminField && r.fieldId === currentUser.fieldId);
-                return isMine && r.status === 'PENDING';
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
             }).length;
         }
         return 0;
     }, [state.budgetRequests, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
+
+    // Calculate Notifications for Laporan Realisasi
+    const pendingReportCount = React.useMemo(() => {
+        if (!state.budgetReports) return 0;
+        if (isSuperAdmin) {
+            // Superadmin sees total PENDING reports waiting for approval
+            return state.budgetReports.filter(r => r.status === 'PENDING').length;
+        }
+        if (isAdminUnit || isAdminField) {
+            // Unit/bidang admins see their reports that were recently ACC or REJECTED (not yet seen)
+            return state.budgetReports.filter(r => {
+                const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
+                    (isAdminField && r.fieldId === currentUser.fieldId);
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+            }).length;
+        }
+        return 0;
+    }, [state.budgetReports, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
 
     if (isSuperAdmin) {
         menuItems = [
@@ -244,6 +262,11 @@ export default function Sidebar({ isOpen, onClose }) {
                             {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
                                 <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
                                     {pendingFundRequestCount}
+                                </span>
+                            )}
+                            {item.label === 'Laporan Realisasi' && pendingReportCount > 0 && (
+                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                    {pendingReportCount}
                                 </span>
                             )}
                         </NavLink>
