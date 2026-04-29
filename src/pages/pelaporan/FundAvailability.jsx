@@ -33,15 +33,12 @@ function EntityRow({ name, type, requests, reports }) {
             });
         });
         reports.forEach(rel => {
+            if (rel.kategoriAset === 'PENGEMBALIAN') return; // Skip returns from category breakdown
             const cat = rel.category || 'General';
-            if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
-            if (rel.kategoriAset === 'PENGEMBALIAN') {
-                pos[cat].totalReturned += (parseFloat(rel.amount) || 0);
-            } else {
-                pos[cat].totalUsed += (parseFloat(rel.amount) || 0);
-            }
+            if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
+            pos[cat].totalUsed += (parseFloat(rel.amount) || 0);
         });
-        return Object.values(pos).filter(p => p.totalApproved > 0 || p.totalUsed > 0 || p.totalReturned > 0);
+        return Object.values(pos).filter(p => p.totalApproved > 0 || p.totalUsed > 0);
     }, [requests, reports]);
 
     const hasData = approved > 0 || pending > 0;
@@ -96,6 +93,7 @@ function EntityRow({ name, type, requests, reports }) {
                         <td className="px-6 py-4">
                             <span className={`text-xs font-black ${avail < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{formatRupiah(avail)}</span>
                         </td>
+                        <td className="px-6 py-4 text-xs font-bold text-slate-400 italic text-center">—</td>
                         <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
                                 <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden">
@@ -104,7 +102,6 @@ function EntityRow({ name, type, requests, reports }) {
                                 <span className="text-[10px] font-black text-slate-400">{pct.toFixed(0)}%</span>
                             </div>
                         </td>
-                        <td />
                     </tr>
                 );
             })}
@@ -360,27 +357,24 @@ export default function FundAvailability() {
                                     myRequests.filter(r => r.status === 'APPROVED').forEach(req => {
                                         (req.items || []).forEach(item => {
                                             const cat = item.name || 'General';
-                                            if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
+                                            if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
                                             positions[cat].totalApproved += (parseFloat(item.amount) || 0);
                                         });
                                     });
                                     myReports.forEach(rel => {
+                                        if (rel.kategoriAset === 'PENGEMBALIAN') return; // Skip returns from category breakdown
                                         const cat = rel.category || 'General';
-                                        if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
-                                        if (rel.kategoriAset === 'PENGEMBALIAN') {
-                                            positions[cat].totalReturned += (parseFloat(rel.amount) || 0);
-                                        } else {
-                                            positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
-                                        }
+                                        if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
+                                        positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
                                     });
-                                    const list = Object.values(positions).filter(p => p.totalApproved > 0 || p.totalUsed > 0 || p.totalReturned > 0);
+                                    const list = Object.values(positions).filter(p => p.totalApproved > 0 || p.totalUsed > 0);
                                     if (list.length === 0) return (
                                         <tr><td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
                                             Belum ada data saldo kas. Lakukan pengajuan dana terlebih dahulu.
                                         </td></tr>
                                     );
                                     return list.map((item, idx) => {
-                                        const available = item.totalApproved - item.totalUsed - item.totalReturned;
+                                        const available = item.totalApproved - item.totalUsed;
                                         const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
                                         return (
                                             <tr key={idx} className="hover:bg-slate-50 transition-colors group">
@@ -395,7 +389,7 @@ export default function FundAvailability() {
                                                 <td className="px-8 py-6">
                                                     <span className={`text-lg font-black ${available < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{formatRupiah(available)}</span>
                                                 </td>
-                                                <td className="px-8 py-6 font-bold text-indigo-600">{formatRupiah(item.totalReturned)}</td>
+                                                <td className="px-8 py-6 text-center text-slate-300 italic font-bold">—</td>
                                                 <td className="px-8 py-6 text-right w-64">
                                                     <div className="flex flex-col gap-2">
                                                         <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
