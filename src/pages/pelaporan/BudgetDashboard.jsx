@@ -443,13 +443,15 @@ export default function BudgetDashboard() {
                             <Building2 size={14} />
                             Dana Yayasan
                         </button>
-                        <button
-                            onClick={() => setSourceMode('BOS')}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            <Gem size={14} />
-                            Dana BOS
-                        </button>
+                        {(currentUser?.role !== 'admin_bidang' || currentUser?.role === 'superadmin') && (
+                            <button
+                                onClick={() => setSourceMode('BOS')}
+                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                <Gem size={14} />
+                                Dana BOS
+                            </button>
+                        )}
                     </div>
 
                     <select

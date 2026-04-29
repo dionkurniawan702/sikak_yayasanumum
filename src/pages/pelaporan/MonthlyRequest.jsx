@@ -339,13 +339,15 @@ export default function MonthlyRequest() {
                                 <Building2 size={12} className="inline mr-2" />
                                 Dana Yayasan
                             </button>
-                            <button 
-                                onClick={() => setSourceMode('BOS')}
-                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
-                            >
-                                <Gem size={12} className="inline mr-2" />
-                                Dana BOS
-                            </button>
+                            {(!myFieldId || isSuperAdmin) && (
+                                <button 
+                                    onClick={() => setSourceMode('BOS')}
+                                    className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                >
+                                    <Gem size={12} className="inline mr-2" />
+                                    Dana BOS
+                                </button>
+                            )}
                         </div>
 
                         {!isSuperAdmin ? (

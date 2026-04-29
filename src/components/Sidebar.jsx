@@ -209,7 +209,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
             { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
             { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
-            { path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark },
+            ...(hasBos ? [{ path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark }] : []),
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
 
             { section: 'PENGATURAN' },
