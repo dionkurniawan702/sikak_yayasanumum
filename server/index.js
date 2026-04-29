@@ -221,7 +221,7 @@ app.post('/api/sync', async (req, res) => {
             fields, units, students, incomeItems, expenseItems, distributionSettings,
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
             budgetRequests, budgetReports, classes, rabPlans,
-            bosStages, bosPosList,
+            bosStages, bosPosList, bosAllocations,
             isPurge = false
         } = req.body;
 
@@ -387,6 +387,7 @@ app.post('/api/sync', async (req, res) => {
                 await batchUpsert(tx, 'rabPlan', rabPlans);
                 await batchUpsert(tx, 'bosStage', bosStages);
                 await batchUpsert(tx, 'bosPos', bosPosList);
+                await batchUpsert(tx, 'bosAllocation', bosAllocations);
                 await batchUpsert(tx, 'budgetAllocation', budgets);
                 await batchUpsert(tx, 'budgetRequest', budgetRequests);
                 await batchUpsert(tx, 'budgetReport', budgetReports);
@@ -479,7 +480,7 @@ app.get('/api/all-data', async (req, res) => {
             accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
-            budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList
+            budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations
         ] = await Promise.all([
             client.account.findMany({ orderBy: { code: 'asc' } }),
             client.journal.findMany({ orderBy: { date: 'desc' }, take: 500 }),
@@ -504,7 +505,8 @@ app.get('/api/all-data', async (req, res) => {
             client.class.findMany(),
             client.rabPlan.findMany(),
             client.bosStage.findMany(),
-            client.bosPos.findMany()
+            client.bosPos.findMany(),
+            client.bosAllocation.findMany()
         ]);
 
         res.json({
@@ -513,7 +515,7 @@ app.get('/api/all-data', async (req, res) => {
                 accounts, journals, assets, programs, expensePrograms, users, budgets,
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses,
-                budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList
+                budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations
             }
         });
     } catch (error) {

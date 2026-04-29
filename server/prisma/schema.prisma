@@ -439,6 +439,7 @@ model BosAllocation {
   pos             BosPos      @relation(fields: [posId], references: [id])
   unitId          String
   unit            Unit        @relation(fields: [unitId], references: [id])
+  expenseItemId   String?     @db.VarChar(255)
   amount          Decimal     @db.Decimal(15, 2)
   isDeleted       Boolean     @default(false)
   updatedAt       DateTime    @default(now()) @updatedAt
