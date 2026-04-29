@@ -220,14 +220,17 @@ export default function RAB() {
         }
     }, [currentUser, isSuperAdmin]);
 
-    // Load existing plan when filters change
+    // Load existing plan when filters change or plan status updates
     useEffect(() => {
         if (!selectedYearId || !selectedUnitId) return;
 
         const planId = `${selectedYearId}-${selectedUnitId}`;
         const existingPlan = (rabPlans || []).find(p => p.id === planId);
+        
+        // Track status and notified changes so the modal can show up even if data loads late
+        const planKey = existingPlan ? `${planId}-${existingPlan.status}-${existingPlan.notified}` : planId;
 
-        if (lastPlanIdRef.current !== planId) {
+        if (lastPlanIdRef.current !== planKey) {
             if (existingPlan) {
                 // Migration logic: convert single objects to arrays if detected
                 const rawExpense = existingPlan.expense || {};
@@ -261,7 +264,7 @@ export default function RAB() {
             } else {
                 setCurrentPlan({ income: {}, expense: {}, status: 'DRAFT', rejectionReason: null });
             }
-            lastPlanIdRef.current = planId;
+            lastPlanIdRef.current = planKey;
         }
     }, [selectedYearId, selectedUnitId, rabPlans]);
     // Compute consolidated data if Yayasan is selected
