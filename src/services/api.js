@@ -303,6 +303,15 @@ export const api = {
                 case 'DELETE_BOS_POS':
                     await syncItem('bos-pos', payload, null, 'DELETE');
                     break;
+                case 'ADD_BOS_ALLOCATION':
+                    await syncItem('bos-allocations', null, payload, 'POST');
+                    break;
+                case 'EDIT_BOS_ALLOCATION':
+                    await syncItem('bos-allocations', payload.id, payload);
+                    break;
+                case 'DELETE_BOS_ALLOCATION':
+                    await syncItem('bos-allocations', payload, null, 'DELETE');
+                    break;
                 case 'ADD_USER':
                     await syncItem('users', null, payload, 'POST');
                     break;
@@ -414,7 +423,8 @@ export const api = {
                 budgetRequests: state.budgetRequests || [],
                 budgetReports: state.budgetReports || [],
                 bosStages: state.bosStages || [],
-                bosPosList: state.bosPosList || []
+                bosPosList: state.bosPosList || [],
+                bosAllocations: state.bosAllocations || []
             };
 
             const response = await this.post('/sync', syncData);
