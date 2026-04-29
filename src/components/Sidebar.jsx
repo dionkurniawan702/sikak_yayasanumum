@@ -139,7 +139,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
             { path: '/pelaporan/bos', label: 'BOS', icon: Landmark },
-            { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
+            { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
 
             { section: 'PERENCANAAN (RAB)' },
             { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
@@ -192,7 +192,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
             { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
             ...(hasBos ? [{ path: '/pelaporan/bos', label: 'BOS', icon: Landmark }] : []),
-            { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
+            { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
 
             { section: 'PERENCANAAN (RAB)' },
             ...(isAdminUnit
@@ -307,7 +307,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                     {pendingReportCount}
                                 </span>
                             )}
-                            {item.label === 'Saldo' && pendingReturnCount > 0 && (
+                            {item.label === 'Saldo Yayasan' && pendingReturnCount > 0 && (
                                 <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
                                     {pendingReturnCount}
                                 </span>
