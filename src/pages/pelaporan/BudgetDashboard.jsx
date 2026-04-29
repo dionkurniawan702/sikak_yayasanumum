@@ -45,6 +45,8 @@ export default function BudgetDashboard() {
     };
 
     const [expandedDetailItems, setExpandedDetailItems] = useState({}); // Stores fieldId-exId
+    const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
+
     const toggleDetailItem = (parentId, itemId) => {
         const key = `${parentId}-${itemId}`;
         setExpandedDetailItems(prev => ({ ...prev, [key]: !prev[key] }));
@@ -424,17 +426,36 @@ export default function BudgetDashboard() {
 
     return (
         <div className="p-8 animate-in pb-20">
-            {/* Header (Indonesian) */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            {/* ===== HEADER & CONTROLS ===== */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
                 <div>
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tight font-display">Dasbor Anggaran</h1>
-                    <p className="text-slate-400 font-bold text-xs mt-2 uppercase tracking-widest">Ringkasan Rencana Anggaran Pendapatan (RAP) vs Belanja (RAB)</p>
+                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Dashboard Anggaran</h2>
+                    <p className="text-slate-500 font-medium tracking-tight">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
                 </div>
-                <div className="flex items-center gap-3">
+
+                <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                    {/* Source Selector */}
+                    <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                        <button
+                            onClick={() => setSourceMode('YAYASAN')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <Building2 size={14} />
+                            Dana Yayasan
+                        </button>
+                        <button
+                            onClick={() => setSourceMode('BOS')}
+                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            <Gem size={14} />
+                            Dana BOS
+                        </button>
+                    </div>
+
                     <select
-                        className="budget-select shadow-sm"
                         value={selectedAcademicYearId}
-                        onChange={e => setSelectedAcademicYearId(e.target.value)}
+                        onChange={(e) => setSelectedAcademicYearId(e.target.value)}
+                        className="p-3 bg-white border-2 border-slate-100 rounded-2xl font-black text-xs text-slate-800 uppercase tracking-widest focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
                     >
                         {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId))
                             .sort((a, b) => b.name.localeCompare(a.name))
@@ -442,6 +463,7 @@ export default function BudgetDashboard() {
                                 <option key={y.id} value={y.id}>{y.name}</option>
                             ))}
                     </select>
+
                     <button
                         onClick={exportToExcel}
                         className="budget-export-btn shadow-sm"
@@ -452,6 +474,9 @@ export default function BudgetDashboard() {
                 </div>
             </div>
 
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+                {sourceMode === 'YAYASAN' ? (
+                    <>
             {/* ===== BIDANG TABLE (Indigo Theme) ===== */}
             {currentUser?.role !== 'admin_unit' && (
                 <div className="budget-table-wrapper mb-12 border-none shadow-xl shadow-slate-200/50">
@@ -556,7 +581,9 @@ export default function BudgetDashboard() {
                     </div>
                 </div>
             )}
-
+                    </>
+                ) : (
+                    <>
             {/* ===== BOS TABLE (Emerald/Green Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && bosUnitData.length > 0 && (
                 <div className="budget-table-wrapper mt-12 border-none shadow-xl shadow-slate-200/50 animate-in slide-in-from-bottom-4 duration-700">
@@ -598,7 +625,9 @@ export default function BudgetDashboard() {
                         </table>
                     </div>
                 </div>
-            )}
+                    </>
+                )}
+            </div>
 
             <div className="mt-20 text-center">
                 <div className="inline-block px-10 py-3 bg-white border border-slate-100 rounded-full shadow-sm">

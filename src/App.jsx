@@ -28,6 +28,7 @@ import DistributionSettings from './pages/anggaran/DistributionSettings';
 import MonthlyRequest from './pages/pelaporan/MonthlyRequest';
 import MonthlyReport from './pages/pelaporan/MonthlyReport';
 import BudgetDashboard from './pages/pelaporan/BudgetDashboard';
+import RealizationDashboard from './pages/pelaporan/RealizationDashboard';
 import FundAvailability from './pages/pelaporan/FundAvailability';
 import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
 import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
@@ -146,7 +147,7 @@ function AppContent() {
 
                     {/* ANGGARAN & PELAPORAN ROUTES */}
                     <Route path="pelaporan/dashboard" element={<BudgetDashboard />} />
-                    <Route path="pelaporan/realisasi" element={<Placeholder title="Dashboard Realisasi" />} />
+                    <Route path="pelaporan/realisasi" element={<RealizationDashboard />} />
                     <Route path="pelaporan/bos" element={<Placeholder title="BOS (Bantuan Operasional Sekolah)" />} />
                     <Route path="pelaporan/saldo" element={<FundAvailability />} />
                     <Route path="pelaporan/saldo-bos" element={<BOSSaldo />} />
