@@ -63,7 +63,12 @@ export default function RealizationDashboard() {
                 if (amount <= 0) return;
 
                 const exItem = expenseItems.find(e => e.id === exId);
-                const isField = exItem?.fieldId && !exItem?.unitId;
+                const itemName = (exItem?.name || '').toLowerCase().trim();
+                const isField = (exItem && exItem.fieldId && !exItem.unitId) || 
+                                   itemName.includes('penggajian') || 
+                                   itemName.includes('pengembangan (umum)') ||
+                                   itemName.includes('honor') ||
+                                   itemName.includes('yayasan');
 
                 if (!isField && plan.unitId && unitRAB[plan.unitId]) {
                     unitRAB[plan.unitId].budget += amount;
@@ -85,7 +90,12 @@ export default function RealizationDashboard() {
             const amount = parseFloat(report.amount) || 0;
             const exId = report.expenseItemId;
             const exItem = expenseItems.find(e => e.id === exId);
-            const isField = exItem?.fieldId && !exItem?.unitId;
+            const itemName = (exItem?.name || '').toLowerCase().trim();
+            const isField = (exItem && exItem.fieldId && !exItem.unitId) || 
+                               itemName.includes('penggajian') || 
+                               itemName.includes('pengembangan (umum)') ||
+                               itemName.includes('honor') ||
+                               itemName.includes('yayasan');
 
             if (!isField && report.unitId && unitRAB[report.unitId]) {
                 unitRAB[report.unitId].spent += amount;
