@@ -481,6 +481,7 @@ router.delete('/budget-requests/:id', async (req, res) => {
 
 router.post('/budget-reports', async (req, res) => {
     try {
+        const {
             id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
             buktiTeks, nomorNota, volume, satuan, harga, kategoriAset, umurEkonomis, status
