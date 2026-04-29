@@ -359,6 +359,7 @@ model BudgetRequest {
   date          DateTime    @default(now())
   month         String?
   year          Int?
+  source        String?     @db.VarChar(20)
   description   String?
   status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
   notified      Boolean     @default(false)
@@ -378,7 +379,9 @@ model BudgetReport {
   unitId          String?
   fieldId         String?
   academicYearId  String?
+  planId          String?       @db.VarChar(100)
   category        String?
+  source          String?       @db.VarChar(20)
   amount          Decimal?       @db.Decimal(15, 2)
   date            DateTime      @default(now())
   description     String?

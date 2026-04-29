@@ -144,6 +144,7 @@ export default function MonthlyReport() {
     const [showReportForm, setShowReportForm] = useState(false);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
     const [processingId, setProcessingId] = useState(null);
+    const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
 
     // Filter state for history
     const [search, setSearch] = useState('');
@@ -186,21 +187,21 @@ export default function MonthlyReport() {
         return map;
     }, [budgetReports]);
 
-    const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
             const isYear = req.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
             
-            // FILTER: EXCLUDE BOS
-            const isBos = (req.items || []).some(item => item.planId?.endsWith('-BOS'));
-            if (isBos) return false;
+            // Filter by source
+            const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return false;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
 
             if (isSuperAdmin) return true;
             if (myUnitId) return req.unitId === myUnitId;
             if (myFieldId) return req.fieldId === myFieldId;
             return false;
         });
-    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
 
     const pendingReports = requestsForYear.filter(req => {
         if (req.status !== 'APPROVED') return false;
@@ -232,17 +233,17 @@ export default function MonthlyReport() {
             const isYear = rel.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
 
-            // FILTER: EXCLUDE BOS (Find the request to check source)
-            const req = budgetRequests.find(br => br.id === rel.budgetRequestId);
-            const isBos = (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
-            if (isBos) return false;
+            // Filter by source
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
 
             if (isSuperAdmin) return true;
             if (myUnitId) return rel.unitId === myUnitId;
             if (myFieldId) return rel.fieldId === myFieldId;
             return false;
         });
-    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
 
     // Apply filters to history
     const filteredReports = useMemo(() => {
@@ -342,6 +343,8 @@ export default function MonthlyReport() {
             unitId: selectedRequest.unitId,
             fieldId: selectedRequest.fieldId,
             academicYearId: globalAcademicYearId,
+            planId: selectedRequest.items?.[0]?.planId, // Sync plan identification
+            source: sourceMode, // Tag as YAYASAN or BOS
             amount: parseFloat(formData.amount),
             date: formData.date,
             description: formData.description,
@@ -414,7 +417,24 @@ export default function MonthlyReport() {
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">Laporan Pengeluaran</h1>
-                    <p className="text-slate-500 font-medium italic">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
+                    <p className="text-slate-500 font-medium italic mb-6">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
+                    
+                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 mb-8 inline-flex">
+                        <button 
+                            onClick={() => setSourceMode('YAYASAN')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
+                        >
+                            <Building2 size={12} className="inline mr-2" />
+                            Dana Yayasan
+                        </button>
+                        <button 
+                            onClick={() => setSourceMode('BOS')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
+                        >
+                            <Tag size={12} className="inline mr-2" />
+                            Dana BOS
+                        </button>
+                    </div>
                 </div>
                 <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
                     <button

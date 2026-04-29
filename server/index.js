@@ -1098,6 +1098,34 @@ const ensureRabPlansColumns = async () => {
     }
 };
 
+const ensureBudgetSourceColumns = async () => {
+    try {
+        const client = getPrisma();
+        
+        // 1. budget_requests
+        const reqColumns = await client.$queryRawUnsafe(`DESCRIBE \`budget_requests\``);
+        if (!reqColumns.some(c => (c.Field || c.field) === 'source')) {
+            console.log(`[Self-Healing] Adding source column to budget_requests...`);
+            await client.$executeRawUnsafe(`ALTER TABLE \`budget_requests\` ADD COLUMN source VARCHAR(20)`);
+        }
+
+        // 2. budget_reports
+        const repColumns = await client.$queryRawUnsafe(`DESCRIBE \`budget_reports\``);
+        if (!repColumns.some(c => (c.Field || c.field) === 'source')) {
+            console.log(`[Self-Healing] Adding source column to budget_reports...`);
+            await client.$executeRawUnsafe(`ALTER TABLE \`budget_reports\` ADD COLUMN source VARCHAR(20)`);
+        }
+        if (!repColumns.some(c => (c.Field || c.field) === 'planId')) {
+            console.log(`[Self-Healing] Adding planId column to budget_reports...`);
+            await client.$executeRawUnsafe(`ALTER TABLE \`budget_reports\` ADD COLUMN planId VARCHAR(100)`);
+        }
+
+        console.log(`[Self-Healing] Budget source columns verified.`);
+    } catch (error) {
+        console.error(`[Self-Healing Error] Budget source columns: ${error.message}`);
+    }
+};
+
 const ensureBosAllocationColumns = async () => {
     try {
         const client = getPrisma();
@@ -1152,6 +1180,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureRabPlansColumns();
             await ensureBudgetOperationalColumns();
             await ensureBosAllocationColumns();
+            await ensureBudgetSourceColumns();
 
             console.log('[Background Tasks] All startup checks completed successfully.');
         } catch (err) {
