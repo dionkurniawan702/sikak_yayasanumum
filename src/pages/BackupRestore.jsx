@@ -47,7 +47,7 @@ export default function BackupRestore() {
         try {
             for (const report of reportsToDelete) {
                 try {
-                    await api.delete(`/budget-reports/${report.id}`);
+                    await api.delete(`/budget-reports/${report.id}?permanent=true`);
                     dispatch({ type: 'DELETE_BUDGET_REPORT', payload: report.id });
                     successCount++;
                 } catch (e) {
@@ -57,7 +57,7 @@ export default function BackupRestore() {
             }
             for (const req of requestsToDelete) {
                 try {
-                    await api.delete(`/budget-requests/${req.id}`);
+                    await api.delete(`/budget-requests/${req.id}?permanent=true`);
                     dispatch({ type: 'DELETE_BUDGET_REQUEST', payload: req.id });
                     successCount++;
                 } catch (e) {
@@ -246,8 +246,8 @@ export default function BackupRestore() {
                                     >
                                         <option value="">-- Pilih Unit --</option>
                                         {activeUnits.map(u => {
-                                            const reportCount = budgetReports.filter(r => r.unitId === u.id).length;
-                                            const requestCount = budgetRequests.filter(r => r.unitId === u.id).length;
+                                            const reportCount = budgetReports.filter(r => r.unitId === u.id && !r.isDeleted).length;
+                                            const requestCount = budgetRequests.filter(r => r.unitId === u.id && !r.isDeleted).length;
                                             return (
                                                 <option key={u.id} value={u.id}>
                                                     {u.name} ({reportCount} realisasi, {requestCount} pengajuan)
