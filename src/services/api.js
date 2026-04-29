@@ -216,6 +216,12 @@ export const api = {
                 case 'ADD_BUDGET_REPORT':
                     await syncItem('budget-reports', null, payload, 'POST');
                     break;
+                case 'EDIT_BUDGET_REPORT':
+                    await syncItem('budget-reports', payload.id, payload);
+                    break;
+                case 'DELETE_BUDGET_REPORT':
+                    await syncItem('budget-reports', payload, null, 'DELETE');
+                    break;
                 case 'ADD_ACADEMIC_YEAR':
                     await syncItem('academic-years', null, payload, 'POST');
                     break;
