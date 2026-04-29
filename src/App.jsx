@@ -38,6 +38,7 @@ import RAB from './pages/anggaran/RAB';
 import BOSRecipientUnitManagement from './pages/anggaran/BOSRecipientUnitManagement';
 import BOSDatabase from './pages/anggaran/BOSDatabase';
 import BOSSaldo from './pages/pelaporan/BOSSaldo';
+import BOSMonthlyReport from './pages/pelaporan/BOSMonthlyReport';
 import GenericMasterManagement from './components/GenericMasterManagement';
 import {
     Calendar,
@@ -151,6 +152,7 @@ function AppContent() {
                     <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
                     <Route path="pelaporan/arsip-permintaan" element={<Placeholder title="Arsip Permintaan Dana" />} />
                     <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
+                    <Route path="pelaporan/realisasi-bos" element={<BOSMonthlyReport />} />
                     <Route path="pelaporan/arsip-laporan" element={<Placeholder title="Arsip Laporan Realisasi" />} />
                     <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
 

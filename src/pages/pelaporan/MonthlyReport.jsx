@@ -190,6 +190,11 @@ export default function MonthlyReport() {
         return (budgetRequests || []).filter(req => {
             const isYear = req.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
+            
+            // FILTER: EXCLUDE BOS
+            const isBos = (req.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (isBos) return false;
+
             if (isSuperAdmin) return true;
             if (myUnitId) return req.unitId === myUnitId;
             if (myFieldId) return req.fieldId === myFieldId;
@@ -226,12 +231,18 @@ export default function MonthlyReport() {
         return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
+
+            // FILTER: EXCLUDE BOS (Find the request to check source)
+            const req = budgetRequests.find(br => br.id === rel.budgetRequestId);
+            const isBos = (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (isBos) return false;
+
             if (isSuperAdmin) return true;
             if (myUnitId) return rel.unitId === myUnitId;
             if (myFieldId) return rel.fieldId === myFieldId;
             return false;
         });
-    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
+    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
     // Apply filters to history
     const filteredReports = useMemo(() => {

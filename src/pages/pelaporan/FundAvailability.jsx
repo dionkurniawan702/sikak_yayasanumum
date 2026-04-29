@@ -128,12 +128,25 @@ export default function FundAvailability() {
 
     // ── Filter by tahun ajaran aktif
     const yearRequests = useMemo(() =>
-        (budgetRequests || []).filter(r => r.academicYearId === globalAcademicYearId),
+        (budgetRequests || []).filter(r => {
+            const isYear = r.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+            // EXCLUDE BOS
+            const isBos = (r.items || []).some(item => item.planId?.endsWith('-BOS'));
+            return !isBos;
+        }),
         [budgetRequests, globalAcademicYearId]);
 
     const yearReports = useMemo(() =>
-        (budgetReports || []).filter(r => r.academicYearId === globalAcademicYearId),
-        [budgetReports, globalAcademicYearId]);
+        (budgetReports || []).filter(r => {
+            const isYear = r.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+            // EXCLUDE BOS
+            const req = budgetRequests.find(br => br.id === r.budgetRequestId);
+            const isBos = (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+            return !isBos;
+        }),
+        [budgetReports, budgetRequests, globalAcademicYearId]);
 
     // ── Data untuk user biasa (non-superadmin)
     const myRequests = useMemo(() => yearRequests.filter(r =>

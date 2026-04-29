@@ -6,7 +6,7 @@ import { formatRupiah } from '../../utils/format';
 // ─────────────────────────────────────────────────────────────────────────────
 // Row per unit – bisa di-expand untuk melihat rincian per Tahap & POS
 // ─────────────────────────────────────────────────────────────────────────────
-function BOSUnitRow({ unit, allocations, reports, bosStages, bosPosList, selectedYearId }) {
+function BOSUnitRow({ unit, allocations, reports, budgetRequests, bosStages, bosPosList, selectedYearId }) {
     const [open, setOpen] = useState(false);
 
     const unitAllocations = allocations.filter(a =>
@@ -18,13 +18,14 @@ function BOSUnitRow({ unit, allocations, reports, bosStages, bosPosList, selecte
     const totalAllocated = unitAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
 
     // Realisasi = budget reports yang berasal dari RAB BOS unit ini
-    const unitReports = reports.filter(r =>
-        r.unitId === unit.id &&
-        !r.isDeleted &&
-        r.status === 'APPROVED' &&
-        r.kategoriAset !== 'PENGEMBALIAN' &&
-        (selectedYearId ? r.academicYearId === selectedYearId : true)
-    );
+    const unitReports = reports.filter(r => {
+        if (r.unitId !== unit.id || r.isDeleted || r.status !== 'APPROVED' || r.kategoriAset === 'PENGEMBALIAN') return false;
+        if (selectedYearId && r.academicYearId !== selectedYearId) return false;
+        
+        // FILTER: ONLY BOS
+        const req = budgetRequests.find(br => br.id === r.budgetRequestId);
+        return (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+    });
     const totalRealized = unitReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const saldo = totalAllocated - totalRealized;
     const pctUsed = totalAllocated > 0 ? Math.min(100, Math.round((totalRealized / totalAllocated) * 100)) : 0;
@@ -164,12 +165,14 @@ export default function BOSSaldo() {
         const yearAllocations = bosAllocations.filter(a => !a.isDeleted && (selectedYearId ? a.academicYearId === selectedYearId : true));
         const allocated = yearAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
 
-        const yearReports = budgetReports.filter(r =>
-            !r.isDeleted &&
-            r.status === 'APPROVED' &&
-            r.kategoriAset !== 'PENGEMBALIAN' &&
-            (selectedYearId ? r.academicYearId === selectedYearId : true)
-        );
+        const yearReports = budgetReports.filter(r => {
+            if (r.isDeleted || r.status !== 'APPROVED' || r.kategoriAset === 'PENGEMBALIAN') return false;
+            if (selectedYearId && r.academicYearId !== selectedYearId) return false;
+            
+            // FILTER: ONLY BOS
+            const req = budgetRequests.find(br => br.id === r.budgetRequestId);
+            return (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+        });
         const realized = yearReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         return { totalAllocated: allocated, totalRealized: realized, totalSaldo: allocated - realized };
     }, [bosAllocations, budgetReports, selectedYearId]);
@@ -318,6 +321,7 @@ export default function BOSSaldo() {
                                         unit={unit}
                                         allocations={bosAllocations}
                                         reports={budgetReports}
+                                        budgetRequests={state.budgetRequests}
                                         bosStages={bosStages}
                                         bosPosList={bosPosList}
                                         selectedYearId={selectedYearId}
