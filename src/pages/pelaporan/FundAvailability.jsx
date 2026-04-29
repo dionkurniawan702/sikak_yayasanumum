@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck } from 'lucide-react';
+import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
@@ -120,6 +120,7 @@ export default function FundAvailability() {
     const [returnForm, setReturnForm] = useState({ amount: '', buktiTeks: '', description: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [processingId, setProcessingId] = useState(null);
+    const [reviewData, setReviewData] = useState(null);
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -198,6 +199,7 @@ export default function FundAvailability() {
         dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
         await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
         setProcessingId(null);
+        setReviewData(null);
         alert('Pengembalian dana berhasil di-ACC!');
     };
 
@@ -209,6 +211,7 @@ export default function FundAvailability() {
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
             setProcessingId(null);
+            setReviewData(null);
             alert('Pengembalian dana ditolak.');
         }
     };
@@ -445,6 +448,13 @@ export default function FundAvailability() {
                                             <span className="text-lg font-black text-emerald-600">{formatRupiah(parseFloat(ret.amount || 0))}</span>
                                             <div className="flex items-center gap-2">
                                                 <button 
+                                                    onClick={() => setReviewData(ret)}
+                                                    className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors"
+                                                    title="Review Detail"
+                                                >
+                                                    <Eye size={18} />
+                                                </button>
+                                                <button 
                                                     onClick={() => handleApproveReturn(ret)}
                                                     disabled={processingId === ret.id}
                                                     className="p-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl transition-colors disabled:opacity-50"
@@ -551,6 +561,75 @@ export default function FundAvailability() {
                                     <span>KIRIM PENGAJUAN</span>
                                 </button>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ── Modal Review Pengembalian (Superadmin) */}
+            {reviewData && isSuperAdmin && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+                        <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="font-black text-slate-800 flex items-center gap-2">
+                                <Eye className="text-indigo-600" size={20} /> Review Pengembalian Dana
+                            </h3>
+                            <button onClick={() => setReviewData(null)} className="text-slate-400 hover:bg-slate-200 p-2 rounded-xl transition-colors">
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-6">
+                            <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 text-center">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Nominal Dikembalikan</p>
+                                <p className="text-4xl font-black text-indigo-700">{formatRupiah(parseFloat(reviewData.amount || 0))}</p>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Unit / Bidang</p>
+                                    <p className="font-bold text-slate-700">
+                                        {units.find(u => u.id === reviewData.unitId)?.name || fields.find(f => f.id === reviewData.fieldId)?.name || 'Unknown'}
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tanggal</p>
+                                    <p className="font-bold text-slate-700">{reviewData.date}</p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Keterangan</p>
+                                <p className="font-bold text-slate-700">{reviewData.description || '-'}</p>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bukti Transfer (Referensi / Link)</p>
+                                {reviewData.buktiTeks ? (
+                                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
+                                        <UploadCloud size={20} className="text-indigo-500" />
+                                        <span className="font-bold text-sm text-slate-600 break-all">{reviewData.buktiTeks}</span>
+                                    </div>
+                                ) : (
+                                    <p className="font-bold text-slate-400 italic text-sm">Tidak ada bukti yang dilampirkan.</p>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
+                                <button 
+                                    onClick={() => handleRejectReturn(reviewData)}
+                                    disabled={processingId === reviewData.id}
+                                    className="flex-1 py-4 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2"
+                                >
+                                    {processingId === reviewData.id ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />} TOLAK
+                                </button>
+                                <button 
+                                    onClick={() => handleApproveReturn(reviewData)}
+                                    disabled={processingId === reviewData.id}
+                                    className="flex-1 py-4 bg-emerald-500 text-white hover:bg-emerald-600 rounded-2xl font-black transition-all shadow-lg shadow-emerald-200 active:scale-95 flex items-center justify-center gap-2"
+                                >
+                                    {processingId === reviewData.id ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />} SETUJUI (ACC)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
