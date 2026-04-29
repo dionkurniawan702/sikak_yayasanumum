@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2 } from 'lucide-react';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
@@ -136,6 +136,7 @@ export default function MonthlyReport() {
     const [selectedRequest, setSelectedRequest] = useState(null);
     const [showReportForm, setShowReportForm] = useState(false);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
+    const [processingId, setProcessingId] = useState(null);
 
     // Filter state for history
     const [search, setSearch] = useState('');
@@ -367,20 +368,24 @@ export default function MonthlyReport() {
         }
     };
 
-    const handleApproveReport = (report) => {
+    const handleApproveReport = async (report) => {
         if (window.confirm('Setujui laporan ini? Jurnal akan dicatat jika diperlukan.')) {
+            setProcessingId(report.id);
             const updated = { ...report, status: 'APPROVED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            setProcessingId(null);
             alert('Laporan berhasil disetujui');
         }
     };
 
-    const handleRejectReport = (report) => {
+    const handleRejectReport = async (report) => {
         if (window.confirm('Tolak laporan ini? Saldo unit akan dikembalikan.')) {
+            setProcessingId(report.id);
             const updated = { ...report, status: 'REJECTED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            setProcessingId(null);
             alert('Laporan berhasil ditolak');
         }
     };
@@ -686,8 +691,22 @@ export default function MonthlyReport() {
                                                 <td className="px-5 py-4 text-center"><AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} /></td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        <button onClick={() => handleApproveReport(report)} className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20">Setujui</button>
-                                                        <button onClick={() => handleRejectReport(report)} className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors">Tolak</button>
+                                                        <button 
+                                                            onClick={() => handleApproveReport(report)} 
+                                                            disabled={processingId === report.id}
+                                                            className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                                        >
+                                                            {processingId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                                                            Setujui
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleRejectReport(report)} 
+                                                            disabled={processingId === report.id}
+                                                            className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                                        >
+                                                            {processingId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                                                            Tolak
+                                                        </button>
                                                     </div>
                                                 </td>
                                             </tr>

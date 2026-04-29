@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -8,6 +8,7 @@ export default function MonthlyRequest() {
     const { state, dispatch } = useApp();
     const { currentUser, rabPlans, budgetRequests, units, fields, academicYears, globalAcademicYearId } = state;
     const [showRequestModal, setShowRequestModal] = useState(false);
+    const [processingId, setProcessingId] = useState(null);
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -419,32 +420,37 @@ export default function MonthlyRequest() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isSuperAdmin && req.status === 'PENDING' && (
-                                            <>
                                                 <button
-                                                    onClick={() => {
+                                                    onClick={async () => {
+                                                        setProcessingId(req.id);
                                                         const updated = { ...req, status: 'APPROVED', notified: false };
                                                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                        api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                        setProcessingId(null);
                                                         alert('Permintaan dana berhasil disetujui');
                                                     }}
-                                                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
+                                                    disabled={processingId === req.id}
+                                                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    <Check size={16} strokeWidth={3} />
+                                                    {processingId === req.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} strokeWidth={3} />}
                                                     ACC
                                                 </button>
                                                 <button
-                                                    onClick={() => {
+                                                    onClick={async () => {
                                                         const reason = window.prompt('Alasan penolakan:');
                                                         if (reason !== null) {
+                                                            setProcessingId(req.id);
                                                             const updated = { ...req, status: 'REJECTED', rejectionReason: reason, notified: false };
                                                             dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                            api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                            await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                            setProcessingId(null);
                                                             alert('Permintaan dana berhasil ditolak');
                                                         }
                                                     }}
-                                                    className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
+                                                    disabled={processingId === req.id}
+                                                    className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
                                                 >
-                                                    <XCircle size={16} strokeWidth={3} />
+                                                    {processingId === req.id ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} strokeWidth={3} />}
                                                     TOLAK
                                                 </button>
                                             </>
