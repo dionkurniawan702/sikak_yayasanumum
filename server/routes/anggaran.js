@@ -481,10 +481,9 @@ router.delete('/budget-requests/:id', async (req, res) => {
 
 router.post('/budget-reports', async (req, res) => {
     try {
-        const {
             id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
-            buktiTeks, nomorNota, volume, satuan, harga, kategoriAset, umurEkonomis
+            buktiTeks, nomorNota, volume, satuan, harga, kategoriAset, umurEkonomis, status
         } = req.body;
         const prisma = getPrisma(req);
 
@@ -518,6 +517,7 @@ router.post('/budget-reports', async (req, res) => {
                     harga: harga ? parseFloat(harga) : null,
                     kategoriAset: kategoriAset || 'NON_ASET',
                     umurEkonomis: umurEkonomis ? parseInt(umurEkonomis) : null,
+                    status: status || 'PENDING',
                 }
             });
 
@@ -566,6 +566,86 @@ router.post('/budget-reports', async (req, res) => {
         });
 
         res.json({ data: result });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/budget-reports/:id', async (req, res) => {
+    try {
+        const ALLOWED_FIELDS = [
+            'status', 'amount', 'description', 'date', 'expenseItemId',
+            'unitId', 'fieldId', 'academicYearId', 'category',
+            'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 
+            'kategoriAset', 'umurEkonomis', 'isDeleted'
+        ];
+
+        const data = {};
+        ALLOWED_FIELDS.forEach(f => {
+            if (req.body[f] !== undefined) data[f] = req.body[f];
+        });
+
+        if (data.date) data.date = new Date(data.date);
+        if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
+        if (data.volume !== undefined && data.volume !== null) data.volume = parseFloat(data.volume);
+        if (data.harga !== undefined && data.harga !== null) data.harga = parseFloat(data.harga);
+        if (data.umurEkonomis !== undefined && data.umurEkonomis !== null) data.umurEkonomis = parseInt(data.umurEkonomis);
+
+        console.log(`[API] Updating BudgetReport ${req.params.id} → status: ${data.status}`);
+
+        const prisma = getPrisma(req);
+        const report = await prisma.$transaction(async (tx) => {
+            const updated = await tx.budgetReport.update({
+                where: { id: req.params.id },
+                data
+            });
+
+            // If REJECTED, soft-delete the associated journal to restore balance
+            if (data.status === 'REJECTED' && updated.journalId) {
+                await tx.journal.update({
+                    where: { id: updated.journalId },
+                    data: { isDeleted: true }
+                }).catch(() => {});
+            }
+            
+            return updated;
+        });
+
+        res.json({ data: report });
+    } catch (error) {
+        console.error(`[API Error] PUT /budget-reports/${req.params.id}: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/budget-reports/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true';
+        const prisma = getPrisma(req);
+        
+        await prisma.$transaction(async (tx) => {
+            const report = await tx.budgetReport.findUnique({ where: { id: req.params.id } });
+            
+            if (isPermanent) {
+                if (report?.journalId) {
+                    await tx.journal.delete({ where: { id: report.journalId } }).catch(() => {});
+                }
+                await tx.budgetReport.delete({ where: { id: req.params.id } });
+            } else {
+                if (report?.journalId) {
+                    await tx.journal.update({
+                        where: { id: report.journalId },
+                        data: { isDeleted: true }
+                    }).catch(() => {});
+                }
+                await tx.budgetReport.update({
+                    where: { id: req.params.id },
+                    data: { isDeleted: true }
+                });
+            }
+        });
+        
+        res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
