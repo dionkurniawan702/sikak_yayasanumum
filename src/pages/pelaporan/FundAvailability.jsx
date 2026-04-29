@@ -9,9 +9,10 @@ import { api } from '../../services/api';
 // ────────────────────────────────────────────────────────────
 function calcEntityBalance(requests, reports) {
     const approved = requests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    const used = reports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const used = reports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const returned = reports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const pending = requests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    return { approved, used, balance: approved - used, pending };
+    return { approved, used, returned, balance: approved - used - returned, pending };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -27,16 +28,20 @@ function EntityRow({ name, type, requests, reports }) {
         requests.filter(r => r.status === 'APPROVED').forEach(req => {
             (req.items || []).forEach(item => {
                 const cat = item.name || 'General';
-                if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
+                if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
                 pos[cat].totalApproved += (parseFloat(item.amount) || 0);
             });
         });
         reports.forEach(rel => {
             const cat = rel.category || 'General';
-            if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
-            pos[cat].totalUsed += (parseFloat(rel.amount) || 0);
+            if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
+            if (rel.kategoriAset === 'PENGEMBALIAN') {
+                pos[cat].totalReturned += (parseFloat(rel.amount) || 0);
+            } else {
+                pos[cat].totalUsed += (parseFloat(rel.amount) || 0);
+            }
         });
-        return Object.values(pos);
+        return Object.values(pos).filter(p => p.totalApproved > 0 || p.totalUsed > 0 || p.totalReturned > 0);
     }, [requests, reports]);
 
     const hasData = approved > 0 || pending > 0;
@@ -64,7 +69,7 @@ function EntityRow({ name, type, requests, reports }) {
                 <td className="px-6 py-5">
                     <span className={`font-black text-base ${balanceColor}`}>{formatRupiah(balance)}</span>
                 </td>
-                <td className="px-6 py-5 font-bold text-amber-600 text-sm">{formatRupiah(pending)}</td>
+                <td className="px-6 py-5 font-bold text-indigo-600 text-sm">{formatRupiah(returned)}</td>
                 <td className="px-6 py-5 text-center">
                     {positions.length > 0 ? (
                         open
@@ -143,14 +148,16 @@ export default function FundAvailability() {
 
     // ── Aggregate superadmin (total keseluruhan)
     const totalApproved = yearRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    const totalUsed = yearReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const totalBalance = totalApproved - totalUsed;
+    const totalUsed = yearReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalReturned = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalBalance = totalApproved - totalUsed - totalReturned;
     const totalPending = yearRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
 
     // ── Aggregate user biasa
     const myApproved = myRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    const myUsed = myReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const myBalance = myApproved - myUsed;
+    const myUsed = myReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const myReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const myBalance = myApproved - myUsed - myReturned;
     const myPending = myRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
 
     const handleSubmitReturn = async (e) => {
@@ -291,7 +298,7 @@ export default function FundAvailability() {
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana ACC</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Pending</th>
+                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
                                     <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Detail</th>
                                 </tr>
                             </thead>
@@ -343,6 +350,7 @@ export default function FundAvailability() {
                                     <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Cair (ACC)</th>
                                     <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
                                     <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
+                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
                                     <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Penyerapan</th>
                                 </tr>
                             </thead>
@@ -352,23 +360,27 @@ export default function FundAvailability() {
                                     myRequests.filter(r => r.status === 'APPROVED').forEach(req => {
                                         (req.items || []).forEach(item => {
                                             const cat = item.name || 'General';
-                                            if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
+                                            if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
                                             positions[cat].totalApproved += (parseFloat(item.amount) || 0);
                                         });
                                     });
                                     myReports.forEach(rel => {
                                         const cat = rel.category || 'General';
-                                        if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0 };
-                                        positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
+                                        if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
+                                        if (rel.kategoriAset === 'PENGEMBALIAN') {
+                                            positions[cat].totalReturned += (parseFloat(rel.amount) || 0);
+                                        } else {
+                                            positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
+                                        }
                                     });
-                                    const list = Object.values(positions);
+                                    const list = Object.values(positions).filter(p => p.totalApproved > 0 || p.totalUsed > 0 || p.totalReturned > 0);
                                     if (list.length === 0) return (
-                                        <tr><td colSpan="5" className="px-8 py-20 text-center text-slate-400 font-medium italic">
+                                        <tr><td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
                                             Belum ada data saldo kas. Lakukan pengajuan dana terlebih dahulu.
                                         </td></tr>
                                     );
                                     return list.map((item, idx) => {
-                                        const available = item.totalApproved - item.totalUsed;
+                                        const available = item.totalApproved - item.totalUsed - item.totalReturned;
                                         const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
                                         return (
                                             <tr key={idx} className="hover:bg-slate-50 transition-colors group">
@@ -383,6 +395,7 @@ export default function FundAvailability() {
                                                 <td className="px-8 py-6">
                                                     <span className={`text-lg font-black ${available < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{formatRupiah(available)}</span>
                                                 </td>
+                                                <td className="px-8 py-6 font-bold text-indigo-600">{formatRupiah(item.totalReturned)}</td>
                                                 <td className="px-8 py-6 text-right w-64">
                                                     <div className="flex flex-col gap-2">
                                                         <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">

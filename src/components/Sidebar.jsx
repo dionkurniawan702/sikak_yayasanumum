@@ -67,14 +67,30 @@ export default function Sidebar({ isOpen, onClose }) {
         if (!state.budgetReports) return 0;
         if (isSuperAdmin) {
             // Superadmin sees total PENDING reports waiting for approval
-            return state.budgetReports.filter(r => r.status === 'PENDING').length;
+            return state.budgetReports.filter(r => r.status === 'PENDING' && r.kategoriAset !== 'PENGEMBALIAN').length;
         }
         if (isAdminUnit || isAdminField) {
             // Unit/bidang admins see their reports that were recently ACC or REJECTED (not yet seen)
             return state.budgetReports.filter(r => {
                 const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
                     (isAdminField && r.fieldId === currentUser.fieldId);
-                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && r.kategoriAset !== 'PENGEMBALIAN' && !r.notified;
+            }).length;
+        }
+        return 0;
+    }, [state.budgetReports, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
+
+    // Calculate Notifications for Pengembalian Saldo
+    const pendingReturnCount = React.useMemo(() => {
+        if (!state.budgetReports) return 0;
+        if (isSuperAdmin) {
+            return state.budgetReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').length;
+        }
+        if (isAdminUnit || isAdminField) {
+            return state.budgetReports.filter(r => {
+                const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
+                    (isAdminField && r.fieldId === currentUser.fieldId);
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && r.kategoriAset === 'PENGEMBALIAN' && !r.notified;
             }).length;
         }
         return 0;
@@ -267,6 +283,11 @@ export default function Sidebar({ isOpen, onClose }) {
                             {item.label === 'Laporan Realisasi' && pendingReportCount > 0 && (
                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
                                     {pendingReportCount}
+                                </span>
+                            )}
+                            {item.label === 'Saldo' && pendingReturnCount > 0 && (
+                                <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                    {pendingReturnCount}
                                 </span>
                             )}
                         </NavLink>
