@@ -120,7 +120,7 @@ export default function RAB() {
     const [rejectionReason, setRejectionReason] = useState('');
     const [showRejectionInput, setShowRejectionInput] = useState(null); // planId if reviewing
     const [searchTerm, setSearchTerm] = useState('');
-    const [fundSourceFilter, setFundSourceFilter] = useState('all');
+    const [fundSourceFilter, setFundSourceFilter] = useState('Yayasan');
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
     const [editingItem, setEditingItem] = useState(null);
     const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
@@ -224,7 +224,8 @@ export default function RAB() {
     useEffect(() => {
         if (!selectedYearId || !selectedUnitId) return;
 
-        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
         const existingPlan = (rabPlans || []).find(p => p.id === planId);
         
         // Track status and notified changes so the modal can show up even if data loads late
@@ -266,7 +267,7 @@ export default function RAB() {
             }
             lastPlanIdRef.current = planKey;
         }
-    }, [selectedYearId, selectedUnitId, rabPlans]);
+    }, [selectedYearId, selectedUnitId, fundSourceFilter, rabPlans]);
     // Compute consolidated data if Yayasan is selected
     const consolidatedPlan = useMemo(() => {
         try {
@@ -274,7 +275,8 @@ export default function RAB() {
 
             const yearPlans = (rabPlans || []).filter(p =>
                 p && p.academicYearId === selectedYearId &&
-                p.unitId !== 'FOUNDATION'
+                p.unitId !== 'FOUNDATION' &&
+                (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS'))
             );
 
             const consolidated = {
@@ -330,7 +332,7 @@ export default function RAB() {
             console.error('[Consolidation Error]:', err);
             return null;
         }
-    }, [rabPlans, selectedYearId, selectedUnitId]);
+    }, [rabPlans, selectedYearId, selectedUnitId, fundSourceFilter]);
 
     // Determine which plan data to display
     const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : (currentPlan || { income: {}, expense: {}, status: 'DRAFT' });
@@ -1033,7 +1035,8 @@ export default function RAB() {
         setIsSaving(true);
         setMessage(null);
 
-        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
         const newPlan = {
             id: planId,
             academicYearId: selectedYearId,
@@ -1286,7 +1289,8 @@ export default function RAB() {
     };
 
     const handleAcknowledgeStatus = () => {
-        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
         const plan = rabPlans.find(p => p.id === planId);
         if (plan) {
             const updatedPlan = { ...plan, notified: true };
@@ -1347,6 +1351,7 @@ export default function RAB() {
                                         const rowData = {
                                             id: plan.id,
                                             name: unit?.name || 'Unknown',
+                                            typeLabel: plan.id.endsWith('-BOS') ? 'BOS' : 'YAYASAN',
                                             status: plan.status,
                                             rap: planRAP.totalTarget,
                                             rab: total,
@@ -1536,12 +1541,12 @@ export default function RAB() {
                                     : (rapData.itemAllocations[itemMaster.id] || 0);
 
                                 const plans = activePlan[type][itemMaster.id] || [];
-                                const relevantPlans = plans.filter(p => fundSourceFilter === 'all' || (fundSourceFilter === 'BOS' ? p.useBos : !p.useBos));
+                                const relevantPlans = plans;
 
                                 return (allocated > 0 || relevantPlans.length > 0);
                             }).flatMap((itemMaster, mIdx) => {
                                 let allPlans = activePlan[type][itemMaster.id] || [];
-                                let plans = allPlans.filter(p => fundSourceFilter === 'all' || (fundSourceFilter === 'BOS' ? p.useBos : !p.useBos));
+                                let plans = allPlans;
 
                                 // 1. Program Filtering
                                 if (filterProgram) {
@@ -2399,21 +2404,9 @@ export default function RAB() {
                                                             <div className="space-y-2">
                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Sumber Dana</label>
                                                                 <div className="flex gap-2">
-                                                                    {isBosRecipient && fundSourceFilter === 'all' ? (
-                                                                        <>
-                                                                            <button
-                                                                                onClick={() => setEntryForm({ ...entryForm, useBos: !entryForm.useBos })}
-                                                                                className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase border-2 transition-all ${entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
-                                                                            >
-                                                                                BOS {entryForm.useBos ? 'ON' : 'OFF'}
-                                                                            </button>
-                                                                            <div className="flex-1 py-3 rounded-2xl font-black text-[10px] bg-slate-50 text-slate-400 border-2 border-slate-100 text-center uppercase">YAYASAN</div>
-                                                                        </>
-                                                                    ) : (
-                                                                        <div className={`flex-1 py-3 rounded-2xl font-black text-[10px] border-2 text-center uppercase ${fundSourceFilter === 'BOS' || entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                                                                            {fundSourceFilter === 'BOS' || entryForm.useBos ? 'BOS' : 'YAYASAN'}
-                                                                        </div>
-                                                                    )}
+                                                                    <div className={`flex-1 py-3 rounded-2xl font-black text-[10px] border-2 text-center uppercase ${fundSourceFilter === 'BOS' || entryForm.useBos ? 'bg-emerald-600 border-emerald-600 text-white' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                                                                        {fundSourceFilter === 'BOS' || entryForm.useBos ? 'BOS' : 'YAYASAN'}
+                                                                    </div>
                                                                 </div>
                                                             </div>
 

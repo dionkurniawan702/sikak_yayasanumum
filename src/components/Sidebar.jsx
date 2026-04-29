@@ -28,17 +28,33 @@ export default function Sidebar({ isOpen, onClose }) {
 
     const hasBos = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
 
-    // Calculate Notifications for RAB
-    const pendingRabCount = React.useMemo(() => {
+    // Calculate Notifications for RAB Yayasan
+    const pendingRabYayasanCount = React.useMemo(() => {
         if (!state.rabPlans) return 0;
         if (isSuperAdmin) {
-            return state.rabPlans.filter(p => p.status === 'PENDING').length;
+            return state.rabPlans.filter(p => p.status === 'PENDING' && !p.id.endsWith('-BOS')).length;
         }
         if (isAdminUnit || isAdminField) {
             return state.rabPlans.filter(p => {
                 const isMine = (isAdminUnit && p.unitId === currentUser.unitId) ||
                     (isAdminField && p.fieldId === currentUser.fieldId);
-                return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified;
+                return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified && !p.id.endsWith('-BOS');
+            }).length;
+        }
+        return 0;
+    }, [state.rabPlans, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
+
+    // Calculate Notifications for RAB BOS
+    const pendingRabBosCount = React.useMemo(() => {
+        if (!state.rabPlans) return 0;
+        if (isSuperAdmin) {
+            return state.rabPlans.filter(p => p.status === 'PENDING' && p.id.endsWith('-BOS')).length;
+        }
+        if (isAdminUnit || isAdminField) {
+            return state.rabPlans.filter(p => {
+                const isMine = (isAdminUnit && p.unitId === currentUser.unitId) ||
+                    (isAdminField && p.fieldId === currentUser.fieldId);
+                return isMine && (p.status === 'APPROVED' || p.status === 'REJECTED') && !p.notified && p.id.endsWith('-BOS');
             }).length;
         }
         return 0;
@@ -270,9 +286,14 @@ export default function Sidebar({ isOpen, onClose }) {
                         >
                             {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                             <span className="text-sm font-medium flex-1">{item.label}</span>
-                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabCount > 0 && (
+                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                    {pendingRabCount}
+                                    {pendingRabYayasanCount}
+                                </span>
+                            )}
+                            {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
+                                <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                    {pendingRabBosCount}
                                 </span>
                             )}
                             {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
