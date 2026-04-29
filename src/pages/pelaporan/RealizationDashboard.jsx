@@ -181,7 +181,7 @@ export default function RealizationDashboard() {
                         <h3 className="text-2xl font-black text-slate-900">{formatRupiah(dashboardData.totalBudget)}</h3>
                         <div className="mt-4 flex items-center gap-2 text-blue-600 font-bold text-xs">
                             <Target size={14} />
-                            <span>Target Plafon {sourceMode}</span>
+                            <span>RAB {sourceMode}</span>
                         </div>
                     </div>
                     <Target size={100} className="absolute -bottom-6 -right-6 text-slate-50 group-hover:text-blue-50/50 transition-colors" />
@@ -205,7 +205,7 @@ export default function RealizationDashboard() {
                         <h3 className="text-2xl font-black text-slate-900">{formatRupiah(dashboardData.totalBudget - dashboardData.totalSpent)}</h3>
                         <div className="mt-4 flex items-center gap-2 text-amber-600 font-bold text-xs">
                             <Wallet size={14} />
-                            <span>Dana Tersedia</span>
+                            <span>Sisa RAB</span>
                         </div>
                     </div>
                     <Landmark size={100} className="absolute -bottom-6 -right-6 text-slate-50 group-hover:text-amber-50/50 transition-colors" />
