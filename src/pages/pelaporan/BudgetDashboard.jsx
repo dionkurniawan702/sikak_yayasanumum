@@ -625,6 +625,7 @@ export default function BudgetDashboard() {
                         </table>
                     </div>
                 </div>
+            )}
                     </>
                 )}
             </div>
