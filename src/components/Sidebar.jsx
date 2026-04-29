@@ -142,7 +142,8 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/saldo', label: 'Saldo', icon: Wallet },
 
             { section: 'PERENCANAAN (RAB)' },
-            { path: '/anggaran/rab', label: 'RAB', icon: Target },
+            { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
+            { path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark },
             { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
             { path: '/anggaran/distribusi', label: 'Setting Distribusi', icon: Share2 },
 

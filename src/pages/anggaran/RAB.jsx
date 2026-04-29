@@ -160,8 +160,8 @@ export default function RAB() {
     // Mapped data for the Review and Consolidated views (Extracted Hooks)
     const incomePrograms = useMemo(() => programs.filter(p => !p.isDeleted && p.type === 'INCOME'), [programs]);
     const pendingPlans = useMemo(() =>
-        rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId),
-        [rabPlans, selectedYearId]
+        rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS'))),
+        [rabPlans, selectedYearId, fundSourceFilter]
     );
     const filteredReviewPlans = useMemo(() =>
         pendingPlans.filter(p => p.academicYearId === selectedYearId),
@@ -1309,8 +1309,10 @@ export default function RAB() {
                             <ShieldCheck size={20} />
                         </div>
                         <div>
-                            <h4 className="font-black text-slate-900 uppercase tracking-tight italic">Review Pengajuan Unit</h4>
-                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Daftar unit yang telah mengirimkan rancangan anggaran</p>
+                            <h4 className="font-black text-slate-900 uppercase tracking-tight italic">
+                                Review Pengajuan {fundSourceFilter === 'BOS' ? 'RAB BOS' : 'RAB Yayasan'}
+                            </h4>
+                            <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1">Daftar unit yang telah mengirimkan rancangan anggaran {fundSourceFilter === 'BOS' ? 'BOS' : 'Yayasan'}</p>
                         </div>
                     </div>
 
@@ -1799,7 +1801,7 @@ export default function RAB() {
                                 <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
                                 <optgroup label="UNIT">
                                     {units.filter(u => !u.isDeleted).map(u => {
-                                        const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                        const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS')));
                                         return (
                                             <option key={u.id} value={u.id}>
                                                 {u.name} {isPending ? '🔴' : ''}
@@ -1809,7 +1811,7 @@ export default function RAB() {
                                 </optgroup>
                                 <optgroup label="BIDANG / LAPANGAN">
                                     {fields.map(f => {
-                                        const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId);
+                                        const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS')));
                                         return (
                                             <option key={f.id} value={`FIELD-${f.id}`}>
                                                 {f.name} {isPending ? '🔴' : ''}
@@ -1853,12 +1855,18 @@ export default function RAB() {
                             disabled={isSaving || !selectedYearId || isLocked}
                             className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95"
                         >
-                            KIRIM KE YAYASAN
+                            {fundSourceFilter === 'BOS' ? 'AJUKAN RAB BOS' : 'KIRIM KE YAYASAN'}
                         </button>
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
+                    <div className="space-y-1">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sumber Dana</p>
+                        <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${fundSourceFilter === 'BOS' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                            {fundSourceFilter === 'BOS' ? '🏫 Dana BOS' : '🏛️ Dana Yayasan'}
+                        </span>
+                    </div>
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
                         <div className="flex items-center justify-between">
