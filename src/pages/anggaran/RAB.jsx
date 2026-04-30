@@ -1975,24 +1975,23 @@ export default function RAB() {
                                                                     planId: plan.id
                                                                 });
                                                             }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                            title="EDIT RENCANA"
+                                                            className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                            title="REVIEW & EDIT RENCANA"
                                                         >
-                                                            {!!expandedReviewPlans[plan.id] ? <EyeOff size={18} /> : <Eye size={18} />}
-                                                         </button>
-                                                         <button
-                                                             onClick={(e) => {
-                                                                 e.stopPropagation();
-                                                                 setEditingItem({
-                                                                     ...itemMaster,
-                                                                     isNewPlan: false,
-                                                                     planId: plan.id
-                                                                 });
-                                                             }}
-                                                             className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
-                                                             title="EDIT RENCANA"
-                                                         >
-                                                             <Pencil size={18} />
+                                                            <Eye size={18} />
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingItem({
+                                                                    ...itemMaster,
+                                                                    isNewPlan: true
+                                                                });
+                                                            }}
+                                                            className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                            title="TAMBAH RENCANA BARU"
+                                                        >
+                                                            <Plus size={18} />
                                                         </button>
                                                         {!isLocked && (
                                                             <button

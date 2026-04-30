@@ -111,6 +111,38 @@ const getPrisma = () => {
         prisma = new PrismaClient({
             log: ['query', 'info', 'warn', 'error'],
         });
+        
+        // --- AUTO CLEANUP LOGIC ---
+        setTimeout(async () => {
+            console.log('[Cleanup] Initiating RabPlan duplicates cleanup...');
+            try {
+                const allPlans = await prisma.rabPlan.findMany();
+                const groups = {};
+                allPlans.forEach(p => {
+                    const key = `${p.academicYearId}|${p.unitId || 'FIELD-' + p.fieldId}`;
+                    if (!groups[key]) groups[key] = [];
+                    groups[key].push(p);
+                });
+
+                for (const [key, records] of Object.entries(groups)) {
+                    if (records.length > 1) {
+                        const sorted = records.sort((a, b) => {
+                            if (a.status === 'APPROVED' && b.status !== 'APPROVED') return -1;
+                            if (b.status === 'APPROVED' && a.status !== 'APPROVED') return 1;
+                            return new Date(b.updatedAt) - new Date(a.updatedAt);
+                        });
+                        const toDelete = sorted.slice(1);
+                        for (const target of toDelete) {
+                            await prisma.rabPlan.delete({ where: { id: target.id } });
+                            console.log(`[Cleanup] Deleted duplicate RabPlan: ${target.id} for ${key}`);
+                        }
+                    }
+                }
+                console.log('[Cleanup] RabPlan cleanup process finished successfully.');
+            } catch (err) {
+                console.error('[Cleanup Error]', err.message);
+            }
+        }, 5000); // Wait 5s after startup to not block boot
     }
     return prisma;
 };
