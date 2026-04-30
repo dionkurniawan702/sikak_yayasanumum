@@ -1465,18 +1465,22 @@ export default function RAB() {
 
     const handleDownloadLocalTemplate = (itemName) => {
         const wb = XLSX.utils.book_new();
-        const data = [
-            {
-                'Keterangan': 'Contoh Rincian 1',
-                'Vol': 1,
-                'Satuan': 'Pcs',
-                'Kali': 1,
-                'Harga': 100000,
-                'Program Belanja': '',
-                'Januari': 0, 'Februari': 0, 'Maret': 0, 'April': 0, 'Mei': 0, 'Juni': 0,
-                'Juli': 0, 'Agustus': 0, 'September': 0, 'Oktober': 0, 'November': 0, 'Desember': 0
-            }
-        ];
+        
+        const row = {
+            'Keterangan': 'Contoh Rincian 1',
+            'Vol': 1,
+            'Satuan': 'Pcs',
+            'Kali': 1,
+            'Harga': 100000,
+            'Program Belanja': ''
+        };
+        
+        // Add dynamic months based on selected academic year
+        monthsOptions.forEach(m => {
+            row[m.name] = 0;
+        });
+
+        const data = [row];
         const ws = XLSX.utils.json_to_sheet(data);
         XLSX.utils.book_append_sheet(wb, ws, "Rincian " + itemName.substring(0, 20));
         XLSX.writeFile(wb, `Template_Rincian_${itemName.replace(/\s+/g, '_')}.xlsx`);
