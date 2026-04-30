@@ -1377,7 +1377,7 @@ export default function RAB() {
                             'No': pIdx === 0 ? idx + 1 : '',
                             'Item Belanja': pIdx === 0 ? item.name : '',
                             'Keterangan / Komponen': plan.description || '',
-                            'Program Belanja': programs.find(p => p.id === plan.programId)?.name || '',
+                            'Program Belanja': allPrograms.find(p => p.id === plan.programId)?.name || '',
                             'Limit (RAP)': pIdx === 0 ? limit : '',
                             'Vol': 0, 'Satuan': '', 'Kali': 0, 'Harga': 0, 'Total RAB': plan.total || 0
                         };
@@ -1389,7 +1389,7 @@ export default function RAB() {
                                 'No': (pIdx === 0 && cIdx === 0) ? idx + 1 : '',
                                 'Item Belanja': (pIdx === 0 && cIdx === 0) ? item.name : '',
                                 'Keterangan / Komponen': comp.label,
-                                'Program Belanja': programs.find(p => p.id === comp.programId)?.name || '',
+                                'Program Belanja': allPrograms.find(p => p.id === comp.programId)?.name || '',
                                 'Limit (RAP)': (pIdx === 0 && cIdx === 0) ? limit : '',
                                 'Vol': comp.volume || 0,
                                 'Satuan': comp.satuan || '',
@@ -1518,7 +1518,8 @@ export default function RAB() {
             'Satuan': 'Pcs',
             'Kali': 1,
             'Harga': 100000,
-            'Program Belanja': ''
+            'Program Belanja': '',
+            'Semester': 1
         };
         
         // Add dynamic months based on selected academic year
@@ -1529,6 +1530,14 @@ export default function RAB() {
         const data = [row];
         const ws = XLSX.utils.json_to_sheet(data);
         XLSX.utils.book_append_sheet(wb, ws, "Rincian " + itemName.substring(0, 20));
+
+        // Add Reference Sheet for Programs
+        const progData = allPrograms.map(p => ({ 'NAMA PROGRAM': p.name, 'KETERANGAN': p.description || '' }));
+        if (progData.length > 0) {
+            const wsProg = XLSX.utils.json_to_sheet(progData);
+            XLSX.utils.book_append_sheet(wb, wsProg, "DAFTAR_PROGRAM");
+        }
+
         XLSX.writeFile(wb, `Template_Rincian_${itemName.replace(/\s+/g, '_')}.xlsx`);
     };
 
@@ -1559,6 +1568,7 @@ export default function RAB() {
                     const hargaKey = rowKeys.find(k => k.trim().toLowerCase() === 'harga') || 'Harga';
                     const ketKey = rowKeys.find(k => k.trim().toLowerCase() === 'keterangan') || 'Keterangan';
                     const progKey = rowKeys.find(k => k.trim().toLowerCase() === 'program belanja') || 'Program Belanja';
+                    const semKey = rowKeys.find(k => k.trim().toLowerCase() === 'semester') || 'Semester';
 
                     const vol = parseFloat(row[volKey]) || 0;
                     const kali = parseFloat(row[kaliKey]) || 1;
@@ -1574,7 +1584,7 @@ export default function RAB() {
                         harga: harga,
                         total: total,
                         programId: allPrograms.find(p => p.name.trim().toLowerCase() === (row[progKey]?.toString() || '').trim().toLowerCase())?.id || null,
-                        semester: '1',
+                        semester: (row[semKey]?.toString() || '1'),
                         useBos: fundSourceFilter === 'BOS',
                         months: months
                     };
@@ -2801,7 +2811,7 @@ export default function RAB() {
                                                                 <tr key={idx} className="group hover:bg-slate-50 transition-colors">
                                                                     <td className="px-6 py-4 font-black text-slate-800 text-xs italic">{comp.label}</td>
                                                                     <td className="px-4 py-4 text-xs font-bold text-indigo-600">
-                                                                        {programs.find(p => p.id === comp.programId)?.name || '-'}
+                                                                        {allPrograms.find(p => p.id === comp.programId)?.name || '-'}
                                                                     </td>
                                                                     <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
                                                                     <td className="px-4 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan}</td>
