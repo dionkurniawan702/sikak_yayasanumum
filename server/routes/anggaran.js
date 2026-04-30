@@ -194,6 +194,8 @@ router.get('/students', async (req, res) => {
 
 router.post('/students', async (req, res) => {
     try {
+        const {
+            id, name, nis, unitId,
             classId, academicYearId, statusId, parentStatusId, gender,
             incomeDetails
         } = req.body;
@@ -222,6 +224,8 @@ router.post('/students', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
     try {
+        const {
+            name, nis, unitId,
             classId, academicYearId, statusId, parentStatusId, gender,
             incomeDetails
         } = req.body;
