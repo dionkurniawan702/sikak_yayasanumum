@@ -307,7 +307,6 @@ function appReducer(state, action) {
                 positions: serverData.positions || state.positions || [],
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
-                classes: serverData.classes || state.classes || [],
                 bosStages: serverData.bosStages || state.bosStages || [],
                 bosPosList: serverData.bosPosList || state.bosPosList || [],
                 bosAllocations: serverData.bosAllocations || state.bosAllocations || [],
@@ -572,9 +571,7 @@ function appReducer(state, action) {
         case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
-        case 'SET_RAB_PLAN':
-            newState = { ...state, rabPlans: [...state.rabPlans.filter(p => p.id !== action.payload.id), action.payload] };
-            break;
+
         case 'ADD_BOS_STAGE': newState = { ...state, bosStages: [...state.bosStages, action.payload] }; break;
         case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? { ...i, ...action.payload } : i) }; break;
         case 'DELETE_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;

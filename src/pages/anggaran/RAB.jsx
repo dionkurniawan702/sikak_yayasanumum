@@ -1630,11 +1630,11 @@ export default function RAB() {
                     // await persistPlanToServer(dbPlan); 
                     setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor. Klik 'Simpan Rencana Belanja' untuk menyimpan permanen.` });
                     
+                    
                     // Force refresh modal by slightly updating editingItem
                     setEditingItem(prev => ({ ...prev, _refresh: Date.now() }));
                     
                     // End of import process
-                }
                 }
             } catch (err) {
                 console.error(err);
@@ -1643,6 +1643,7 @@ export default function RAB() {
         };
         reader.readAsBinaryString(file);
     };
+
 
     const renderReviewView = () => {
         return (
