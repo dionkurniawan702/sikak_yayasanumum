@@ -1536,8 +1536,9 @@ export default function RAB() {
 
                 if (newComponents.length > 0) {
                     const existingPlans = currentPlan.expense[itemId] || [];
-                    // Fix: Use the same ID as editingItem so the modal can find it immediately
-                    const basePlan = existingPlans[0] || { id: editingItem.id, total: 0, components: [], months: {} };
+                    // Fix: Ensure we use the exact same ID as the existing plan to prevent duplicate rows
+                    const existingId = existingPlans[0]?.id || editingItem.planId || editingItem.id;
+                    const basePlan = existingPlans[0] || { id: existingId, total: 0, components: [], months: {} };
                     
                     const allComps = [...(basePlan.components || []), ...newComponents];
                     
