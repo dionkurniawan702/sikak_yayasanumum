@@ -1331,7 +1331,7 @@ export default function RAB() {
                             'No': pIdx === 0 ? idx + 1 : '',
                             'Item Belanja': pIdx === 0 ? item.name : '',
                             'Keterangan / Komponen': plan.description || '',
-                            'Program': programs.find(p => p.id === plan.programId)?.name || '',
+                            'Program Belanja': programs.find(p => p.id === plan.programId)?.name || '',
                             'Limit (RAP)': pIdx === 0 ? limit : '',
                             'Vol': 0, 'Satuan': '', 'Kali': 0, 'Harga': 0, 'Total RAB': plan.total || 0
                         };
@@ -1343,7 +1343,7 @@ export default function RAB() {
                                 'No': (pIdx === 0 && cIdx === 0) ? idx + 1 : '',
                                 'Item Belanja': (pIdx === 0 && cIdx === 0) ? item.name : '',
                                 'Keterangan / Komponen': comp.label,
-                                'Program': programs.find(p => p.id === comp.programId)?.name || '',
+                                'Program Belanja': programs.find(p => p.id === comp.programId)?.name || '',
                                 'Limit (RAP)': (pIdx === 0 && cIdx === 0) ? limit : '',
                                 'Vol': comp.volume || 0,
                                 'Satuan': comp.satuan || '',
@@ -1373,7 +1373,7 @@ export default function RAB() {
             const row = {
                 'Item Belanja': item.name,
                 'Keterangan / Komponen': '',
-                'Program': '',
+                'Program Belanja': '',
                 'Vol': 0, 'Satuan': '', 'Kali': 1, 'Harga': 0
             };
             monthsOptions.forEach(m => row[m.name] = 0);
@@ -1419,7 +1419,7 @@ export default function RAB() {
                                 total += val;
                             });
 
-                            const program = programs.find(p => p.name === row['Program']);
+                            const program = programs.find(p => p.name === row['Program Belanja']);
                             const comp = {
                                 id: `C-${Date.now()}-${idx}`,
                                 label: row['Keterangan / Komponen'] || 'Imported Component',
