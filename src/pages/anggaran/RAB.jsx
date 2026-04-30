@@ -1885,34 +1885,60 @@ export default function RAB() {
                             </tr>
                         </thead>
                         <tbody>
-                            {items.filter(item => {
+                            {(() => {
+                                // Deduplicate items by name for display
+                                const uniqueByName = [];
+                                const seen = new Set();
+                                items.forEach(item => {
+                                    if (!seen.has(item.name)) {
+                                        uniqueByName.push(item);
+                                        seen.add(item.name);
+                                    }
+                                });
+                                return uniqueByName;
+                            })().filter(item => {
                                 if (searchTerm) return item.name.toLowerCase().includes(searchTerm.toLowerCase());
                                 return true;
                             }).filter(itemMaster => {
                                 if (isIncome) return true;
 
-                                const allocated = fundSourceFilter === 'BOS'
-                                    ? (bosItemMap[itemMaster.id] || 0)
-                                    : (rapData.itemAllocations[itemMaster.id] || 0);
+                                const sameNamed = items.filter(i => i.name === itemMaster.name);
+                                const aggregatedAllocated = sameNamed.reduce((sum, i) => {
+                                    return sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0));
+                                }, 0);
+                                const aggregatedPlans = sameNamed.flatMap(i => activePlan[type][i.id] || []);
 
-                                const plans = activePlan[type][itemMaster.id] || [];
-                                const relevantPlans = plans;
-
-                                return (allocated > 0 || relevantPlans.length > 0);
+                                return (aggregatedAllocated > 0 || aggregatedPlans.length > 0);
                             }).flatMap((itemMaster, mIdx) => {
-                                let allPlans = activePlan[type][itemMaster.id] || [];
-                                let plans = allPlans;
+                                const sameNamed = items.filter(i => i.name === itemMaster.name);
+                                const allocated = sameNamed.reduce((sum, i) => {
+                                    return sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0));
+                                }, 0);
 
-                                // 1. Program Filtering
-                                if (filterProgram) {
-                                    plans = plans.filter(p => (p.programId === filterProgram) || (p.components?.some(c => c.programId === filterProgram)));
+                                let allPlans = sameNamed.flatMap(i => activePlan[type][i.id] || []);
+                                
+                                // FORCE CONSOLIDATION: Merge multiple plans into ONE for UI consistency in Input view
+                                if (activeTab !== 'REVIEW' && allPlans.length > 1) {
+                                    const first = allPlans[0];
+                                    const allComps = allPlans.flatMap(p => p.components || []);
+                                    const aggrMonths = {};
+                                    allPlans.forEach(p => {
+                                        Object.entries(p.months || {}).forEach(([mId, mData]) => {
+                                            if (!mData.m) return;
+                                            if (!aggrMonths[mId]) aggrMonths[mId] = { m: true, jumlah: 0 };
+                                            aggrMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                                        });
+                                    });
+                                    allPlans = [{
+                                        ...first,
+                                        total: allPlans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0),
+                                        components: allComps,
+                                        months: aggrMonths,
+                                        description: Array.from(new Set(allComps.map(c => c.label))).join(', ')
+                                    }];
                                 }
-
-                                const allocated = isIncome
-                                    ? (rapData.incomeTotals[itemMaster.id] || 0)
-                                    : (fundSourceFilter === 'BOS'
-                                        ? (bosItemMap[itemMaster.id] || 0)
-                                        : (rapData.itemAllocations[itemMaster.id] || 0));
+                                
+                                let plans = allPlans;
 
                                 if (plans.length > 0) {
                                     return plans.map((plan, pIdx) => {
