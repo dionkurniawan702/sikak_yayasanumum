@@ -142,45 +142,133 @@ export default function StudentDatabase() {
         }
     };
 
-    const handleFileUpload = (e) => {
-        const file = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            const bstr = evt.target.result;
-            const wb = XLSX.read(bstr, { type: 'binary' });
-            const wsname = wb.SheetNames[0];
-            const ws = wb.Sheets[wsname];
-            const data = XLSX.utils.sheet_to_json(ws);
+    const handleExport = () => {
+        const exportData = filteredStudents.map(s => {
+            const unit = units.find(u => u.id === s.unitId);
+            const studentClass = state.classes?.find(c => c.id === s.classId);
+            const academicYear = state.academicYears?.find(y => y.id === s.academicYearId);
+            const status = state.studentStatuses?.find(st => st.id === s.statusId);
             
-            if (window.confirm(`Import ${data.length} data siswa?`)) {
-                const currentYear = state.academicYears?.find(y => y.isCurrent);
-                const activeStatus = state.studentStatuses?.find(s => s.name === 'Aktif');
+            const baseInfo = {
+                'Nama': s.name,
+                'NIS': s.nis || '',
+                'Unit': unit?.name || '',
+                'Kelas': studentClass?.name || '',
+                'Thn Ajaran': academicYear?.name || '',
+                'Status': status?.name || ''
+            };
 
-                data.forEach(item => {
-                    const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toLowerCase());
-                    const studentClass = state.classes?.find(c => 
-                        c.name.toLowerCase() === item.Kelas?.toString().toLowerCase() && 
-                        (unit ? c.unitId === unit.id : true)
-                    );
+            // Add income items as columns
+            incomeItems.forEach(ii => {
+                const detail = s.incomeDetails?.find(d => d.incomeItemId === ii.id);
+                baseInfo[ii.name] = detail?.amount || 0;
+            });
 
-                    dispatch({
-                        type: 'ADD_STUDENT',
-                        payload: {
-                            id: crypto.randomUUID(),
-                            name: item.Nama,
-                            nis: item.NIS || '',
-                            unitId: unit?.id || units[0]?.id,
-                            academicYearId: currentYear?.id || '',
-                            statusId: activeStatus?.id || '',
-                            classId: studentClass?.id || '',
-                            incomeDetails: incomeItems.map(ii => ({
-                                incomeItemId: ii.id,
-                                amount: item[ii.name] || 0
-                            }))
+            return baseInfo;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(exportData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Database Siswa");
+        XLSX.writeFile(wb, `Database_Siswa_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
+
+    const handleDownloadTemplate = () => {
+        const template = [
+            {
+                'Nama': 'Contoh Siswa',
+                'NIS': '12345',
+                'Unit': units.find(u => isUnitAdmin ? u.id === currentUser.unitId : true)?.name || 'Nama Unit',
+                'Kelas': state.classes?.find(c => isUnitAdmin ? c.unitId === currentUser.unitId : true)?.name || '7A',
+                'Status': 'Aktif'
+            }
+        ];
+        
+        // Add income items as headers in template
+        incomeItems.forEach(ii => {
+            template[0][ii.name] = 0;
+        });
+
+        const ws = XLSX.utils.json_to_sheet(template);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Template Import Siswa");
+        XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsname = wb.SheetNames[0];
+                const ws = wb.Sheets[wsname];
+                const data = XLSX.utils.sheet_to_json(ws);
+                
+                if (data.length === 0) {
+                    window.alert('File kosong atau format tidak sesuai.');
+                    return;
+                }
+
+                if (!window.confirm(`Import ${data.length} data siswa?`)) return;
+
+                const currentYear = state.academicYears?.find(y => y.isCurrent) || state.academicYears?.find(y => y.isActive);
+                const defaultStatus = state.studentStatuses?.find(s => s.name === 'Aktif') || state.studentStatuses?.[0];
+
+                let successCount = 0;
+                let errorCount = 0;
+
+                for (const item of data) {
+                    try {
+                        // 1. Determine Unit
+                        let unitId = isUnitAdmin ? currentUser.unitId : null;
+                        if (!isUnitAdmin) {
+                            const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toString().toLowerCase());
+                            unitId = unit?.id || units[0]?.id;
                         }
-                    });
-                });
+
+                        // 2. Determine Class
+                        const studentClass = state.classes?.find(c => 
+                            c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && 
+                            c.unitId === unitId
+                        );
+
+                        // 3. Determine Status
+                        const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
+
+                        // 4. Map Income Details
+                        const incomeDetails = incomeItems.map(ii => ({
+                            incomeItemId: ii.id,
+                            amount: parseFloat(item[ii.name]) || 0
+                        })).filter(id => id.amount > 0);
+
+                        const payload = {
+                            id: crypto.randomUUID(),
+                            name: item.Nama || 'Tanpa Nama',
+                            nis: item.NIS?.toString() || '',
+                            unitId,
+                            academicYearId: currentYear?.id || '',
+                            statusId: status?.id || defaultStatus?.id || '',
+                            classId: studentClass?.id || '',
+                            incomeDetails
+                        };
+
+                        await api.pushAction({ type: 'ADD_STUDENT', payload }, state);
+                        dispatch({ type: 'ADD_STUDENT', payload });
+                        successCount++;
+                    } catch (err) {
+                        console.error('Import Error for item:', item, err);
+                        errorCount++;
+                    }
+                }
+
+                window.alert(`Import Selesai!\nBerhasil: ${successCount}\nGagal: ${errorCount}`);
                 setShowImportModal(false);
+            } catch (err) {
+                window.alert('Terjadi kesalahan saat membaca file: ' + err.message);
             }
         };
         reader.readAsBinaryString(file);
@@ -200,16 +288,22 @@ export default function StudentDatabase() {
                     <p className="text-slate-500 font-medium italic">Sumber Data Penerimaan Keuangan Yayasan</p>
                 </div>
                 <div className="flex gap-3">
-                    {!isUnitAdmin && (
-                        <button 
-                            onClick={() => setShowImportModal(true)}
-                            className="btn btn-secondary"
-                            disabled={activeLock}
-                        >
-                            <Upload size={18} />
-                            <span>Import Masal</span>
-                        </button>
-                    )}
+                    <button 
+                        onClick={handleExport}
+                        className="btn btn-secondary"
+                        disabled={filteredStudents.length === 0}
+                    >
+                        <Download size={18} />
+                        <span>Export</span>
+                    </button>
+                    <button 
+                        onClick={() => setShowImportModal(true)}
+                        className="btn btn-secondary"
+                        disabled={activeLock}
+                    >
+                        <Upload size={18} />
+                        <span>Import Masal</span>
+                    </button>
                     <button 
                         onClick={() => handleOpenStudentModal()}
                         className="btn btn-primary"
@@ -642,9 +736,15 @@ export default function StudentDatabase() {
                             <p className="text-slate-500 mb-8 font-medium">Gunakan file Excel atau CSV sesuai template untuk mempercepat penginputan data siswa dan budget tahunannya.</p>
                             
                             <div className="mb-8 p-10 border-4 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center text-center hover:border-blue-200 transition-all group">
-                                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                                    <Download size={32} />
+                                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                    <Upload size={32} />
                                 </div>
+                                <button 
+                                    onClick={handleDownloadTemplate}
+                                    className="text-xs font-black text-blue-600 uppercase tracking-widest mb-6 hover:underline"
+                                >
+                                    Unduh Template Excel
+                                </button>
                                 <label className="cursor-pointer">
                                     <span className="btn btn-primary shadow-blue-500/10 mb-2">Pilih File XLSX/CSV</span>
                                     <input type="file" className="hidden" accept=".xlsx,.csv" onChange={handleFileUpload} />
