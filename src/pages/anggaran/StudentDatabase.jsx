@@ -165,8 +165,9 @@ export default function StudentDatabase() {
                 'NIS': s.nis || '',
                 'Unit': unit?.name || '',
                 'Kelas': studentClass?.name || '',
-                'Thn Ajaran': academicYear?.name || '',
-                'Status': status?.name || ''
+                'Tahun Ajaran': academicYear?.name || '',
+                'Status': status?.name || '',
+                'Status Orang Tua': parentStatus?.name || ''
             };
 
             // Only add income items that are relevant to the displayed units
@@ -206,7 +207,9 @@ export default function StudentDatabase() {
                 'NIS': '12345',
                 'Unit': targetUnit?.name || 'Nama Unit',
                 'Kelas': state.classes?.find(c => c.unitId === targetUnitId)?.name || '7A',
-                'Status': 'Aktif'
+                'Tahun Ajaran': state.academicYears?.find(y => y.isCurrent)?.name || '',
+                'Status': 'Aktif',
+                'Status Orang Tua': state.parentStatuses?.[0]?.name || ''
             }
         ];
         
@@ -265,6 +268,12 @@ export default function StudentDatabase() {
                         // 3. Determine Status
                         const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
 
+                        // 3b. Determine Academic Year from Excel (Fallback to current)
+                        const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === item['Tahun Ajaran']?.toString().toLowerCase());
+                        
+                        // 3c. Determine Parent Status
+                        const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
+
                         // 4. Map Income Details
                         const incomeDetails = incomeItems.map(ii => ({
                             incomeItemId: ii.id,
@@ -276,8 +285,9 @@ export default function StudentDatabase() {
                             name: item.Nama || 'Tanpa Nama',
                             nis: item.NIS?.toString() || '',
                             unitId,
-                            academicYearId: currentYear?.id || '',
+                            academicYearId: academicYear?.id || currentYear?.id || '',
                             statusId: status?.id || defaultStatus?.id || '',
+                            parentStatusId: parentStatus?.id || '',
                             classId: studentClass?.id || '',
                             incomeDetails
                         };
