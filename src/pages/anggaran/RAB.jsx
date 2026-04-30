@@ -1306,24 +1306,7 @@ export default function RAB() {
     const handleExportRAB = () => {
         const wb = XLSX.utils.book_new();
         
-        // 1. Income Sheet
-        const incomeData = filteredIncomeItems.map((item, idx) => {
-            const plan = activePlan.income[item.id] || { total: 0, months: {} };
-            const row = {
-                'No': idx + 1,
-                'Item Penerimaan': item.name,
-                'Target (RAP)': rapData.incomeTotals[item.id] || 0,
-            };
-            monthsOptions.forEach(m => {
-                row[m.name] = plan.months?.[m.id]?.jumlah || 0;
-            });
-            row['Total RAB'] = plan.total || 0;
-            return row;
-        });
-        const wsIncome = XLSX.utils.json_to_sheet(incomeData);
-        XLSX.utils.book_append_sheet(wb, wsIncome, "Rencana Penerimaan");
-
-        // 2. Expense Sheet
+        // 1. Expense Sheet
         const expenseData = [];
         filteredExpenseItems.forEach((item, idx) => {
             const plans = activePlan.expense[item.id] || [];
@@ -1385,15 +1368,6 @@ export default function RAB() {
     const handleDownloadRABTemplate = () => {
         const wb = XLSX.utils.book_new();
         
-        // Income Template
-        const incomeData = filteredIncomeItems.map((item, idx) => {
-            const row = { 'Item Penerimaan': item.name };
-            monthsOptions.forEach(m => row[m.name] = 0);
-            return row;
-        });
-        const wsIncome = XLSX.utils.json_to_sheet(incomeData);
-        XLSX.utils.book_append_sheet(wb, wsIncome, "Penerimaan");
-
         // Expense Template
         const expenseData = filteredExpenseItems.map((item, idx) => {
             const row = {
@@ -1421,30 +1395,9 @@ export default function RAB() {
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 
-                const newIncome = { ...currentPlan.income };
                 const newExpense = { ...currentPlan.expense };
 
-                // 1. Process Income
-                const wsIncome = wb.Sheets["Penerimaan"] || wb.Sheets["Rencana Penerimaan"];
-                if (wsIncome) {
-                    const data = XLSX.utils.sheet_to_json(wsIncome);
-                    data.forEach(row => {
-                        const itemName = row['Item Penerimaan'];
-                        const item = incomeItems.find(i => i.name === itemName);
-                        if (item) {
-                            const months = {};
-                            let total = 0;
-                            monthsOptions.forEach(m => {
-                                const val = parseFloat(row[m.name]) || 0;
-                                months[m.id] = { m: val > 0, jumlah: val };
-                                total += val;
-                            });
-                            newIncome[item.id] = { total, months };
-                        }
-                    });
-                }
-
-                // 2. Process Expense
+                // 1. Process Expense
                 const wsExpense = wb.Sheets["Belanja"] || wb.Sheets["Rencana Belanja"];
                 if (wsExpense) {
                     const data = XLSX.utils.sheet_to_json(wsExpense);
@@ -1499,8 +1452,8 @@ export default function RAB() {
                     });
                 }
 
-                setCurrentPlan(prev => ({ ...prev, income: newIncome, expense: newExpense }));
-                setMessage({ type: 'success', text: 'Data RAB berhasil diimpor dari Excel.' });
+                setCurrentPlan(prev => ({ ...prev, expense: newExpense }));
+                setMessage({ type: 'success', text: 'Data Rencana Belanja berhasil diimpor dari Excel.' });
                 setShowImportModal(false);
             } catch (error) {
                 console.error(error);
@@ -2971,7 +2924,7 @@ export default function RAB() {
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">2</span>
-                                        <span>Isi data rencana anggaran (Pendapatan & Belanja) sesuai format.</span>
+                                        <span>Isi data rencana belanja (pengeluaran) sesuai format.</span>
                                     </li>
                                     <li className="flex gap-3">
                                         <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">3</span>
