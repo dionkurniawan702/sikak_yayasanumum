@@ -146,6 +146,18 @@ function loadState() {
                         }
                         return updated;
                     });
+
+                    // [Armor] Purge ghost records (IDs without fund source suffix)
+                    if (key === 'rabPlans') {
+                        merged[key] = merged[key].filter(item => {
+                            if (!item?.id) return false;
+                            const isStandard = item.id.endsWith('-YAYASAN') || item.id.endsWith('-BOS');
+                            if (!isStandard) {
+                                console.warn(`[Migration] Purging ghost RabPlan record: ${item.id}`);
+                            }
+                            return isStandard;
+                        });
+                    }
                 }
             });
 
@@ -318,8 +330,21 @@ function appReducer(state, action) {
                         return updated;
                     });
 
-                    // Deduplicate if we fixed IDs (keep the most recently updated one)
-                    if (fixId) {
+                    // [Armor] Purge ghost records (IDs without fund source suffix)
+                    if (key === 'rabPlans') {
+                        const uniqueMap = new Map();
+                        migrated.forEach(item => {
+                            if (!item?.id) return;
+                            const isStandard = item.id.endsWith('-YAYASAN') || item.id.endsWith('-BOS');
+                            if (!isStandard) return; // Skip ghosts
+
+                            const existing = uniqueMap.get(item.id);
+                            if (!existing || new Date(item.updatedAt || 0) > new Date(existing.updatedAt || 0)) {
+                                uniqueMap.set(item.id, item);
+                            }
+                        });
+                        newState[key] = Array.from(uniqueMap.values());
+                    } else if (fixId) {
                         const uniqueMap = new Map();
                         migrated.forEach(item => {
                             if (!item.id) return;

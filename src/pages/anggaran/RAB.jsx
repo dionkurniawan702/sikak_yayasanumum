@@ -1305,7 +1305,8 @@ export default function RAB() {
 
     const handleCancelApproval = async () => {
         if (!selectedYearId || !selectedUnitId) return;
-        const planId = `${selectedYearId}-${selectedUnitId}`;
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
         const plan = rabPlans.find(p => p.id === planId);
         if (!plan || plan.status !== 'APPROVED') return;
 
@@ -2018,7 +2019,8 @@ export default function RAB() {
                                                                             }
                                                                         };
                                                                         setCurrentPlan(nextPlan);
-                                                                        const planId = `${selectedYearId}-${selectedUnitId}`;
+                                                                        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+                                                                        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
                                                                         const dbPlan = {
                                                                             id: planId,
                                                                             academicYearId: selectedYearId,

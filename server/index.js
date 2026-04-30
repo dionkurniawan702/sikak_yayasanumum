@@ -117,9 +117,20 @@ const getPrisma = () => {
             console.log('[Cleanup] Initiating RabPlan duplicates cleanup...');
             try {
                 const allPlans = await prisma.rabPlan.findMany();
+                let deletedCount = 0;
+                let ghostCount = 0;
+
+                // 1. Purge Ghost Records (Incomplete IDs)
+                const ghosts = allPlans.filter(p => !p.id.endsWith('-YAYASAN') && !p.id.endsWith('-BOS'));
+                for (const g of ghosts) {
+                    await prisma.rabPlan.delete({ where: { id: g.id } });
+                    ghostCount++;
+                }
+
+                // 2. Cleanup Duplicates
                 const groups = {};
-                allPlans.forEach(p => {
-                    // Critical Fix: Distinguish between Yayasan and BOS plans in cleanup
+                const plansAfterGhostPurge = allPlans.filter(p => p.id.endsWith('-YAYASAN') || p.id.endsWith('-BOS'));
+                plansAfterGhostPurge.forEach(p => {
                     const isBos = p.id.endsWith('-BOS');
                     const source = isBos ? 'BOS' : 'YAYASAN';
                     const key = `${p.academicYearId}|${p.unitId || 'FIELD-' + p.fieldId}|${source}`;
@@ -127,21 +138,24 @@ const getPrisma = () => {
                     groups[key].push(p);
                 });
 
-                for (const [key, records] of Object.entries(groups)) {
-                    if (records.length > 1) {
-                        const sorted = records.sort((a, b) => {
+                for (const key in groups) {
+                    const list = groups[key];
+                    if (list.length > 1) {
+                        list.sort((a, b) => {
                             if (a.status === 'APPROVED' && b.status !== 'APPROVED') return -1;
                             if (b.status === 'APPROVED' && a.status !== 'APPROVED') return 1;
                             return new Date(b.updatedAt) - new Date(a.updatedAt);
                         });
-                        const toDelete = sorted.slice(1);
+                        const toDelete = list.slice(1);
                         for (const target of toDelete) {
                             await prisma.rabPlan.delete({ where: { id: target.id } });
-                            console.log(`[Cleanup] Deleted duplicate RabPlan: ${target.id} for ${key}`);
+                            deletedCount++;
                         }
                     }
                 }
-                console.log('[Cleanup] RabPlan cleanup process finished successfully.');
+                if (deletedCount > 0 || ghostCount > 0) {
+                    console.log(`[Cleanup] Finished. Deleted ${deletedCount} duplicates and ${ghostCount} ghost records.`);
+                }
             } catch (err) {
                 console.error('[Cleanup Error]', err.message);
             }
