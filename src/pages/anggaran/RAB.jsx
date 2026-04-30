@@ -2036,8 +2036,8 @@ export default function RAB() {
                                                                             updatedAt: new Date().toISOString(),
                                                                             updatedBy: currentUser?.username
                                                                         };
-                                                                         // await persistPlanToServer(dbPlan); 
-                                                                         setMessage({ type: 'success', text: 'Item rincian berhasil dihapus (Lokal). Klik SIMPAN RENCANA BELANJA untuk sinkron ke server.' });
+                                                                         await persistPlanToServer(dbPlan); 
+                                                                         setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
                                                                     }
                                                                 }}
                                                                 className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
