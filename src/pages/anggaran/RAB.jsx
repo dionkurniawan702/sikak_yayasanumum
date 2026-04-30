@@ -201,6 +201,17 @@ export default function RAB() {
         }
     }, [sourceParam]);
 
+    // Auto-clear success messages
+    useEffect(() => {
+        if (message && message.type === 'success') {
+            const timer = setTimeout(() => {
+                setMessage(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [message]);
+
+
     // Local state for the current editing plan
     const [currentPlan, setCurrentPlan] = useState({
         income: {},
