@@ -1958,9 +1958,9 @@ export default function RAB() {
                                                 key={plan.id}
                                                 data={rowData}
                                                 isExpanded={!!expandedReviewPlans[plan.id]}
-                                                onToggle={() => {}}, // Rely on Eye icon for expansion
+                                                 onToggle={() => {}} // Rely on Eye icon for expansion
                                                 formatCurrency={formatRupiah}
-                                                expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }},
+                                                 expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
                                                 selectable={false}
