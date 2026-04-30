@@ -1627,12 +1627,14 @@ export default function RAB() {
                         updatedBy: currentUser?.username
                     };
 
-                    await persistPlanToServer(dbPlan);
+                    // await persistPlanToServer(dbPlan); 
+                    setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor. Klik 'Simpan Rencana Belanja' untuk menyimpan permanen.` });
                     
                     // Force refresh modal by slightly updating editingItem
                     setEditingItem(prev => ({ ...prev, _refresh: Date.now() }));
                     
-                    setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor dan disimpan ke server.` });
+                    // End of import process
+                }
                 }
             } catch (err) {
                 console.error(err);
@@ -2033,7 +2035,8 @@ export default function RAB() {
                                                                             updatedAt: new Date().toISOString(),
                                                                             updatedBy: currentUser?.username
                                                                         };
-                                                                        await persistPlanToServer(dbPlan);
+                                                                         // await persistPlanToServer(dbPlan); 
+                                                                         setMessage({ type: 'success', text: 'Item rincian berhasil dihapus (Lokal). Klik SIMPAN RENCANA BELANJA untuk sinkron ke server.' });
                                                                     }
                                                                 }}
                                                                 className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
