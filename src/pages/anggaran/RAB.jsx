@@ -2672,8 +2672,8 @@ export default function RAB() {
                                     description: Array.from(new Set(allComponents.map(c => c.label))).join(', ')
                                 };
                             } else {
-                                item = plans.find(p => p.id === editingItem.id) || {
-                                    id: editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1'
+                                item = plans.find(p => p.id === editingItem.planId) || plans.find(p => p.id === editingItem.id) || plans[0] || {
+                                    id: editingItem.planId || editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1'
                                 };
                             }
 
@@ -2794,7 +2794,7 @@ export default function RAB() {
                                                                     <td className="px-4 py-4">
                                                                         <div className="flex items-center justify-center gap-1">
                                                                             <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14} /></button>
-                                                                            <button onClick={() => handleRemoveComponent(itemId, editingItem.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14} /></button>
+                                                                            <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14} /></button>
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -3009,7 +3009,7 @@ export default function RAB() {
                                                         return (
                                                             <button
                                                                 disabled={!canSave}
-                                                                onClick={() => handlePushComponent(itemId, editingItem.id)}
+                                                                onClick={() => handlePushComponent(itemId, item.id)}
                                                                 className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-slate-900'}`}
                                                             >
                                                                 {!isBalanced && total > 0 ? 'ALOKASI BELUM SEIMBANG' : (editingCompIdx !== null ? 'PERBARUI RINCIAN' : 'SIMPAN RINCIAN')}
