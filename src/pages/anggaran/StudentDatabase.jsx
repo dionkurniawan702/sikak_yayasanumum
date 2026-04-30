@@ -290,7 +290,7 @@ export default function StudentDatabase() {
                 <div className="flex gap-3">
                     <button 
                         onClick={handleExport}
-                        className="btn btn-secondary"
+                        className="budget-export-btn"
                         disabled={filteredStudents.length === 0}
                     >
                         <Download size={18} />
@@ -298,7 +298,7 @@ export default function StudentDatabase() {
                     </button>
                     <button 
                         onClick={() => setShowImportModal(true)}
-                        className="btn btn-secondary"
+                        className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold bg-white text-indigo-700 border border-indigo-200 hover:bg-indigo-50 hover:border-indigo-300 hover:shadow-sm active:scale-95 transition-all duration-200 disabled:opacity-50"
                         disabled={activeLock}
                     >
                         <Upload size={18} />
