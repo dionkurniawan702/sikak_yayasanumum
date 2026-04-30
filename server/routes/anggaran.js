@@ -982,6 +982,19 @@ router.post('/rab-plans', async (req, res) => {
             field: cleanPayload.fieldId
         }));
 
+        // Auto-delete if empty draft
+        const isEmpty = (obj) => {
+            if (!obj) return true;
+            if (Object.keys(obj).length === 0) return true;
+            return Object.values(obj).every(arr => Array.isArray(arr) && arr.length === 0);
+        };
+
+        if (isEmpty(cleanPayload.income) && isEmpty(cleanPayload.expense) && cleanPayload.status === 'DRAFT') {
+            await prisma.rabPlan.deleteMany({ where: { id: cleanPayload.id } });
+            console.log(`[RAB Plan] Deleted empty draft instead of upsert: ${cleanPayload.id}`);
+            return res.json({ data: { id: cleanPayload.id, isDeleted: true } });
+        }
+
         const item = await prisma.rabPlan.upsert({
             where: { id: cleanPayload.id },
             update: { ...cleanPayload, id: undefined },

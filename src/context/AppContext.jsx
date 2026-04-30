@@ -44,6 +44,16 @@ const defaultState = {
 
 const CURRENT_VERSION = '1.3.1';
 
+const isEmptyPlan = (plan) => {
+    if (!plan) return true;
+    const isObjEmpty = (obj) => {
+        if (!obj) return true;
+        if (Object.keys(obj).length === 0) return true;
+        return Object.values(obj).every(arr => Array.isArray(arr) && arr.length === 0);
+    };
+    return isObjEmpty(plan.income) && isObjEmpty(plan.expense);
+};
+
 function loadState() {
     try {
         const saved = localStorage.getItem('sikak-yayasan-data');
@@ -154,8 +164,14 @@ function loadState() {
                             const isStandard = item.id.endsWith('-YAYASAN') || item.id.endsWith('-BOS');
                             if (!isStandard) {
                                 console.warn(`[Migration] Purging ghost RabPlan record: ${item.id}`);
+                                return false;
                             }
-                            return isStandard;
+                            // Also purge empty plans to avoid "ghost" records with no data
+                            if (isEmptyPlan(item) && item.status === 'DRAFT') {
+                                console.warn(`[Migration] Purging empty RabPlan draft: ${item.id}`);
+                                return false;
+                            }
+                            return true;
                         });
                     }
                 }
@@ -215,6 +231,24 @@ function getPotentialAssetsFromJournal(journal, accounts) {
 function appReducer(state, action) {
     let newState;
     switch (action.type) {
+        case 'SET_RAB_PLAN': {
+            const index = state.rabPlans.findIndex(p => p.id === action.payload.id);
+            let updatedRabPlans = [...state.rabPlans];
+
+            if (isEmptyPlan(action.payload) && action.payload.status === 'DRAFT') {
+                // If it becomes empty, treat it as a delete to keep state clean
+                if (index >= 0) updatedRabPlans.splice(index, 1);
+            } else {
+                if (index >= 0) updatedRabPlans[index] = action.payload;
+                else updatedRabPlans.push(action.payload);
+            }
+
+            newState = { ...state, rabPlans: updatedRabPlans };
+            break;
+        }
+        case 'DELETE_RAB_PLAN':
+            newState = { ...state, rabPlans: state.rabPlans.filter(p => p.id !== action.payload) };
+            break;
         case 'LOGIN':
             newState = { ...state, currentUser: action.payload };
             break;
@@ -241,6 +275,12 @@ function appReducer(state, action) {
                 ...state,
                 accounts: serverData.accounts || state.accounts || [],
                 journals: (serverData.journals || state.journals || []).map(j => ({ ...j, programId: j.programId || 'PRG-GEN' })),
+                classes: serverData.classes || state.classes || [],
+                rabPlans: (serverData.rabPlans || state.rabPlans || []).filter(p => {
+                    const isGhost = !p.id.endsWith('-YAYASAN') && !p.id.endsWith('-BOS');
+                    const isEmpty = isEmptyPlan(p) && p.status === 'DRAFT';
+                    return !isGhost && !isEmpty;
+                }),
                 assets: serverData.assets || state.assets || [],
                 programs: serverData.programs || state.programs || [],
                 expensePrograms: serverData.expensePrograms || state.expensePrograms || [],
@@ -268,7 +308,6 @@ function appReducer(state, action) {
                 studentStatuses: serverData.studentStatuses || state.studentStatuses || [],
                 parentStatuses: serverData.parentStatuses || state.parentStatuses || [],
                 classes: serverData.classes || state.classes || [],
-                rabPlans: (serverData.rabPlans && serverData.rabPlans.length > 0) ? serverData.rabPlans : (state.rabPlans || []),
                 bosStages: serverData.bosStages || state.bosStages || [],
                 bosPosList: serverData.bosPosList || state.bosPosList || [],
                 bosAllocations: serverData.bosAllocations || state.bosAllocations || [],
@@ -308,9 +347,9 @@ function appReducer(state, action) {
             }
 
             const migrationMap = {
-                students: false,
-                rabPlans: true,
-                budgetRequests: false,
+                classes: state.classes || [],
+                rabPlans: (state.rabPlans || []).filter(p => !isEmptyPlan(p) || p.status !== 'DRAFT'),
+                budgetRequests: state.budgetRequests || [],
                 budgetReports: false,
                 bosStages: false,
                 bosAllocations: false

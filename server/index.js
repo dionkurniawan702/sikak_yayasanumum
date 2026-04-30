@@ -153,8 +153,31 @@ const getPrisma = () => {
                         }
                     }
                 }
+                // 3. Purge Empty Drafts (Older than 1 hour to avoid deleting active sessions)
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                const emptyDrafts = allPlans.filter(p => {
+                    if (p.status !== 'DRAFT') return false;
+                    if (new Date(p.updatedAt) > oneHourAgo) return false;
+
+                    const isEmpty = (obj) => {
+                        if (!obj) return true;
+                        let parsed = obj;
+                        if (typeof obj === 'string') {
+                            try { parsed = JSON.parse(obj); } catch (e) { return true; }
+                        }
+                        if (Object.keys(parsed).length === 0) return true;
+                        return Object.values(parsed).every(arr => Array.isArray(arr) && arr.length === 0);
+                    };
+                    return isEmpty(p.income) && isEmpty(p.expense);
+                });
+
+                for (const ed of emptyDrafts) {
+                    await prisma.rabPlan.delete({ where: { id: ed.id } });
+                    deletedCount++;
+                }
+
                 if (deletedCount > 0 || ghostCount > 0) {
-                    console.log(`[Cleanup] Finished. Deleted ${deletedCount} duplicates and ${ghostCount} ghost records.`);
+                    console.log(`[Cleanup] Finished. Deleted ${deletedCount} records (duplicates/empty) and ${ghostCount} ghost records.`);
                 }
             } catch (err) {
                 console.error('[Cleanup Error]', err.message);
