@@ -1949,13 +1949,8 @@ export default function RAB() {
                                             rap: plan.limit || allocated,
                                             rab: plan.total || 0,
                                             sisa: (plan.limit || allocated) - (plan.total || 0),
-                                            breakdown: [{
-                                                id: itemMaster.id,
-                                                name: itemMaster.name,
-                                                rab: plan.total || 0,
-                                                rap: plan.limit || allocated,
-                                                components: plan.components || []
-                                            }]
+                                            // Fix: Disable expansion to prevent redundant rows for consolidated items
+                                            breakdown: []
                                         };
 
                                         return (
@@ -2678,7 +2673,6 @@ export default function RAB() {
                                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
                                                 {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${item.id} • `}
                                                 TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
-                                                {plans.length > 1 && <span className="ml-2 text-indigo-500 font-bold">(KONSOLIDASI {plans.length} DATA)</span>}
                                             </p>
                                         </div>
 
