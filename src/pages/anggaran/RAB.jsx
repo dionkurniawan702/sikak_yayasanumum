@@ -1536,7 +1536,8 @@ export default function RAB() {
 
                 if (newComponents.length > 0) {
                     const existingPlans = currentPlan.expense[itemId] || [];
-                    const basePlan = existingPlans[0] || { id: `P-${itemId}-${Date.now()}`, total: 0, components: [], months: {} };
+                    // Fix: Use the same ID as editingItem so the modal can find it immediately
+                    const basePlan = existingPlans[0] || { id: editingItem.id, total: 0, components: [], months: {} };
                     
                     const allComps = [...(basePlan.components || []), ...newComponents];
                     
@@ -1557,15 +1558,34 @@ export default function RAB() {
                         months: aggregateMonths
                     };
 
-                    setCurrentPlan(prev => ({
-                        ...prev,
-                        expense: { ...prev.expense, [itemId]: [updatedPlan] }
-                    }));
+                    const nextPlan = {
+                        ...currentPlan,
+                        expense: { ...currentPlan.expense, [itemId]: [updatedPlan] }
+                    };
+                    
+                    setCurrentPlan(nextPlan);
+                    
+                    // Auto-save to DB immediately after import
+                    const planId = `${selectedYearId}-${selectedUnitId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+                    const dbPlan = {
+                        id: planId,
+                        academicYearId: selectedYearId,
+                        unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                        fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                        income: nextPlan.income,
+                        expense: nextPlan.expense,
+                        status: nextPlan.status,
+                        rejectionReason: nextPlan.rejectionReason,
+                        updatedAt: new Date().toISOString(),
+                        updatedBy: currentUser?.username
+                    };
+
+                    await persistPlanToServer(dbPlan);
                     
                     // Force refresh modal by slightly updating editingItem
                     setEditingItem(prev => ({ ...prev, _refresh: Date.now() }));
                     
-                    setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor.` });
+                    setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor dan disimpan ke server.` });
                 }
             } catch (err) {
                 console.error(err);
@@ -2669,7 +2689,8 @@ export default function RAB() {
                                                 <table className="w-full text-left border-collapse">
                                                     <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
                                                         <tr>
-                                                            <th className="px-6 py-5 w-[40%] text-white">Keterangan / Rincian</th>
+                                                            <th className="px-6 py-5 w-[30%] text-white">Keterangan / Rincian</th>
+                                                            <th className="px-4 py-5 text-indigo-400">Program Belanja</th>
                                                             <th className="px-4 py-5 text-center text-white">Vol</th>
                                                             <th className="px-4 py-5 text-center text-white">Sat</th>
                                                             <th className="px-4 py-5 text-center text-white">Kali</th>
@@ -2684,7 +2705,7 @@ export default function RAB() {
                                                             if (comps.length === 0) {
                                                                 return (
                                                                     <tr>
-                                                                        <td colSpan={7} className="px-6 py-12 text-center">
+                                                                        <td colSpan={8} className="px-6 py-12 text-center">
                                                                             <Package size={40} className="mx-auto text-slate-300 mb-2 opacity-30" />
                                                                             <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-30">Belum ada rincian belanja</p>
                                                                         </td>
@@ -2694,6 +2715,9 @@ export default function RAB() {
                                                             return comps.map((comp, idx) => (
                                                                 <tr key={idx} className="group hover:bg-slate-50 transition-colors">
                                                                     <td className="px-6 py-4 font-black text-slate-800 text-xs italic">{comp.label}</td>
+                                                                    <td className="px-4 py-4 text-xs font-bold text-indigo-600">
+                                                                        {programs.find(p => p.id === comp.programId)?.name || '-'}
+                                                                    </td>
                                                                     <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
                                                                     <td className="px-4 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan}</td>
                                                                     <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali}x</td>
@@ -2711,7 +2735,7 @@ export default function RAB() {
                                                     </tbody>
                                                     <tfoot className="bg-slate-50 border-t border-slate-200">
                                                         <tr>
-                                                            <td colSpan={5} className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] italic text-slate-400">Total Akumulasi Rincian</td>
+                                                            <td colSpan={6} className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] italic text-slate-400">Total Akumulasi Rincian</td>
                                                             <td className="px-6 py-6 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total)}</td>
                                                             <td className="px-4 py-6 text-center">
                                                                 <button
