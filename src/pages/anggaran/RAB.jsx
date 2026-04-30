@@ -2886,9 +2886,9 @@ export default function RAB() {
 
                                     {/* Sub-Modal (Rincian Entry) */}
                                     {showCompModal && (
-                                        <div className="absolute inset-0 z-[5000] flex items-center justify-center p-6 animate-in fade-in duration-200">
-                                            <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm rounded-[3.5rem]" onClick={() => setShowCompModal(false)} />
-                                            <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[90vh]">
+                                         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 animate-in fade-in duration-200">
+                                            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowCompModal(false)} />
+                                            <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[85vh]">
                                                 <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
                                                     <div>
                                                         <h3 className="text-xl font-black italic uppercase tracking-tight">Detail Rincian</h3>
