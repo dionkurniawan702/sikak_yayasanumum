@@ -143,6 +143,17 @@ export default function StudentDatabase() {
     };
 
     const handleExport = () => {
+        const displayedUnitIds = unitFilter === 'all' 
+            ? [...new Set(filteredStudents.map(s => s.unitId))]
+            : [unitFilter];
+        
+        const activeIncomeItemIds = [...new Set(
+            state.distributionSettings
+                ?.filter(s => displayedUnitIds.includes(s.unitId))
+                .map(s => s.incomeItemId) || []
+        )];
+        const relevantIncomeItems = incomeItems.filter(ii => activeIncomeItemIds.includes(ii.id));
+
         const exportData = filteredStudents.map(s => {
             const unit = units.find(u => u.id === s.unitId);
             const studentClass = state.classes?.find(c => c.id === s.classId);
@@ -158,8 +169,8 @@ export default function StudentDatabase() {
                 'Status': status?.name || ''
             };
 
-            // Add income items as columns
-            incomeItems.forEach(ii => {
+            // Only add income items that are relevant to the displayed units
+            relevantIncomeItems.forEach(ii => {
                 const detail = s.incomeDetails?.find(d => d.incomeItemId === ii.id);
                 baseInfo[ii.name] = detail?.amount || 0;
             });
@@ -174,25 +185,40 @@ export default function StudentDatabase() {
     };
 
     const handleDownloadTemplate = () => {
+        const targetUnitId = isUnitAdmin ? currentUser.unitId : (unitFilter !== 'all' ? unitFilter : null);
+        
+        if (!targetUnitId) {
+            window.alert('Mohon filter unit terlebih dahulu di halaman utama sebelum mengunduh template, agar kolom item penerimaan sesuai dengan kebutuhan unit tersebut.');
+            return;
+        }
+
+        const targetUnit = units.find(u => u.id === targetUnitId);
+        const activeIncomeItemIds = [...new Set(
+            state.distributionSettings
+                ?.filter(s => s.unitId === targetUnitId)
+                .map(s => s.incomeItemId) || []
+        )];
+        const relevantIncomeItems = incomeItems.filter(ii => activeIncomeItemIds.includes(ii.id));
+
         const template = [
             {
                 'Nama': 'Contoh Siswa',
                 'NIS': '12345',
-                'Unit': units.find(u => isUnitAdmin ? u.id === currentUser.unitId : true)?.name || 'Nama Unit',
-                'Kelas': state.classes?.find(c => isUnitAdmin ? c.unitId === currentUser.unitId : true)?.name || '7A',
+                'Unit': targetUnit?.name || 'Nama Unit',
+                'Kelas': state.classes?.find(c => c.unitId === targetUnitId)?.name || '7A',
                 'Status': 'Aktif'
             }
         ];
         
-        // Add income items as headers in template
-        incomeItems.forEach(ii => {
+        // Only add income items assigned to this unit
+        relevantIncomeItems.forEach(ii => {
             template[0][ii.name] = 0;
         });
 
         const ws = XLSX.utils.json_to_sheet(template);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Template Import Siswa");
-        XLSX.writeFile(wb, "Template_Import_Siswa.xlsx");
+        XLSX.writeFile(wb, `Template_Import_${targetUnit?.name || 'Unit'}.xlsx`);
     };
 
     const handleFileUpload = async (e) => {
