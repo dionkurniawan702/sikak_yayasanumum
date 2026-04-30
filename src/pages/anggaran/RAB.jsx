@@ -107,8 +107,9 @@ export default function RAB() {
 
     // Role helpers
     const isSuperAdmin = currentUser?.role === 'superadmin';
+    const isAdminBidang = currentUser?.role === 'admin_bidang';
     const currentUserUnit = units.find(u => u.id === currentUser?.unitId);
-    const isBosRecipient = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
+    const isBosRecipient = isSuperAdmin || isAdminBidang || (currentUserUnit && currentUserUnit.receivesBos);
 
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
@@ -1770,26 +1771,28 @@ export default function RAB() {
                                                 selectedComponents={selectedComponents}
                                                 onComponentToggle={toggleComponentSelection}
                                                 actions={
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleApproval(plan.id, 'APPROVED');
-                                                            }}
-                                                            className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg active:scale-95"
-                                                        >
-                                                            ACC SEMUA
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setShowRejectionInput(plan.id);
-                                                            }}
-                                                            className="px-4 py-1.5 bg-rose-100 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
-                                                        >
-                                                            REVISI
-                                                        </button>
-                                                    </div>
+                                                    isSuperAdmin ? (
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    handleApproval(plan.id, 'APPROVED');
+                                                                }}
+                                                                className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg active:scale-95"
+                                                            >
+                                                                ACC SEMUA
+                                                            </button>
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setShowRejectionInput(plan.id);
+                                                                }}
+                                                                className="px-4 py-1.5 bg-rose-100 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
+                                                            >
+                                                                REVISI
+                                                            </button>
+                                                        </div>
+                                                    ) : null
                                                 }
                                             />
                                         );
@@ -1983,81 +1986,84 @@ export default function RAB() {
                                                 key={plan.id}
                                                 data={rowData}
                                                 isExpanded={!!expandedReviewPlans[plan.id]}
-                                                 onToggle={() => {}} // Rely on Eye icon for expansion
+                                                onToggle={() => toggleReviewPlan(plan.id)}
                                                 formatCurrency={formatRupiah}
                                                  expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
-                                                selectable={false}
-                                                actions={
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setEditingItem({
-                                                                    ...itemMaster,
-                                                                    isNewPlan: false,
-                                                                    planId: plan.id
-                                                                });
-                                                            }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                            title="REVIEW & EDIT RENCANA"
-                                                        >
-                                                            <Eye size={18} />
-                                                        </button>
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setEditingItem({
-                                                                    ...itemMaster,
-                                                                    isNewPlan: true
-                                                                });
-                                                            }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                                                            title="TAMBAH RENCANA BARU"
-                                                        >
-                                                            <Plus size={18} />
-                                                        </button>
-                                                        {!isLocked && (
+                                                selectable={false}                                                actions={
+                                                    (isSuperAdmin || 
+                                                     (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
+                                                     (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
+                                                        <div className="flex items-center gap-2">
                                                             <button
-                                                                onClick={async (e) => {
+                                                                onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                        const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
-                                                                        const nextPlan = {
-                                                                            ...activePlan,
-                                                                            [type]: {
-                                                                                ...activePlan[type],
-                                                                                [itemMaster.id]: updatedPlans
-                                                                            }
-                                                                        };
-                                                                        setCurrentPlan(nextPlan);
-                                                                        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-                                                                        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
-                                                                        const dbPlan = {
-                                                                            id: planId,
-                                                                            academicYearId: selectedYearId,
-                                                                            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-                                                                            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                                                                            income: nextPlan.income,
-                                                                            expense: nextPlan.expense,
-                                                                            status: nextPlan.status,
-                                                                            rejectionReason: nextPlan.rejectionReason,
-                                                                            updatedAt: new Date().toISOString(),
-                                                                            updatedBy: currentUser?.username
-                                                                        };
-                                                                         await persistPlanToServer(dbPlan); 
-                                                                         setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
-                                                                    }
+                                                                    setEditingItem({
+                                                                        ...itemMaster,
+                                                                        isNewPlan: false,
+                                                                        planId: plan.id
+                                                                    });
                                                                 }}
-                                                                className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                                                                title="HAPUS RENCANA"
+                                                                className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                                title="REVIEW & EDIT RENCANA"
                                                             >
-                                                                <Trash2 size={18} />
+                                                                <Eye size={18} />
                                                             </button>
-                                                        )}
-                                                    </div>
-                                                }
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setEditingItem({
+                                                                        ...itemMaster,
+                                                                        isNewPlan: true
+                                                                    });
+                                                                }}
+                                                                className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                                title="TAMBAH RENCANA BARU"
+                                                            >
+                                                                <Plus size={18} />
+                                                            </button>
+                                                            {!isLocked && (
+                                                                <button
+                                                                    onClick={async (e) => {
+                                                                        e.stopPropagation();
+                                                                        if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                            const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
+                                                                            const nextPlan = {
+                                                                                ...activePlan,
+                                                                                [type]: {
+                                                                                    ...activePlan[type],
+                                                                                    [itemMaster.id]: updatedPlans
+                                                                                }
+                                                                            };
+                                                                            setCurrentPlan(nextPlan);
+                                                                            const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+                                                                            const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+                                                                            const dbPlan = {
+                                                                                id: planId,
+                                                                                academicYearId: selectedYearId,
+                                                                                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                                                                                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                                                income: nextPlan.income,
+                                                                                expense: nextPlan.expense,
+                                                                                status: nextPlan.status,
+                                                                                rejectionReason: nextPlan.rejectionReason,
+                                                                                updatedAt: new Date().toISOString(),
+                                                                                updatedBy: currentUser?.username
+                                                                            };
+                                                                            await persistPlanToServer(dbPlan); 
+                                                                            setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
+                                                                        }
+                                                                    }}
+                                                                    className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                                                    title="HAPUS RENCANA"
+                                                                >
+                                                                    <Trash2 size={18} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    ) : null
+                                                } }
                                             />
                                         );
                                     });
@@ -2080,21 +2086,25 @@ export default function RAB() {
                                         <td className="px-6 py-4 border-y border-slate-100 text-right font-black text-slate-400 text-xs italic">{formatRupiah(allocated)}</td>
                                         <td className="px-6 py-4 border-y border-slate-100 text-right font-black text-slate-300 text-sm italic">{formatRupiah(0)}</td>
                                         <td className="px-6 py-4 border-y border-r border-slate-100 text-right">
-                                            <button
-                                                onClick={() => {
-                                                    const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
-                                                    setEditingItem({
-                                                        id: newPlanId,
-                                                        itemId: itemMaster.id,
-                                                        name: itemMaster.name,
-                                                        isNewPlan: true,
-                                                        semester: '1'
-                                                    });
-                                                }}
-                                                className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
-                                            >
-                                                <Plus size={18} strokeWidth={3} />
-                                            </button>
+                                            {(isSuperAdmin || 
+                                              (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
+                                              (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) && (
+                                                <button
+                                                    onClick={() => {
+                                                        const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                        setEditingItem({
+                                                            id: newPlanId,
+                                                            itemId: itemMaster.id,
+                                                            name: itemMaster.name,
+                                                            isNewPlan: true,
+                                                            semester: '1'
+                                                        });
+                                                    }}
+                                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
+                                                >
+                                                    <Plus size={18} strokeWidth={3} />
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -2191,7 +2201,7 @@ export default function RAB() {
             {/* Top Toolbar */}
             <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-4 flex-wrap">
-                    {isSuperAdmin ? (
+                    {(isSuperAdmin || isAdminBidang) ? (
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setShowDashboard(!showDashboard)}
