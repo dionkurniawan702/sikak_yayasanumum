@@ -2852,7 +2852,8 @@ export default function RAB() {
                                                         setEditingItem(null);
 
                                                         // Auto-save to DB immediately
-                                                        const planId = `${selectedYearId}-${selectedUnitId}`;
+                                                        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+                                                        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
                                                         const dbPlan = {
                                                             id: planId,
                                                             academicYearId: selectedYearId,
