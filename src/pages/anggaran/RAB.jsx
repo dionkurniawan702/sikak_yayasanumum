@@ -6,8 +6,9 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
-    Calculator, Trash2, Pencil, DollarSign, BarChart3
+    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
@@ -140,6 +141,7 @@ export default function RAB() {
     });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
     const [showCompModal, setShowCompModal] = useState(false);
+    const [showImportModal, setShowImportModal] = useState(false);
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
     const [expandedDetailItems, setExpandedDetailItems] = useState({});
@@ -1301,6 +1303,213 @@ export default function RAB() {
         setShowStatusModal(false);
     };
 
+    const handleExportRAB = () => {
+        const wb = XLSX.utils.book_new();
+        
+        // 1. Income Sheet
+        const incomeData = filteredIncomeItems.map((item, idx) => {
+            const plan = activePlan.income[item.id] || { total: 0, months: {} };
+            const row = {
+                'No': idx + 1,
+                'Item Penerimaan': item.name,
+                'Target (RAP)': rapData.incomeTotals[item.id] || 0,
+            };
+            monthsOptions.forEach(m => {
+                row[m.name] = plan.months?.[m.id]?.jumlah || 0;
+            });
+            row['Total RAB'] = plan.total || 0;
+            return row;
+        });
+        const wsIncome = XLSX.utils.json_to_sheet(incomeData);
+        XLSX.utils.book_append_sheet(wb, wsIncome, "Rencana Penerimaan");
+
+        // 2. Expense Sheet
+        const expenseData = [];
+        filteredExpenseItems.forEach((item, idx) => {
+            const plans = activePlan.expense[item.id] || [];
+            const limit = fundSourceFilter === 'BOS' ? (bosItemMap[item.id] || 0) : (rapData.itemAllocations[item.id] || 0);
+
+            if (plans.length === 0) {
+                const row = {
+                    'No': idx + 1,
+                    'Item Belanja': item.name,
+                    'Keterangan / Komponen': '',
+                    'Program': '',
+                    'Limit (RAP)': limit,
+                    'Vol': 0, 'Satuan': '', 'Kali': 0, 'Harga': 0, 'Total RAB': 0
+                };
+                monthsOptions.forEach(m => row[m.name] = 0);
+                expenseData.push(row);
+            } else {
+                plans.forEach((plan, pIdx) => {
+                    const components = plan.components || [];
+                    if (components.length === 0) {
+                        const row = {
+                            'No': pIdx === 0 ? idx + 1 : '',
+                            'Item Belanja': pIdx === 0 ? item.name : '',
+                            'Keterangan / Komponen': plan.description || '',
+                            'Program': programs.find(p => p.id === plan.programId)?.name || '',
+                            'Limit (RAP)': pIdx === 0 ? limit : '',
+                            'Vol': 0, 'Satuan': '', 'Kali': 0, 'Harga': 0, 'Total RAB': plan.total || 0
+                        };
+                        monthsOptions.forEach(m => row[m.name] = plan.months?.[m.id]?.jumlah || 0);
+                        expenseData.push(row);
+                    } else {
+                        components.forEach((comp, cIdx) => {
+                            const row = {
+                                'No': (pIdx === 0 && cIdx === 0) ? idx + 1 : '',
+                                'Item Belanja': (pIdx === 0 && cIdx === 0) ? item.name : '',
+                                'Keterangan / Komponen': comp.label,
+                                'Program': programs.find(p => p.id === comp.programId)?.name || '',
+                                'Limit (RAP)': (pIdx === 0 && cIdx === 0) ? limit : '',
+                                'Vol': comp.volume || 0,
+                                'Satuan': comp.satuan || '',
+                                'Kali': comp.kali || 0,
+                                'Harga': comp.harga || 0,
+                                'Total RAB': comp.total || 0
+                            };
+                            monthsOptions.forEach(m => row[m.name] = comp.months?.[m.id]?.jumlah || 0);
+                            expenseData.push(row);
+                        });
+                    }
+                });
+            }
+        });
+        const wsExpense = XLSX.utils.json_to_sheet(expenseData);
+        XLSX.utils.book_append_sheet(wb, wsExpense, "Rencana Belanja");
+
+        const unitName = selectedUnitId === 'FOUNDATION' ? 'Yayasan' : (units.find(u => u.id === selectedUnitId)?.name || 'Unit');
+        XLSX.writeFile(wb, `RAB_${fundSourceFilter}_${unitName}_${activeYear?.name || ''}.xlsx`);
+    };
+
+    const handleDownloadRABTemplate = () => {
+        const wb = XLSX.utils.book_new();
+        
+        // Income Template
+        const incomeData = filteredIncomeItems.map((item, idx) => {
+            const row = { 'Item Penerimaan': item.name };
+            monthsOptions.forEach(m => row[m.name] = 0);
+            return row;
+        });
+        const wsIncome = XLSX.utils.json_to_sheet(incomeData);
+        XLSX.utils.book_append_sheet(wb, wsIncome, "Penerimaan");
+
+        // Expense Template
+        const expenseData = filteredExpenseItems.map((item, idx) => {
+            const row = {
+                'Item Belanja': item.name,
+                'Keterangan / Komponen': '',
+                'Program': '',
+                'Vol': 0, 'Satuan': '', 'Kali': 1, 'Harga': 0
+            };
+            monthsOptions.forEach(m => row[m.name] = 0);
+            return row;
+        });
+        const wsExpense = XLSX.utils.json_to_sheet(expenseData);
+        XLSX.utils.book_append_sheet(wb, wsExpense, "Belanja");
+
+        XLSX.writeFile(wb, `Template_RAB_${fundSourceFilter}.xlsx`);
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                
+                const newIncome = { ...currentPlan.income };
+                const newExpense = { ...currentPlan.expense };
+
+                // 1. Process Income
+                const wsIncome = wb.Sheets["Penerimaan"] || wb.Sheets["Rencana Penerimaan"];
+                if (wsIncome) {
+                    const data = XLSX.utils.sheet_to_json(wsIncome);
+                    data.forEach(row => {
+                        const itemName = row['Item Penerimaan'];
+                        const item = incomeItems.find(i => i.name === itemName);
+                        if (item) {
+                            const months = {};
+                            let total = 0;
+                            monthsOptions.forEach(m => {
+                                const val = parseFloat(row[m.name]) || 0;
+                                months[m.id] = { m: val > 0, jumlah: val };
+                                total += val;
+                            });
+                            newIncome[item.id] = { total, months };
+                        }
+                    });
+                }
+
+                // 2. Process Expense
+                const wsExpense = wb.Sheets["Belanja"] || wb.Sheets["Rencana Belanja"];
+                if (wsExpense) {
+                    const data = XLSX.utils.sheet_to_json(wsExpense);
+                    // Clear existing expenses for imported items to prevent duplicates
+                    const importedItemNames = new Set(data.map(r => r['Item Belanja']).filter(Boolean));
+                    expenseItems.forEach(ei => {
+                        if (importedItemNames.has(ei.name)) newExpense[ei.id] = [];
+                    });
+
+                    data.forEach((row, idx) => {
+                        const itemName = row['Item Belanja'];
+                        const item = expenseItems.find(i => i.name === itemName);
+                        if (item) {
+                            const months = {};
+                            let total = 0;
+                            monthsOptions.forEach(m => {
+                                const val = parseFloat(row[m.name]) || 0;
+                                months[m.id] = { m: val > 0, jumlah: val };
+                                total += val;
+                            });
+
+                            const program = programs.find(p => p.name === row['Program']);
+                            const comp = {
+                                id: `C-${Date.now()}-${idx}`,
+                                label: row['Keterangan / Komponen'] || 'Imported Component',
+                                volume: parseFloat(row['Vol']) || 0,
+                                satuan: row['Satuan'] || '',
+                                kali: parseFloat(row['Kali']) || 1,
+                                harga: parseFloat(row['Harga']) || 0,
+                                total: total,
+                                months: months,
+                                programId: program?.id || '',
+                                semester: row['Semester'] || '1'
+                            };
+
+                            if (!newExpense[item.id]) newExpense[item.id] = [];
+                            
+                            // Check if we should add to existing plan or create new
+                            if (comp.label) {
+                                newExpense[item.id].push({
+                                    id: `P-${Date.now()}-${idx}`,
+                                    itemId: item.id,
+                                    total: comp.total,
+                                    components: [comp],
+                                    months: comp.months,
+                                    programId: comp.programId,
+                                    semester: comp.semester,
+                                    description: comp.label
+                                });
+                            }
+                        }
+                    });
+                }
+
+                setCurrentPlan(prev => ({ ...prev, income: newIncome, expense: newExpense }));
+                setMessage({ type: 'success', text: 'Data RAB berhasil diimpor dari Excel.' });
+                setShowImportModal(false);
+            } catch (error) {
+                console.error(error);
+                setMessage({ type: 'error', text: 'Gagal memproses file Excel: ' + error.message });
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const renderReviewView = () => {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
@@ -1873,6 +2082,22 @@ export default function RAB() {
                 </div>
 
                 <div className="flex items-center gap-3 ml-auto">
+                    <button
+                        onClick={handleExportRAB}
+                        className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-6 py-3 rounded-2xl font-black text-xs transition-all flex items-center gap-2 hover:bg-emerald-600 hover:text-white active:scale-95 shadow-sm"
+                    >
+                        <Download size={16} />
+                        EXPORT EXCEL
+                    </button>
+                    {!isLocked && (
+                        <button
+                            onClick={() => setShowImportModal(true)}
+                            className="bg-indigo-50 text-indigo-600 border border-indigo-200 px-6 py-3 rounded-2xl font-black text-xs transition-all flex items-center gap-2 hover:bg-indigo-600 hover:text-white active:scale-95 shadow-sm"
+                        >
+                            <CloudUpload size={16} />
+                            IMPORT MASAL
+                        </button>
+                    )}
                     {!isConsolidation && (
                         <button
                             onClick={handleSubmitReview}
@@ -2713,6 +2938,76 @@ export default function RAB() {
                                 className="ml-4 p-4 text-slate-400 hover:text-white transition-colors"
                             >
                                 <X size={20} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {/* Import Modal */}
+            {showImportModal && (
+                <div className="fixed inset-0 z-[2000] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[3rem] shadow-2xl w-full max-w-xl overflow-hidden border border-white animate-in zoom-in-95 duration-300">
+                        <div className="bg-indigo-600 p-10 text-white relative">
+                            <button
+                                onClick={() => setShowImportModal(false)}
+                                className="absolute top-8 right-8 text-white/50 hover:text-white transition-colors"
+                            >
+                                <X size={24} />
+                            </button>
+                            <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mb-6 backdrop-blur-md">
+                                <CloudUpload size={32} />
+                            </div>
+                            <h3 className="text-3xl font-black italic tracking-tight">Import Masal RAB</h3>
+                            <p className="text-indigo-100 font-medium text-sm mt-2">Unggah file Excel RAB {fundSourceFilter} untuk mengisi data secara otomatis.</p>
+                        </div>
+
+                        <div className="p-10 space-y-8">
+                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Langkah-langkah:</h4>
+                                <ol className="text-xs font-bold text-slate-600 space-y-3">
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">1</span>
+                                        <span>Unduh template Excel yang sudah disiapkan di bawah.</span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">2</span>
+                                        <span>Isi data rencana anggaran (Pendapatan & Belanja) sesuai format.</span>
+                                    </li>
+                                    <li className="flex gap-3">
+                                        <span className="w-5 h-5 rounded-full bg-white border border-slate-200 flex items-center justify-center shrink-0">3</span>
+                                        <span>Unggah kembali file tersebut ke sistem ini.</span>
+                                    </li>
+                                </ol>
+                                <button
+                                    onClick={handleDownloadRABTemplate}
+                                    className="w-full flex items-center justify-center gap-2 py-3 bg-white border border-indigo-200 text-indigo-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-50 transition-all shadow-sm"
+                                >
+                                    <Download size={14} />
+                                    Unduh Template Excel
+                                </button>
+                            </div>
+
+                            <div className="relative group">
+                                <input
+                                    type="file"
+                                    accept=".xlsx, .xls"
+                                    onChange={handleFileUpload}
+                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                />
+                                <div className="p-12 border-4 border-dashed border-slate-100 rounded-[2.5rem] flex flex-col items-center justify-center text-center group-hover:border-indigo-200 group-hover:bg-indigo-50/30 transition-all">
+                                    <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 group-hover:text-indigo-500 transition-all duration-500">
+                                        <CloudUpload size={32} />
+                                    </div>
+                                    <p className="text-sm font-black text-slate-400 group-hover:text-indigo-600 transition-colors">Klik atau Seret File ke Sini</p>
+                                    <p className="text-[10px] font-bold text-slate-300 mt-1 uppercase tracking-widest">Maksimal 10MB (.xlsx)</p>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => setShowImportModal(false)}
+                                className="w-full py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:text-slate-600 transition-colors"
+                            >
+                                Batal
                             </button>
                         </div>
                     </div>
