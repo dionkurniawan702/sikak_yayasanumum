@@ -1500,25 +1500,34 @@ export default function RAB() {
 
                 const newComponents = data.map((row, idx) => {
                     const months = {};
+                    // Flexible column matching for months
+                    const rowKeys = Object.keys(row);
                     monthsOptions.forEach(m => {
-                        const val = parseFloat(row[m.name]) || 0;
+                        const exactKey = rowKeys.find(k => k.trim().toLowerCase() === m.name.toLowerCase());
+                        const val = exactKey ? (parseFloat(row[exactKey]) || 0) : 0;
                         months[m.id] = { m: val > 0, jumlah: val };
                     });
 
-                    const vol = parseFloat(row['Vol']) || 0;
-                    const kali = parseFloat(row['Kali']) || 1;
-                    const harga = parseFloat(row['Harga']) || 0;
+                    const volKey = rowKeys.find(k => k.trim().toLowerCase() === 'vol') || 'Vol';
+                    const kaliKey = rowKeys.find(k => k.trim().toLowerCase() === 'kali') || 'Kali';
+                    const hargaKey = rowKeys.find(k => k.trim().toLowerCase() === 'harga') || 'Harga';
+                    const ketKey = rowKeys.find(k => k.trim().toLowerCase() === 'keterangan') || 'Keterangan';
+                    const progKey = rowKeys.find(k => k.trim().toLowerCase() === 'program belanja') || 'Program Belanja';
+
+                    const vol = parseFloat(row[volKey]) || 0;
+                    const kali = parseFloat(row[kaliKey]) || 1;
+                    const harga = parseFloat(row[hargaKey]) || 0;
                     const total = vol * kali * harga;
 
                     return {
                         id: `C-${Date.now()}-${idx}`,
-                        label: row['Keterangan'] || 'Imported',
+                        label: row[ketKey] || 'Imported',
                         volume: vol,
                         satuan: row['Satuan'] || '',
                         kali: kali,
                         harga: harga,
                         total: total,
-                        programId: programs.find(p => p.name === row['Program Belanja'])?.id || null,
+                        programId: programs.find(p => p.name.trim().toLowerCase() === (row[progKey]?.toString() || '').trim().toLowerCase())?.id || null,
                         semester: '1',
                         useBos: fundSourceFilter === 'BOS',
                         months: months
@@ -1529,16 +1538,33 @@ export default function RAB() {
                     const existingPlans = currentPlan.expense[itemId] || [];
                     const basePlan = existingPlans[0] || { id: `P-${itemId}-${Date.now()}`, total: 0, components: [], months: {} };
                     
+                    const allComps = [...(basePlan.components || []), ...newComponents];
+                    
+                    // Aggregate months distribution from all components
+                    const aggregateMonths = {};
+                    allComps.forEach(c => {
+                        Object.entries(c.months || {}).forEach(([mId, mData]) => {
+                            if (!mData.m) return;
+                            if (!aggregateMonths[mId]) aggregateMonths[mId] = { m: true, jumlah: 0 };
+                            aggregateMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                        });
+                    });
+
                     const updatedPlan = {
                         ...basePlan,
-                        components: [...(basePlan.components || []), ...newComponents],
-                        total: (basePlan.total || 0) + newComponents.reduce((sum, c) => sum + c.total, 0)
+                        components: allComps,
+                        total: allComps.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0),
+                        months: aggregateMonths
                     };
 
                     setCurrentPlan(prev => ({
                         ...prev,
                         expense: { ...prev.expense, [itemId]: [updatedPlan] }
                     }));
+                    
+                    // Force refresh modal by slightly updating editingItem
+                    setEditingItem(prev => ({ ...prev, _refresh: Date.now() }));
+                    
                     setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor.` });
                 }
             } catch (err) {
