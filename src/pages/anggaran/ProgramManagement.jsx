@@ -52,6 +52,12 @@ export default function ProgramManagement() {
                 await api.pushAction({ type: 'EDIT_BUDGET_PROGRAM', payload: updatedItem }, state);
                 setMessage({ type: 'success', text: 'Program berhasil diperbarui' });
             } else {
+                // Duplicate check for new manual entry
+                const isDuplicate = expensePrograms.some(p => !p.isDeleted && p.name.toLowerCase() === dataToSave.name.toLowerCase());
+                if (isDuplicate) {
+                    throw new Error(`Program dengan nama "${dataToSave.name}" sudah ada.`);
+                }
+
                 const newItem = {
                     id: `PRG-${generateId()}`,
                     ...dataToSave
@@ -157,9 +163,22 @@ export default function ProgramManagement() {
 
                         if (!item['Nama Program']) continue;
 
+                        const programName = item['Nama Program'].toString().trim();
+                        
+                        // Reject if already exists in local state (case-insensitive)
+                        const isDuplicate = expensePrograms.some(p => 
+                            !p.isDeleted && 
+                            p.name.toLowerCase() === programName.toLowerCase()
+                        );
+
+                        if (isDuplicate) {
+                            errorCount++;
+                            continue;
+                        }
+
                         const newItem = {
                             id: `PRG-${generateId()}`,
-                            name: item['Nama Program'].toString(),
+                            name: programName,
                             description: item.Keterangan?.toString() || '',
                             unitId,
                             fieldId,
