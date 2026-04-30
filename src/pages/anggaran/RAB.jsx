@@ -6,7 +6,7 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
-    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload
+    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { useApp } from '../../context/AppContext';
@@ -1950,7 +1950,7 @@ export default function RAB() {
                                             rab: plan.total || 0,
                                             sisa: (plan.limit || allocated) - (plan.total || 0),
                                             // Fix: Disable expansion to prevent redundant rows for consolidated items
-                                            breakdown: []
+                                            breakdown: [{ id: `COMP-${plan.id}`, name: 'RINCIAN BELANJA', rab: plan.total || 0, rap: plan.limit || allocated, components: plan.components || [] }],
                                         };
 
                                         return (
@@ -1958,9 +1958,9 @@ export default function RAB() {
                                                 key={plan.id}
                                                 data={rowData}
                                                 isExpanded={!!expandedReviewPlans[plan.id]}
-                                                onToggle={() => toggleReviewPlan(plan.id)}
+                                                onToggle={() => {}}, // Rely on Eye icon for expansion
                                                 formatCurrency={formatRupiah}
-                                                expandedDetailItems={expandedDetailItems}
+                                                expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }},
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
                                                 selectable={false}
@@ -1978,7 +1978,21 @@ export default function RAB() {
                                                             className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                                                             title="EDIT RENCANA"
                                                         >
-                                                            <Pencil size={18} />
+                                                            {!!expandedReviewPlans[plan.id] ? <EyeOff size={18} /> : <Eye size={18} />}
+                                                         </button>
+                                                         <button
+                                                             onClick={(e) => {
+                                                                 e.stopPropagation();
+                                                                 setEditingItem({
+                                                                     ...itemMaster,
+                                                                     isNewPlan: false,
+                                                                     planId: plan.id
+                                                                 });
+                                                             }}
+                                                             className="w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-sm"
+                                                             title="EDIT RENCANA"
+                                                         >
+                                                             <Pencil size={18} />
                                                         </button>
                                                         {!isLocked && (
                                                             <button
