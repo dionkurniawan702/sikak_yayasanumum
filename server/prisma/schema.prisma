@@ -166,6 +166,7 @@ model Student {
   status          StudentStatus? @relation(fields: [statusId], references: [id])
   parentStatusId  String?
   parentStatus    ParentStatus?  @relation(fields: [parentStatusId], references: [id])
+  gender          String?
   isDeleted       Boolean        @default(false)
 
   incomeDetails StudentIncomeDetail[]

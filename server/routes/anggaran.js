@@ -194,9 +194,7 @@ router.get('/students', async (req, res) => {
 
 router.post('/students', async (req, res) => {
     try {
-        const {
-            id, name, nis, unitId,
-            classId, academicYearId, statusId, parentStatusId,
+            classId, academicYearId, statusId, parentStatusId, gender,
             incomeDetails
         } = req.body;
 
@@ -207,6 +205,7 @@ router.post('/students', async (req, res) => {
                 academicYearId: academicYearId || null,
                 statusId: statusId || null,
                 parentStatusId: parentStatusId || null,
+                gender: gender || null,
                 incomeDetails: {
                     create: (incomeDetails || []).map(d => ({
                         incomeItemId: d.incomeItemId,
@@ -223,9 +222,7 @@ router.post('/students', async (req, res) => {
 
 router.put('/students/:id', async (req, res) => {
     try {
-        const {
-            name, nis, unitId,
-            classId, academicYearId, statusId, parentStatusId,
+            classId, academicYearId, statusId, parentStatusId, gender,
             incomeDetails
         } = req.body;
 
@@ -243,6 +240,7 @@ router.put('/students/:id', async (req, res) => {
                     academicYearId: academicYearId || null,
                     statusId: statusId || null,
                     parentStatusId: parentStatusId || null,
+                    gender: gender || null,
                     incomeDetails: incomeDetails ? {
                         create: incomeDetails.map(d => ({
                             incomeItemId: d.incomeItemId,
@@ -257,6 +255,7 @@ router.put('/students/:id', async (req, res) => {
                     academicYearId: academicYearId || null,
                     statusId: statusId || null,
                     parentStatusId: parentStatusId || null,
+                    gender: gender || null,
                     incomeDetails: {
                         create: (incomeDetails || []).map(d => ({
                             incomeItemId: d.incomeItemId,

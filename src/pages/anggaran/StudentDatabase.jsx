@@ -48,6 +48,7 @@ export default function StudentDatabase() {
         name: '', nis: '', unitId: '', 
         classId: '', academicYearId: '', 
         statusId: '', parentStatusId: '',
+        gender: '',
         incomeDetails: []
     });
     const [paymentForm, setPaymentForm] = useState([]);
@@ -75,6 +76,7 @@ export default function StudentDatabase() {
                 academicYearId: student.academicYearId || '',
                 statusId: student.statusId || '',
                 parentStatusId: student.parentStatusId || '',
+                gender: student.gender || '',
                 incomeDetails: student.incomeDetails || []
             });
         } else {
@@ -86,6 +88,7 @@ export default function StudentDatabase() {
                 academicYearId: sortedYearsCurrent[0]?.id || state.academicYears?.find(y => y.isCurrent)?.id || '',
                 statusId: state.studentStatuses?.find(s => s.name === 'Aktif')?.id || '',
                 parentStatusId: '',
+                gender: '',
                 incomeDetails: []
             });
         }
@@ -167,7 +170,8 @@ export default function StudentDatabase() {
                 'Kelas': studentClass?.name || '',
                 'Tahun Ajaran': academicYear?.name || '',
                 'Status': status?.name || '',
-                'Status Orang Tua': parentStatus?.name || ''
+                'Status Orang Tua': state.parentStatuses?.find(ps => ps.id === s.parentStatusId)?.name || '',
+                'Jenis Kelamin': s.gender || ''
             };
 
             // Only add income items that are relevant to the displayed units
@@ -209,7 +213,8 @@ export default function StudentDatabase() {
                 'Kelas': state.classes?.find(c => c.unitId === targetUnitId)?.name || '7A',
                 'Tahun Ajaran': state.academicYears?.find(y => y.isCurrent)?.name || '',
                 'Status': 'Aktif',
-                'Status Orang Tua': state.parentStatuses?.[0]?.name || ''
+                'Status Orang Tua': state.parentStatuses?.[0]?.name || '',
+                'Jenis Kelamin': 'Laki-laki'
             }
         ];
         
@@ -288,6 +293,7 @@ export default function StudentDatabase() {
                             academicYearId: academicYear?.id || currentYear?.id || '',
                             statusId: status?.id || defaultStatus?.id || '',
                             parentStatusId: parentStatus?.id || '',
+                            gender: item['Jenis Kelamin']?.toString() || '',
                             classId: studentClass?.id || '',
                             incomeDetails
                         };
@@ -435,6 +441,7 @@ export default function StudentDatabase() {
                         <tr className="sticky top-0 z-20 bg-slate-100 text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-slate-200 shadow-sm">
                             <th className="p-6">Data Siswa</th>
                             <th className="p-6">Unit & Kelas</th>
+                            <th className="p-6 text-center">JK</th>
                             <th className="p-6 text-center">Tahun Ajaran</th>
                             <th className="p-6 text-center">Status</th>
                             <th className="p-6 text-right">Jumlah</th>
@@ -474,6 +481,15 @@ export default function StudentDatabase() {
                                                 </span>
                                             )}
                                         </div>
+                                    </td>
+                                    <td className="p-6 text-center">
+                                        <span className={`text-[10px] font-bold px-2 py-1 rounded-lg ${
+                                            student.gender === 'Laki-laki' ? 'bg-blue-50 text-blue-600' : 
+                                            student.gender === 'Perempuan' ? 'bg-rose-50 text-rose-600' : 
+                                            'bg-slate-50 text-slate-400'
+                                        }`}>
+                                            {student.gender === 'Laki-laki' ? 'L' : student.gender === 'Perempuan' ? 'P' : '-'}
+                                        </span>
                                     </td>
                                     <td className="p-6 text-center">
                                         {academicYear ? (
@@ -650,6 +666,20 @@ export default function StudentDatabase() {
                                             <option key={s.id} value={s.id}>{s.name}</option>
                                         ))}
                                     </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="form-label">Jenis Kelamin</label>
+                                        <select
+                                            className="form-select"
+                                            value={studentForm.gender}
+                                            onChange={e => setStudentForm({ ...studentForm, gender: e.target.value })}
+                                        >
+                                            <option value="">Pilih JK</option>
+                                            <option value="Laki-laki">Laki-laki</option>
+                                            <option value="Perempuan">Perempuan</option>
+                                        </select>
+                                    </div>
                                 </div>
 
                                 {unitIncomeItems.length > 0 && (
