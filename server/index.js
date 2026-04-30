@@ -119,7 +119,10 @@ const getPrisma = () => {
                 const allPlans = await prisma.rabPlan.findMany();
                 const groups = {};
                 allPlans.forEach(p => {
-                    const key = `${p.academicYearId}|${p.unitId || 'FIELD-' + p.fieldId}`;
+                    // Critical Fix: Distinguish between Yayasan and BOS plans in cleanup
+                    const isBos = p.id.endsWith('-BOS');
+                    const source = isBos ? 'BOS' : 'YAYASAN';
+                    const key = `${p.academicYearId}|${p.unitId || 'FIELD-' + p.fieldId}|${source}`;
                     if (!groups[key]) groups[key] = [];
                     groups[key].push(p);
                 });
