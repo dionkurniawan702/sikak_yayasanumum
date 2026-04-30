@@ -1463,6 +1463,88 @@ export default function RAB() {
         reader.readAsBinaryString(file);
     };
 
+    const handleDownloadLocalTemplate = (itemName) => {
+        const wb = XLSX.utils.book_new();
+        const data = [
+            {
+                'Keterangan': 'Contoh Rincian 1',
+                'Vol': 1,
+                'Satuan': 'Pcs',
+                'Kali': 1,
+                'Harga': 100000,
+                'Program Belanja': '',
+                'Januari': 0, 'Februari': 0, 'Maret': 0, 'April': 0, 'Mei': 0, 'Juni': 0,
+                'Juli': 0, 'Agustus': 0, 'September': 0, 'Oktober': 0, 'November': 0, 'Desember': 0
+            }
+        ];
+        const ws = XLSX.utils.json_to_sheet(data);
+        XLSX.utils.book_append_sheet(wb, ws, "Rincian " + itemName.substring(0, 20));
+        XLSX.writeFile(wb, `Template_Rincian_${itemName.replace(/\s+/g, '_')}.xlsx`);
+    };
+
+    const handleLocalFileUpload = (e, itemId) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wsName = wb.SheetNames[0];
+                const data = XLSX.utils.sheet_to_json(wb.Sheets[wsName]);
+
+                const newComponents = data.map((row, idx) => {
+                    const months = {};
+                    monthsOptions.forEach(m => {
+                        const val = parseFloat(row[m.name]) || 0;
+                        months[m.id] = { m: val > 0, jumlah: val };
+                    });
+
+                    const vol = parseFloat(row['Vol']) || 0;
+                    const kali = parseFloat(row['Kali']) || 1;
+                    const harga = parseFloat(row['Harga']) || 0;
+                    const total = vol * kali * harga;
+
+                    return {
+                        id: `C-${Date.now()}-${idx}`,
+                        label: row['Keterangan'] || 'Imported',
+                        volume: vol,
+                        satuan: row['Satuan'] || '',
+                        kali: kali,
+                        harga: harga,
+                        total: total,
+                        programId: programs.find(p => p.name === row['Program Belanja'])?.id || null,
+                        semester: '1',
+                        useBos: fundSourceFilter === 'BOS',
+                        months: months
+                    };
+                });
+
+                if (newComponents.length > 0) {
+                    const existingPlans = currentPlan.expense[itemId] || [];
+                    const basePlan = existingPlans[0] || { id: `P-${itemId}-${Date.now()}`, total: 0, components: [], months: {} };
+                    
+                    const updatedPlan = {
+                        ...basePlan,
+                        components: [...(basePlan.components || []), ...newComponents],
+                        total: (basePlan.total || 0) + newComponents.reduce((sum, c) => sum + c.total, 0)
+                    };
+
+                    setCurrentPlan(prev => ({
+                        ...prev,
+                        expense: { ...prev.expense, [itemId]: [updatedPlan] }
+                    }));
+                    setMessage({ type: 'success', text: `${newComponents.length} rincian berhasil diimpor.` });
+                }
+            } catch (err) {
+                console.error(err);
+                setMessage({ type: 'error', text: 'Gagal mengimpor rincian: ' + err.message });
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
+
     const renderReviewView = () => {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
@@ -2042,15 +2124,6 @@ export default function RAB() {
                         <Download size={16} />
                         EXPORT EXCEL
                     </button>
-                    {!isLocked && (
-                        <button
-                            onClick={() => setShowImportModal(true)}
-                            className="bg-indigo-50 text-indigo-600 border border-indigo-200 px-6 py-3 rounded-2xl font-black text-xs transition-all flex items-center gap-2 hover:bg-indigo-600 hover:text-white active:scale-95 shadow-sm"
-                        >
-                            <CloudUpload size={16} />
-                            IMPORT MASAL
-                        </button>
-                    )}
                     {!isConsolidation && (
                         <button
                             onClick={handleSubmitReview}
@@ -2536,6 +2609,29 @@ export default function RAB() {
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-1.5 h-6 bg-blue-600 rounded-full" />
                                                     <h4 className="text-xs font-black text-slate-900 uppercase tracking-widest italic">Ringkasan Daftar Rincian</h4>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button
+                                                        onClick={() => handleDownloadLocalTemplate(editingItem.name)}
+                                                        className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2"
+                                                    >
+                                                        <Download size={14} />
+                                                        Template
+                                                    </button>
+                                                    <div className="relative">
+                                                        <input
+                                                            type="file"
+                                                            accept=".xlsx, .xls"
+                                                            onChange={(e) => handleLocalFileUpload(e, itemId)}
+                                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                                        />
+                                                        <button
+                                                            className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center gap-2"
+                                                        >
+                                                            <CloudUpload size={14} />
+                                                            Import Excel
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
 
