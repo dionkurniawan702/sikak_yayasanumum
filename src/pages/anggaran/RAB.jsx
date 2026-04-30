@@ -1986,7 +1986,7 @@ export default function RAB() {
                                                 key={plan.id}
                                                 data={rowData}
                                                 isExpanded={!!expandedReviewPlans[plan.id]}
-                                                onToggle={() => toggleReviewPlan(plan.id)}
+                                                onToggle={() => (isSuperAdmin || isAdminBidang) && toggleReviewPlan(plan.id)}
                                                 formatCurrency={formatRupiah}
                                                  expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
                                                 onToggleDetailItem={toggleDetailItem}
