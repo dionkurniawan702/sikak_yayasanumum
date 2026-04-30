@@ -337,7 +337,41 @@ export default function RAB() {
     }, [rabPlans, selectedYearId, selectedUnitId, fundSourceFilter]);
 
     // Determine which plan data to display
-    const activePlan = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : (currentPlan || { income: {}, expense: {}, status: 'DRAFT' });
+    // Determine which plan data to display with automatic consolidation for local items
+    const activePlan = useMemo(() => {
+        const raw = (selectedUnitId === 'FOUNDATION' && consolidatedPlan) ? consolidatedPlan : (currentPlan || { income: {}, expense: {}, status: 'DRAFT' });
+        
+        // Force consolidate expense if it has multiple plans per item (only for non-foundation/non-review views)
+        if (selectedUnitId !== 'FOUNDATION' && activeTab !== 'REVIEW' && raw.expense) {
+            const consolidatedExpense = {};
+            Object.entries(raw.expense).forEach(([itemId, plans]) => {
+                if (Array.isArray(plans) && plans.length > 1) {
+                    // Merge multiple plans into one virtual plan for UI consistency
+                    const first = plans[0];
+                    const allComponents = plans.flatMap(p => p.components || []);
+                    const aggrMonths = {};
+                    plans.forEach(p => {
+                        Object.entries(p.months || {}).forEach(([mId, mData]) => {
+                            if (!mData.m) return;
+                            if (!aggrMonths[mId]) aggrMonths[mId] = { m: true, jumlah: 0 };
+                            aggrMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                        });
+                    });
+                    consolidatedExpense[itemId] = [{
+                        ...first,
+                        total: plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0),
+                        components: allComponents,
+                        months: aggrMonths,
+                        description: Array.from(new Set(allComponents.map(c => c.label))).join(', ')
+                    }];
+                } else {
+                    consolidatedExpense[itemId] = plans;
+                }
+            });
+            return { ...raw, expense: consolidatedExpense };
+        }
+        return raw;
+    }, [currentPlan, consolidatedPlan, selectedUnitId, activeTab]);
 
     const isConsolidation = selectedUnitId === 'FOUNDATION';
     const isField = selectedUnitId.startsWith('FIELD-');
