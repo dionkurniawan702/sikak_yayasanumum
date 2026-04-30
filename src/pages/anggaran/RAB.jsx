@@ -1465,7 +1465,7 @@ export default function RAB() {
                                 total += val;
                             });
 
-                            const program = programs.find(p => p.name === row['Program Belanja']);
+                            const program = allPrograms.find(p => p.name.trim().toLowerCase() === (row['Program Belanja']?.toString() || '').trim().toLowerCase());
                             const comp = {
                                 id: `C-${Date.now()}-${idx}`,
                                 label: row['Keterangan / Komponen'] || 'Imported Component',
@@ -1573,7 +1573,7 @@ export default function RAB() {
                         kali: kali,
                         harga: harga,
                         total: total,
-                        programId: programs.find(p => p.name.trim().toLowerCase() === (row[progKey]?.toString() || '').trim().toLowerCase())?.id || null,
+                        programId: allPrograms.find(p => p.name.trim().toLowerCase() === (row[progKey]?.toString() || '').trim().toLowerCase())?.id || null,
                         semester: '1',
                         useBos: fundSourceFilter === 'BOS',
                         months: months
