@@ -170,7 +170,6 @@ model Student {
   isDeleted       Boolean        @default(false)
 
   incomeDetails StudentIncomeDetail[]
-  payments      StudentPayment[]
 
   @@map("Student")
 }
@@ -306,18 +305,7 @@ model StudentIncomeDetail {
   @@map("StudentIncomeDetail")
 }
 
-model StudentPayment {
-  id           String     @id @default(uuid())
-  studentId    String
-  student      Student    @relation(fields: [studentId], references: [id])
-  incomeItemId String
-  amount       Decimal    @db.Decimal(15, 2)
-  date         DateTime   @default(now())
-  description  String?
-  isDeleted    Boolean    @default(false)
 
-  @@map("student_payments")
-}
 
 model DistributionSetting {
   id             String      @id @default(uuid())
