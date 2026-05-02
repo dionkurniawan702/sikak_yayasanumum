@@ -43,7 +43,7 @@ export default function GeneralLedger() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'GeneralLedger');
-        XLSX.writeFile(wb, `SIKAK-Yayasan-BukuBesar-${selectedAcc?.code}-${selectedAcc?.name}.xlsx`);
+        XLSX.writeFile(wb, `SIKAD-Dareliman-BukuBesar-${selectedAcc?.code}-${selectedAcc?.name}.xlsx`);
     };
 
     return (

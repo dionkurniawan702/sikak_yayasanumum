@@ -127,8 +127,8 @@ export default function Login() {
                     }}>
                         <LogIn size={32} color="white" />
                     </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>SIKAK YAYASAN Login</h2>
-                    <p style={{ color: '#64748b', fontSize: '0.875rem' }}>SIKAK YAYASAN UMUM — Berbasis PSAK 35</p>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>SIKAD DARELIMAN Login</h2>
+                    <p style={{ color: '#64748b', fontSize: '0.875rem' }}>SIKAD (Sistem Keuangan Dareliman) — Berbasis PSAK 35</p>
                 </div>
 
                 {error && (
@@ -207,7 +207,7 @@ export default function Login() {
 
                 <div style={{ marginTop: '32px', textAlign: 'center' }}>
                     <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
-                        &copy; 2026 SIKAK YAYASAN UMUM — Sistem Akuntansi Yayasan Terintegrasi
+                        &copy; 2026 SIKAD (Sistem Keuangan Dareliman) — Sistem Akuntansi Yayasan Terintegrasi
                     </p>
                 </div>
             </div>

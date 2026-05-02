@@ -32,7 +32,7 @@ export default function UserManagement() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Users');
-        XLSX.writeFile(wb, 'SIKAK-Yayasan-Users.xlsx');
+        XLSX.writeFile(wb, 'SIKAD-Dareliman-Users.xlsx');
     };
 
     const openModal = (user = null) => {

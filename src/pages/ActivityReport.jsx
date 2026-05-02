@@ -52,7 +52,7 @@ export default function ActivityReport() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'ActivityReport');
-        XLSX.writeFile(wb, `SIKAK-Yayasan-LaporanAktivitas-${selectedYear}.xlsx`);
+        XLSX.writeFile(wb, `SIKAD-Dareliman-LaporanAktivitas-${selectedYear}.xlsx`);
     };
 
     // Helper untuk mendapatkan hierarki Pendapatan & Beban
@@ -113,7 +113,7 @@ export default function ActivityReport() {
             <div className="bg-white p-12 rounded-[40px] border border-slate-100 shadow-2xl animate-in" ref={reportRef}>
                 {/* Header Formal */}
                 <div className="text-center mb-16 pb-8 border-b-4 border-double border-slate-200">
-                    <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAK YAYASAN UMUM</h1>
+                    <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAD DARELIMAN</h1>
                     <h2 className="text-xl font-bold text-slate-600">LAPORAN AKTIVITAS</h2>
                     <p className="text-sm font-medium text-slate-400 mt-2 lowercase tracking-widest">Untuk Tahun yang Berakhir {currentYearStr}</p>
                 </div>

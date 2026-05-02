@@ -56,7 +56,7 @@ const isEmptyPlan = (plan) => {
 
 function loadState() {
     try {
-        const saved = localStorage.getItem('sikak-yayasan-data');
+        const saved = localStorage.getItem('sikad-dareliman-data') || localStorage.getItem('sikak-yayasan-data');
         if (saved) {
             const data = JSON.parse(saved);
 
@@ -187,7 +187,7 @@ let syncTimeout = null;
 
 function saveState(state) {
     try {
-        localStorage.setItem('sikak-yayasan-data', JSON.stringify(state));
+        localStorage.setItem('sikad-dareliman-data', JSON.stringify(state));
     } catch (e) { /* ignore */ }
 }
 
@@ -462,6 +462,7 @@ function appReducer(state, action) {
             newState = { ...state, budgets: action.payload };
             break;
         case 'RESET_DATA':
+            localStorage.removeItem('sikad-dareliman-data');
             localStorage.removeItem('sikak-yayasan-data');
             newState = defaultState;
             break;

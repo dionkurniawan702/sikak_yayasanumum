@@ -128,7 +128,7 @@ export default function Profile() {
             </div>
 
             <div className="mt-12 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
-                SIKAK YAYASAN UMUM — IDENTITY AND ACCESS MANAGEMENT (IAM)
+                SIKAD DARELIMAN — IDENTITY AND ACCESS MANAGEMENT (IAM)
             </div>
         </div>
     );

@@ -5,7 +5,7 @@ const router = express.Router();
 // Helper to get Prisma Client from the request (attached in index.js)
 const getPrisma = (req) => req.app.get('prisma');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sikak-yayasan-umum-secret-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'sikad-dareliman-secret-2026';
 
 // Middleware: Hanya superadmin yang boleh akses
 const requireSuperAdmin = (req, res, next) => {

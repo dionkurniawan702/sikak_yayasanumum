@@ -37,7 +37,7 @@ export default function StatementOfChangesInNetAssets() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'NetAssetChanges');
-        XLSX.writeFile(wb, `SIKAK-Yayasan-PerubahanAsetNeto-${selectedYear}.xlsx`);
+        XLSX.writeFile(wb, `SIKAD-Dareliman-PerubahanAsetNeto-${selectedYear}.xlsx`);
     };
 
     // Helper to get balance for a specific asset neto category and year
@@ -105,7 +105,7 @@ export default function StatementOfChangesInNetAssets() {
             <div className="bg-white p-12 rounded-[40px] border border-slate-100 shadow-2xl animate-in">
                 {/* Header Formal */}
                 <div className="text-center mb-16 pb-8 border-b-4 border-double border-slate-200">
-                    <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAK YAYASAN UMUM</h1>
+                    <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAD DARELIMAN</h1>
                     <h2 className="text-xl font-bold text-slate-600 uppercase tracking-widest leading-none mt-2">LAPORAN PERUBAHAN ASET NETO</h2>
                     <p className="text-sm font-medium text-slate-400 mt-2 lowercase tracking-widest">Untuk Tahun yang Berakhir pada 31 Desember {currentYearStr}</p>
                 </div>
@@ -191,7 +191,7 @@ export default function StatementOfChangesInNetAssets() {
                 </div>
 
                 <div className="mt-20 pt-8 border-t border-slate-100 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                    Laporan ini disusun secara otomatis oleh SIKAK YAYASAN UMUM pada {formatTanggal(new Date().toISOString())}
+                    Laporan ini disusun secara otomatis oleh SIKAD (Sistem Keuangan Dareliman) pada {formatTanggal(new Date().toISOString())}
                 </div>
             </div>
         </div>

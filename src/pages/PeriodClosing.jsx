@@ -232,7 +232,7 @@ export default function PeriodClosing() {
             </div>
             
             <div className="mt-20 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                SIKAK YAYASAN UMUM — INTERNAL ACCOUNTANT CONTROL SYSTEM
+                SIKAD DARELIMAN — INTERNAL ACCOUNTANT CONTROL SYSTEM
             </div>
         </div>
     );

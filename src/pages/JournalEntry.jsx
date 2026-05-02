@@ -58,7 +58,7 @@ export default function JournalEntry() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'History');
-        XLSX.writeFile(wb, 'SIKAK-Yayasan-Journal-History.xlsx');
+        XLSX.writeFile(wb, 'SIKAD-Dareliman-Journal-History.xlsx');
     };
 
     const TAX_GROUPS = [

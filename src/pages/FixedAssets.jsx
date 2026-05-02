@@ -31,7 +31,7 @@ export default function FixedAssets() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Assets');
-        XLSX.writeFile(wb, 'SIKAK-Yayasan-Assets.xlsx');
+        XLSX.writeFile(wb, 'SIKAD-Dareliman-Assets.xlsx');
     };
 
     const depAccounts = accounts.filter(a => a.category === 'detail' && a.type === 'Beban');

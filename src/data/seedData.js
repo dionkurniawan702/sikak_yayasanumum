@@ -1,5 +1,5 @@
 // ========================================
-// Data Awal (Seed Data) — SIKAK YAYASAN UMUM
+// Data Awal (Seed Data) — SIKAD DARELIMAN
 // ========================================
 
 // Daftar Akun (Chart of Accounts)

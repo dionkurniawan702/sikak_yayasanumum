@@ -1,7 +1,7 @@
 {
-    "name": "sikak-yayasan-umum-backend",
+    "name": "sikad-dareliman-backend",
     "version": "1.0.0",
-    "description": "Backend API for SIKAK Yayasan Umum",
+    "description": "Backend API for SIKAD Dareliman",
     "main": "index.js",
     "type": "module",
     "scripts": {

@@ -1,7 +1,7 @@
 import { hitungTotalPenyusutan } from './depreciation';
 
 // ========================================
-// Utilitas Akuntansi — SIKAK YAYASAN UMUM
+// Utilitas Akuntansi — SIKAD DARELIMAN
 // ========================================
 
 /**

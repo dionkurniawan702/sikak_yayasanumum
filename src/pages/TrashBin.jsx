@@ -248,7 +248,7 @@ export default function TrashBin() {
 
             
             <div className="mt-20 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
-                SIKAK YAYASAN UMUM — INTERNAL DATA RECOVERY CONSOLE
+                SIKAD DARELIMAN — INTERNAL DATA RECOVERY CONSOLE
             </div>
         </div>
     );

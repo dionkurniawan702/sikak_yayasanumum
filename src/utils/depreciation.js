@@ -1,5 +1,5 @@
 // ========================================
-// Utilitas Penyusutan — SIKAK YAYASAN UMUM
+// Utilitas Penyusutan — SIKAD DARELIMAN
 // ========================================
 
 export function hitungPenyusutanBulanan(hargaPerolehan, nilaiResidu, masaManfaatBulan) {

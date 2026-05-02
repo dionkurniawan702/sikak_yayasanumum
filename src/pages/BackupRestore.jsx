@@ -107,7 +107,7 @@ export default function BackupRestore() {
 
             const a = document.createElement('a');
             a.href = url;
-            a.download = `sikak_yayasan_backup_${date}.json`;
+            a.download = `sikad_dareliman_backup_${date}.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -297,7 +297,7 @@ export default function BackupRestore() {
             )}
 
             <div className="mt-20 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest italic">
-                Sistem Pencatatan Keuangan Terpusat SIKAK YAYASAN UMUM
+                Sistem Pencatatan Keuangan Terpusat SIKAD DARELIMAN
             </div>
         </div>
     );

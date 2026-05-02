@@ -1,5 +1,5 @@
 /**
- * Budget Engine for SIKAK YAYASAN UMUM
+ * Budget Engine for SIKAD DARELIMAN
  * Calculates RAP (Rencana Anggaran Pendapatan) and Allocations
  */
 

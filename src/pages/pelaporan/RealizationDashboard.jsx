@@ -334,7 +334,7 @@ export default function RealizationDashboard() {
             <div className="mt-20 text-center">
                 <div className="inline-block px-10 py-3 bg-white border border-slate-100 rounded-full shadow-sm">
                     <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
-                        Sistem Akuntansi Keuangan Yayasan Umum — SIKAK
+                        Sistem Keuangan Dareliman — SIKAD
                     </p>
                 </div>
             </div>

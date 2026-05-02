@@ -29,7 +29,7 @@ export default function TrialBalance() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'TrialBalance');
-        XLSX.writeFile(wb, 'SIKAK-Yayasan-NeracaSaldo.xlsx');
+        XLSX.writeFile(wb, 'SIKAD-Dareliman-NeracaSaldo.xlsx');
     };
 
     const types = ['Aset', 'Kewajiban', 'Aset Neto', 'Pendapatan', 'Beban'];
@@ -70,7 +70,7 @@ export default function TrialBalance() {
                 <div className="bg-white p-12 rounded-3xl border border-slate-100 shadow-xl overflow-hidden" ref={reportRef}>
                     {/* Header Formal */}
                     <div className="text-center mb-10 pb-8 border-b-4 border-double border-slate-200">
-                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAK YAYASAN UMUM</h1>
+                        <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAD DARELIMAN</h1>
                         <h2 className="text-xl font-bold text-slate-600">NERACA SALDO (TRIAL BALANCE)</h2>
                         <p className="text-sm font-medium text-slate-400 mt-2 lowercase tracking-widest">Per Tanggal {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                     </div>

@@ -27,7 +27,7 @@ export default function ProgramManagement() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Programs');
-        XLSX.writeFile(wb, 'SIKAK-Yayasan-Programs.xlsx');
+        XLSX.writeFile(wb, 'SIKAD-Dareliman-Programs.xlsx');
     };
 
     const filteredPrograms = programs.filter(p =>

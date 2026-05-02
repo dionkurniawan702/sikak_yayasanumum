@@ -305,7 +305,7 @@ export default function ClassManagement() {
                 <div className="p-6 bg-slate-50/30 border-t border-slate-50 flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-widest">
                     <span>Total: {filteredItems.length} Kelas</span>
                     <span className="flex items-center gap-1 opacity-40 cursor-default">
-                        Sikak Yayasan <ChevronRight size={12} /> Database Kelas
+                        SIKAD DARELIMAN <ChevronRight size={12} /> Database Kelas
                     </span>
                 </div>
             </div>

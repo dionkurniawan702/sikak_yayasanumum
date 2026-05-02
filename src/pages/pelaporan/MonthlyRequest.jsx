@@ -232,9 +232,9 @@ export default function MonthlyRequest() {
                 </head>
                 <body>
                     <div class="header">
-                        <h1>YAYASAN UMUM</h1>
-                        <p>Jl. Raya Utama No. 123, Kota SIKAK</p>
-                        <p>Tlp: (021) 1234567 • Email: info@yayasanumum.org</p>
+                        <h1>DARELIMAN</h1>
+                        <p>Jl. Raya Utama No. 123, Kota PADANG</p>
+                        <p>Tlp: (021) 1234567 • Email: info@dareliman.org</p>
                     </div>
 
                     <div class="info">

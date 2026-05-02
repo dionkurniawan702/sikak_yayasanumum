@@ -242,9 +242,9 @@ export default function Sidebar({ isOpen, onClose }) {
                         <Landmark className="text-blue-200" size={24} />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-xl font-black text-white tracking-tight">SIKAK</span>
+                        <span className="text-xl font-black text-white tracking-tight">SIKAD</span>
                         <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] -mt-1 line-clamp-1 italic">
-                            Yayasan Umum
+                            Sistem Keuangan Dareliman
                         </span>
                     </div>
                 </div>
@@ -337,7 +337,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     </button>
                 )}
                 <div className="mt-4 px-4 text-[9px] font-bold text-slate-700 uppercase tracking-widest text-center opacity-40">
-                    SIKAK v1.5.0-diag
+                    SIKAD v1.5.0-diag
                 </div>
             </div>
         </aside>

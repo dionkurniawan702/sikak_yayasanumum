@@ -117,7 +117,7 @@ export default function ProgramReport() {
 
             <div className="animate-in" ref={reportRef}>
                 <div className="hidden print:block text-center mb-12">
-                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">SIKAK YAYASAN UMUM</h1>
+                    <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">SIKAD DARELIMAN</h1>
                     <h2 className="text-xl font-bold text-slate-600">LAPORAN REALISASI PROGRAM</h2>
                     <p className="text-xs font-black text-slate-300 tracking-[0.3em] uppercase mt-2">Periode Konsolidasi Program Tahun {curYear}</p>
                 </div>

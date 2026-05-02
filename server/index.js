@@ -1,4 +1,4 @@
-// SIKAK Yayasan Umum - Unified Server (Version 1.0.3 deployed at 2026-04-06 12:05)
+// SIKAD Dareliman - Unified Server (Version 1.0.3 deployed at 2026-04-06 12:05)
 import express from 'express';
 import cors from 'cors';
 import compression from 'compression';
@@ -15,7 +15,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 // 1. Immediate Boot Log
-console.log(`[Diagnostic] ${new Date().toISOString()} - SIKAK Backend Process Starting...`);
+console.log(`[Diagnostic] ${new Date().toISOString()} - SIKAD Backend Process Starting...`);
 
 // 2. Global Exception Catching (Crucial for Alpine/Docker)
 process.on('uncaughtException', (err) => {
@@ -216,7 +216,7 @@ app.set('prisma', getPrisma());
 
 // 4. API Routes
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sikak-yayasan-umum-secret-2026';
+const JWT_SECRET = process.env.JWT_SECRET || 'sikad-dareliman-secret-2026';
 
 // --- LOGIN ENDPOINT ---
 app.post('/api/login', async (req, res) => {
@@ -631,7 +631,7 @@ app.get('/api/health', async (req, res) => {
     res.json({
         status: 'ok', version: '1.4.3', database: dbError ? 'error' : 'connected',
         dbError, tables, rawCounts, studentStructure, lastSyncError, lastSyncStats,
-        dbContent, stats, message: 'SIKAK API 1.4.3 Running'
+        dbContent, stats, message: 'SIKAD API 1.4.3 Running'
     });
 });
 

@@ -41,7 +41,7 @@ export default function ChartOfAccounts() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'CoA');
-        XLSX.writeFile(wb, `SIKAK-Yayasan-ChartOfAccounts-${selectedYear}.xlsx`);
+        XLSX.writeFile(wb, `SIKAD-Dareliman-ChartOfAccounts-${selectedYear}.xlsx`);
     };
 
     let subTypeHierarchy = [];

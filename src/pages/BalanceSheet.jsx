@@ -64,7 +64,7 @@ export default function BalanceSheet() {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'BalanceSheet');
-        XLSX.writeFile(wb, `SIKAK-Yayasan-Neraca-${selectedYear}.xlsx`);
+        XLSX.writeFile(wb, `SIKAD-Dareliman-Neraca-${selectedYear}.xlsx`);
     };
 
     const buildCompHierarchy = (type) => {
