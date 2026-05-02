@@ -208,7 +208,7 @@ export default function BackupRestore() {
                             <div className="flex-1">
                                 <div className="flex items-center gap-3 mb-2">
                                     <h3 className="text-2xl font-black text-slate-900 uppercase tracking-tighter italic">Reset Data Realisasi Per Unit</h3>
-                                    <span className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-[10px] font-black uppercase tracking-widest">Superadmin</span>
+                                    <span className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-[10px] font-black uppercase tracking-widest">Yayasan</span>
                                 </div>
                                 <p className="text-sm text-slate-500 font-medium italic mb-6 leading-relaxed max-w-xl">
                                     Hapus seluruh <strong>Laporan Realisasi</strong> dan <strong>Pengajuan Dana</strong> milik unit tertentu untuk memulai ulang pencatatan. Data master (RAB, unit, user) tidak terpengaruh.

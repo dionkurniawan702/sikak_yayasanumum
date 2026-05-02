@@ -338,7 +338,7 @@ export default function BOSSaldo() {
                 <AlertCircle size={16} className="mt-0.5 text-green-600 flex-shrink-0" />
                 <p>
                     <strong>Catatan:</strong> Alokasi BOS bersumber dari data yang diinput di menu <strong>Database BOS</strong>.
-                    Realisasi dihitung dari laporan yang sudah diverifikasi oleh Superadmin.
+                    Realisasi dihitung dari laporan yang sudah diverifikasi oleh Yayasan.
                 </p>
             </div>
         </div>

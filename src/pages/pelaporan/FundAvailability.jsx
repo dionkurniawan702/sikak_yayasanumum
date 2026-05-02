@@ -220,7 +220,7 @@ export default function FundAvailability() {
         setIsSubmitting(false);
         setShowReturnModal(false);
         setReturnForm({ amount: '', buktiTeks: '', description: '' });
-        alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Superadmin.');
+        alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Yayasan.');
     };
 
     const handleApproveReturn = async (ret) => {
@@ -517,7 +517,7 @@ export default function FundAvailability() {
                     <div>
                         <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest mb-2">Informasi Saldo</h4>
                         <p className="text-sm text-slate-600 leading-relaxed font-semibold">
-                            "Saldo Kas di Tangan" adalah dana yang sudah diajukan dan telah disetujui (ACC) oleh Superadmin, dikurangi dengan laporan realisasi pengeluaran yang dicatat.
+                            "Saldo Kas di Tangan" adalah dana yang sudah diajukan dan telah disetujui (ACC) oleh Yayasan, dikurangi dengan laporan realisasi pengeluaran yang dicatat.
                         </p>
                     </div>
                 </div>
