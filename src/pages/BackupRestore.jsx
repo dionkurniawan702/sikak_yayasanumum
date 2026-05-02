@@ -197,29 +197,6 @@ export default function BackupRestore() {
                     </div>
                 </div>
 
-                {/* Server Sync */}
-                <div className="lg:col-span-2 bg-slate-900 p-10 rounded-[40px] shadow-2xl relative overflow-hidden group">
-                    <div className="relative z-10 flex flex-col md:flex-row items-center gap-10">
-                        <div className="w-24 h-24 bg-white/10 rounded-3xl flex items-center justify-center text-blue-400 group-hover:rotate-12 transition-transform duration-500">
-                             <RefreshCw size={48} className={syncing ? 'animate-spin' : ''} />
-                        </div>
-                        <div className="flex-1 text-center md:text-left">
-                            <h3 className="text-2xl font-black text-white uppercase tracking-tighter italic mb-3">SINKRONISASI DATABASE PUSAT</h3>
-                            <p className="text-sm text-slate-400 font-medium italic mb-6 leading-relaxed max-w-xl">
-                                Kirimkan seluruh data lokal yang tersimpan di browser ini ke server database utama yayasan. Gunakan ini untuk memastikan server memiliki data paling mutakhir.
-                            </p>
-                            <div className="flex flex-wrap gap-4 justify-center md:justify-start">
-                                <button onClick={handleSyncToServer} disabled={syncing} className="px-10 py-4 bg-blue-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-xl shadow-blue-500/20 hover:scale-105 active:scale-95 transition-all">
-                                    {syncing ? 'Sinkronisasi...' : 'MULAI SINKRONISASI SEKARANG'}
-                                </button>
-                                <button onClick={() => window.confirm('Hapus cache lokal?') && dispatch({ type: 'RESET_LOCAL_CACHE' })} className="px-6 py-4 bg-white/5 text-slate-400 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] border border-white/5 hover:bg-white/10 transition-all whitespace-nowrap">
-                                    Reset Memori Browser
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                    <Database size={180} className="absolute -bottom-10 -right-10 text-white/5 pointer-events-none" />
-                </div>
 
                 {/* Reset Data Realisasi — Superadmin Only */}
                 {isSuperAdmin && (
