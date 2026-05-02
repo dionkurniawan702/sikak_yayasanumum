@@ -65,10 +65,9 @@ export default function IncomeItemManagement() {
         }
     };
 
-    const isFundSourcePage = window.location.pathname.includes('sumber-dana');
-    const pageTitle = isFundSourcePage ? 'Master Sumber Dana' : 'Master Item Penerimaan';
-    const pageDesc = isFundSourcePage ? 'Kelola kategori sumber dana pendidikan dan yayasan' : 'Kelola kategori item penerimaan dan pendapatan';
-    const PageIcon = isFundSourcePage ? HandCoins : Coins;
+    const pageTitle = 'Master Item Penerimaan';
+    const pageDesc = 'Kelola kategori item penerimaan dan pendapatan';
+    const PageIcon = Coins;
 
     return (
         <div className="p-4 lg:p-8 max-w-7xl mx-auto space-y-8 animate-in fade-in duration-700">

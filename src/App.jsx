@@ -211,7 +211,6 @@ function AppContent() {
                     <Route path="anggaran/database-bos" element={<BOSDatabase />} />
                     <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />
                     <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
-                    <Route path="anggaran/sumber-dana" element={<IncomeItemManagement />} />
                 </Route>
             </Routes>
         </BrowserRouter>
