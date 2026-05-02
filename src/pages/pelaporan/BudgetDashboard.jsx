@@ -425,9 +425,9 @@ export default function BudgetDashboard() {
 
 
     return (
-        <div className="p-8 animate-in pb-20">
+        <div className="p-4 md:p-8 animate-in pb-20">
             {/* ===== HEADER & CONTROLS ===== */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 pt-12 md:pt-0">
                 <div>
                     <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Dashboard Anggaran</h2>
                     <p className="text-slate-500 font-medium tracking-tight">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>

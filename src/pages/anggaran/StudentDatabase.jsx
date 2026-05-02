@@ -482,14 +482,14 @@ export default function StudentDatabase() {
     const unknownCount = filteredStudents.length - maleCount - femaleCount;
 
     return (
-        <div className="p-8 animate-in">
+        <div className="p-4 md:p-8 animate-in pb-20">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">Database Siswa</h1>
                     <p className="text-slate-500 font-medium italic">Sumber Data Penerimaan Keuangan Yayasan</p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex flex-wrap gap-3">
                     <button 
                         onClick={handleExport}
                         className="budget-export-btn"

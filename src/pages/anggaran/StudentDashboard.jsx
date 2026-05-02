@@ -119,7 +119,7 @@ export default function StudentDashboard() {
     const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
     return (
-        <div className="p-8 animate-in bg-slate-50 min-h-screen pb-20">
+        <div className="p-4 md:p-8 animate-in bg-slate-50 min-h-screen pb-20">
             {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
