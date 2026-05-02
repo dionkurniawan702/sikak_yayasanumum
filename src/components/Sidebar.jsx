@@ -201,7 +201,6 @@ export default function Sidebar({ isOpen, onClose }) {
                     title: 'ADMINISTRASI SISTEM',
                     items: [
                         { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
-                        { path: '/pengaturan/audit-log', label: 'Audit Log Sistem', icon: Activity },
                         { path: '/pengaturan/tempat-sampah', label: 'Tempat Sampah', icon: Trash2 },
                         { path: '/manajemen-user', label: 'Manajemen User', icon: ShieldCheck }
                     ]

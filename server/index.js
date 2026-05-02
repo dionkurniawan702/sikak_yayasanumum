@@ -187,6 +187,7 @@ const getPrisma = () => {
     return prisma;
 };
 
+
 const PORT = process.env.PORT || 5000;
 const NODE_ENV = process.env.NODE_ENV || 'production';
 
@@ -280,6 +281,7 @@ app.post('/api/login', async (req, res) => {
 app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
 app.use('/api/trash', trashRouter);
+
 
 // Global for debugging sync
 let lastSyncStats = null;
@@ -538,6 +540,7 @@ app.post('/api/sync', async (req, res) => {
             results,
             timestamp: new Date().toISOString()
         });
+
     } catch (error) {
         console.error(`[Fatal Sync Error] ${error.message}`);
         res.status(500).json({ error: error.message });
@@ -1258,6 +1261,7 @@ const ensureStudentGenderColumn = async () => {
     }
 };
 
+
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n\n************************************************`);
     console.log(`[SUCCESS] SIKAK Yayasan Backend is now ACTIVE!`);
@@ -1286,6 +1290,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureStudentGenderColumn();
 
             console.log('[Background Tasks] All startup checks completed successfully.');
+
         } catch (err) {
             console.error(`[Background Tasks Error] ${err.message}`);
         }
