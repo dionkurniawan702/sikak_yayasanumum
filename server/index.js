@@ -176,8 +176,31 @@ const getPrisma = () => {
                     deletedCount++;
                 }
 
-                if (deletedCount > 0 || ghostCount > 0) {
-                    console.log(`[Cleanup] Finished. Deleted ${deletedCount} records (duplicates/empty) and ${ghostCount} ghost records.`);
+                // 4. Cleanup DistributionSettings Duplicates
+                const allDists = await prisma.distributionSetting.findMany({ where: { isDeleted: false } });
+                const distGroups = {};
+                let distDeletedCount = 0;
+                
+                allDists.forEach(s => {
+                    const key = `${s.unitId}|${s.incomeItemId}|${s.expenseItemId}|${s.destId}`;
+                    if (!distGroups[key]) distGroups[key] = [];
+                    distGroups[key].push(s);
+                });
+
+                for (const key in distGroups) {
+                    const group = distGroups[key];
+                    if (group.length > 1) {
+                        // Keep the first one, delete the rest
+                        const toDeleteDists = group.slice(1).map(d => d.id);
+                        await prisma.distributionSetting.deleteMany({
+                            where: { id: { in: toDeleteDists } }
+                        });
+                        distDeletedCount += toDeleteDists.length;
+                    }
+                }
+
+                if (deletedCount > 0 || ghostCount > 0 || distDeletedCount > 0) {
+                    console.log(`[Cleanup] Finished. Deleted ${deletedCount} RabPlans, ${ghostCount} ghost records, and ${distDeletedCount} duplicate distribution settings.`);
                 }
             } catch (err) {
                 console.error('[Cleanup Error]', err.message);
@@ -664,11 +687,23 @@ app.get('/api/all-data', async (req, res) => {
             client.bosAllocation.findMany()
         ]);
 
+        // --- DEDUPLICATION ON THE FLY: Ensure user never sees 200% even if DB is messy ---
+        const uniqueDistSettings = [];
+        const distSeen = new Set();
+        distributionSettings.forEach(s => {
+            const key = `${s.unitId}|${s.incomeItemId}|${s.expenseItemId}|${s.destId}`;
+            if (!distSeen.has(key)) {
+                distSeen.add(key);
+                uniqueDistSettings.push(s);
+            }
+        });
+
         res.json({
             status: 'ok',
             data: {
                 accounts, journals, assets, programs, expensePrograms, users, budgets,
-                fields, units, students, incomeItems, expenseItems, distributionSettings,
+                fields, units, students, incomeItems, expenseItems, 
+                distributionSettings: uniqueDistSettings,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses,
                 budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations
             }
