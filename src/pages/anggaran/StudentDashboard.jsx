@@ -191,17 +191,19 @@ export default function StudentDashboard() {
                     </div>
                 </div>
 
-                {/* Revenue Projection */}
-                <div className="bg-indigo-600 p-6 rounded-[32px] shadow-xl shadow-indigo-200/50 flex items-center gap-6 group hover:scale-[1.02] transition-all relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-                    <div className="w-16 h-16 bg-white/20 text-white rounded-2xl flex items-center justify-center shadow-lg backdrop-blur-sm">
-                        <TrendingUp size={32} />
+                {/* Revenue Projection (Super Admin Only) */}
+                {isSuperAdmin && (
+                    <div className="bg-indigo-600 p-6 rounded-[32px] shadow-xl shadow-indigo-200/50 flex items-center gap-6 group hover:scale-[1.02] transition-all relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+                        <div className="w-16 h-16 bg-white/20 text-white rounded-2xl flex items-center justify-center shadow-lg backdrop-blur-sm">
+                            <TrendingUp size={32} />
+                        </div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] font-black text-indigo-100 uppercase tracking-[0.2em] mb-1">Proyeksi Anggaran</p>
+                            <h3 className="text-xl font-black text-white">{formatRupiah(stats.totalRevenue)}</h3>
+                        </div>
                     </div>
-                    <div className="relative z-10">
-                        <p className="text-[10px] font-black text-indigo-100 uppercase tracking-[0.2em] mb-1">Proyeksi Anggaran</p>
-                        <h3 className="text-xl font-black text-white">{formatRupiah(stats.totalRevenue)}</h3>
-                    </div>
-                </div>
+                )}
             </div>
 
             {/* Charts Section */}
