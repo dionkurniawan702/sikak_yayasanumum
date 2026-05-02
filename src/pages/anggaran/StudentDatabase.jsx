@@ -456,6 +456,10 @@ export default function StudentDatabase() {
     )];
     const unitIncomeItems = incomeItems.filter(ii => activeIncomeItemIdsForUnit.includes(ii.id));
 
+    const maleCount = filteredStudents.filter(s => s.gender?.toLowerCase() === 'laki-laki' || s.gender?.toLowerCase() === 'l').length;
+    const femaleCount = filteredStudents.filter(s => s.gender?.toLowerCase() === 'perempuan' || s.gender?.toLowerCase() === 'p').length;
+    const unknownCount = filteredStudents.length - maleCount - femaleCount;
+
     return (
         <div className="p-8 animate-in">
             {/* Header */}
@@ -514,16 +518,21 @@ export default function StudentDatabase() {
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Laki-laki</p>
                     <div className="flex items-end gap-2">
-                        <span className="text-3xl font-black text-blue-600">{filteredStudents.filter(s => s.gender === 'Laki-laki').length}</span>
+                        <span className="text-3xl font-black text-blue-600">{maleCount}</span>
                         <span className="text-sm font-bold text-slate-400 mb-1">Siswa</span>
                     </div>
                 </div>
-                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between relative">
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Perempuan</p>
                     <div className="flex items-end gap-2">
-                        <span className="text-3xl font-black text-pink-600">{filteredStudents.filter(s => s.gender === 'Perempuan').length}</span>
+                        <span className="text-3xl font-black text-pink-600">{femaleCount}</span>
                         <span className="text-sm font-bold text-slate-400 mb-1">Siswi</span>
                     </div>
+                    {unknownCount > 0 && (
+                        <div className="absolute top-4 right-4 bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-md">
+                            + {unknownCount} Tanpa Ket.
+                        </div>
+                    )}
                 </div>
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-y-auto max-h-32 custom-scrollbar">
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-2">Sebaran Kelas</p>
