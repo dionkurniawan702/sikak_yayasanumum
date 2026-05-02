@@ -105,7 +105,10 @@ export default function ChartOfAccounts() {
     }
 
     function handleDelete(id) {
-        if (window.confirm('Hapus akun ini?')) dispatch({ type: 'DELETE_ACCOUNT', payload: id });
+        if (window.confirm('Hapus akun ini?')) {
+            dispatch({ type: 'DELETE_ACCOUNT', payload: id });
+            window.alert('Akun berhasil dipindahkan ke tempat sampah');
+        }
     }
 
     return (

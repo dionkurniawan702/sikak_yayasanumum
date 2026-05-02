@@ -82,7 +82,7 @@ export default function ProgramManagement() {
         try {
             dispatch({ type: 'DELETE_BUDGET_PROGRAM', payload: id });
             await api.pushAction({ type: 'DELETE_BUDGET_PROGRAM', payload: id }, state);
-            setMessage({ type: 'success', text: 'Program berhasil dihapus' });
+            setMessage({ type: 'success', text: 'Program berhasil dipindahkan ke tempat sampah' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         }

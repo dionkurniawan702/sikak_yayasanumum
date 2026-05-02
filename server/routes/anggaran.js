@@ -777,6 +777,9 @@ const cleanDataForModel = (modelName, data) => {
     return clean;
 };
 
+// Cache for isDeleted column status to prevent redundant DESCRIBE queries
+const isDeletedColumnCache = new Set();
+
 // Helper function to create generic CRUD routes
 const createGenericRoutes = (entityName, modelName) => {
     // Table mappings for Hot-Fix and Self-Healing
@@ -796,6 +799,8 @@ const createGenericRoutes = (entityName, modelName) => {
 
     // Middleware to ensure isDeleted column exists for this specific generic model
     const ensureIsDeleted = async (req, res, next) => {
+        if (isDeletedColumnCache.has(modelName)) return next();
+        
         try {
             const prisma = getPrisma(req);
             const possibleTableNames = [
@@ -814,12 +819,14 @@ const createGenericRoutes = (entityName, modelName) => {
                         console.log(`[Hot-Fix] Adding isDeleted to ${tableName}...`);
                         await prisma.$executeRawUnsafe(`ALTER TABLE \`${tableName}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
                     }
-                    return next(); // Column exists or was added, proceed
+                    
+                    isDeletedColumnCache.add(modelName);
+                    return next(); 
                 } catch (e) {
                     // Try next possible table name
                 }
             }
-            next(); // Table not found in variations? Let Prisma handle it normally
+            next(); 
         } catch (error) {
             console.error(`[Hot-Fix Critical Error] ${modelName}:`, error);
             next();

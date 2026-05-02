@@ -59,7 +59,7 @@ export default function IncomeItemManagement() {
         try {
             dispatch({ type: 'DELETE_INCOME_ITEM', payload: id });
             await api.pushAction({ type: 'DELETE_INCOME_ITEM', payload: id }, state);
-            setMessage({ type: 'success', text: 'Item berhasil dihapus' });
+            setMessage({ type: 'success', text: 'Item berhasil dipindahkan ke tempat sampah' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         }

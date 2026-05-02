@@ -72,7 +72,7 @@ export default function ClassManagement() {
         try {
             dispatch({ type: 'DELETE_CLASS', payload: id });
             await api.pushAction({ type: 'DELETE_CLASS', payload: id }, state);
-            setMessage({ type: 'success', text: 'Kelas berhasil dihapus' });
+            setMessage({ type: 'success', text: 'Kelas berhasil dipindahkan ke tempat sampah' });
         } catch (error) {
             setMessage({ type: 'error', text: error.message });
         }

@@ -116,7 +116,7 @@ export default function StudentDatabase() {
             try {
                 await api.pushAction({ type: 'DELETE_STUDENT', payload: id }, state);
                 dispatch({ type: 'DELETE_STUDENT', payload: id });
-                window.alert('Data siswa berhasil dihapus permanen.');
+                window.alert('Data siswa berhasil dipindahkan ke tempat sampah.');
             } catch (err) {
                 window.alert('Gagal menghapus siswa: ' + err.message);
             }

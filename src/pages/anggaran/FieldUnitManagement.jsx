@@ -221,7 +221,7 @@ export default function FieldUnitManagement() {
             await api.pushAction({ type: `DELETE_${type}`, payload: id }, state);
             dispatch({ type: `DELETE_${type}`, payload: id });
             // Quick feedback
-            window.alert(`Data ${type === 'FIELD' ? 'Bidang' : 'Unit'} berhasil dihapus dari database.`);
+            window.alert(`Data ${type === 'FIELD' ? 'Bidang' : 'Unit'} berhasil dipindahkan ke tempat sampah.`);
         } catch (err) {
             console.error('Delete failed:', err.message);
             window.alert(err.message);
