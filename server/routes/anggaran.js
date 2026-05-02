@@ -40,18 +40,20 @@ router.get('/fields', async (req, res) => {
 
 router.post('/fields', async (req, res) => {
     try {
-        const data = { ...req.body };
-        delete data.fieldId;
+        const cleanData = {
+            name: req.body.name,
+            isDeleted: req.body.isDeleted !== undefined ? !!req.body.isDeleted : false
+        };
 
         // Check for existing name to provide better error
         const existing = await getPrisma(req).field.findFirst({
-            where: { name: data.name, isDeleted: false }
+            where: { name: cleanData.name, isDeleted: false }
         });
         if (existing) {
-            return res.status(400).json({ error: `Bidang dengan nama "${data.name}" sudah ada.` });
+            return res.status(400).json({ error: `Bidang dengan nama "${cleanData.name}" sudah ada.` });
         }
 
-        const field = await getPrisma(req).field.create({ data });
+        const field = await getPrisma(req).field.create({ data: cleanData });
         res.json({ data: field });
     } catch (error) {
         if (error.code === 'P2002') return res.status(400).json({ error: `Ops! Bidang dengan nama "${req.body.name}" sudah ada.` });
@@ -62,14 +64,17 @@ router.post('/fields', async (req, res) => {
 router.put('/fields/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const data = { ...req.body, id };
-        delete data.fieldId;
-        if (req.body.isDeleted !== undefined) data.isDeleted = req.body.isDeleted;
+        // Clean data for Field model - prevent extra fields or relation objects
+        const cleanData = {
+            name: req.body.name,
+            isDeleted: req.body.isDeleted !== undefined ? !!req.body.isDeleted : false
+        };
 
+        console.log(`[API] Upserting Field ${id}: ${JSON.stringify(cleanData)}`);
         const field = await getPrisma(req).field.upsert({
             where: { id },
-            update: data,
-            create: data
+            update: cleanData,
+            create: { ...cleanData, id }
         });
         res.json({ data: field });
     } catch (error) {
@@ -118,8 +123,33 @@ router.get('/units', async (req, res) => {
 
 router.post('/units', async (req, res) => {
     try {
-        console.log(`[API] Creating new Unit: ${JSON.stringify(req.body)}`);
-        const unit = await getPrisma(req).unit.create({ data: req.body });
+        const cleanData = {
+            id: req.body.id,
+            name: req.body.name,
+            fieldId: req.body.fieldId,
+            receivesBos: req.body.receivesBos !== undefined ? !!req.body.receivesBos : undefined,
+            isDeleted: req.body.isDeleted !== undefined ? !!req.body.isDeleted : false
+        };
+
+        // Remove undefined fields
+        Object.keys(cleanData).forEach(key => cleanData[key] === undefined && delete cleanData[key]);
+
+        console.log(`[API] Creating new Unit: ${JSON.stringify(cleanData)}`);
+
+        // Pre-check for duplicate name in the same field
+        const existing = await getPrisma(req).unit.findFirst({
+            where: { 
+                name: cleanData.name, 
+                fieldId: cleanData.fieldId,
+                isDeleted: false 
+            }
+        });
+        
+        if (existing) {
+            return res.status(400).json({ error: `Gagal menyimpan: Nama unit "${cleanData.name}" sudah digunakan di bidang ini.` });
+        }
+
+        const unit = await getPrisma(req).unit.create({ data: cleanData });
         console.log(`[API] Unit created successfully: ${unit.id}`);
         res.json({ data: unit });
     } catch (error) {
@@ -131,14 +161,38 @@ router.post('/units', async (req, res) => {
 router.put('/units/:id', async (req, res) => {
     try {
         const id = req.params.id;
-        const data = { ...req.body, id };
-        if (req.body.isDeleted !== undefined) data.isDeleted = req.body.isDeleted;
+        
+        // Clean data for Unit model - prevent extra fields or relation objects (like 'field')
+        const cleanData = {
+            name: req.body.name,
+            fieldId: req.body.fieldId,
+            receivesBos: req.body.receivesBos !== undefined ? !!req.body.receivesBos : undefined,
+            isDeleted: req.body.isDeleted !== undefined ? !!req.body.isDeleted : false
+        };
 
-        console.log(`[API] Upserting Unit ${id}: ${JSON.stringify(data)}`);
+        // Remove undefined fields to not overwrite with null if not intended
+        Object.keys(cleanData).forEach(key => cleanData[key] === undefined && delete cleanData[key]);
+
+        console.log(`[API] Upserting Unit ${id}: ${JSON.stringify(cleanData)}`);
+        
+        // Pre-check for duplicate name in the same field (excluding current ID) to avoid P2002 closure
+        const existing = await getPrisma(req).unit.findFirst({
+            where: { 
+                name: cleanData.name, 
+                fieldId: cleanData.fieldId, 
+                id: { not: id },
+                isDeleted: false 
+            }
+        });
+        
+        if (existing) {
+            return res.status(400).json({ error: `Gagal menyimpan: Nama unit "${cleanData.name}" sudah digunakan di bidang ini.` });
+        }
+
         const unit = await getPrisma(req).unit.upsert({
             where: { id },
-            update: data,
-            create: data
+            update: cleanData,
+            create: { ...cleanData, id }
         });
         console.log(`[API] Unit upserted successfully: ${unit.id}`);
         res.json({ data: unit });
