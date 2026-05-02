@@ -128,16 +128,23 @@ export default function StudentDatabase() {
 
     const handleBulkDelete = async () => {
         if (selectedStudents.length === 0) return;
-        if (window.confirm(`Hapus ${selectedStudents.length} siswa yang dipilih? Data akan dipindahkan ke tempat sampah.`)) {
-            try {
-                for (const id of selectedStudents) {
-                    dispatch({ type: 'DELETE_STUDENT', payload: id });
+        const count = selectedStudents.length;
+        if (window.confirm(`Hapus ${count} siswa yang dipilih? Data akan dipindahkan ke tempat sampah.`)) {
+            const failedItems = [];
+            for (const id of selectedStudents) {
+                try {
                     await api.pushAction({ type: 'DELETE_STUDENT', payload: id }, state);
+                    dispatch({ type: 'DELETE_STUDENT', payload: id });
+                } catch (err) {
+                    const student = state.students.find(s => s.id === id);
+                    failedItems.push(`${student?.name || id} (${err.message})`);
                 }
-                setSelectedStudents([]);
-                window.alert(`${selectedStudents.length} siswa berhasil dipindahkan ke tempat sampah.`);
-            } catch (err) {
-                window.alert('Gagal menghapus beberapa siswa: ' + err.message);
+            }
+            setSelectedStudents([]);
+            if (failedItems.length > 0) {
+                window.alert(`${count - failedItems.length} siswa berhasil dihapus.\nGagal:\n${failedItems.join('\n')}`);
+            } else {
+                window.alert(`${count} siswa berhasil dipindahkan ke tempat sampah.`);
             }
         }
     };

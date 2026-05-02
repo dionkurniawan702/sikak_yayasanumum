@@ -283,7 +283,7 @@ router.delete('/students/:id', async (req, res) => {
             await getPrisma(req).studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
             await getPrisma(req).student.delete({ where: { id: req.params.id } });
         } else {
-            await getPrisma(req).student.update({
+            await getPrisma(req).student.updateMany({
                 where: { id: req.params.id },
                 data: { isDeleted: true }
             });
