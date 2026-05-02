@@ -55,6 +55,8 @@ export default function StudentDatabase() {
         incomeDetails: []
     });
     const [paymentForm, setPaymentForm] = useState([]);
+    const [importData, setImportData] = useState([]);
+    const [isImporting, setIsImporting] = useState(false);
 
     const filteredStudents = students.filter(s => {
         if (isUnitAdmin && s.unitId !== currentUser.unitId) return false;
@@ -304,12 +306,12 @@ export default function StudentDatabase() {
         saveAs(blob, `Template_Import_${targetUnit?.name || 'Unit'}.xlsx`);
     };
 
-    const handleFileUpload = async (e) => {
+    const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = async (evt) => {
+        reader.onload = (evt) => {
             try {
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
@@ -321,141 +323,153 @@ export default function StudentDatabase() {
                     window.alert('File kosong atau format tidak sesuai.');
                     return;
                 }
-
-                if (!window.confirm(`Import ${data.length} data siswa?`)) return;
-
-                const currentYear = state.academicYears?.find(y => y.isCurrent) || state.academicYears?.find(y => y.isActive);
-                const defaultStatus = state.studentStatuses?.find(s => s.name === 'Aktif') || state.studentStatuses?.[0];
-
-                let successCount = 0;
-                let updatedCount = 0;
-                let skippedCount = 0;
-                let errorCount = 0;
-                let failedStudents = [];
-
-                for (const item of data) {
-                    try {
-                        const studentName = item.Nama?.toString().trim();
-                        const studentNis = item.NIS?.toString().trim() || '';
-                        
-                        if (!studentName) continue;
-
-                        // 1. Determine Unit
-                        let unitId = isUnitAdmin ? currentUser.unitId : null;
-                        if (!isUnitAdmin) {
-                            const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toString().toLowerCase());
-                            unitId = unit?.id || units[0]?.id;
-                        }
-
-                        // 2. Determine Class
-                        const studentClass = state.classes?.find(c => 
-                            c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && 
-                            c.unitId === unitId
-                        );
-
-                        // 3. Determine Status
-                        const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
-
-                        // 3b. Determine Academic Year from Excel (Fallback to current)
-                        const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === item['Tahun Ajaran']?.toString().toLowerCase());
-                        const finalAcademicYearId = academicYear?.id || currentYear?.id || '';
-                        
-                        // 3c. Determine Parent Status
-                        const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
-
-                        // 4. Map Income Details
-                        const incomeDetails = incomeItems.map(ii => ({
-                            incomeItemId: ii.id,
-                            amount: parseFloat(item[ii.name]) || 0
-                        })).filter(id => id.amount > 0);
-
-                        // 5. Find existing student
-                        let existingStudent = null;
-                        if (studentNis) {
-                            existingStudent = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
-                        }
-                        if (!existingStudent) {
-                            existingStudent = students.find(s => 
-                                s.name.toLowerCase() === studentName.toLowerCase() && 
-                                s.unitId === unitId && 
-                                s.academicYearId === finalAcademicYearId && 
-                                !s.isDeleted
-                            );
-                        }
-
-                        if (existingStudent) {
-                            // Check if anything changed
-                            const newClassId = studentClass?.id || existingStudent.classId;
-                            const newStatusId = status?.id || existingStudent.statusId;
-                            const newParentStatusId = parentStatus?.id || existingStudent.parentStatusId;
-                            const newGender = item['Jenis Kelamin']?.toString() || existingStudent.gender;
-
-                            const sortedCurrentIncome = [...(existingStudent.incomeDetails || [])].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
-                            const sortedNewIncome = [...incomeDetails].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
-
-                            const isDataChanged = 
-                                existingStudent.name !== studentName ||
-                                existingStudent.nis !== studentNis ||
-                                existingStudent.classId !== newClassId ||
-                                existingStudent.statusId !== newStatusId ||
-                                existingStudent.parentStatusId !== newParentStatusId ||
-                                existingStudent.gender !== newGender ||
-                                JSON.stringify(sortedCurrentIncome) !== JSON.stringify(sortedNewIncome);
-
-                            if (isDataChanged) {
-                                const editPayload = {
-                                    ...existingStudent,
-                                    name: studentName,
-                                    nis: studentNis,
-                                    classId: newClassId,
-                                    statusId: newStatusId,
-                                    parentStatusId: newParentStatusId,
-                                    gender: newGender,
-                                    incomeDetails: incomeDetails
-                                };
-                                await api.pushAction({ type: 'EDIT_STUDENT', payload: editPayload }, state);
-                                dispatch({ type: 'EDIT_STUDENT', payload: editPayload });
-                                updatedCount++;
-                            } else {
-                                skippedCount++;
-                            }
-                        } else {
-                            // Add new student
-                            const payload = {
-                                id: crypto.randomUUID(),
-                                name: studentName,
-                                nis: studentNis,
-                                unitId,
-                                academicYearId: finalAcademicYearId,
-                                statusId: status?.id || defaultStatus?.id || '',
-                                parentStatusId: parentStatus?.id || '',
-                                gender: item['Jenis Kelamin']?.toString() || '',
-                                classId: studentClass?.id || '',
-                                incomeDetails
-                            };
-
-                            await api.pushAction({ type: 'ADD_STUDENT', payload }, state);
-                            dispatch({ type: 'ADD_STUDENT', payload });
-                            successCount++;
-                        }
-                    } catch (err) {
-                        console.error('Import Error for item:', item, err);
-                        errorCount++;
-                        failedStudents.push(`${item.Nama || 'Tanpa Nama'} (${err.message})`);
-                    }
-                }
-
-                let alertMsg = `Import Selesai!\nData Baru: ${successCount}\nData Diperbarui: ${updatedCount}\nData Sama (Dilewati): ${skippedCount}\nGagal: ${errorCount}`;
-                if (failedStudents.length > 0) {
-                    alertMsg += `\n\nDetail Siswa Gagal:\n` + failedStudents.join('\n');
-                }
-                window.alert(alertMsg);
-                setShowImportModal(false);
+                
+                setImportData(data);
             } catch (err) {
                 window.alert('Terjadi kesalahan saat membaca file: ' + err.message);
             }
         };
         reader.readAsBinaryString(file);
+    };
+
+    const processImport = async () => {
+        if (importData.length === 0) return;
+        
+        setIsImporting(true);
+        try {
+            const currentYear = state.academicYears?.find(y => y.isCurrent) || state.academicYears?.find(y => y.isActive);
+            const defaultStatus = state.studentStatuses?.find(s => s.name === 'Aktif') || state.studentStatuses?.[0];
+
+            let successCount = 0;
+            let updatedCount = 0;
+            let skippedCount = 0;
+            let errorCount = 0;
+            let failedStudents = [];
+
+            for (const item of importData) {
+                try {
+                    const studentName = item.Nama?.toString().trim();
+                    const studentNis = item.NIS?.toString().trim() || '';
+                    
+                    if (!studentName) continue;
+
+                    // 1. Determine Unit
+                    let unitId = isUnitAdmin ? currentUser.unitId : null;
+                    if (!isUnitAdmin) {
+                        const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toString().toLowerCase());
+                        unitId = unit?.id || units[0]?.id;
+                    }
+
+                    // 2. Determine Class
+                    const studentClass = state.classes?.find(c => 
+                        c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && 
+                        c.unitId === unitId
+                    );
+
+                    // 3. Determine Status
+                    const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
+
+                    // 3b. Determine Academic Year from Excel (Fallback to current)
+                    const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === item['Tahun Ajaran']?.toString().toLowerCase());
+                    const finalAcademicYearId = academicYear?.id || currentYear?.id || '';
+                    
+                    // 3c. Determine Parent Status
+                    const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
+
+                    // 4. Map Income Details
+                    const incomeDetails = incomeItems.map(ii => ({
+                        incomeItemId: ii.id,
+                        amount: parseFloat(item[ii.name]) || 0
+                    })).filter(id => id.amount > 0);
+
+                    // 5. Find existing student
+                    let existingStudent = null;
+                    if (studentNis) {
+                        existingStudent = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
+                    }
+                    if (!existingStudent) {
+                        existingStudent = students.find(s => 
+                            s.name.toLowerCase() === studentName.toLowerCase() && 
+                            s.unitId === unitId && 
+                            s.academicYearId === finalAcademicYearId && 
+                            !s.isDeleted
+                        );
+                    }
+
+                    if (existingStudent) {
+                        // Check if anything changed
+                        const newClassId = studentClass?.id || existingStudent.classId;
+                        const newStatusId = status?.id || existingStudent.statusId;
+                        const newParentStatusId = parentStatus?.id || existingStudent.parentStatusId;
+                        const newGender = item['Jenis Kelamin']?.toString() || existingStudent.gender;
+
+                        const sortedCurrentIncome = [...(existingStudent.incomeDetails || [])].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
+                        const sortedNewIncome = [...incomeDetails].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
+
+                        const isDataChanged = 
+                            existingStudent.name !== studentName ||
+                            existingStudent.nis !== studentNis ||
+                            existingStudent.classId !== newClassId ||
+                            existingStudent.statusId !== newStatusId ||
+                            existingStudent.parentStatusId !== newParentStatusId ||
+                            existingStudent.gender !== newGender ||
+                            JSON.stringify(sortedCurrentIncome) !== JSON.stringify(sortedNewIncome);
+
+                        if (isDataChanged) {
+                            const editPayload = {
+                                ...existingStudent,
+                                name: studentName,
+                                nis: studentNis,
+                                classId: newClassId,
+                                statusId: newStatusId,
+                                parentStatusId: newParentStatusId,
+                                gender: newGender,
+                                incomeDetails: incomeDetails
+                            };
+                            await api.pushAction({ type: 'EDIT_STUDENT', payload: editPayload }, state);
+                            dispatch({ type: 'EDIT_STUDENT', payload: editPayload });
+                            updatedCount++;
+                        } else {
+                            skippedCount++;
+                        }
+                    } else {
+                        // Add new student
+                        const payload = {
+                            id: crypto.randomUUID(),
+                            name: studentName,
+                            nis: studentNis,
+                            unitId,
+                            academicYearId: finalAcademicYearId,
+                            statusId: status?.id || defaultStatus?.id || '',
+                            parentStatusId: parentStatus?.id || '',
+                            gender: item['Jenis Kelamin']?.toString() || '',
+                            classId: studentClass?.id || '',
+                            incomeDetails
+                        };
+
+                        await api.pushAction({ type: 'ADD_STUDENT', payload }, state);
+                        dispatch({ type: 'ADD_STUDENT', payload });
+                        successCount++;
+                    }
+                } catch (err) {
+                    console.error('Import Error for item:', item, err);
+                    errorCount++;
+                    failedStudents.push(`${item.Nama || 'Tanpa Nama'} (${err.message})`);
+                }
+            }
+
+            let alertMsg = `Import Selesai!\nData Baru: ${successCount}\nData Diperbarui: ${updatedCount}\nData Sama (Dilewati): ${skippedCount}\nGagal: ${errorCount}`;
+            if (failedStudents.length > 0) {
+                alertMsg += `\n\nDetail Siswa Gagal:\n` + failedStudents.join('\n');
+            }
+            window.alert(alertMsg);
+            setImportData([]);
+            setShowImportModal(false);
+        } catch (err) {
+            window.alert('Terjadi kesalahan saat import: ' + err.message);
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const activeIncomeItemIdsForUnit = [...new Set(
@@ -1025,30 +1039,114 @@ export default function StudentDatabase() {
             {/* Import Modal */}
             {showImportModal && (
                 <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowImportModal(false)} />
-                    <div className="bg-white rounded-[40px] w-full max-w-lg relative z-10 shadow-2xl animate-in">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => {
+                        if (!isImporting) {
+                            setShowImportModal(false);
+                            setImportData([]);
+                        }
+                    }} />
+                    <div className={`bg-white rounded-[40px] w-full ${importData.length > 0 ? 'max-w-5xl' : 'max-w-lg'} relative z-10 shadow-2xl animate-in transition-all duration-300`}>
                         <div className="p-10">
                             <h2 className="text-2xl font-black text-slate-900 mb-2 font-display">Import Masal Siswa</h2>
-                            <p className="text-slate-500 mb-8 font-medium">Gunakan file Excel atau CSV sesuai template untuk mempercepat penginputan data siswa dan budget tahunannya.</p>
                             
-                            <div className="mb-8 p-10 border-4 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center text-center hover:border-blue-200 transition-all group">
-                                <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                                    <Upload size={32} />
-                                </div>
-                                <button 
-                                    onClick={handleDownloadTemplate}
-                                    className="text-xs font-black text-blue-600 uppercase tracking-widest mb-6 hover:underline"
-                                >
-                                    Unduh Template Excel
-                                </button>
-                                <label className="cursor-pointer">
-                                    <span className="btn btn-primary shadow-blue-500/10 mb-2">Pilih File XLSX/CSV</span>
-                                    <input type="file" className="hidden" accept=".xlsx,.csv" onChange={handleFileUpload} />
-                                </label>
-                                <p className="text-xs text-slate-400 font-bold mt-4 uppercase tracking-widest">Maksimal file 10MB</p>
-                            </div>
+                            {importData.length === 0 ? (
+                                <>
+                                    <p className="text-slate-500 mb-8 font-medium">Gunakan file Excel atau CSV sesuai template untuk mempercepat penginputan data siswa dan budget tahunannya.</p>
+                                    
+                                    <div className="mb-8 p-10 border-4 border-dashed border-slate-100 rounded-[32px] flex flex-col items-center justify-center text-center hover:border-blue-200 transition-all group">
+                                        <div className="w-20 h-20 bg-blue-50 text-blue-600 rounded-3xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <Upload size={32} />
+                                        </div>
+                                        <button 
+                                            onClick={handleDownloadTemplate}
+                                            className="text-xs font-black text-blue-600 uppercase tracking-widest mb-6 hover:underline"
+                                        >
+                                            Unduh Template Excel
+                                        </button>
+                                        <label className="cursor-pointer">
+                                            <span className="btn btn-primary shadow-blue-500/10 mb-2">Pilih File XLSX/CSV</span>
+                                            <input type="file" className="hidden" accept=".xlsx,.csv" onChange={handleFileUpload} />
+                                        </label>
+                                        <p className="text-xs text-slate-400 font-bold mt-4 uppercase tracking-widest">Maksimal file 10MB</p>
+                                    </div>
 
-                            <button onClick={() => setShowImportModal(false)} className="w-full btn btn-secondary">Tutup</button>
+                                    <button onClick={() => setShowImportModal(false)} className="w-full btn btn-secondary">Tutup</button>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div className="flex items-center gap-3">
+                                            <div className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-[10px] font-black uppercase tracking-widest">
+                                                Review Data: {importData.length} Baris
+                                            </div>
+                                            {isImporting && (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="w-3 h-3 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                                                    <span className="text-[10px] font-bold text-blue-600 animate-pulse uppercase tracking-widest">Memproses...</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button 
+                                            disabled={isImporting}
+                                            onClick={() => setImportData([])}
+                                            className="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 transition-colors"
+                                        >
+                                            <X size={14} />
+                                            Ganti File
+                                        </button>
+                                    </div>
+
+                                    <div className="border border-slate-100 rounded-3xl overflow-hidden mb-8 shadow-inner bg-slate-50">
+                                        <div className="max-h-[50vh] overflow-auto custom-scrollbar">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead className="sticky top-0 bg-white shadow-sm z-10">
+                                                    <tr>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Nama</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">NIS</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Unit</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Kelas</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status</th>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">T. Ajaran</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {importData.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
+                                                            <td className="px-6 py-4 text-xs font-bold text-slate-700 border-b border-slate-50">{item.Nama || '-'}</td>
+                                                            <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item.NIS || '-'}</td>
+                                                            <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-slate-50">{item.Unit || '-'}</td>
+                                                            <td className="px-6 py-4 text-xs font-bold text-slate-600 border-b border-slate-50">{item.Kelas || '-'}</td>
+                                                            <td className="px-6 py-4 text-xs font-bold text-slate-600 border-b border-slate-50">{item.Status || '-'}</td>
+                                                            <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item['Tahun Ajaran'] || '-'}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-4">
+                                        <button 
+                                            disabled={isImporting}
+                                            onClick={() => {
+                                                setShowImportModal(false);
+                                                setImportData([]);
+                                            }} 
+                                            className="btn btn-secondary flex-1"
+                                        >
+                                            Batal
+                                        </button>
+                                        <button 
+                                            disabled={isImporting}
+                                            onClick={processImport}
+                                            className="btn btn-primary flex-1 shadow-blue-500/20"
+                                        >
+                                            <Check size={18} />
+                                            <span>Proses Import ({importData.length} Siswa)</span>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
