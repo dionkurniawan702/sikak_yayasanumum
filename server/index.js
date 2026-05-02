@@ -1040,26 +1040,27 @@ const healAcademicYearIds = async () => {
 const ensureSuperAdmin = async () => {
     try {
         const client = getPrisma();
-        console.log('[Seed] Ensuring superadmin "adminsdit1" exists (Force Upsert)...');
-
-        const hashedPassword = await bcrypt.hash('admin123', 10);
-        await client.user.upsert({
-            where: { username: 'adminsdit1' },
-            update: {
-                password: hashedPassword, // Reset password if user exists
-                role: 'superadmin',
-                isDeleted: false
-            },
-            create: {
-                username: 'adminsdit1',
-                password: hashedPassword,
-                name: 'Super Admin',
-                role: 'superadmin'
-            }
+        const existing = await client.user.findFirst({
+            where: { username: 'adminsdit1' }
         });
-        console.log('[Seed] Superadmin "adminsdit1" is ready.');
+
+        if (!existing) {
+            console.log('[Seed] Creating default superadmin "adminsdit1"...');
+            const hashedPassword = await bcrypt.hash('admin123', 10);
+            await client.user.create({
+                data: {
+                    username: 'adminsdit1',
+                    password: hashedPassword,
+                    name: 'Yayasan',
+                    role: 'superadmin'
+                }
+            });
+            console.log('[Seed] Superadmin "adminsdit1" created.');
+        } else {
+            console.log('[Seed] Superadmin "adminsdit1" already exists, skipping reset.');
+        }
     } catch (error) {
-        console.error(`[Seed Error] SuperAdmin Force Reset: ${error.message}`);
+        console.error(`[Seed Error] SuperAdmin Setup: ${error.message}`);
     }
 };
 
