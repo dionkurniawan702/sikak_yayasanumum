@@ -253,10 +253,17 @@ export default function StudentDatabase() {
                 const defaultStatus = state.studentStatuses?.find(s => s.name === 'Aktif') || state.studentStatuses?.[0];
 
                 let successCount = 0;
+                let updatedCount = 0;
+                let skippedCount = 0;
                 let errorCount = 0;
 
                 for (const item of data) {
                     try {
+                        const studentName = item.Nama?.toString().trim();
+                        const studentNis = item.NIS?.toString().trim() || '';
+                        
+                        if (!studentName) continue;
+
                         // 1. Determine Unit
                         let unitId = isUnitAdmin ? currentUser.unitId : null;
                         if (!isUnitAdmin) {
@@ -275,6 +282,7 @@ export default function StudentDatabase() {
 
                         // 3b. Determine Academic Year from Excel (Fallback to current)
                         const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === item['Tahun Ajaran']?.toString().toLowerCase());
+                        const finalAcademicYearId = academicYear?.id || currentYear?.id || '';
                         
                         // 3c. Determine Parent Status
                         const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
@@ -285,29 +293,82 @@ export default function StudentDatabase() {
                             amount: parseFloat(item[ii.name]) || 0
                         })).filter(id => id.amount > 0);
 
-                        const payload = {
-                            id: crypto.randomUUID(),
-                            name: item.Nama || 'Tanpa Nama',
-                            nis: item.NIS?.toString() || '',
-                            unitId,
-                            academicYearId: academicYear?.id || currentYear?.id || '',
-                            statusId: status?.id || defaultStatus?.id || '',
-                            parentStatusId: parentStatus?.id || '',
-                            gender: item['Jenis Kelamin']?.toString() || '',
-                            classId: studentClass?.id || '',
-                            incomeDetails
-                        };
+                        // 5. Find existing student
+                        let existingStudent = null;
+                        if (studentNis) {
+                            existingStudent = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
+                        }
+                        if (!existingStudent) {
+                            existingStudent = students.find(s => 
+                                s.name.toLowerCase() === studentName.toLowerCase() && 
+                                s.unitId === unitId && 
+                                s.academicYearId === finalAcademicYearId && 
+                                !s.isDeleted
+                            );
+                        }
 
-                        await api.pushAction({ type: 'ADD_STUDENT', payload }, state);
-                        dispatch({ type: 'ADD_STUDENT', payload });
-                        successCount++;
+                        if (existingStudent) {
+                            // Check if anything changed
+                            const newClassId = studentClass?.id || existingStudent.classId;
+                            const newStatusId = status?.id || existingStudent.statusId;
+                            const newParentStatusId = parentStatus?.id || existingStudent.parentStatusId;
+                            const newGender = item['Jenis Kelamin']?.toString() || existingStudent.gender;
+
+                            const sortedCurrentIncome = [...(existingStudent.incomeDetails || [])].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
+                            const sortedNewIncome = [...incomeDetails].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
+
+                            const isDataChanged = 
+                                existingStudent.name !== studentName ||
+                                existingStudent.nis !== studentNis ||
+                                existingStudent.classId !== newClassId ||
+                                existingStudent.statusId !== newStatusId ||
+                                existingStudent.parentStatusId !== newParentStatusId ||
+                                existingStudent.gender !== newGender ||
+                                JSON.stringify(sortedCurrentIncome) !== JSON.stringify(sortedNewIncome);
+
+                            if (isDataChanged) {
+                                const editPayload = {
+                                    ...existingStudent,
+                                    name: studentName,
+                                    nis: studentNis,
+                                    classId: newClassId,
+                                    statusId: newStatusId,
+                                    parentStatusId: newParentStatusId,
+                                    gender: newGender,
+                                    incomeDetails: incomeDetails
+                                };
+                                await api.pushAction({ type: 'EDIT_STUDENT', payload: editPayload }, state);
+                                dispatch({ type: 'EDIT_STUDENT', payload: editPayload });
+                                updatedCount++;
+                            } else {
+                                skippedCount++;
+                            }
+                        } else {
+                            // Add new student
+                            const payload = {
+                                id: crypto.randomUUID(),
+                                name: studentName,
+                                nis: studentNis,
+                                unitId,
+                                academicYearId: finalAcademicYearId,
+                                statusId: status?.id || defaultStatus?.id || '',
+                                parentStatusId: parentStatus?.id || '',
+                                gender: item['Jenis Kelamin']?.toString() || '',
+                                classId: studentClass?.id || '',
+                                incomeDetails
+                            };
+
+                            await api.pushAction({ type: 'ADD_STUDENT', payload }, state);
+                            dispatch({ type: 'ADD_STUDENT', payload });
+                            successCount++;
+                        }
                     } catch (err) {
                         console.error('Import Error for item:', item, err);
                         errorCount++;
                     }
                 }
 
-                window.alert(`Import Selesai!\nBerhasil: ${successCount}\nGagal: ${errorCount}`);
+                window.alert(`Import Selesai!\nData Baru: ${successCount}\nData Diperbarui: ${updatedCount}\nData Sama (Dilewati): ${skippedCount}\nGagal: ${errorCount}`);
                 setShowImportModal(false);
             } catch (err) {
                 window.alert('Terjadi kesalahan saat membaca file: ' + err.message);
