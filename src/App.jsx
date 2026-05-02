@@ -24,6 +24,7 @@ import TrashBin from './pages/TrashBin';
 import Profile from './pages/Profile';
 import FieldUnitManagement from './pages/anggaran/FieldUnitManagement';
 import StudentDatabase from './pages/anggaran/StudentDatabase';
+import StudentDashboard from './pages/anggaran/StudentDashboard';
 import DistributionSettings from './pages/anggaran/DistributionSettings';
 import MonthlyRequest from './pages/pelaporan/MonthlyRequest';
 import MonthlyReport from './pages/pelaporan/MonthlyReport';
@@ -163,6 +164,7 @@ function AppContent() {
                     <Route path="pelaporan/arsip-laporan" element={<Placeholder title="Arsip Laporan Realisasi" />} />
                     <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
 
+                    <Route path="anggaran/dashboard-siswa" element={<StudentDashboard />} />
                     <Route path="anggaran/siswa" element={<StudentDatabase />} />
                     <Route path="anggaran/kelas" element={<ClassManagement />} />
 

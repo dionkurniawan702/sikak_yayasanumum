@@ -155,6 +155,7 @@ export default function Sidebar({ isOpen, onClose }) {
             { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
 
             { section: 'DATABASE ANGGARAN' },
+            { path: '/anggaran/dashboard-siswa', label: 'Dashboard Siswa', icon: LayoutDashboard },
             { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
             { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
             { path: '/anggaran/database-bos', label: 'Database BOS', icon: Database },
@@ -219,6 +220,7 @@ export default function Sidebar({ isOpen, onClose }) {
         if (showDatabaseItems) {
             menuItems.push(
                 { section: 'DATABASE ANGGARAN' },
+                { path: '/anggaran/dashboard-siswa', label: 'Dashboard Siswa', icon: LayoutDashboard },
                 { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
                 { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
                 ...(hasBos ? [{ path: '/anggaran/database-bos', label: 'Database BOS', icon: Database }] : [])
