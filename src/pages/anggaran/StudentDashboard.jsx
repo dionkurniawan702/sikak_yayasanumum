@@ -12,8 +12,10 @@ import {
     Users2,
     Venus,
     Mars,
-    ChevronDown
+    ChevronDown,
+    Filter
 } from 'lucide-react';
+
 import { 
     BarChart, 
     Bar, 
@@ -34,6 +36,8 @@ import { formatRupiah } from '../../utils/format';
 
 export default function StudentDashboard() {
     const { state, dispatch } = useApp();
+    const [trendUnitId, setTrendUnitId] = React.useState('all');
+
     const { 
         currentUser, 
         students = [], 
@@ -105,13 +109,22 @@ export default function StudentDashboard() {
         }).filter(c => c.count > 0).sort((a, b) => b.count - a.count);
     }, [classes, filteredStudents, isUnitAdmin, currentUnitId]);
 
-    // 5. Academic Year Growth (Trend remains global)
+    // 5. Academic Year Growth
     const growthData = useMemo(() => {
         return academicYears.filter(y => !y.isDeleted).map(y => {
-            const count = activeStudents.filter(s => s.academicYearId === y.id).length;
-            return { name: y.name, count };
+            let list = activeStudents.filter(s => s.academicYearId === y.id);
+            
+            // Filter by Unit for Trend
+            if (isSuperAdmin && trendUnitId !== 'all') {
+                list = list.filter(s => s.unitId === trendUnitId);
+            } else if (isUnitAdmin) {
+                list = list.filter(s => s.unitId === currentUnitId);
+            }
+            
+            return { name: y.name, count: list.length };
         }).sort((a, b) => a.name.localeCompare(b.name));
-    }, [academicYears, activeStudents]);
+    }, [academicYears, activeStudents, isSuperAdmin, trendUnitId, isUnitAdmin, currentUnitId]);
+
 
     const chartData = isSuperAdmin ? unitDistData : classDistData;
     const chartHeight = Math.max(350, chartData.length * 40);
@@ -316,7 +329,25 @@ export default function StudentDashboard() {
                             </div>
                             <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase">Pertumbuhan Siswa Per Tahun Ajaran</h3>
                         </div>
+
+                        {/* Unit Filter for Trend (Super Admin Only) */}
+                        {isSuperAdmin && (
+                            <div className="flex items-center gap-3">
+                                <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest hidden md:block">Filter Unit:</div>
+                                <select 
+                                    value={trendUnitId}
+                                    onChange={(e) => setTrendUnitId(e.target.value)}
+                                    className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:ring-2 focus:ring-emerald-500 outline-none cursor-pointer transition-all hover:bg-white"
+                                >
+                                    <option value="all">Seluruh Unit</option>
+                                    {units.filter(u => !u.isDeleted).map(u => (
+                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </div>
+
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <AreaChart data={growthData}>
@@ -348,7 +379,15 @@ export default function StudentDashboard() {
                                     strokeWidth={4}
                                     fillOpacity={1} 
                                     fill="url(#colorCount)" 
-                                />
+                                >
+                                    <LabelList 
+                                        dataKey="count" 
+                                        position="top" 
+                                        style={{ fill: '#10b981', fontSize: 11, fontWeight: 900 }}
+                                        offset={15}
+                                    />
+                                </Area>
+
                             </AreaChart>
                         </ResponsiveContainer>
                     </div>
