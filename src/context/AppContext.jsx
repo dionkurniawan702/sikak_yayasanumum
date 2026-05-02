@@ -721,22 +721,8 @@ export function AppProvider({ children }) {
         }
     }, [isRemote, state.currentUser]); // Trigger on mount or user change
 
-    useEffect(() => {
-        if (!isRemote || !state.currentUser || !state.isInitialized) return;
 
-        // Background poll every 20 seconds for near real-time updates
-        const pollInterval = setInterval(() => {
-            api.fetchAllData().then(data => {
-                if (data) {
-                    dispatch({ type: 'SET_ALL_DATA', payload: data });
-                }
-            }).catch(err => {
-                console.warn('[Sync] Background poll failed:', err.message);
-            });
-        }, 20000);
 
-        return () => clearInterval(pollInterval);
-    }, [isRemote, state.currentUser, state.isInitialized]);
 
     // Auto-Sync Trigger (Background)
     useEffect(() => {
