@@ -2201,7 +2201,7 @@ export default function RAB() {
             {/* Top Toolbar */}
             <div className="flex flex-col gap-6">
                 <div className="flex items-center gap-4 flex-wrap">
-                    isSuperAdmin ? (
+                    {isSuperAdmin ? (
                         <div className="flex items-center gap-3">
                             <button
                                 onClick={() => setShowDashboard(!showDashboard)}
