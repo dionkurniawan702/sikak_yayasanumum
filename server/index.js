@@ -614,8 +614,7 @@ app.get('/api/all-data', async (req, res) => {
             client.student.findMany({ 
                 where: { 
                     isDeleted: false,
-                    ...(isUnitAdmin ? { unitId } : {}),
-                    ...(isFieldAdmin ? { unit: { fieldId } } : {})
+                    ...(isUnitAdmin ? { unitId } : {})
                 }, 
                 include: { incomeDetails: true } 
             }),
@@ -632,16 +631,14 @@ app.get('/api/all-data', async (req, res) => {
             client.budgetRequest.findMany({ 
                 where: { 
                     isDeleted: false,
-                    ...(isUnitAdmin ? { unitId } : {}),
-                    ...(isFieldAdmin ? { fieldId } : {})
+                    ...(isUnitAdmin ? { unitId } : {})
                 } 
             }),
 
             client.budgetReport.findMany({ 
                 where: { 
                     isDeleted: false,
-                    ...(isUnitAdmin ? { unitId } : {}),
-                    ...(isFieldAdmin ? { fieldId } : {})
+                    ...(isUnitAdmin ? { unitId } : {})
                 } 
             }),
 
@@ -654,8 +651,7 @@ app.get('/api/all-data', async (req, res) => {
 
             client.rabPlan.findMany({
                 where: {
-                    ...(isUnitAdmin ? { unitId } : {}),
-                    ...(isFieldAdmin ? { fieldId } : {})
+                    ...(isUnitAdmin ? { unitId } : {})
                 }
             }),
 
