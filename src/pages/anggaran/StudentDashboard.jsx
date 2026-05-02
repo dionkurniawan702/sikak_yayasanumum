@@ -11,7 +11,8 @@ import {
     Building2,
     Users2,
     Venus,
-    Mars
+    Mars,
+    ChevronDown
 } from 'lucide-react';
 import { 
     BarChart, 
@@ -26,12 +27,13 @@ import {
     Pie, 
     Cell,
     AreaChart,
-    Area
+    Area,
+    LabelList
 } from 'recharts';
 import { formatRupiah } from '../../utils/format';
 
 export default function StudentDashboard() {
-    const { state } = useApp();
+    const { state, dispatch } = useApp();
     const { 
         currentUser, 
         students = [], 
@@ -45,12 +47,21 @@ export default function StudentDashboard() {
     const isUnitAdmin = currentUser?.role === 'admin_unit';
     const currentUnitId = currentUser?.unitId;
 
+    // Academic Year Filter
+    const selectedAcademicYearId = state.globalAcademicYearId || '';
+    const setSelectedAcademicYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
+
     // Filters
     const activeStudents = useMemo(() => students.filter(s => !s.isDeleted), [students]);
+    
     const filteredStudents = useMemo(() => {
-        if (isUnitAdmin) return activeStudents.filter(s => s.unitId === currentUnitId);
-        return activeStudents;
-    }, [activeStudents, isUnitAdmin, currentUnitId]);
+        let list = activeStudents;
+        if (isUnitAdmin) list = list.filter(s => s.unitId === currentUnitId);
+        if (selectedAcademicYearId && selectedAcademicYearId !== 'all') {
+            list = list.filter(s => s.academicYearId === selectedAcademicYearId);
+        }
+        return list;
+    }, [activeStudents, isUnitAdmin, currentUnitId, selectedAcademicYearId]);
 
     // 1. Stats Summary
     const stats = useMemo(() => {
@@ -70,14 +81,13 @@ export default function StudentDashboard() {
         return { total, male, female, active, totalRevenue };
     }, [filteredStudents, studentStatuses]);
 
-    // 2. Unit Distribution (Super Admin only)
+    // 2. Unit Distribution
     const unitDistData = useMemo(() => {
-        if (!isSuperAdmin) return [];
         return units.filter(u => !u.isDeleted).map(u => {
-            const count = activeStudents.filter(s => s.unitId === u.id).length;
+            const count = filteredStudents.filter(s => s.unitId === u.id).length;
             return { name: u.name, count };
-        }).sort((a, b) => b.count - a.count);
-    }, [units, activeStudents, isSuperAdmin]);
+        }).filter(u => u.count > 0).sort((a, b) => b.count - a.count);
+    }, [units, filteredStudents]);
 
     // 3. Gender Distribution
     const genderData = [
@@ -86,16 +96,16 @@ export default function StudentDashboard() {
         { name: 'Lainnya', value: stats.total - stats.male - stats.female, color: '#94a3b8' }
     ].filter(g => g.value > 0);
 
-    // 4. Class Distribution (Unit Admin)
+    // 4. Class Distribution
     const classDistData = useMemo(() => {
         const relevantClasses = isUnitAdmin ? classes.filter(c => c.unitId === currentUnitId) : classes;
         return relevantClasses.filter(c => !c.isDeleted).map(c => {
             const count = filteredStudents.filter(s => s.classId === c.id).length;
             return { name: c.name, count };
-        }).filter(c => c.count > 0).sort((a, b) => b.count - a.count).slice(0, 10);
+        }).filter(c => c.count > 0).sort((a, b) => b.count - a.count);
     }, [classes, filteredStudents, isUnitAdmin, currentUnitId]);
 
-    // 5. Academic Year Growth
+    // 5. Academic Year Growth (Trend remains global)
     const growthData = useMemo(() => {
         return academicYears.filter(y => !y.isDeleted).map(y => {
             const count = activeStudents.filter(s => s.academicYearId === y.id).length;
@@ -103,21 +113,42 @@ export default function StudentDashboard() {
         }).sort((a, b) => a.name.localeCompare(b.name));
     }, [academicYears, activeStudents]);
 
+    const chartData = isSuperAdmin ? unitDistData : classDistData;
+    const chartHeight = Math.max(350, chartData.length * 40);
+
     const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
     return (
-        <div className="p-8 animate-in bg-slate-50 min-h-screen">
+        <div className="p-8 animate-in bg-slate-50 min-h-screen pb-20">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1">Dashboard Siswa</h1>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Dashboard Siswa</h1>
                     <p className="text-slate-500 font-medium italic">
                         {isSuperAdmin ? 'Ringkasan Statistik Global Seluruh Unit' : `Statistik Siswa - ${units.find(u => u.id === currentUnitId)?.name || 'Unit'}`}
                     </p>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                    <Calendar size={18} className="text-blue-600" />
-                    <span className="text-sm font-black text-slate-700">Tahun Ajaran: All Active</span>
+                
+                <div className="flex flex-wrap items-center gap-4">
+                    {/* Academic Year Selector */}
+                    <div className="relative group">
+                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none text-blue-600">
+                            <Calendar size={18} />
+                        </div>
+                        <select 
+                            value={selectedAcademicYearId}
+                            onChange={(e) => setSelectedAcademicYearId(e.target.value)}
+                            className="pl-12 pr-10 py-3 bg-white border border-slate-200 rounded-2xl shadow-sm text-sm font-black text-slate-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 appearance-none cursor-pointer transition-all hover:border-blue-300"
+                        >
+                            <option value="all">Semua Tahun Ajaran</option>
+                            {academicYears.filter(y => !y.isDeleted).map(y => (
+                                <option key={y.id} value={y.id}>{y.name} {y.isCurrent ? '(Aktif)' : ''}</option>
+                            ))}
+                        </select>
+                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-400 group-hover:text-blue-500 transition-colors">
+                            <ChevronDown size={18} />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -176,41 +207,52 @@ export default function StudentDashboard() {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Distribution Chart */}
-                <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/50">
+                <div className="bg-white p-8 rounded-[40px] border border-slate-100 shadow-xl shadow-slate-200/50 flex flex-col">
                     <div className="flex items-center justify-between mb-8">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
                                 {isSuperAdmin ? <Building2 size={20} /> : <GraduationCap size={20} />}
                             </div>
                             <h3 className="text-lg font-black text-slate-900 tracking-tight uppercase">
-                                Sebaran {isSuperAdmin ? 'Unit' : 'Kelas Top 10'}
+                                Sebaran {isSuperAdmin ? 'Unit' : 'Seluruh Kelas'}
                             </h3>
                         </div>
                     </div>
-                    <div className="h-[350px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={isSuperAdmin ? unitDistData : classDistData} layout="vertical" margin={{ left: 20, right: 30 }}>
-                                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                                <XAxis type="number" hide />
-                                <YAxis 
-                                    dataKey="name" 
-                                    type="category" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }}
-                                    width={120}
-                                />
-                                <Tooltip 
-                                    contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '16px', color: '#fff' }}
-                                    itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}
-                                />
-                                <Bar dataKey="count" fill="#6366f1" radius={[0, 12, 12, 0]} barSize={24}>
-                                    {isSuperAdmin ? unitDistData.map((entry, index) => (
-                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                    )) : null}
-                                </Bar>
-                            </BarChart>
-                        </ResponsiveContainer>
+                    
+                    {/* Scrollable Container for many items */}
+                    <div className="flex-1 min-h-[400px] max-h-[500px] overflow-y-auto custom-scrollbar pr-2">
+                        <div style={{ height: `${chartHeight}px` }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={chartData} layout="vertical" margin={{ left: 20, right: 60, top: 10, bottom: 10 }}>
+                                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
+                                    <XAxis type="number" hide />
+                                    <YAxis 
+                                        dataKey="name" 
+                                        type="category" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        tick={{ fontSize: 11, fontWeight: 700, fill: '#64748b' }}
+                                        width={120}
+                                    />
+                                    <Tooltip 
+                                        cursor={{ fill: '#f8fafc' }}
+                                        contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '16px', color: '#fff' }}
+                                        itemStyle={{ color: '#fff', fontSize: '12px', fontWeight: 700 }}
+                                    />
+                                    <Bar dataKey="count" fill="#6366f1" radius={[0, 12, 12, 0]} barSize={24}>
+                                        <LabelList 
+                                            dataKey="count" 
+                                            position="right" 
+                                            style={{ fill: '#64748b', fontSize: 11, fontWeight: 900 }}
+                                            offset={10}
+                                        />
+                                        {chartData.map((entry, index) => (
+                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                        ))}
+                                    </Bar>
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </div>
                     </div>
                 </div>
 
@@ -254,7 +296,7 @@ export default function StudentDashboard() {
                                     <div className="text-right">
                                         <span className="text-lg font-black text-slate-900">{g.value}</span>
                                         <span className="text-[10px] text-slate-400 font-bold block">
-                                            {((g.value / stats.total) * 100).toFixed(1)}%
+                                            {stats.total > 0 ? ((g.value / stats.total) * 100).toFixed(1) : 0}%
                                         </span>
                                     </div>
                                 </div>
