@@ -51,6 +51,9 @@ export default function TrashBin() {
 
     const filteredItems = allDeletedItems;
 
+    const [loadingId, setLoadingId] = useState(null);
+    const [isEmptying, setIsEmptying] = useState(false);
+
     const handleRestore = async (id, type) => {
         try {
             await api.pushAction({ type: 'RESTORE_FROM_TRASH', payload: { id, type } }, state);
@@ -63,6 +66,7 @@ export default function TrashBin() {
 
     const handlePermanentDelete = async (id, type) => {
         if (window.confirm('PERINGATAN: Data yang dihapus permanen tidak bisa dikembalikan. Lanjutkan?')) {
+            setLoadingId(id);
             try {
                 // Ensure server deletion succeeds BEFORE removing from local state
                 await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
@@ -71,15 +75,24 @@ export default function TrashBin() {
             } catch (err) {
                 console.error('Delete failed:', err.message);
                 window.alert(`Gagal menghapus permanen: ${err.message}. Pastikan data ini tidak memiliki ketergantungan (misal: Unit di dalam Bidang atau Tahap BOS yang masih memiliki Rencana Anggaran).`);
+            } finally {
+                setLoadingId(null);
             }
         }
     };
 
     const handleEmptyTrash = async () => {
         if (window.confirm('PERINGATAN: Semua data di tempat sampah akan dihapus permanen dan tidak bisa dikembalikan. Lanjutkan?')) {
-            dispatch({ type: 'EMPTY_TRASH' });
-            await api.pushAction({ type: 'EMPTY_TRASH' }, state);
-            window.alert('Tempat sampah berhasil dikosongkan.');
+            setIsEmptying(true);
+            try {
+                await api.pushAction({ type: 'EMPTY_TRASH' }, state);
+                dispatch({ type: 'EMPTY_TRASH' });
+                window.alert('Tempat sampah berhasil dikosongkan.');
+            } catch (err) {
+                window.alert('Gagal mengosongkan tempat sampah: ' + err.message);
+            } finally {
+                setIsEmptying(false);
+            }
         }
     };
 
@@ -194,10 +207,15 @@ export default function TrashBin() {
                 {totalCount > 0 && (
                     <button 
                         onClick={handleEmptyTrash} 
-                        className="flex items-center gap-3 px-6 py-4 bg-rose-600 text-white rounded-2xl hover:bg-rose-700 transition-all shadow-lg shadow-rose-200 active:scale-95 group font-black text-xs uppercase tracking-widest"
+                        disabled={isEmptying}
+                        className={`flex items-center gap-3 px-6 py-4 rounded-2xl transition-all shadow-lg shadow-rose-200 group font-black text-xs uppercase tracking-widest ${isEmptying ? 'bg-slate-300 text-slate-500 cursor-not-allowed' : 'bg-rose-600 text-white hover:bg-rose-700 active:scale-95'}`}
                     >
-                        <Trash2 size={18} className="group-hover:rotate-12 transition-transform" />
-                        <span>Hapus Semua Permanen</span>
+                        {isEmptying ? (
+                            <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                            <Trash2 size={18} className="group-hover:rotate-12 transition-transform" />
+                        )}
+                        <span>{isEmptying ? 'Menghapus...' : 'Hapus Semua Permanen'}</span>
                     </button>
                 )}
             </div>
@@ -216,8 +234,9 @@ export default function TrashBin() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {filteredItems.map(item => {
                             const Icon = getItemIcon(item._type);
+                            const isLoading = loadingId === item.id;
                             return (
-                                <div key={`${item._type}-${item.id}`} className="bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl hover:border-blue-200 transition-all flex flex-col justify-between group">
+                                <div key={`${item._type}-${item.id}`} className={`bg-white p-6 rounded-[32px] border border-slate-100 shadow-xl transition-all flex flex-col justify-between group ${isLoading ? 'opacity-50' : 'hover:border-blue-200'}`}>
                                     <div className="flex items-start gap-4 mb-6">
                                         <div className="w-14 h-14 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-all shadow-inner">
                                             <Icon size={28} />
@@ -232,11 +251,16 @@ export default function TrashBin() {
                                         </div>
                                     </div>
                                     <div className="flex gap-3 justify-end pt-5 border-t border-slate-50">
-                                        <button onClick={() => handleRestore(item.id, item._type)} className="flex-1 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2">
+                                        <button disabled={isLoading} onClick={() => handleRestore(item.id, item._type)} className="flex-1 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
                                             <RotateCcw size={14} /> Pulihkan
                                         </button>
-                                        <button onClick={() => handlePermanentDelete(item.id, item._type)} className="flex-1 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2">
-                                            <Trash2 size={14} /> Hapus Permanen
+                                        <button disabled={isLoading} onClick={() => handlePermanentDelete(item.id, item._type)} className="flex-1 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+                                            {isLoading ? (
+                                                <div className="w-3 h-3 border-2 border-rose-600 border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <Trash2 size={14} /> 
+                                            )}
+                                            {isLoading ? 'Menghapus...' : 'Hapus Permanen'}
                                         </button>
                                     </div>
                                 </div>
