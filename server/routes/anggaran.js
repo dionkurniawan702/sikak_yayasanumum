@@ -278,8 +278,9 @@ router.put('/students/:id', async (req, res) => {
 
 router.delete('/students/:id', async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true || true;
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
+            await getPrisma(req).studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
             await getPrisma(req).student.delete({ where: { id: req.params.id } });
         } else {
             await getPrisma(req).student.update({
