@@ -310,15 +310,15 @@ export default function Sidebar({ isOpen, onClose }) {
     };
 
     return (
-        <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-80 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-white/10 rounded-2xl shadow-inner backdrop-blur-sm border border-white/5">
-                        <Landmark className="text-blue-200" size={28} />
+                    <div className="p-2 bg-white/10 rounded-xl shadow-inner backdrop-blur-sm border border-white/5">
+                        <Landmark className="text-blue-200" size={24} />
                     </div>
                     <div className="flex flex-col">
-                        <span className="text-2xl font-black text-white tracking-tighter">SIKAD</span>
-                        <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-widest -mt-1 italic">
+                        <span className="text-xl font-black text-white tracking-tight">SIKAD</span>
+                        <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-wider -mt-1 italic">
                             Sistem Keuangan Dareliman
                         </span>
                     </div>
@@ -339,7 +339,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         {/* Group Header */}
                         <button
                             onClick={() => toggleGroup(group.title)}
-                            className="w-full flex items-center justify-between px-6 py-5 mt-3 text-sm font-black text-slate-400 hover:text-slate-200 uppercase tracking-widest transition-colors group"
+                            className="w-full flex items-center justify-between px-4 py-4 mt-2 text-[11px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-[0.2em] transition-colors group"
                         >
                             <span>{group.title}</span>
                             {expandedGroups[group.title] ? (
@@ -375,10 +375,10 @@ export default function Sidebar({ isOpen, onClose }) {
                                             }}
                                             end={(item.path || '').split('?')[0] === '/'}
                                         >
-                                            <div className={`p-2.5 rounded-2xl transition-colors ${location.pathname === item.path.split('?')[0] ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
-                                                {Icon ? <Icon size={22} /> : <div className="w-[22px] h-[22px] bg-slate-800 rounded" />}
+                                            <div className={`p-2 rounded-xl transition-colors ${location.pathname === item.path.split('?')[0] ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
+                                                {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                                             </div>
-                                            <span className="text-xl font-bold flex-1 tracking-tight">{item.label}</span>
+                                            <span className="text-base font-bold flex-1 tracking-tight">{item.label}</span>
                                             
                                             {/* Notification Badges */}
                                             {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
