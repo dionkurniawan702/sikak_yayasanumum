@@ -151,7 +151,7 @@ export default function FieldUnitManagement() {
                 const targetUnit = units.find(u => u.id === targetUnitIdForFinance) || (type === 'UNIT' ? payload : null);
 
                 // 3. Save Financial Config (BATCH Update)
-                let allSettingsToPush = [];
+                const allSettingsToPush = [];
                 for (const incomeId of selectedIncomeItems) {
                     const settings = (unitDistributions[incomeId] || []).map(rule => {
                         const ruleDestId = rule.destType === 'field' ? (rule.destId || (type === 'UNIT' ? formData.fieldId : editingItem.id)) : targetUnitIdForFinance;
@@ -176,16 +176,6 @@ export default function FieldUnitManagement() {
                     
                     allSettingsToPush.push(...settings);
                 }
-
-                // IMPORTANT: Client-side deduplication to prevent 200% issues
-                const uniqueSettingsMap = new Map();
-                allSettingsToPush.forEach(s => {
-                    const key = `${s.incomeItemId}-${s.expenseItemId}-${s.destId}`;
-                    if (!uniqueSettingsMap.has(key)) {
-                        uniqueSettingsMap.set(key, s);
-                    }
-                });
-                allSettingsToPush = Array.from(uniqueSettingsMap.values());
 
                 // Push all settings in ONE batch call to avoid Deadlocks/Write Conflicts
                 await api.pushAction({

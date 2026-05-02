@@ -460,50 +460,24 @@ router.post('/distribution-settings', async (req, res) => {
         const { unitId, incomeItemId, settings, batch = false } = req.body;
         console.log(`[Sync] Updating distributions for Unit ${unitId}. Batch: ${batch}. Rules: ${settings?.length}`);
 
-        if (!unitId) return res.status(400).json({ error: "Missing unitId" });
-
-        await getPrisma(req).$transaction(async (tx) => {
-            // 1. Clear old settings
-            // If batch is true, clear ALL settings for the unit
-            // If false, only clear for the specific unit and income item
-            const deleteWhere = batch ? { unitId } : { unitId, incomeItemId };
-            await tx.distributionSetting.deleteMany({ where: deleteWhere });
-
-            // 2. Insert new settings if provided
-            if (settings && Array.isArray(settings) && settings.length > 0) {
-                // IMPORTANT: Deduplicate incoming settings array before insert to prevent 200% issues
-                const uniqueSettings = [];
-                const seen = new Set();
-                
-                for (const s of settings) {
-                    const key = `${s.incomeItemId}-${s.expenseItemId}-${s.destId}`;
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        uniqueSettings.push({
-                            unitId: s.unitId || unitId,
-                            incomeItemId: s.incomeItemId || incomeItemId,
-                            expenseItemId: s.expenseItemId,
-                            destType: s.destType || 'unit',
-                            destId: s.destId || s.unitId || unitId,
-                            destName: s.destName || null,
-                            percentage: parseFloat(s.percentage) || 0,
-                            isDeleted: false
-                        });
-                    }
-                }
-
-                if (uniqueSettings.length > 0) {
-                    await tx.distributionSetting.createMany({
-                        data: uniqueSettings
-                    });
-                    console.log(`[Sync] Inserted ${uniqueSettings.length} unique rules (filtered from ${settings.length})`);
-                }
-            }
-        });
-
+        await getPrisma(req).$transaction([
+            getPrisma(req).distributionSetting.deleteMany({
+                where: batch ? { unitId } : { unitId, incomeItemId }
+            }),
+            getPrisma(req).distributionSetting.createMany({
+                data: settings.map(s => ({
+                    unitId: s.unitId,
+                    incomeItemId: s.incomeItemId,
+                    expenseItemId: s.expenseItemId,
+                    destId: s.destId,
+                    destType: s.destType,
+                    destName: s.destName,
+                    percentage: parseFloat(s.percentage) || 0
+                }))
+            })
+        ]);
         res.json({ message: 'Success' });
     } catch (error) {
-        console.error('[Sync Error] Distribution update failed:', error.message);
         res.status(500).json({ error: error.message });
     }
 });
@@ -1486,26 +1460,6 @@ router.post('/repair/deduplicate', async (req, res) => {
             // 8. BOS Pos & Class Groups
             await dedupeByField('bosPos', 'name', []);
             await dedupeByField('classGroup', 'name', []);
-
-            // 9. Distribution Settings
-            const allDists = await tx.distributionSetting.findMany({ where: { isDeleted: false } });
-            const distGroups = {};
-            allDists.forEach(s => {
-                const key = `${s.unitId}|${s.incomeItemId}|${s.expenseItemId}|${s.destId}`;
-                if (!distGroups[key]) distGroups[key] = [];
-                distGroups[key].push(s);
-            });
-            for (const key in distGroups) {
-                const group = distGroups[key];
-                if (group.length > 1) {
-                    const master = group[0];
-                    const dups = group.slice(1);
-                    for (const dup of dups) {
-                        await tx.distributionSetting.delete({ where: { id: dup.id } });
-                    }
-                    results.push(`Deduplicated ${group.length} settings for Unit/Income/Expense combination: ${key}`);
-                }
-            }
         });
 
         res.json({ message: 'Pembersihan total selesai', details: results });
