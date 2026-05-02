@@ -44,6 +44,7 @@ export default function StudentDatabase() {
     
     const [showStudentModal, setShowStudentModal] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [selectedStudents, setSelectedStudents] = useState([]);
     const [editingStudent, setEditingStudent] = useState(null);
     const [showPaymentSettings, setShowPaymentSettings] = useState(null);
     const [studentForm, setStudentForm] = useState({ 
@@ -121,6 +122,22 @@ export default function StudentDatabase() {
                 window.alert('Data siswa berhasil dipindahkan ke tempat sampah.');
             } catch (err) {
                 window.alert('Gagal menghapus siswa: ' + err.message);
+            }
+        }
+    };
+
+    const handleBulkDelete = async () => {
+        if (selectedStudents.length === 0) return;
+        if (window.confirm(`Hapus ${selectedStudents.length} siswa yang dipilih? Data akan dipindahkan ke tempat sampah.`)) {
+            try {
+                for (const id of selectedStudents) {
+                    dispatch({ type: 'DELETE_STUDENT', payload: id });
+                    await api.pushAction({ type: 'DELETE_STUDENT', payload: id }, state);
+                }
+                setSelectedStudents([]);
+                window.alert(`${selectedStudents.length} siswa berhasil dipindahkan ke tempat sampah.`);
+            } catch (err) {
+                window.alert('Gagal menghapus beberapa siswa: ' + err.message);
             }
         }
     };
@@ -307,6 +324,7 @@ export default function StudentDatabase() {
                 let updatedCount = 0;
                 let skippedCount = 0;
                 let errorCount = 0;
+                let failedStudents = [];
 
                 for (const item of data) {
                     try {
@@ -416,10 +434,15 @@ export default function StudentDatabase() {
                     } catch (err) {
                         console.error('Import Error for item:', item, err);
                         errorCount++;
+                        failedStudents.push(`${item.Nama || 'Tanpa Nama'} (${err.message})`);
                     }
                 }
 
-                window.alert(`Import Selesai!\nData Baru: ${successCount}\nData Diperbarui: ${updatedCount}\nData Sama (Dilewati): ${skippedCount}\nGagal: ${errorCount}`);
+                let alertMsg = `Import Selesai!\nData Baru: ${successCount}\nData Diperbarui: ${updatedCount}\nData Sama (Dilewati): ${skippedCount}\nGagal: ${errorCount}`;
+                if (failedStudents.length > 0) {
+                    alertMsg += `\n\nDetail Siswa Gagal:\n` + failedStudents.join('\n');
+                }
+                window.alert(alertMsg);
                 setShowImportModal(false);
             } catch (err) {
                 window.alert('Terjadi kesalahan saat membaca file: ' + err.message);
@@ -458,6 +481,16 @@ export default function StudentDatabase() {
                         <Upload size={18} />
                         <span>Import Masal</span>
                     </button>
+                    {selectedStudents.length > 0 && (
+                        <button 
+                            onClick={handleBulkDelete}
+                            className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold bg-rose-600 text-white shadow-md hover:bg-rose-700 active:scale-95 transition-all duration-200"
+                            disabled={activeLock}
+                        >
+                            <Trash2 size={18} />
+                            <span>Hapus ({selectedStudents.length})</span>
+                        </button>
+                    )}
                     <button 
                         onClick={() => handleOpenStudentModal()}
                         className="btn btn-primary"
@@ -469,6 +502,47 @@ export default function StudentDatabase() {
                 </div>
             </div>
 
+            {/* Dashboard Statistik */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Total Siswa</p>
+                    <div className="flex items-end gap-2">
+                        <span className="text-3xl font-black text-indigo-700">{filteredStudents.length}</span>
+                        <span className="text-sm font-bold text-slate-400 mb-1">Siswa</span>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Laki-laki</p>
+                    <div className="flex items-end gap-2">
+                        <span className="text-3xl font-black text-blue-600">{filteredStudents.filter(s => s.gender === 'Laki-laki').length}</span>
+                        <span className="text-sm font-bold text-slate-400 mb-1">Siswa</span>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-1">Perempuan</p>
+                    <div className="flex items-end gap-2">
+                        <span className="text-3xl font-black text-pink-600">{filteredStudents.filter(s => s.gender === 'Perempuan').length}</span>
+                        <span className="text-sm font-bold text-slate-400 mb-1">Siswi</span>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-y-auto max-h-32 custom-scrollbar">
+                    <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-2">Sebaran Kelas</p>
+                    <div className="flex flex-wrap gap-2">
+                        {Object.entries(
+                            filteredStudents.reduce((acc, student) => {
+                                const className = state.classes?.find(c => c.id === student.classId)?.name || 'Tanpa Kelas';
+                                acc[className] = (acc[className] || 0) + 1;
+                                return acc;
+                            }, {})
+                        ).sort((a,b) => a[0].localeCompare(b[0])).map(([clsName, count]) => (
+                            <div key={clsName} className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
+                                <span className="text-xs font-bold text-slate-700">{clsName}:</span>
+                                <span className="text-xs font-black text-indigo-600">{count}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            </div>
             {/* Budget Lock Alert */}
             {activeLock && (
                 <div className="mb-8 p-6 bg-amber-50 border-2 border-amber-100 rounded-[2rem] flex items-center justify-between animate-in slide-in-from-top-4">
@@ -551,6 +625,20 @@ export default function StudentDatabase() {
                 <table className="w-full text-left border-collapse">
                     <thead>
                         <tr className="sticky top-0 z-20 bg-slate-100 text-slate-800 text-[10px] uppercase font-black tracking-widest border-b border-slate-200 shadow-sm">
+                            <th className="p-6 w-16">
+                                <input 
+                                    type="checkbox"
+                                    className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                                    checked={filteredStudents.length > 0 && selectedStudents.length === filteredStudents.length}
+                                    onChange={(e) => {
+                                        if (e.target.checked) {
+                                            setSelectedStudents(filteredStudents.map(s => s.id));
+                                        } else {
+                                            setSelectedStudents([]);
+                                        }
+                                    }}
+                                />
+                            </th>
                             <th className="p-6">Data Siswa</th>
                             <th className="p-6">Unit & Kelas</th>
                             <th className="p-6 text-center">JK</th>
@@ -571,6 +659,20 @@ export default function StudentDatabase() {
 
                             return (
                                 <tr key={student.id} className="group hover:bg-slate-50 transition-colors">
+                                    <td className="p-6 w-16">
+                                        <input 
+                                            type="checkbox"
+                                            className="w-5 h-5 rounded-lg border-slate-300 text-indigo-600 focus:ring-indigo-600 cursor-pointer"
+                                            checked={selectedStudents.includes(student.id)}
+                                            onChange={(e) => {
+                                                if (e.target.checked) {
+                                                    setSelectedStudents([...selectedStudents, student.id]);
+                                                } else {
+                                                    setSelectedStudents(selectedStudents.filter(id => id !== student.id));
+                                                }
+                                            }}
+                                        />
+                                    </td>
                                     <td className="p-6">
                                         <div className="flex items-center gap-4">
                                             <div className="w-10 h-10 bg-gradient-to-br from-blue-50 to-indigo-50 text-blue-600 rounded-xl flex items-center justify-center text-sm font-black shadow-inner">
@@ -660,7 +762,7 @@ export default function StudentDatabase() {
                             );
                         }) : (
                             <tr>
-                                <td colSpan={6} className="py-20 text-center">
+                                <td colSpan={7} className="py-20 text-center">
                                     <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-200">
                                         <User size={32} />
                                     </div>

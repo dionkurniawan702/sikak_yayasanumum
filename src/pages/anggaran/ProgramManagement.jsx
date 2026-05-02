@@ -180,6 +180,7 @@ export default function ProgramManagement() {
 
                 let successCount = 0;
                 let errorCount = 0;
+                let failedItems = [];
 
                 for (const item of data) {
                     try {
@@ -209,6 +210,7 @@ export default function ProgramManagement() {
 
                         if (isDuplicate) {
                             errorCount++;
+                            failedItems.push(`${programName} (Sudah ada di database)`);
                             continue;
                         }
 
@@ -227,10 +229,15 @@ export default function ProgramManagement() {
                     } catch (err) {
                         console.error('Import Error:', err);
                         errorCount++;
+                        failedItems.push(`${item['Nama Program'] || 'Tanpa Nama'} (${err.message})`);
                     }
                 }
 
-                window.alert(`Import Selesai!\nBerhasil: ${successCount}\nGagal: ${errorCount}`);
+                let alertMsg = `Import Selesai!\nBerhasil: ${successCount}\nGagal: ${errorCount}`;
+                if (failedItems.length > 0) {
+                    alertMsg += `\n\nDetail Gagal:\n` + failedItems.join('\n');
+                }
+                window.alert(alertMsg);
                 setShowImportModal(false);
             } catch (err) {
                 window.alert('Gagal membaca file: ' + err.message);
