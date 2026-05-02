@@ -4,6 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatAngka, formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function StudentDatabase() {
     const { state, dispatch } = useApp();
@@ -189,7 +191,7 @@ export default function StudentDatabase() {
         XLSX.writeFile(wb, `Database_Siswa_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    const handleDownloadTemplate = () => {
+    const handleDownloadTemplate = async () => {
         const targetUnitId = isUnitAdmin ? currentUser.unitId : (unitFilter !== 'all' ? unitFilter : null);
         
         if (!targetUnitId) {
@@ -205,28 +207,77 @@ export default function StudentDatabase() {
         )];
         const relevantIncomeItems = incomeItems.filter(ii => activeIncomeItemIds.includes(ii.id));
 
-        const template = [
-            {
-                'Nama': 'Contoh Siswa',
-                'NIS': '12345',
-                'Unit': targetUnit?.name || 'Nama Unit',
-                'Kelas': state.classes?.find(c => c.unitId === targetUnitId)?.name || '7A',
-                'Tahun Ajaran': state.academicYears?.find(y => y.isCurrent)?.name || '',
-                'Status': 'Aktif',
-                'Status Orang Tua': state.parentStatuses?.[0]?.name || '',
-                'Jenis Kelamin': 'Laki-laki'
-            }
-        ];
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Template Import Siswa');
+
+        // Headers
+        const baseHeaders = ['Nama', 'NIS', 'Unit', 'Kelas', 'Tahun Ajaran', 'Status', 'Status Orang Tua', 'Jenis Kelamin'];
+        const incomeHeaders = relevantIncomeItems.map(ii => ii.name);
+        const allHeaders = [...baseHeaders, ...incomeHeaders];
         
-        // Only add income items assigned to this unit
-        relevantIncomeItems.forEach(ii => {
-            template[0][ii.name] = 0;
+        worksheet.addRow(allHeaders);
+
+        // Example Row
+        const exampleRow = [
+            'Contoh Siswa',
+            '12345',
+            targetUnit?.name || 'Nama Unit',
+            state.classes?.find(c => c.unitId === targetUnitId)?.name || '7A',
+            state.academicYears?.find(y => y.isCurrent)?.name || '',
+            'Aktif',
+            state.parentStatuses?.[0]?.name || '',
+            'Laki-laki',
+            ...relevantIncomeItems.map(() => 0)
+        ];
+        worksheet.addRow(exampleRow);
+
+        // Styling headers
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4F46E5' } // Indigo-600
+        };
+
+        // Adding Data Validations (Dropdowns) for rows 2 to 1000
+        const validateRange = (colIndex, list) => {
+            const colLetter = String.fromCharCode(64 + colIndex);
+            if (list && list.length > 0) {
+                // Remove commas from list items to avoid breaking the CSV-like formula
+                const safeList = list.map(item => String(item).replace(/,/g, ' '));
+                const formula = `"${safeList.join(',').substring(0, 250)}"`;
+                worksheet.dataValidations.add(`${colLetter}2:${colLetter}1000`, {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [formula]
+                });
+            }
+        };
+
+        const unitList = units.map(u => u.name);
+        const classList = state.classes?.filter(c => c.unitId === targetUnitId).map(c => c.name) || [];
+        const yearList = state.academicYears?.map(y => y.name) || [];
+        const statusList = state.studentStatuses?.map(s => s.name) || [];
+        const parentStatusList = state.parentStatuses?.map(s => s.name) || [];
+        const genderList = ['Laki-laki', 'Perempuan'];
+
+        validateRange(3, unitList); // C: Unit
+        validateRange(4, classList); // D: Kelas
+        validateRange(5, yearList); // E: Tahun Ajaran
+        validateRange(6, statusList); // F: Status
+        validateRange(7, parentStatusList); // G: Status Orang Tua
+        validateRange(8, genderList); // H: Jenis Kelamin
+
+        // Auto-fit columns
+        worksheet.columns.forEach(column => {
+            column.width = 20;
         });
 
-        const ws = XLSX.utils.json_to_sheet(template);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Template Import Siswa");
-        XLSX.writeFile(wb, `Template_Import_${targetUnit?.name || 'Unit'}.xlsx`);
+        // Write buffer and save
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Template_Import_${targetUnit?.name || 'Unit'}.xlsx`);
     };
 
     const handleFileUpload = async (e) => {

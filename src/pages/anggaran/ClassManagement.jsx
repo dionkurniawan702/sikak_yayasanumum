@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../utils/format';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function ClassManagement() {
     const { state, dispatch } = useApp();
@@ -90,18 +92,45 @@ export default function ClassManagement() {
         XLSX.writeFile(wb, `Database_Kelas_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    const handleDownloadTemplate = () => {
-        const template = [
-            {
-                'Nama Kelas': '7-A',
-                'Unit': units.find(u => isUnitAdmin ? u.id === currentUser.unitId : true)?.name || 'Nama Unit'
-            }
-        ];
+    const handleDownloadTemplate = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Template Import Kelas');
 
-        const ws = XLSX.utils.json_to_sheet(template);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Template Import Kelas");
-        XLSX.writeFile(wb, "Template_Import_Kelas.xlsx");
+        worksheet.addRow(['Nama Kelas', 'Unit']);
+        
+        worksheet.addRow([
+            '7-A',
+            units.find(u => isUnitAdmin ? u.id === currentUser.unitId : true)?.name || 'Nama Unit'
+        ]);
+
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4F46E5' }
+        };
+
+        if (!isUnitAdmin) {
+            const unitList = units.map(u => u.name);
+            if (unitList.length > 0) {
+                const safeList = unitList.map(item => String(item).replace(/,/g, ' '));
+                const formula = `"${safeList.join(',').substring(0, 250)}"`;
+                worksheet.dataValidations.add('B2:B1000', {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [formula]
+                });
+            }
+        }
+
+        worksheet.columns.forEach(column => {
+            column.width = 25;
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, "Template_Import_Kelas.xlsx");
     };
 
     const handleFileUpload = async (e) => {

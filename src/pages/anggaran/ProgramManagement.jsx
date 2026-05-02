@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 import { generateId } from '../../utils/format';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 export default function ProgramManagement() {
     const { state, dispatch } = useApp();
@@ -106,20 +108,54 @@ export default function ProgramManagement() {
         XLSX.writeFile(wb, `Master_Program_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
 
-    const handleDownloadTemplate = () => {
-        const template = [
-            {
-                'Nama Program': 'Pembangunan Gedung Baru',
-                'Keterangan': 'Program pembangunan fasilitas tambahan',
-                'Unit': currentUser?.role === 'admin_unit' ? (units.find(u => u.id === currentUser.unitId)?.name || '') : 'Nama Unit',
-                'Bidang': currentUser?.role === 'admin_bidang' ? (fields.find(f => f.id === currentUser.fieldId)?.name || '') : 'Nama Bidang'
-            }
-        ];
+    const handleDownloadTemplate = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const worksheet = workbook.addWorksheet('Template Import Program');
 
-        const ws = XLSX.utils.json_to_sheet(template);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Template Import Program");
-        XLSX.writeFile(wb, "Template_Import_Program.xlsx");
+        worksheet.addRow(['Nama Program', 'Keterangan', 'Unit', 'Bidang']);
+        
+        worksheet.addRow([
+            'Pembangunan Gedung Baru',
+            'Program pembangunan fasilitas tambahan',
+            currentUser?.role === 'admin_unit' ? (units.find(u => u.id === currentUser.unitId)?.name || '') : 'Nama Unit',
+            currentUser?.role === 'admin_bidang' ? (fields.find(f => f.id === currentUser.fieldId)?.name || '') : 'Nama Bidang'
+        ]);
+
+        const headerRow = worksheet.getRow(1);
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4F46E5' }
+        };
+
+        const validateRange = (colIndex, list) => {
+            const colLetter = String.fromCharCode(64 + colIndex);
+            if (list && list.length > 0) {
+                const safeList = list.map(item => String(item).replace(/,/g, ' '));
+                const formula = `"${safeList.join(',').substring(0, 250)}"`;
+                worksheet.dataValidations.add(`${colLetter}2:${colLetter}1000`, {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [formula]
+                });
+            }
+        };
+
+        if (currentUser?.role === 'superadmin') {
+            const unitList = units.map(u => u.name);
+            const fieldList = fields.map(f => f.name);
+            validateRange(3, unitList); // C: Unit
+            validateRange(4, fieldList); // D: Bidang
+        }
+
+        worksheet.columns.forEach(column => {
+            column.width = 25;
+        });
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, "Template_Import_Program.xlsx");
     };
 
     const handleFileUpload = async (e) => {
