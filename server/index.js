@@ -551,6 +551,41 @@ app.post('/api/sync', async (req, res) => {
 app.get('/api/all-data', async (req, res) => {
     try {
         const client = getPrisma();
+        
+        // 1. AUTHENTICATION & ROLE DETECTION
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        
+        if (!token) {
+            console.warn('[All Data] Access Denied: No token provided');
+            return res.status(401).json({ success: false, error: 'Akses ditolak: Token tidak ditemukan.' });
+        }
+
+        let decoded;
+        try {
+            decoded = jwt.verify(token, JWT_SECRET);
+        } catch (e) {
+            return res.status(401).json({ success: false, error: 'Sesi kedaluwarsa, silakan login kembali.' });
+        }
+
+        const user = await client.user.findUnique({ 
+            where: { id: decoded.id } 
+        });
+
+        if (!user || user.isDeleted) {
+            return res.status(401).json({ success: false, error: 'User tidak ditemukan atau sudah dinonaktifkan.' });
+        }
+
+        const role = user.role;
+        const unitId = user.unitId;
+        const fieldId = user.fieldId;
+        const isSuperAdmin = role === 'superadmin';
+        const isUnitAdmin = role === 'admin_unit';
+        const isFieldAdmin = role === 'admin_bidang';
+
+        console.log(`[All Data] Fetching for ${user.username} (Role: ${role}, Unit: ${unitId || 'N/A'})`);
+
+        // 2. DATA FETCHING WITH ROLE-BASED SCOPING
         const [
             accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
@@ -558,15 +593,33 @@ app.get('/api/all-data', async (req, res) => {
             budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations
         ] = await Promise.all([
             client.account.findMany({ where: { isDeleted: false }, orderBy: { code: 'asc' } }),
+            
+            // Journals can be huge, limit to 500 for everyone
             client.journal.findMany({ where: { isDeleted: false }, orderBy: { date: 'desc' }, take: 500 }),
+            
             client.asset.findMany({ where: { isDeleted: false } }),
             client.program.findMany({ where: { isDeleted: false } }),
             client.expenseProgram.findMany({ where: { isDeleted: false } }),
-            client.user.findMany({ where: { isDeleted: false } }),
+            
+            // Users: Only Superadmin gets all users, others only see themselves
+            isSuperAdmin 
+                ? client.user.findMany({ where: { isDeleted: false } })
+                : client.user.findMany({ where: { id: user.id } }),
+            
             client.budgetAllocation.findMany({ where: { isDeleted: false } }),
             client.field.findMany({ where: { isDeleted: false } }),
             client.unit.findMany({ where: { isDeleted: false } }),
-            client.student.findMany({ where: { isDeleted: false }, include: { incomeDetails: true } }),
+
+            // --- CRITICAL OPTIMIZATION: SCOPED DATA ---
+            client.student.findMany({ 
+                where: { 
+                    isDeleted: false,
+                    ...(isUnitAdmin ? { unitId } : {}),
+                    ...(isFieldAdmin ? { unit: { fieldId } } : {})
+                }, 
+                include: { incomeDetails: true } 
+            }),
+
             client.incomeItem.findMany({ where: { isDeleted: false } }),
             client.expenseItem.findMany({ where: { isDeleted: false } }),
             client.distributionSetting.findMany({ where: { isDeleted: false } }),
@@ -575,10 +628,37 @@ app.get('/api/all-data', async (req, res) => {
             client.position.findMany({ where: { isDeleted: false } }),
             client.studentStatus.findMany({ where: { isDeleted: false } }),
             client.parentStatus.findMany({ where: { isDeleted: false } }),
-            client.budgetRequest.findMany({ where: { isDeleted: false } }),
-            client.budgetReport.findMany({ where: { isDeleted: false } }),
-            client.class.findMany({ where: { isDeleted: false } }),
-            client.rabPlan.findMany(),
+
+            client.budgetRequest.findMany({ 
+                where: { 
+                    isDeleted: false,
+                    ...(isUnitAdmin ? { unitId } : {}),
+                    ...(isFieldAdmin ? { fieldId } : {})
+                } 
+            }),
+
+            client.budgetReport.findMany({ 
+                where: { 
+                    isDeleted: false,
+                    ...(isUnitAdmin ? { unitId } : {}),
+                    ...(isFieldAdmin ? { fieldId } : {})
+                } 
+            }),
+
+            client.class.findMany({ 
+                where: { 
+                    isDeleted: false,
+                    ...(isUnitAdmin ? { unitId } : {})
+                } 
+            }),
+
+            client.rabPlan.findMany({
+                where: {
+                    ...(isUnitAdmin ? { unitId } : {}),
+                    ...(isFieldAdmin ? { fieldId } : {})
+                }
+            }),
+
             client.bosStage.findMany({ where: { isDeleted: false } }),
             client.bosPos.findMany({ where: { isDeleted: false } }),
             client.bosAllocation.findMany()
@@ -595,7 +675,7 @@ app.get('/api/all-data', async (req, res) => {
         });
     } catch (error) {
         console.error(`[All Data Error] ${error.message}`);
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ success: false, error: 'Gagal sinkronisasi data dari server.' });
     }
 });
 

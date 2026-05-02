@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { User, Plus, Search, Filter, Download, Upload, Edit3, Trash2, Wallet, CreditCard, ChevronRight, X, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -58,17 +58,19 @@ export default function StudentDatabase() {
     const [importData, setImportData] = useState([]);
     const [isImporting, setIsImporting] = useState(false);
 
-    const filteredStudents = students.filter(s => {
-        if (isUnitAdmin && s.unitId !== currentUser.unitId) return false;
-        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                             (s.nis && s.nis.toLowerCase().includes(searchTerm.toLowerCase()));
-        const matchesUnit = unitFilter === 'all' || s.unitId === unitFilter;
-        const matchesYear = academicYearFilter === 'all' || s.academicYearId === academicYearFilter;
-        const matchesClass = classFilter === 'all' || s.classId === classFilter;
-        const matchesStatus = statusFilter === 'all' || s.statusId === statusFilter;
-        
-        return matchesSearch && matchesUnit && matchesYear && matchesClass && matchesStatus && !s.isDeleted;
-    });
+    const filteredStudents = useMemo(() => {
+        return students.filter(s => {
+            if (isUnitAdmin && s.unitId !== currentUser.unitId) return false;
+            const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                 (s.nis && s.nis.toLowerCase().includes(searchTerm.toLowerCase()));
+            const matchesUnit = unitFilter === 'all' || s.unitId === unitFilter;
+            const matchesYear = academicYearFilter === 'all' || s.academicYearId === academicYearFilter;
+            const matchesClass = classFilter === 'all' || s.classId === classFilter;
+            const matchesStatus = statusFilter === 'all' || s.statusId === statusFilter;
+            
+            return matchesSearch && matchesUnit && matchesYear && matchesClass && matchesStatus && !s.isDeleted;
+        });
+    }, [students, isUnitAdmin, currentUser.unitId, searchTerm, unitFilter, academicYearFilter, classFilter, statusFilter]);
 
     const handleOpenStudentModal = (student = null) => {
         if (student) {
@@ -477,9 +479,26 @@ export default function StudentDatabase() {
     )];
     const unitIncomeItems = incomeItems.filter(ii => activeIncomeItemIdsForUnit.includes(ii.id));
 
-    const maleCount = filteredStudents.filter(s => s.gender?.toLowerCase() === 'laki-laki' || s.gender?.toLowerCase() === 'l').length;
-    const femaleCount = filteredStudents.filter(s => s.gender?.toLowerCase() === 'perempuan' || s.gender?.toLowerCase() === 'p').length;
-    const unknownCount = filteredStudents.length - maleCount - femaleCount;
+    const stats = useMemo(() => {
+        const male = filteredStudents.filter(s => s.gender?.toLowerCase() === 'laki-laki' || s.gender?.toLowerCase() === 'l').length;
+        const female = filteredStudents.filter(s => s.gender?.toLowerCase() === 'perempuan' || s.gender?.toLowerCase() === 'p').length;
+        
+        // Optimize class distribution calculation (pre-map classes for fast lookup)
+        const classMap = (state.classes || []).reduce((acc, c) => {
+            acc[c.id] = c.name;
+            return acc;
+        }, {});
+
+        const distribution = filteredStudents.reduce((acc, student) => {
+            const className = classMap[student.classId] || 'Tanpa Kelas';
+            acc[className] = (acc[className] || 0) + 1;
+            return acc;
+        }, {});
+
+        return { male, female, distribution, total: filteredStudents.length, unknown: filteredStudents.length - male - female };
+    }, [filteredStudents, state.classes]);
+
+    const { male: maleCount, female: femaleCount, distribution: classDistribution, unknown: unknownCount } = stats;
 
     return (
         <div className="p-4 md:p-8 animate-in pb-20">
@@ -558,18 +577,15 @@ export default function StudentDatabase() {
                 <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between overflow-y-auto max-h-32 custom-scrollbar">
                     <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mb-2">Sebaran Kelas</p>
                     <div className="flex flex-wrap gap-2">
-                        {Object.entries(
-                            filteredStudents.reduce((acc, student) => {
-                                const className = state.classes?.find(c => c.id === student.classId)?.name || 'Tanpa Kelas';
-                                acc[className] = (acc[className] || 0) + 1;
-                                return acc;
-                            }, {})
-                        ).sort((a,b) => a[0].localeCompare(b[0])).map(([clsName, count]) => (
-                            <div key={clsName} className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
-                                <span className="text-xs font-bold text-slate-700">{clsName}:</span>
-                                <span className="text-xs font-black text-indigo-600">{count}</span>
-                            </div>
-                        ))}
+                        {Object.entries(classDistribution)
+                            .sort((a,b) => a[0].localeCompare(b[0]))
+                            .map(([clsName, count]) => (
+                                <div key={clsName} className="flex items-center gap-1 bg-slate-50 border border-slate-100 px-2 py-1 rounded-lg">
+                                    <span className="text-xs font-bold text-slate-700">{clsName}:</span>
+                                    <span className="text-xs font-black text-indigo-600">{count}</span>
+                                </div>
+                            ))
+                        }
                     </div>
                 </div>
             </div>
