@@ -369,38 +369,40 @@ export default function Sidebar({ isOpen, onClose }) {
                                                 const isTrulyActive = isActive && isParamMatch;
 
                                                 return `
-                                                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                                                    flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all
+                                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30 scale-[1.02]' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
                                                 `;
                                             }}
                                             end={(item.path || '').split('?')[0] === '/'}
                                         >
-                                            {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
-                                            <span className="text-sm font-medium flex-1">{item.label}</span>
+                                            <div className={`p-2 rounded-xl transition-colors ${location.pathname === item.path.split('?')[0] ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
+                                                {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
+                                            </div>
+                                            <span className="text-base font-bold flex-1 tracking-tight">{item.label}</span>
                                             
                                             {/* Notification Badges */}
                                             {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
-                                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-rose-500/40">
                                                     {pendingRabYayasanCount}
                                                 </span>
                                             )}
                                             {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
-                                                <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                <span className="bg-emerald-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-emerald-500/40">
                                                     {pendingRabBosCount}
                                                 </span>
                                             )}
                                             {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
-                                                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                <span className="bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-amber-500/40">
                                                     {pendingFundRequestCount}
                                                 </span>
                                             )}
                                             {item.label === 'Laporan Realisasi Yayasan' && pendingReportCount > 0 && (
-                                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-rose-500/40">
                                                     {pendingReportCount}
                                                 </span>
                                             )}
                                             {item.label === 'Saldo Yayasan' && pendingReturnCount > 0 && (
-                                                <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                <span className="bg-blue-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-blue-500/40">
                                                     {pendingReturnCount}
                                                 </span>
                                             )}
@@ -413,23 +415,14 @@ export default function Sidebar({ isOpen, onClose }) {
                 ))}
             </nav>
 
-            <div className="p-6 border-t border-slate-800 space-y-2 shrink-0">
+            <div className="p-6 border-t border-slate-800 shrink-0">
                 <button
-                    className="w-full flex items-center gap-3 px-4 py-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all text-sm font-medium"
+                    className="flex items-center gap-2 px-4 py-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all text-[11px] font-black uppercase tracking-widest mx-auto border border-rose-500/20"
                     onClick={handleLogout}
                 >
-                    <LogOut size={16} />
+                    <LogOut size={12} />
                     <span>Keluar</span>
                 </button>
-                {isSuperAdmin && (
-                    <button
-                        className="w-full flex items-center gap-3 px-4 py-2 text-slate-600 hover:text-slate-400 rounded-xl text-[10px] font-bold tracking-widest uppercase"
-                        onClick={() => { if (window.confirm('Reset semua data lokal?')) dispatch({ type: 'RESET_DATA' }); }}
-                    >
-                        <RotateCcw size={14} />
-                        <span>Reset Data Lokal</span>
-                    </button>
-                )}
                 <div className="mt-4 px-4 text-[9px] font-bold text-slate-700 uppercase tracking-widest text-center opacity-40">
                     SIKAD v1.5.0-diag
                 </div>
