@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { Trash2, RotateCcw, AlertTriangle, Archive, FileText, BookOpen, HardDrive, List, User, X, Check, Building2, Layers, Coins, Wallet, Users, GraduationCap, Briefcase, UserCheck, UserCircle, Calendar } from 'lucide-react';
@@ -6,45 +6,29 @@ import { api } from '../services/api';
 
 export default function TrashBin() {
     const { state, dispatch } = useApp();
+    const [trashItems, setTrashItems] = useState([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
 
-    const deletedJournals = (state.journals || []).filter(j => j.isDeleted);
-    const deletedAccounts = (state.accounts || []).filter(a => a.isDeleted);
-    const deletedAssets = (state.assets || []).filter(a => a.isDeleted && !a._deletedByJournal);
-    const deletedPrograms = (state.programs || []).filter(p => p.isDeleted);
-    const deletedExpensePrograms = (state.expensePrograms || []).filter(p => p.isDeleted);
-    const deletedUsers = (state.users || []).filter(u => u.isDeleted);
-    const deletedUnits = (state.units || []).filter(u => u.isDeleted);
-    const deletedFields = (state.fields || []).filter(f => f.isDeleted);
-    const deletedIncomeItems = (state.incomeItems || []).filter(i => i.isDeleted);
-    const deletedExpenseItems = (state.expenseItems || []).filter(e => e.isDeleted);
-    const deletedStudents = (state.students || []).filter(s => s.isDeleted);
-    const deletedClasses = (state.classes || []).filter(c => c.isDeleted);
-    const deletedClassGroups = (state.classGroups || []).filter(g => g.isDeleted);
-    const deletedPositions = (state.positions || []).filter(p => p.isDeleted);
-    const deletedStudentStatuses = (state.studentStatuses || []).filter(s => s.isDeleted);
-    const deletedParentStatuses = (state.parentStatuses || []).filter(p => p.isDeleted);
-    const deletedBosStages = (state.bosStages || []).filter(b => b.isDeleted);
-    const deletedBosPos = (state.bosPosList || []).filter(b => b.isDeleted);
+    const fetchTrash = async () => {
+        setIsLoadingData(true);
+        try {
+            const data = await api.getTrashItems();
+            setTrashItems(Array.isArray(data) ? data : []);
+        } catch (err) {
+            console.error('Failed to fetch trash:', err.message);
+        } finally {
+            setIsLoadingData(false);
+        }
+    };
 
+    useEffect(() => {
+        fetchTrash();
+    }, []);
+
+    // Combine server-fetched trash with local state isDeleted items 
+    // (though server items are now primary as we filter them out of main sync)
     const allDeletedItems = [
-        ...deletedJournals.map(j => ({ ...j, _type: 'journal' })),
-        ...deletedAccounts.map(a => ({ ...a, _type: 'account' })),
-        ...deletedAssets.map(a => ({ ...a, _type: 'asset' })),
-        ...deletedPrograms.map(p => ({ ...p, _type: 'program' })),
-        ...deletedExpensePrograms.map(p => ({ ...p, _type: 'program' })),
-        ...deletedUsers.map(u => ({ ...u, _type: 'user' })),
-        ...deletedUnits.map(u => ({ ...u, _type: 'unit' })),
-        ...deletedFields.map(f => ({ ...f, _type: 'field' })),
-        ...deletedIncomeItems.map(i => ({ ...i, _type: 'income-item' })),
-        ...deletedExpenseItems.map(e => ({ ...e, _type: 'expense-item' })),
-        ...deletedStudents.map(s => ({ ...s, _type: 'student' })),
-        ...deletedClasses.map(c => ({ ...c, _type: 'class' })),
-        ...deletedClassGroups.map(g => ({ ...g, _type: 'class-group' })),
-        ...deletedPositions.map(p => ({ ...p, _type: 'position' })),
-        ...deletedStudentStatuses.map(s => ({ ...s, _type: 'student-status' })),
-        ...deletedParentStatuses.map(p => ({ ...p, _type: 'parent-status' })),
-        ...deletedBosStages.map(b => ({ ...b, _type: 'bos-stage' })),
-        ...deletedBosPos.map(b => ({ ...b, _type: 'bos-pos' })),
+        ...trashItems
     ].sort((a, b) => new Date(b.deletedAt || 0) - new Date(a.deletedAt || 0));
 
     const totalCount = allDeletedItems.length;
@@ -58,6 +42,7 @@ export default function TrashBin() {
         try {
             await api.pushAction({ type: 'RESTORE_FROM_TRASH', payload: { id, type } }, state);
             dispatch({ type: 'RESTORE_FROM_TRASH', payload: { id, type } });
+            await fetchTrash();
         } catch (err) {
             console.error('Restore failed:', err.message);
             window.alert(`Gagal memulihkan: ${err.message}`);
@@ -71,6 +56,7 @@ export default function TrashBin() {
                 // Ensure server deletion succeeds BEFORE removing from local state
                 await api.pushAction({ type: 'PERMANENT_DELETE', payload: { id, type } }, state);
                 dispatch({ type: 'PERMANENT_DELETE', payload: { id, type } });
+                await fetchTrash();
                 window.alert('Data berhasil dihapus permanen dari database.');
             } catch (err) {
                 console.error('Delete failed:', err.message);
@@ -87,6 +73,7 @@ export default function TrashBin() {
             try {
                 await api.pushAction({ type: 'EMPTY_TRASH' }, state);
                 dispatch({ type: 'EMPTY_TRASH' });
+                await fetchTrash();
                 window.alert('Tempat sampah berhasil dikosongkan.');
             } catch (err) {
                 window.alert('Gagal mengosongkan tempat sampah: ' + err.message);
@@ -222,7 +209,12 @@ export default function TrashBin() {
 
 
             <div className="animate-in">
-                {filteredItems.length === 0 ? (
+                {isLoadingData ? (
+                    <div className="p-24 text-center bg-white rounded-[40px] border border-slate-100 shadow-xl flex flex-col items-center">
+                        <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+                        <p className="text-sm font-bold text-slate-500 uppercase tracking-widest italic animate-pulse">Memuat data sampah...</p>
+                    </div>
+                ) : filteredItems.length === 0 ? (
                     <div className="p-24 text-center bg-white rounded-[40px] border border-slate-100 shadow-xl flex flex-col items-center">
                         <div className="w-24 h-24 bg-slate-50 text-slate-200 rounded-full flex items-center justify-center mb-6 shadow-inner">
                             <Archive size={48} />

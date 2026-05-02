@@ -3,6 +3,38 @@ const router = express.Router();
 
 const getPrisma = (req) => req.app.get('prisma');
 
+// GET /api/trash
+router.get('/', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const models = [
+            'journal', 'account', 'asset', 'program', 'expenseProgram', 
+            'user', 'unit', 'field', 'student', 'class', 
+            'incomeItem', 'expenseItem', 'distributionSetting',
+            'academicYear', 'classGroup', 'position', 'studentStatus', 
+            'parentStatus', 'budgetRequest', 'budgetReport',
+            'bosAllocation', 'bosStage', 'bosPos'
+        ];
+
+        const trashResults = await Promise.all(models.map(async (model) => {
+            try {
+                const items = await prisma[model].findMany({
+                    where: { isDeleted: true }
+                });
+                return items.map(item => ({ ...item, _type: model }));
+            } catch (e) {
+                return [];
+            }
+        }));
+
+        const allTrash = trashResults.flat();
+        res.json(allTrash);
+    } catch (error) {
+        console.error(`[Trash Fetch Error] ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // DELETE /api/trash/empty
 router.delete('/empty', async (req, res) => {
     try {

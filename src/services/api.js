@@ -83,6 +83,10 @@ export const api = {
         }
     },
 
+    async getTrashItems() {
+        return await this.get('/trash');
+    },
+
     async request(method, endpoint, data = null) {
         if (!isRemote) return null;
         const config = { method };
