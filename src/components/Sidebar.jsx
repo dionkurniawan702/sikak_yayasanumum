@@ -4,7 +4,8 @@ import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
-    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout
+    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout,
+    ChevronDown, ChevronRight
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRemote, api } from '../services/api';
@@ -16,7 +17,7 @@ export default function Sidebar({ isOpen, onClose }) {
     const navigate = useNavigate();
     const location = useLocation();
 
-    let menuItems = [];
+    const [expandedGroups, setExpandedGroups] = useState({});
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const isAdminField = currentUser?.role === 'admin_bidang';
@@ -64,11 +65,9 @@ export default function Sidebar({ isOpen, onClose }) {
     const pendingFundRequestCount = React.useMemo(() => {
         if (!state.budgetRequests) return 0;
         if (isSuperAdmin) {
-            // Superadmin sees total PENDING requests waiting for approval
             return state.budgetRequests.filter(r => r.status === 'PENDING').length;
         }
         if (isAdminUnit || isAdminField) {
-            // Unit/bidang admins see their requests that were recently ACC or REJECTED (not yet seen)
             return state.budgetRequests.filter(r => {
                 const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
                     (isAdminField && r.fieldId === currentUser.fieldId);
@@ -82,11 +81,9 @@ export default function Sidebar({ isOpen, onClose }) {
     const pendingReportCount = React.useMemo(() => {
         if (!state.budgetReports) return 0;
         if (isSuperAdmin) {
-            // Superadmin sees total PENDING reports waiting for approval
             return state.budgetReports.filter(r => r.status === 'PENDING' && r.kategoriAset !== 'PENGEMBALIAN').length;
         }
         if (isAdminUnit || isAdminField) {
-            // Unit/bidang admins see their reports that were recently ACC or REJECTED (not yet seen)
             return state.budgetReports.filter(r => {
                 const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
                     (isAdminField && r.fieldId === currentUser.fieldId);
@@ -112,122 +109,198 @@ export default function Sidebar({ isOpen, onClose }) {
         return 0;
     }, [state.budgetReports, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
 
-    if (isSuperAdmin) {
-        menuItems = [
-            { section: 'UTAMA' },
-            { path: '/', label: 'Dashboard', icon: LayoutDashboard },
-            { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
-            { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
-            { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
+    const menuGroups = React.useMemo(() => {
+        let groups = [];
 
-            { section: 'TRANSAKSI AKUNTANSI' },
-            { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
-            { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
-            { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock },
+        if (isSuperAdmin) {
+            groups = [
+                {
+                    title: 'UTAMA',
+                    items: [
+                        { path: '/', label: 'Dashboard', icon: LayoutDashboard },
+                        { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
+                        { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
+                        { path: '/manajemen-program', label: 'Manajemen Program', icon: List }
+                    ]
+                },
+                {
+                    title: 'TRANSAKSI AKUNTANSI',
+                    items: [
+                        { path: '/jurnal', label: 'Jurnal Umum', icon: FileText },
+                        { path: '/buku-besar', label: 'Buku Besar', icon: BookMarked },
+                        { path: '/tutup-buku', label: 'Tutup Buku (Closing)', icon: Lock }
+                    ]
+                },
+                {
+                    title: 'LAPORAN KEUANGAN',
+                    items: [
+                        { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
+                        { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
+                        { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
+                        { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
+                        { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
+                        { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
+                        { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
+                        { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText }
+                    ]
+                },
+                {
+                    title: 'ANGGARAN & PELAPORAN',
+                    items: [
+                        { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
+                        { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
+                        { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
+                        { path: '/pelaporan/saldo-bos', label: 'Saldo BOS', icon: Landmark }
+                    ]
+                },
+                {
+                    title: 'PERENCANAAN (RAB)',
+                    items: [
+                        { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
+                        { path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark },
+                        { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
+                        { path: '/anggaran/distribusi', label: 'Setting Distribusi', icon: Share2 }
+                    ]
+                },
+                {
+                    title: 'OPERASIONAL DANA',
+                    items: [
+                        { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
+                        { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
+                        { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
+                        { path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark },
+                        { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked }
+                    ]
+                },
+                {
+                    title: 'DATABASE ANGGARAN',
+                    items: [
+                        { path: '/anggaran/dashboard-siswa', label: 'Dashboard Siswa', icon: LayoutDashboard },
+                        { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
+                        { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
+                        { path: '/anggaran/database-bos', label: 'Database BOS', icon: Database }
+                    ]
+                },
+                {
+                    title: 'PENGATURAN ANGGARAN',
+                    items: [
+                        { path: '/anggaran/unit-bidang', label: 'Unit & Bidang', icon: Building2 },
+                        { path: '/anggaran/tahun-ajaran', label: 'Tahun Ajaran', icon: Calendar },
+                        { path: '/anggaran/set-jabatan', label: 'Set Jabatan', icon: Briefcase },
+                        { path: '/anggaran/status-siswa', label: 'Status Siswa', icon: UserCheck },
+                        { path: '/anggaran/status-ortu', label: 'Status Orang Tua', icon: Heart },
+                        { path: '/anggaran/item-penerimaan', label: 'Item Penerimaan', icon: Coins },
+                        { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
+                        { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
+                        { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
+                        { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
+                        { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins }
+                    ]
+                },
+                {
+                    title: 'ADMINISTRASI SISTEM',
+                    items: [
+                        { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
+                        { path: '/pengaturan/audit-log', label: 'Audit Log Sistem', icon: Activity },
+                        { path: '/pengaturan/tempat-sampah', label: 'Tempat Sampah', icon: Trash2 },
+                        { path: '/manajemen-user', label: 'Manajemen User', icon: ShieldCheck }
+                    ]
+                }
+            ];
+        } else if (isAdminField || isAdminUnit) {
+            let isPendidikanKeuangan = false;
+            if (isAdminField && state.fields) {
+                const fieldName = state.fields.find(f => f.id === currentUser.fieldId)?.name?.toLowerCase() || '';
+                isPendidikanKeuangan = fieldName.includes('pendidikan') || fieldName.includes('keuangan');
+            }
+            const showDatabaseItems = isAdminUnit || isPendidikanKeuangan;
 
-            { section: 'LAPORAN KEUANGAN' },
-            { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
-            { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
-            { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
-            { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
-            { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
-            { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
-            { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
-            { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText },
+            groups = [
+                {
+                    title: 'ANGGARAN & PELAPORAN',
+                    items: [
+                        { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
+                        { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
+                        { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
+                        ...(hasBos ? [{ path: '/pelaporan/saldo-bos', label: 'Saldo BOS', icon: Landmark }] : [])
+                    ]
+                },
+                {
+                    title: 'PERENCANAAN (RAB)',
+                    items: [
+                        ...(isAdminUnit
+                            ? [
+                                { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
+                                ...(hasBos ? [{ path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark }] : [])
+                            ]
+                            : [{ path: '/anggaran/rab', label: 'RAB', icon: Target }]
+                        ),
+                        { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive }
+                    ]
+                },
+                {
+                    title: 'OPERASIONAL DANA',
+                    items: [
+                        { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
+                        { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
+                        { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
+                        ...(hasBos ? [{ path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark }] : []),
+                        { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked }
+                    ]
+                }
+            ];
 
-            { section: 'ANGGARAN & PELAPORAN' },
-            { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
-            { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
-            { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
-            { path: '/pelaporan/saldo-bos', label: 'Saldo BOS', icon: Landmark },
+            if (showDatabaseItems) {
+                groups.push({
+                    title: 'DATABASE ANGGARAN',
+                    items: [
+                        { path: '/anggaran/dashboard-siswa', label: 'Dashboard Siswa', icon: LayoutDashboard },
+                        { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
+                        { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
+                        ...(hasBos ? [{ path: '/anggaran/database-bos', label: 'Database BOS', icon: Database }] : [])
+                    ]
+                });
+            }
 
-            { section: 'PERENCANAAN (RAB)' },
-            { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
-            { path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark },
-            { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
-            { path: '/anggaran/distribusi', label: 'Setting Distribusi', icon: Share2 },
-
-            { section: 'OPERASIONAL DANA' },
-            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
-            { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
-            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
-            { path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark },
-            { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
-
-            { section: 'DATABASE ANGGARAN' },
-            { path: '/anggaran/dashboard-siswa', label: 'Dashboard Siswa', icon: LayoutDashboard },
-            { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
-            { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
-            { path: '/anggaran/database-bos', label: 'Database BOS', icon: Database },
-
-
-            { section: 'PENGATURAN ANGGARAN' },
-            { path: '/anggaran/unit-bidang', label: 'Unit & Bidang', icon: Building2 },
-            { path: '/anggaran/tahun-ajaran', label: 'Tahun Ajaran', icon: Calendar },
-            { path: '/anggaran/set-jabatan', label: 'Set Jabatan', icon: Briefcase },
-            { path: '/anggaran/status-siswa', label: 'Status Siswa', icon: UserCheck },
-            { path: '/anggaran/status-ortu', label: 'Status Orang Tua', icon: Heart },
-            { path: '/anggaran/item-penerimaan', label: 'Item Penerimaan', icon: Coins },
-            { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
-            { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
-            { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
-            { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
-            { path: '/anggaran/sumber-dana', label: 'Sumber Dana', icon: HandCoins },
-
-            { section: 'ADMINISTRASI SISTEM' },
-            { path: '/pengaturan/backup-restore', label: 'Backup & Restore', icon: Database },
-            { path: '/pengaturan/audit-log', label: 'Audit Log Sistem', icon: Activity },
-            { path: '/pengaturan/tempat-sampah', label: 'Tempat Sampah', icon: Trash2 },
-            { path: '/manajemen-user', label: 'Manajemen User', icon: ShieldCheck }
-        ];
-    } else if (isAdminField || isAdminUnit) {
-        let isPendidikanKeuangan = false;
-        if (isAdminField && state.fields) {
-            const fieldName = state.fields.find(f => f.id === currentUser.fieldId)?.name?.toLowerCase() || '';
-            isPendidikanKeuangan = fieldName.includes('pendidikan') || fieldName.includes('keuangan');
-        }
-
-        const showDatabaseItems = isAdminUnit || isPendidikanKeuangan;
-
-        menuItems = [
-            { section: 'ANGGARAN & PELAPORAN' },
-            { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
-            { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
-            { path: '/pelaporan/saldo', label: 'Saldo Yayasan', icon: Wallet },
-            ...(hasBos ? [{ path: '/pelaporan/saldo-bos', label: 'Saldo BOS', icon: Landmark }] : []),
-
-            { section: 'PERENCANAAN (RAB)' },
-            ...(isAdminUnit
-                ? [
-                    { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
-                    ...(hasBos ? [{ path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark }] : [])
+            groups.push({
+                title: 'PENGATURAN',
+                items: [
+                    { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout }
                 ]
-                : [{ path: '/anggaran/rab', label: 'RAB', icon: Target }]
-            ),
-            { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
-
-            { section: 'OPERASIONAL DANA' },
-            { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
-            { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
-            { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
-            ...(hasBos ? [{ path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark }] : []),
-            { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked },
-
-            { section: 'PENGATURAN' },
-            { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout }
-        ];
-
-        if (showDatabaseItems) {
-            menuItems.push(
-                { section: 'DATABASE ANGGARAN' },
-                { path: '/anggaran/dashboard-siswa', label: 'Dashboard Siswa', icon: LayoutDashboard },
-                { path: '/anggaran/siswa', label: 'Database Siswa', icon: User },
-                { path: '/anggaran/kelas', label: 'Kelas', icon: Users },
-                ...(hasBos ? [{ path: '/anggaran/database-bos', label: 'Database BOS', icon: Database }] : [])
-
-            );
+            });
         }
-    }
+
+        return groups;
+    }, [isSuperAdmin, isAdminField, isAdminUnit, hasBos, currentUser, state.fields]);
+
+    // Auto-expand groups that contain the active route
+    useEffect(() => {
+        const currentPath = location.pathname;
+        const currentSearch = location.search;
+        const fullPath = currentPath + currentSearch;
+
+        menuGroups.forEach(group => {
+            const hasActiveItem = group.items.some(item => {
+                const itemBase = (item.path || '').split('?')[0];
+                const itemSearch = (item.path || '').split('?')[1] || '';
+                const currentSearchClean = currentSearch.replace('?', '');
+                
+                if (item.path === '/') return currentPath === '/';
+                return currentPath === itemBase && (itemSearch === '' || itemSearch === currentSearchClean);
+            });
+
+            if (hasActiveItem) {
+                setExpandedGroups(prev => ({ ...prev, [group.title]: true }));
+            }
+        });
+    }, [location.pathname, location.search, menuGroups]);
+
+    const toggleGroup = (title) => {
+        setExpandedGroups(prev => ({
+            ...prev,
+            [title]: !prev[title]
+        }));
+    };
 
     const handleLogout = () => {
         if (window.confirm('Keluar dari sistem?')) {
@@ -261,64 +334,83 @@ export default function Sidebar({ isOpen, onClose }) {
             </div>
 
             <nav className="flex-1 overflow-y-auto min-h-0 px-4 py-6 space-y-1 custom-scrollbar">
-                {menuItems.map((item, idx) => {
-                    if (item.section) {
-                        return (
-                            <div key={idx} className="text-[10px] font-bold text-slate-600 uppercase tracking-widest px-4 py-4 mt-2">
-                                {item.section}
-                            </div>
-                        );
-                    }
-                    const Icon = item.icon;
-                    return (
-                        <NavLink
-                            key={idx}
-                            to={item.path}
-                            className={({ isActive }) => {
-                                // Strict matching for paths with query params
-                                const itemPath = item.path || '';
-                                const itemSearch = itemPath.split('?')[1] || '';
-                                const currentSearch = location.search.replace('?', '');
-                                const isParamMatch = itemSearch === currentSearch;
-                                const isTrulyActive = isActive && isParamMatch;
-
-                                return `
-                                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all
-                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
-                                `;
-                            }}
-                            end={(item.path || '').split('?')[0] === '/'}
+                {menuGroups.map((group, gIdx) => (
+                    <div key={gIdx} className="space-y-1">
+                        {/* Group Header */}
+                        <button
+                            onClick={() => toggleGroup(group.title)}
+                            className="w-full flex items-center justify-between px-4 py-4 mt-2 text-[10px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-widest transition-colors group"
                         >
-                            {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
-                            <span className="text-sm font-medium flex-1">{item.label}</span>
-                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
-                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                    {pendingRabYayasanCount}
-                                </span>
+                            <span>{group.title}</span>
+                            {expandedGroups[group.title] ? (
+                                <ChevronDown size={12} className="text-slate-600 group-hover:text-slate-400" />
+                            ) : (
+                                <ChevronRight size={12} className="text-slate-600 group-hover:text-slate-400" />
                             )}
-                            {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
-                                <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                    {pendingRabBosCount}
-                                </span>
-                            )}
-                            {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
-                                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                    {pendingFundRequestCount}
-                                </span>
-                            )}
-                            {item.label === 'Laporan Realisasi Yayasan' && pendingReportCount > 0 && (
-                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                    {pendingReportCount}
-                                </span>
-                            )}
-                            {item.label === 'Saldo Yayasan' && pendingReturnCount > 0 && (
-                                <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
-                                    {pendingReturnCount}
-                                </span>
-                            )}
-                        </NavLink>
-                    );
-                })}
+                        </button>
+
+                        {/* Group Items */}
+                        {expandedGroups[group.title] && (
+                            <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">
+                                {group.items.map((item, iIdx) => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <NavLink
+                                            key={iIdx}
+                                            to={item.path}
+                                            onClick={() => {
+                                                if (window.innerWidth < 1024) onClose();
+                                            }}
+                                            className={({ isActive }) => {
+                                                const itemPath = item.path || '';
+                                                const itemSearch = itemPath.split('?')[1] || '';
+                                                const currentSearch = location.search.replace('?', '');
+                                                const isParamMatch = itemSearch === currentSearch;
+                                                const isTrulyActive = isActive && isParamMatch;
+
+                                                return `
+                                                    flex items-center gap-3 px-4 py-3 rounded-xl transition-all
+                                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                                                `;
+                                            }}
+                                            end={(item.path || '').split('?')[0] === '/'}
+                                        >
+                                            {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
+                                            <span className="text-sm font-medium flex-1">{item.label}</span>
+                                            
+                                            {/* Notification Badges */}
+                                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
+                                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                    {pendingRabYayasanCount}
+                                                </span>
+                                            )}
+                                            {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
+                                                <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                    {pendingRabBosCount}
+                                                </span>
+                                            )}
+                                            {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
+                                                <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                    {pendingFundRequestCount}
+                                                </span>
+                                            )}
+                                            {item.label === 'Laporan Realisasi Yayasan' && pendingReportCount > 0 && (
+                                                <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                    {pendingReportCount}
+                                                </span>
+                                            )}
+                                            {item.label === 'Saldo Yayasan' && pendingReturnCount > 0 && (
+                                                <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse">
+                                                    {pendingReturnCount}
+                                                </span>
+                                            )}
+                                        </NavLink>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </div>
+                ))}
             </nav>
 
             <div className="p-6 border-t border-slate-800 space-y-2 shrink-0">
