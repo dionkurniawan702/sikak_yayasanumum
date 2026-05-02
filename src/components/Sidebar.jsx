@@ -243,7 +243,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     </div>
                     <div className="flex flex-col">
                         <span className="text-xl font-black text-white tracking-tight">SIKAD</span>
-                        <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-[0.2em] -mt-1 line-clamp-1 italic">
+                        <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-wider -mt-1 italic">
                             Sistem Keuangan Dareliman
                         </span>
                     </div>
