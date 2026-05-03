@@ -308,8 +308,8 @@ export default function Sidebar({ isOpen, onClose }) {
     };
 
     return (
-        <aside className={`sidebar fixed inset-y-0 bg-emerald-950 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-            <div className="sidebar-brand p-8 border-b border-emerald-900 shrink-0">
+        <aside className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+            <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-white/10 rounded-xl shadow-inner backdrop-blur-sm border border-white/5">
                         <Landmark className="text-blue-200" size={24} />
@@ -323,11 +323,11 @@ export default function Sidebar({ isOpen, onClose }) {
                 </div>
             </div>
 
-            <div className="p-6 border-b border-emerald-900 flex items-center gap-4 shrink-0">
-                <div className="w-10 h-10 rounded-xl bg-emerald-900 flex items-center justify-center text-lg">👤</div>
+            <div className="p-6 border-b border-slate-800 flex items-center gap-4 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-lg">👤</div>
                 <div>
                     <p className="text-sm font-bold text-white">{currentUser?.name}</p>
-                    <p className="text-[10px] text-emerald-500/60 font-bold uppercase tracking-widest">{currentUser?.role}</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{currentUser?.role}</p>
                 </div>
             </div>
 
@@ -355,13 +355,13 @@ export default function Sidebar({ isOpen, onClose }) {
                         {/* Group Header */}
                         <button
                             onClick={() => toggleGroup(group.title)}
-                             className="w-full flex items-center justify-between px-4 py-4 mt-2 text-[11px] font-bold text-emerald-500/60 hover:text-emerald-200 uppercase tracking-[0.2em] transition-colors group"
+                             className="w-full flex items-center justify-between px-4 py-4 mt-2 text-[11px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-[0.2em] transition-colors group"
                         >
                             <span>{group.title}</span>
                              {expandedGroups[group.title] ? (
-                                <ChevronDown size={12} className="text-emerald-800 group-hover:text-emerald-500" />
+                                <ChevronDown size={12} className="text-slate-600 group-hover:text-slate-400" />
                             ) : (
-                                <ChevronRight size={12} className="text-emerald-800 group-hover:text-emerald-500" />
+                                <ChevronRight size={12} className="text-slate-600 group-hover:text-slate-400" />
                             )}
                         </button>
 
@@ -386,13 +386,13 @@ export default function Sidebar({ isOpen, onClose }) {
 
                                                 return `
                                                     flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all
-                                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30 scale-[1.02]' : 'text-emerald-100/60 hover:bg-emerald-900 hover:text-white'}
+                                                     ${isTrulyActive ? 'bg-blue-600 text-white shadow-xl shadow-blue-500/30 scale-[1.02]' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
                                                 `;
                                             }}
                                             end={(item.path || '').split('?')[0] === '/'}
                                         >
-                                            <div className={`p-2 rounded-xl transition-colors ${location.pathname === item.path.split('?')[0] ? 'bg-white/20' : 'bg-emerald-900/50 group-hover:bg-emerald-800'}`}>
-                                                 {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-emerald-800 rounded" />}
+                                            <div className={`p-2 rounded-xl transition-colors ${location.pathname === item.path.split('?')[0] ? 'bg-white/20' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
+                                                 {Icon ? <Icon size={18} /> : <div className="w-[18px] h-[18px] bg-slate-800 rounded" />}
                                             </div>
                                             <span className="text-base font-bold flex-1 tracking-tight">{item.label}</span>
                                             
@@ -431,7 +431,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 ))}
             </nav>
 
-            <div className="p-6 border-t border-emerald-900 shrink-0">
+            <div className="p-6 border-t border-slate-800 shrink-0">
                 <button
                     className="flex items-center gap-2 px-4 py-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all text-[11px] font-black uppercase tracking-widest mx-auto border border-rose-500/20"
                     onClick={handleLogout}
@@ -439,7 +439,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     <LogOut size={12} />
                     <span>Keluar</span>
                 </button>
-                <div className="mt-4 px-4 text-[9px] font-bold text-emerald-900/60 uppercase tracking-widest text-center opacity-60">
+                <div className="mt-4 px-4 text-[9px] font-bold text-slate-700 uppercase tracking-widest text-center opacity-40">
                     SIKAD v1.5.0-diag
                 </div>
             </div>
