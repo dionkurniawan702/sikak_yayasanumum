@@ -53,7 +53,7 @@ export default function BudgetDashboard() {
     };
 
     // ========== ENGINE: RAP (Rencana Anggaran Pendapatan) ==========
-    const { unitRAP, fieldRAP } = useMemo(() => {
+    const { unitRAP, fieldRAP, totalMurni } = useMemo(() => {
         const uRAP = {};
         const fRAP = {};
         units.filter(u => !u.isDeleted).forEach(u => uRAP[u.id] = { total: 0, items: {} });
@@ -382,11 +382,11 @@ export default function BudgetDashboard() {
 
     // ========== Totals ==========
     // Use totalMurni for the final consolidation to ensure it matches exactly the student income (Base)
-    const totalBidangRAP = unitRAP.totalMurni || 0;
+    const totalBidangRAP = totalMurni || 0;
     const totalBidangRAB = bidangData.reduce((s, d) => s + d.rab, 0);
     const totalBidangSisa = totalBidangRAP - totalBidangRAB;
 
-    const totalUnitRAP = unitRAP.totalMurni || 0;
+    const totalUnitRAP = totalMurni || 0;
     const totalUnitRAB = unitData.reduce((s, d) => s + d.rab, 0);
     const totalUnitSisa = totalUnitRAP - totalUnitRAB;
 
@@ -449,7 +449,7 @@ export default function BudgetDashboard() {
                         {sourceMode === 'YAYASAN' && (
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full border border-slate-200">
                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base: {formatCurrency(unitRAP.totalMurni || 0)}</span>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base: {formatCurrency(totalMurni || 0)}</span>
                             </div>
                         )}
                     </div>
