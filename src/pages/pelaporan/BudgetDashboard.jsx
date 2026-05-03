@@ -74,9 +74,18 @@ export default function BudgetDashboard() {
                 const amount = parseFloat(detail.amount) || 0;
                 if (amount <= 0) return;
 
-                const rules = distributionSettings.filter(
+                const rawRules = distributionSettings.filter(
                     s => s.unitId === student.unitId && s.incomeItemId === detail.incomeItemId
                 );
+
+                // DEDUPLICATION ON-THE-FLY: Ensure we don't apply the same rule twice
+                const seenRules = new Set();
+                const rules = rawRules.filter(r => {
+                    const key = `${r.destId}-${r.destType}-${r.expenseItemId}-${r.percentage}`;
+                    if (seenRules.has(key)) return false;
+                    seenRules.add(key);
+                    return true;
+                });
 
                 if (rules.length === 0) {
                     uRAP[student.unitId].total += amount;
@@ -123,7 +132,11 @@ export default function BudgetDashboard() {
             });
         });
 
-        return { unitRAP: uRAP, fieldRAP: fRAP };
+        const totalMurni = activeStudents.reduce((sum, s) => {
+            return sum + (s.incomeDetails?.reduce((s2, d) => s2 + (parseFloat(d.amount) || 0), 0) || 0);
+        }, 0);
+
+        return { unitRAP: uRAP, fieldRAP: fRAP, totalMurni };
     }, [students, units, fields, distributionSettings, studentStatuses, currentUser, activeAcademicYear, expenseItems]);
 
     // ========== ENGINE: RAB (Rencana Anggaran Belanja) ==========
@@ -368,11 +381,12 @@ export default function BudgetDashboard() {
     }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems, unitData]);
 
     // ========== Totals ==========
-    const totalBidangRAP = bidangData.reduce((s, d) => s + d.rap, 0);
+    // Use totalMurni for the final consolidation to ensure it matches exactly the student income (Base)
+    const totalBidangRAP = unitRAP.totalMurni || 0;
     const totalBidangRAB = bidangData.reduce((s, d) => s + d.rab, 0);
     const totalBidangSisa = totalBidangRAP - totalBidangRAB;
 
-    const totalUnitRAP = unitData.reduce((s, d) => s + d.rap, 0);
+    const totalUnitRAP = unitRAP.totalMurni || 0;
     const totalUnitRAB = unitData.reduce((s, d) => s + d.rab, 0);
     const totalUnitSisa = totalUnitRAP - totalUnitRAB;
 
@@ -430,7 +444,15 @@ export default function BudgetDashboard() {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 pt-12 md:pt-0">
                 <div>
                     <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Dashboard Anggaran</h2>
-                    <p className="text-slate-500 font-medium tracking-tight">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
+                    <div className="flex items-center gap-4">
+                        <p className="text-slate-500 font-medium tracking-tight">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
+                        {sourceMode === 'YAYASAN' && (
+                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full border border-slate-200">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base: {formatCurrency(unitRAP.totalMurni || 0)}</span>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
