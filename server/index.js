@@ -1339,6 +1339,44 @@ const ensureStudentGenderColumn = async () => {
 };
 
 
+const repairDistributions = async () => {
+    try {
+        const client = getPrisma();
+        console.log('[REPAIR] Scanning for duplicate distribution settings...');
+        
+        const allSettings = await client.distributionSetting.findMany({
+            where: { isDeleted: false }
+        });
+
+        const seen = new Set();
+        const toDelete = [];
+
+        for (const s of allSettings) {
+            // Unique key: Unit + IncomeItem + Target + ExpenseItem
+            const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}`;
+            
+            if (seen.has(key)) {
+                toDelete.push(s.id);
+            } else {
+                seen.add(key);
+            }
+        }
+
+        if (toDelete.length > 0) {
+            console.log(`[REPAIR] Found ${toDelete.length} duplicates. Cleaning up...`);
+            await client.distributionSetting.deleteMany({
+                where: { id: { in: toDelete } }
+            });
+            console.log(`[REPAIR] SUCCESS: Cleaned up ${toDelete.length} duplicate rules.`);
+        } else {
+            console.log('[REPAIR] No duplicates found in distribution settings.');
+        }
+    } catch (error) {
+        console.error(`[REPAIR ERROR] Distributions: ${error.message}`);
+    }
+};
+
+
 const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`\n\n************************************************`);
     console.log(`[SUCCESS] SIKAK Yayasan Backend is now ACTIVE!`);
@@ -1365,6 +1403,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureBosAllocationColumns();
             await ensureBudgetSourceColumns();
             await ensureStudentGenderColumn();
+            await repairDistributions();
 
             console.log('[Background Tasks] All startup checks completed successfully.');
 
