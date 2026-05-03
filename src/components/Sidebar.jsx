@@ -115,7 +115,7 @@ export default function Sidebar({ isOpen, onClose }) {
         if (isSuperAdmin) {
             groups = [
                 {
-                    title: 'UTAMA',
+                    title: 'DATABASE AKUNTANSI',
                     items: [
                         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
                         { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
@@ -145,7 +145,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     ]
                 },
                 {
-                    title: 'ANGGARAN & PELAPORAN',
+                    title: 'DASHBOARD & SALDO',
                     items: [
                         { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
                         { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
@@ -163,12 +163,12 @@ export default function Sidebar({ isOpen, onClose }) {
                     ]
                 },
                 {
-                    title: 'OPERASIONAL DANA',
+                    title: 'REALISASI ANGGARAN',
                     items: [
                         { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
                         { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
-                        { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
-                        { path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark },
+                        { path: '/pelaporan/bulanan', label: 'Pengeluaran Yayasan', icon: FileText },
+                        { path: '/pelaporan/realisasi-bos', label: 'Pengeluaran BOS', icon: Landmark },
                         { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked }
                     ]
                 },
@@ -215,7 +215,7 @@ export default function Sidebar({ isOpen, onClose }) {
 
             groups = [
                 {
-                    title: 'ANGGARAN & PELAPORAN',
+                    title: 'DASHBOARD & SALDO',
                     items: [
                         { path: '/pelaporan/dashboard', label: 'Dashboard Anggaran', icon: LayoutDashboard },
                         { path: '/pelaporan/realisasi', label: 'Dashboard Realisasi', icon: TrendingUp },
@@ -237,12 +237,12 @@ export default function Sidebar({ isOpen, onClose }) {
                     ]
                 },
                 {
-                    title: 'OPERASIONAL DANA',
+                    title: 'REALISASI ANGGARAN',
                     items: [
                         { path: '/pelaporan/permintaan', label: 'Permintaan Dana', icon: Send },
                         { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
-                        { path: '/pelaporan/bulanan', label: 'Laporan Realisasi Yayasan', icon: FileText },
-                        ...(hasBos ? [{ path: '/pelaporan/realisasi-bos', label: 'Laporan Realisasi BOS', icon: Landmark }] : []),
+                        { path: '/pelaporan/bulanan', label: 'Pengeluaran Yayasan', icon: FileText },
+                        ...(hasBos ? [{ path: '/pelaporan/realisasi-bos', label: 'Pengeluaran BOS', icon: Landmark }] : []),
                         { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked }
                     ]
                 }
@@ -394,7 +394,7 @@ export default function Sidebar({ isOpen, onClose }) {
                                                     {pendingFundRequestCount}
                                                 </span>
                                             )}
-                                            {item.label === 'Laporan Realisasi Yayasan' && pendingReportCount > 0 && (
+                                            {item.label === 'Pengeluaran Yayasan' && pendingReportCount > 0 && (
                                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-rose-500/40">
                                                     {pendingReportCount}
                                                 </span>
