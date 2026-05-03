@@ -338,8 +338,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         {group.title === 'DATABASE AKUNTANSI' && (
                             <div className="px-4 py-2 mt-4 mb-2">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] whitespace-nowrap">ACCOUNTING SYSTEM</span>
+                                    <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] whitespace-nowrap font-sans">ACCOUNTING SYSTEM</span>
                                     <div className="h-px flex-1 bg-slate-800/50"></div>
                                 </div>
                             </div>
@@ -349,8 +349,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         {(group.title === 'DASHBOARD & SALDO' || (gIdx === 0 && group.title !== 'DATABASE AKUNTANSI')) && (
                             <div className="px-4 py-2 mt-6 mb-2">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] whitespace-nowrap">BUDGETING & REPORTING</span>
+                                    <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]"></div>
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] whitespace-nowrap font-sans">BUDGETING & REPORTING</span>
                                     <div className="h-px flex-1 bg-slate-800/50"></div>
                                 </div>
                             </div>
