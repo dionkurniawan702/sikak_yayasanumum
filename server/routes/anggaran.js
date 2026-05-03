@@ -4,6 +4,7 @@ const router = express.Router();
 
 // Helper to get Prisma Client from the request (attached in index.js)
 const getPrisma = (req) => req.app.get('prisma');
+const withRetry = (req, fn) => req.app.get('withRetry')(fn);
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sikad-dareliman-secret-2026';
 
@@ -137,13 +138,13 @@ router.post('/units', async (req, res) => {
         console.log(`[API] Creating new Unit: ${JSON.stringify(cleanData)}`);
 
         // Pre-check for duplicate name in the same field
-        const existing = await getPrisma(req).unit.findFirst({
+        const existing = await withRetry(req, () => getPrisma(req).unit.findFirst({
             where: { 
                 name: cleanData.name, 
                 fieldId: cleanData.fieldId,
                 isDeleted: false 
             }
-        });
+        }));
         
         if (existing) {
             return res.status(400).json({ error: `Gagal menyimpan: Nama unit "${cleanData.name}" sudah digunakan di bidang ini.` });
@@ -176,14 +177,14 @@ router.put('/units/:id', async (req, res) => {
         console.log(`[API] Upserting Unit ${id}: ${JSON.stringify(cleanData)}`);
         
         // Pre-check for duplicate name in the same field (excluding current ID) to avoid P2002 closure
-        const existing = await getPrisma(req).unit.findFirst({
+        const existing = await withRetry(req, () => getPrisma(req).unit.findFirst({
             where: { 
                 name: cleanData.name, 
                 fieldId: cleanData.fieldId, 
                 id: { not: id },
                 isDeleted: false 
             }
-        });
+        }));
         
         if (existing) {
             return res.status(400).json({ error: `Gagal menyimpan: Nama unit "${cleanData.name}" sudah digunakan di bidang ini.` });
