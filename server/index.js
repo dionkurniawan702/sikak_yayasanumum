@@ -112,32 +112,8 @@ const getPrisma = () => {
             log: ['error', 'warn'],
             errorFormat: 'pretty',
         });
-    }
-    return prisma;
-};
-
-// Helper untuk mencoba kembali jika koneksi terputus
-const withRetry = async (fn, maxRetries = 3) => {
-    let lastError;
-    for (let i = 0; i < maxRetries; i++) {
-        try {
-            return await fn();
-        } catch (error) {
-            lastError = error;
-            const msg = error.message.toLowerCase();
-            const isConnError = msg.includes('connection') || msg.includes('closed') || msg.includes('reach database');
-            
-            if (isConnError && i < maxRetries - 1) {
-                console.warn(`[Retry] Koneksi database terputus. Mencoba ulang (${i + 1}/${maxRetries})...`);
-                await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Jeda makin lama
-                try { await getPrisma().$connect(); } catch (e) {}
-                continue;
-            }
-            throw error;
-        }
-    }
-    throw lastError;
-};
+        
+        // --- AUTO CLEANUP LOGIC ---
         setTimeout(async () => {
             console.log('[Cleanup] Initiating RabPlan duplicates cleanup...');
             try {
@@ -210,6 +186,29 @@ const withRetry = async (fn, maxRetries = 3) => {
         }, 5000); // Wait 5s after startup to not block boot
     }
     return prisma;
+};
+
+// Helper untuk mencoba kembali jika koneksi terputus
+const withRetry = async (fn, maxRetries = 3) => {
+    let lastError;
+    for (let i = 0; i < maxRetries; i++) {
+        try {
+            return await fn();
+        } catch (error) {
+            lastError = error;
+            const msg = error.message.toLowerCase();
+            const isConnError = msg.includes('connection') || msg.includes('closed') || msg.includes('reach database');
+            
+            if (isConnError && i < maxRetries - 1) {
+                console.warn(`[Retry] Koneksi database terputus. Mencoba ulang (${i + 1}/${maxRetries})...`);
+                await new Promise(r => setTimeout(r, 1000 * (i + 1))); // Jeda makin lama
+                try { await getPrisma().$connect(); } catch (e) {}
+                continue;
+            }
+            throw error;
+        }
+    }
+    throw lastError;
 };
 
 
