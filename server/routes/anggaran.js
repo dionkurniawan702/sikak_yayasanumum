@@ -459,13 +459,26 @@ router.post('/distribution-settings', async (req, res) => {
     try {
         const { unitId, incomeItemId, settings, batch = false } = req.body;
         console.log(`[Sync] Updating distributions for Unit ${unitId}. Batch: ${batch}. Rules: ${settings?.length}`);
+        
+        // Anti-Duplicate Guard: Filter out exact identical rules before saving
+        const uniqueSettings = [];
+        const seen = new Set();
+        if (Array.isArray(settings)) {
+            for (const s of settings) {
+                const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}-${s.percentage}`;
+                if (!seen.has(key)) {
+                    uniqueSettings.push(s);
+                    seen.add(key);
+                }
+            }
+        }
 
         await getPrisma(req).$transaction([
             getPrisma(req).distributionSetting.deleteMany({
                 where: batch ? { unitId } : { unitId, incomeItemId }
             }),
             getPrisma(req).distributionSetting.createMany({
-                data: settings.map(s => ({
+                data: uniqueSettings.map(s => ({
                     unitId: s.unitId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
