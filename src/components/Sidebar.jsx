@@ -334,6 +334,28 @@ export default function Sidebar({ isOpen, onClose }) {
             <nav className="flex-1 overflow-y-auto min-h-0 px-4 py-6 space-y-1 custom-scrollbar">
                 {menuGroups.map((group, gIdx) => (
                     <div key={gIdx} className="space-y-1">
+                        {/* Accounting System Header */}
+                        {group.title === 'DATABASE AKUNTANSI' && (
+                            <div className="px-4 py-2 mt-4 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-px flex-1 bg-slate-800"></div>
+                                    <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] whitespace-nowrap">Accounting System</span>
+                                    <div className="h-px flex-1 bg-slate-800"></div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Budgeting & Reporting Header */}
+                        {(group.title === 'DASHBOARD & SALDO' || (gIdx === 0 && group.title !== 'DATABASE AKUNTANSI')) && (
+                            <div className="px-4 py-2 mt-4 mb-2">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-px flex-1 bg-slate-800"></div>
+                                    <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] whitespace-nowrap">Budgeting & Reporting</span>
+                                    <div className="h-px flex-1 bg-slate-800"></div>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Group Header */}
                         <button
                             onClick={() => toggleGroup(group.title)}
