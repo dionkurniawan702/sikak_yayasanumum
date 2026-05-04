@@ -381,12 +381,14 @@ export default function BudgetDashboard() {
     }, [fields, fieldRAP, fieldRAB, currentUser, expenseItems, unitData]);
 
     // ========== Totals ==========
-    // Use totalMurni for the final consolidation to ensure it matches exactly the student income (Base)
-    const totalBidangRAP = totalMurni || 0;
+    // Use totalMurni for Superadmin/Yayasan, but sum visible data for others to ensure totals match visible rows
+    const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'yayasan';
+    
+    const totalBidangRAP = isSuperAdmin ? (totalMurni || 0) : bidangData.reduce((s, d) => s + d.rap, 0);
     const totalBidangRAB = bidangData.reduce((s, d) => s + d.rab, 0);
     const totalBidangSisa = totalBidangRAP - totalBidangRAB;
 
-    const totalUnitRAP = totalMurni || 0;
+    const totalUnitRAP = isSuperAdmin ? (totalMurni || 0) : unitData.reduce((s, d) => s + d.rap, 0);
     const totalUnitRAB = unitData.reduce((s, d) => s + d.rab, 0);
     const totalUnitSisa = totalUnitRAP - totalUnitRAB;
 
@@ -413,7 +415,8 @@ export default function BudgetDashboard() {
                     }
                 });
             });
-            bidangRows.push({ Nama: 'TOTAL', RAP: totalBidangRAP, RAB: totalBidangRAB, 'Sisa Anggaran': totalBidangSisa });
+            const bidangLabel = (currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'TOTAL KESELURUHAN' : 'TOTAL';
+            bidangRows.push({ Nama: bidangLabel, RAP: totalBidangRAP, RAB: totalBidangRAB, 'Sisa Anggaran': totalBidangSisa });
             const ws1 = XLSX.utils.json_to_sheet(bidangRows);
             XLSX.utils.book_append_sheet(wb, ws1, 'Bidang');
         }
@@ -427,7 +430,8 @@ export default function BudgetDashboard() {
                     unitRows.push({ Nama: `  └ ${item.name}`, RAP: item.rap, RAB: item.rab, 'Sisa Anggaran': item.sisa });
                 });
             });
-            unitRows.push({ Nama: 'TOTAL', RAP: totalUnitRAP, RAB: totalUnitRAB, 'Sisa Anggaran': totalUnitSisa });
+            const unitLabel = (currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'TOTAL KESELURUHAN' : 'TOTAL';
+            unitRows.push({ Nama: unitLabel, RAP: totalUnitRAP, RAB: totalUnitRAB, 'Sisa Anggaran': totalUnitSisa });
             const ws2 = XLSX.utils.json_to_sheet(unitRows);
             XLSX.utils.book_append_sheet(wb, ws2, 'Unit');
         }
@@ -535,7 +539,9 @@ export default function BudgetDashboard() {
                                             />
                                         ))}
                                         <tr className="budget-row-total bg-slate-50">
-                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">Total Konsolidasi Bidang</td>
+                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                                {(currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'Total Keseluruhan' : 'Total Konsolidasi Bidang'}
+                                            </td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-indigo-100">{formatCurrency(totalBidangRAP)}</td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalBidangRAB)}</td>
                                             <td className="budget-cell budget-cell-number budget-cell-sisa bg-indigo-50/30 text-indigo-700 font-black">{formatCurrency(totalBidangSisa)}</td>
@@ -587,7 +593,9 @@ export default function BudgetDashboard() {
                                             />
                                         ))}
                                         <tr className="budget-row-total bg-slate-50">
-                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">Total Konsolidasi Unit</td>
+                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                                {(currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'Total Keseluruhan' : 'Total Konsolidasi Unit'}
+                                            </td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-blue-100">{formatCurrency(totalUnitRAP)}</td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalUnitRAB)}</td>
                                             <td className="budget-cell budget-cell-number budget-cell-sisa bg-blue-50/30 text-blue-700 font-black">{formatCurrency(totalUnitSisa)}</td>
