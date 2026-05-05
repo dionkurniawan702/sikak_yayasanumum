@@ -200,7 +200,8 @@ export default function BOSMonthlyReport() {
     };
 
     return (
-        <div className="p-6 space-y-6 min-h-screen bg-slate-50/50">
+        <div className="p-6 min-h-screen bg-slate-50/50">
+            <div className="print:hidden space-y-6">
             {/* Header */}
             <div className="flex items-start justify-between flex-wrap gap-4">
                 <div>
@@ -321,8 +322,11 @@ export default function BOSMonthlyReport() {
                             <button className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm">
                                 <Filter size={20} />
                             </button>
-                            <button className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm">
-                                <Download size={20} />
+                            <button className="flex items-center gap-2 px-4 py-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm text-xs font-bold uppercase tracking-widest">
+                                <Download size={16} /> Export
+                            </button>
+                            <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-500/20 text-xs font-bold uppercase tracking-widest">
+                                <FileCheck size={16} /> Cetak
                             </button>
                         </div>
                     </div>
@@ -369,6 +373,62 @@ export default function BOSMonthlyReport() {
                     </div>
                 </div>
             )}
+            </div>
+
+            {/* Printable Area (Hidden on screen, visible on print) */}
+            <div className="hidden print:block text-black bg-white w-full">
+                <div className="text-center mb-6">
+                    <h2 className="text-xl font-black uppercase">LAPORAN REALISASI BOS</h2>
+                    <p className="text-sm font-bold mt-1">
+                        {myUnitId ? (units.find(u => u.id === myUnitId)?.name || '') : 'Semua Unit'}
+                    </p>
+                </div>
+                
+                <table className="w-full text-left border-collapse border border-slate-800 text-[10px]">
+                    <thead>
+                        <tr className="bg-slate-100">
+                            <th className="p-2 border border-slate-800 text-center font-bold">No</th>
+                            <th className="p-2 border border-slate-800 font-bold">Tanggal</th>
+                            <th className="p-2 border border-slate-800 font-bold">No. Nota</th>
+                            <th className="p-2 border border-slate-800 font-bold">Uraian Belanja BOS</th>
+                            <th className="p-2 border border-slate-800 font-bold">Bukti Transaksi</th>
+                            <th className="p-2 border border-slate-800 text-center font-bold">Volume</th>
+                            <th className="p-2 border border-slate-800 text-right font-bold">Harga</th>
+                            <th className="p-2 border border-slate-800 text-right font-bold">Jumlah</th>
+                            <th className="p-2 border border-slate-800 text-center font-bold">Kategori</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredReports.map((report, idx) => (
+                            <tr key={report.id}>
+                                <td className="p-2 border border-slate-800 text-center">{idx + 1}</td>
+                                <td className="p-2 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
+                                <td className="p-2 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
+                                <td className="p-2 border border-slate-800">{report.category || report.description || 'Realisasi BOS'}</td>
+                                <td className="p-2 border border-slate-800">{report.buktiTeks || '—'}</td>
+                                <td className="p-2 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                <td className="p-2 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
+                                <td className="p-2 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                <td className="p-2 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
+                            </tr>
+                        ))}
+                        {filteredReports.length === 0 && (
+                            <tr>
+                                <td colSpan="9" className="p-4 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
+                            </tr>
+                        )}
+                    </tbody>
+                    {filteredReports.length > 0 && (
+                        <tfoot>
+                            <tr className="bg-slate-100">
+                                <td colSpan="7" className="p-2 border border-slate-800 text-right font-black uppercase">Total Pengeluaran BOS</td>
+                                <td className="p-2 border border-slate-800 text-right font-black">{formatRupiah(stats.totalLapor)}</td>
+                                <td className="border border-slate-800"></td>
+                            </tr>
+                        </tfoot>
+                    )}
+                </table>
+            </div>
         </div>
     );
 }

@@ -204,3 +204,24 @@ body {
     border: 1px solid #ccc;
   }
 }
+
+/* Global Print Layout Styles */
+@media print {
+  .sidebar, .mobile-nav-toggle {
+    display: none !important;
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+

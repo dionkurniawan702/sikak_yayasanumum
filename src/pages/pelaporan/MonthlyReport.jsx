@@ -413,8 +413,9 @@ export default function MonthlyReport() {
     };
 
     return (
-        <div className="p-8 animate-in text-slate-900">
-            {/* Header */}
+        <div className="p-8 animate-in text-slate-900 bg-slate-50 min-h-screen">
+            <div className="print:hidden space-y-8">
+                {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">Laporan Pengeluaran</h1>
@@ -579,9 +580,7 @@ export default function MonthlyReport() {
                     </div>
                 </div>
             ) : activeTab === 'history' ? (
-                /* HISTORY TAB */
                 <div className="space-y-6">
-                    {/* Summary Strip */}
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         {[
                             { label: 'Total Laporan', value: filteredReports.length, unit: 'transaksi', color: 'indigo' },
@@ -629,11 +628,18 @@ export default function MonthlyReport() {
                                 Reset Filter
                             </button>
                         )}
-                        <button
-                            onClick={() => alert('Fitur export Excel akan segera tersedia.')}
-                            className="ml-auto flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
-                            <Download size={14} /> Export Excel
-                        </button>
+                        <div className="flex gap-2 ml-auto">
+                            <button
+                                onClick={() => alert('Fitur export Excel akan segera tersedia.')}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
+                                <Download size={14} /> Export Excel
+                            </button>
+                            <button
+                                onClick={() => window.print()}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-indigo-700 transition-colors shadow-sm">
+                                <FileCheck size={14} /> Cetak
+                            </button>
+                        </div>
                     </div>
 
                     {/* Dense Table */}
@@ -939,6 +945,63 @@ export default function MonthlyReport() {
                     </div>
                 </div>
             )}
+            </div>
+
+            {/* Printable Area (Hidden on screen, visible on print) */}
+            <div className="hidden print:block text-black bg-white w-full">
+                <div className="text-center mb-6">
+                    <h2 className="text-xl font-black uppercase">LAPORAN PENGELUARAN YAYASAN</h2>
+                    <p className="text-sm font-bold mt-1">
+                        {myUnitId ? (units.find(u => u.id === myUnitId)?.name || '') : 'Semua Unit'} 
+                        {filterDateFrom && filterDateTo ? ` (${filterDateFrom} s.d ${filterDateTo})` : ''}
+                    </p>
+                </div>
+                
+                <table className="w-full text-left border-collapse border border-slate-800 text-[10px]">
+                    <thead>
+                        <tr className="bg-slate-100">
+                            <th className="p-2 border border-slate-800 text-center font-bold">No</th>
+                            <th className="p-2 border border-slate-800 font-bold">Tanggal</th>
+                            <th className="p-2 border border-slate-800 font-bold">No. Nota</th>
+                            <th className="p-2 border border-slate-800 font-bold">Keterangan</th>
+                            <th className="p-2 border border-slate-800 font-bold">Bukti Transaksi</th>
+                            <th className="p-2 border border-slate-800 text-center font-bold">Volume</th>
+                            <th className="p-2 border border-slate-800 text-right font-bold">Harga</th>
+                            <th className="p-2 border border-slate-800 text-right font-bold">Jumlah</th>
+                            <th className="p-2 border border-slate-800 text-center font-bold">Kategori</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {filteredReports.map((report, idx) => (
+                            <tr key={report.id}>
+                                <td className="p-2 border border-slate-800 text-center">{idx + 1}</td>
+                                <td className="p-2 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
+                                <td className="p-2 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
+                                <td className="p-2 border border-slate-800">{report.category || report.description || 'Pengeluaran'}</td>
+                                <td className="p-2 border border-slate-800">{report.buktiTeks || '—'}</td>
+                                <td className="p-2 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                <td className="p-2 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
+                                <td className="p-2 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                <td className="p-2 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
+                            </tr>
+                        ))}
+                        {filteredReports.length === 0 && (
+                            <tr>
+                                <td colSpan="9" className="p-4 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
+                            </tr>
+                        )}
+                    </tbody>
+                    {filteredReports.length > 0 && (
+                        <tfoot>
+                            <tr className="bg-slate-100">
+                                <td colSpan="7" className="p-2 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
+                                <td className="p-2 border border-slate-800 text-right font-black">{formatRupiah(totalNilai)}</td>
+                                <td className="border border-slate-800"></td>
+                            </tr>
+                        </tfoot>
+                    )}
+                </table>
+            </div>
         </div>
     );
 }
