@@ -317,17 +317,20 @@ router.put('/users/:id', async (req, res) => {
         
         // 1. If username is being changed, check for duplicates
         if (username) {
-            const existing = await prisma.user.findFirst({
-                where: { 
-                    username, 
-                    isDeleted: false,
-                    id: { not: id } // Must not be the same user
-                }
-            });
-            if (existing) {
-                return res.status(400).json({ 
-                    error: `Gagal memperbarui: Username "${username}" sudah digunakan oleh orang lain.` 
+            const currentUser = await prisma.user.findUnique({ where: { id } });
+            
+            if (currentUser && currentUser.username !== username) {
+                const existing = await prisma.user.findFirst({
+                    where: { 
+                        username, 
+                        isDeleted: false
+                    }
                 });
+                if (existing) {
+                    return res.status(400).json({ 
+                        error: `Gagal memperbarui: Username "${username}" sudah digunakan oleh orang lain.` 
+                    });
+                }
             }
         }
 

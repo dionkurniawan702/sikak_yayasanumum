@@ -177,14 +177,17 @@ router.put('/units/:id', async (req, res) => {
         console.log(`[API] Upserting Unit ${id}: ${JSON.stringify(cleanData)}`);
         
         // Pre-check for duplicate name in the same field (excluding current ID) to avoid P2002 closure
-        const existing = await withRetry(req, () => getPrisma(req).unit.findFirst({
-            where: { 
-                name: cleanData.name, 
-                fieldId: cleanData.fieldId, 
-                id: { not: id },
-                isDeleted: false 
-            }
-        }));
+        let existing = null;
+        const currentUnit = await withRetry(req, () => getPrisma(req).unit.findUnique({ where: { id } }));
+        if (currentUnit && currentUnit.name !== cleanData.name) {
+            existing = await withRetry(req, () => getPrisma(req).unit.findFirst({
+                where: { 
+                    name: cleanData.name, 
+                    fieldId: cleanData.fieldId, 
+                    isDeleted: false 
+                }
+            }));
+        }
         
         if (existing) {
             return res.status(400).json({ error: `Gagal menyimpan: Nama unit "${cleanData.name}" sudah digunakan di bidang ini.` });
