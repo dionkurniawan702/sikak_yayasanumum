@@ -1534,10 +1534,13 @@ export default function RAB() {
                                 total += val;
                             });
 
-                            const program = allPrograms.find(p => p.name.trim().toLowerCase() === (row['Program Belanja']?.toString() || '').trim().toLowerCase());
+                            const progNameStr = (row['Program Belanja']?.toString() || '').trim().toLowerCase();
+                            const program = progNameStr ? allPrograms.find(p => p.name.trim().toLowerCase() === progNameStr) : null;
+                            const compLabel = (row['Keterangan / Komponen'] || '').toString().trim();
+
                             const comp = {
                                 id: `C-${Date.now()}-${idx}`,
-                                label: row['Keterangan / Komponen'] || 'Imported Component',
+                                label: compLabel,
                                 volume: parseFloat(row['Vol']) || 0,
                                 satuan: row['Satuan'] || '',
                                 kali: parseFloat(row['Kali']) || 1,
@@ -1551,7 +1554,8 @@ export default function RAB() {
                             if (!newExpense[item.id]) newExpense[item.id] = [];
                             
                             // Check if we should add to existing plan or create new
-                            if (comp.label) {
+                            if (comp.label || comp.total > 0 || comp.programId) {
+                                if (!comp.label) comp.label = 'Imported Component';
                                 newExpense[item.id].push({
                                     id: `P-${Date.now()}-${idx}`,
                                     itemId: item.id,
@@ -1682,6 +1686,8 @@ export default function RAB() {
                     const harga = parseFloat(row[hargaKey]) || 0;
                     const total = vol * kali * harga;
 
+                    const progNameStr = (row[progKey]?.toString() || '').trim().toLowerCase();
+
                     return {
                         id: `C-${Date.now()}-${idx}`,
                         label: row[ketKey] || '',
@@ -1690,7 +1696,7 @@ export default function RAB() {
                         kali: kali,
                         harga: harga,
                         total: total,
-                        programId: allPrograms.find(p => p.name.trim().toLowerCase() === (row[progKey]?.toString() || '').trim().toLowerCase())?.id || null,
+                        programId: progNameStr ? (allPrograms.find(p => p.name.trim().toLowerCase() === progNameStr)?.id || null) : null,
                         semester: (row[semKey]?.toString() || '1'),
                         useBos: fundSourceFilter === 'BOS',
                         months: months
