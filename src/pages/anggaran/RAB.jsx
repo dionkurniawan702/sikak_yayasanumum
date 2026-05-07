@@ -1684,7 +1684,7 @@ export default function RAB() {
 
                     return {
                         id: `C-${Date.now()}-${idx}`,
-                        label: row[ketKey] || 'Imported',
+                        label: row[ketKey] || '',
                         volume: vol,
                         satuan: row['Satuan'] || '',
                         kali: kali,
@@ -1695,6 +1695,19 @@ export default function RAB() {
                         useBos: fundSourceFilter === 'BOS',
                         months: months
                     };
+                }).filter(comp => {
+                    // Ignore empty template rows
+                    const hasLabel = comp.label && comp.label.trim() !== '';
+                    const hasTotal = comp.total > 0;
+                    const hasProgram = comp.programId !== null;
+                    return hasLabel || hasTotal || hasProgram;
+                });
+                
+                // Fallback for label if they provided total/program but no label
+                newComponents.forEach(comp => {
+                    if (!comp.label || comp.label.trim() === '') {
+                        comp.label = 'Imported';
+                    }
                 });
 
                 if (newComponents.length > 0) {
