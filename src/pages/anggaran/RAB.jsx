@@ -1442,26 +1442,24 @@ export default function RAB() {
         };
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
-        filteredExpenseItems.forEach((item) => {
-            const rowData = {
-                item: item.name,
-                komponen: '',
-                program: '',
-                semester: 1,
-                vol: 0,
-                satuan: '',
-                kali: 1,
-                harga: 0
-            };
-            monthsOptions.forEach(m => rowData[m.name] = 0);
-            wsExpense.addRow(rowData);
-        });
+        const exampleRow = {
+            item: filteredExpenseItems[0]?.name || '',
+            komponen: 'Contoh Rincian (Bisa Dihapus)',
+            program: '',
+            semester: 1,
+            vol: 1,
+            satuan: 'Pcs',
+            kali: 1,
+            harga: 100000
+        };
+        monthsOptions.forEach(m => exampleRow[m.name] = 0);
+        wsExpense.addRow(exampleRow);
 
         // Add empty rows for extra entries
-        for(let i=0; i<50; i++) {
-             const rowData = { item: '', komponen: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
-             monthsOptions.forEach(m => rowData[m.name] = 0);
-             wsExpense.addRow(rowData);
+        for(let i=0; i<100; i++) {
+             const emptyRow = { item: '', komponen: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
+             monthsOptions.forEach(m => emptyRow[m.name] = 0);
+             wsExpense.addRow(emptyRow);
         }
 
         // Master Data Sheet
@@ -1474,8 +1472,7 @@ export default function RAB() {
         const itemList = filteredExpenseItems.map(i => i.name.replace(/,/g, ' '));
         wsMaster.getColumn('B').values = ['ITEM', ...itemList];
 
-        // Apply Data Validation
-        const totalRows = filteredExpenseItems.length + 50 + 1;
+        const totalRows = 100 + 1 + 1; // 1 example + 100 empty + 1 header
         for (let i = 2; i <= totalRows; i++) {
             if (itemList.length > 0) {
                 wsExpense.getCell(`A${i}`).dataValidation = {
@@ -1608,7 +1605,7 @@ export default function RAB() {
         headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
         const rowData = {
-            keterangan: 'Contoh Rincian 1',
+            keterangan: 'Contoh Rincian (Bisa Dihapus)',
             program: '',
             semester: 1,
             vol: 1,
@@ -1620,7 +1617,7 @@ export default function RAB() {
         ws.addRow(rowData);
 
         // Add empty rows for extra entries
-        for(let i=0; i<49; i++) {
+        for(let i=0; i<99; i++) {
              const emptyRow = { keterangan: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
              monthsOptions.forEach(m => emptyRow[m.name] = 0);
              ws.addRow(emptyRow);
@@ -1631,7 +1628,7 @@ export default function RAB() {
         const programList = allPrograms.map(p => p.name.replace(/,/g, ' '));
         wsMaster.getColumn('A').values = ['PROGRAM', ...programList];
 
-        for (let i = 2; i <= 51; i++) {
+        for (let i = 2; i <= 101; i++) {
             if (programList.length > 0) {
                 ws.getCell(`B${i}`).dataValidation = {
                     type: 'list',
