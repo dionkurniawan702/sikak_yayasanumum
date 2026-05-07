@@ -9,6 +9,8 @@ import {
     Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
@@ -1412,24 +1414,93 @@ export default function RAB() {
         XLSX.writeFile(wb, `RAB_${fundSourceFilter}_${unitName}_${activeYear?.name || ''}.xlsx`);
     };
 
-    const handleDownloadRABTemplate = () => {
-        const wb = XLSX.utils.book_new();
+    const handleDownloadRABTemplate = async () => {
+        const workbook = new ExcelJS.Workbook();
+        const wsExpense = workbook.addWorksheet("Rencana Belanja");
         
-        // Expense Template
-        const expenseData = filteredExpenseItems.map((item, idx) => {
-            const row = {
-                'Item Belanja': item.name,
-                'Keterangan / Komponen': '',
-                'Program Belanja': '',
-                'Vol': 0, 'Satuan': '', 'Kali': 1, 'Harga': 0
-            };
-            monthsOptions.forEach(m => row[m.name] = 0);
-            return row;
+        const columns = [
+            { header: 'Item Belanja', key: 'item', width: 30 },
+            { header: 'Keterangan / Komponen', key: 'komponen', width: 40 },
+            { header: 'Program Belanja', key: 'program', width: 30 },
+            { header: 'Semester', key: 'semester', width: 15 },
+            { header: 'Vol', key: 'vol', width: 10 },
+            { header: 'Satuan', key: 'satuan', width: 15 },
+            { header: 'Kali', key: 'kali', width: 10 },
+            { header: 'Harga', key: 'harga', width: 20 },
+        ];
+        monthsOptions.forEach(m => {
+            columns.push({ header: m.name, key: m.name, width: 15 });
         });
-        const wsExpense = XLSX.utils.json_to_sheet(expenseData);
-        XLSX.utils.book_append_sheet(wb, wsExpense, "Belanja");
+        wsExpense.columns = columns;
 
-        XLSX.writeFile(wb, `Template_RAB_${fundSourceFilter}.xlsx`);
+        const headerRow = wsExpense.getRow(1);
+        headerRow.font = { bold: true };
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4F46E5' }
+        };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+
+        filteredExpenseItems.forEach((item) => {
+            const rowData = {
+                item: item.name,
+                komponen: '',
+                program: '',
+                semester: 1,
+                vol: 0,
+                satuan: '',
+                kali: 1,
+                harga: 0
+            };
+            monthsOptions.forEach(m => rowData[m.name] = 0);
+            wsExpense.addRow(rowData);
+        });
+
+        // Add empty rows for extra entries
+        for(let i=0; i<50; i++) {
+             const rowData = { item: '', komponen: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
+             monthsOptions.forEach(m => rowData[m.name] = 0);
+             wsExpense.addRow(rowData);
+        }
+
+        // Master Data Sheet
+        const wsMaster = workbook.addWorksheet("MASTER_DATA");
+        wsMaster.state = 'hidden';
+        
+        const programList = allPrograms.map(p => p.name.replace(/,/g, ' '));
+        wsMaster.getColumn('A').values = ['PROGRAM', ...programList];
+        
+        const itemList = filteredExpenseItems.map(i => i.name.replace(/,/g, ' '));
+        wsMaster.getColumn('B').values = ['ITEM', ...itemList];
+
+        // Apply Data Validation
+        const totalRows = filteredExpenseItems.length + 50 + 1;
+        for (let i = 2; i <= totalRows; i++) {
+            if (itemList.length > 0) {
+                wsExpense.getCell(`A${i}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`MASTER_DATA!$B$2:$B$${itemList.length + 1}`]
+                };
+            }
+            if (programList.length > 0) {
+                wsExpense.getCell(`C${i}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`MASTER_DATA!$A$2:$A$${programList.length + 1}`]
+                };
+            }
+            wsExpense.getCell(`D${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ['"1,2"']
+            };
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Template_RAB_${fundSourceFilter}.xlsx`);
     };
 
     const handleFileUpload = async (e) => {
@@ -1510,36 +1581,74 @@ export default function RAB() {
         reader.readAsBinaryString(file);
     };
 
-    const handleDownloadLocalTemplate = (itemName) => {
-        const wb = XLSX.utils.book_new();
+    const handleDownloadLocalTemplate = async (itemName) => {
+        const workbook = new ExcelJS.Workbook();
+        const ws = workbook.addWorksheet(`Rincian ${itemName.substring(0, 20)}`.replace(/[\\/?*\[\]]/g, ''));
         
-        const row = {
-            'Keterangan': 'Contoh Rincian 1',
-            'Vol': 1,
-            'Satuan': 'Pcs',
-            'Kali': 1,
-            'Harga': 100000,
-            'Program Belanja': '',
-            'Semester': 1
-        };
-        
-        // Add dynamic months based on selected academic year
+        const columns = [
+            { header: 'Keterangan', key: 'keterangan', width: 40 },
+            { header: 'Program Belanja', key: 'program', width: 30 },
+            { header: 'Semester', key: 'semester', width: 15 },
+            { header: 'Vol', key: 'vol', width: 10 },
+            { header: 'Satuan', key: 'satuan', width: 15 },
+            { header: 'Kali', key: 'kali', width: 10 },
+            { header: 'Harga', key: 'harga', width: 20 }
+        ];
         monthsOptions.forEach(m => {
-            row[m.name] = 0;
+            columns.push({ header: m.name, key: m.name, width: 15 });
         });
+        ws.columns = columns;
 
-        const data = [row];
-        const ws = XLSX.utils.json_to_sheet(data);
-        XLSX.utils.book_append_sheet(wb, ws, "Rincian " + itemName.substring(0, 20));
+        const headerRow = ws.getRow(1);
+        headerRow.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FF4F46E5' }
+        };
+        headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
 
-        // Add Reference Sheet for Programs
-        const progData = allPrograms.map(p => ({ 'NAMA PROGRAM': p.name, 'KETERANGAN': p.description || '' }));
-        if (progData.length > 0) {
-            const wsProg = XLSX.utils.json_to_sheet(progData);
-            XLSX.utils.book_append_sheet(wb, wsProg, "DAFTAR_PROGRAM");
+        const rowData = {
+            keterangan: 'Contoh Rincian 1',
+            program: '',
+            semester: 1,
+            vol: 1,
+            satuan: 'Pcs',
+            kali: 1,
+            harga: 100000
+        };
+        monthsOptions.forEach(m => rowData[m.name] = 0);
+        ws.addRow(rowData);
+
+        // Add empty rows for extra entries
+        for(let i=0; i<49; i++) {
+             const emptyRow = { keterangan: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
+             monthsOptions.forEach(m => emptyRow[m.name] = 0);
+             ws.addRow(emptyRow);
         }
 
-        XLSX.writeFile(wb, `Template_Rincian_${itemName.replace(/\s+/g, '_')}.xlsx`);
+        const wsMaster = workbook.addWorksheet("MASTER_DATA");
+        wsMaster.state = 'hidden';
+        const programList = allPrograms.map(p => p.name.replace(/,/g, ' '));
+        wsMaster.getColumn('A').values = ['PROGRAM', ...programList];
+
+        for (let i = 2; i <= 51; i++) {
+            if (programList.length > 0) {
+                ws.getCell(`B${i}`).dataValidation = {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`MASTER_DATA!$A$2:$A$${programList.length + 1}`]
+                };
+            }
+            ws.getCell(`C${i}`).dataValidation = {
+                type: 'list',
+                allowBlank: true,
+                formulae: ['"1,2"']
+            };
+        }
+
+        const buffer = await workbook.xlsx.writeBuffer();
+        const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        saveAs(blob, `Template_Rincian_${itemName.replace(/\s+/g, '_')}.xlsx`);
     };
 
     const handleLocalFileUpload = (e, itemId) => {
