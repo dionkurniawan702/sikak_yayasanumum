@@ -1457,8 +1457,8 @@ export default function RAB() {
 
         // Add empty rows for extra entries
         for(let i=0; i<100; i++) {
-             const emptyRow = { item: '', komponen: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
-             monthsOptions.forEach(m => emptyRow[m.name] = 0);
+             const emptyRow = { item: '', komponen: '', program: '', semester: '', vol: '', satuan: '', kali: '', harga: '' };
+             monthsOptions.forEach(m => emptyRow[m.name] = '');
              wsExpense.addRow(emptyRow);
         }
 
@@ -1618,8 +1618,8 @@ export default function RAB() {
 
         // Add empty rows for extra entries
         for(let i=0; i<99; i++) {
-             const emptyRow = { keterangan: '', program: '', semester: 1, vol: 0, satuan: '', kali: 1, harga: 0 };
-             monthsOptions.forEach(m => emptyRow[m.name] = 0);
+             const emptyRow = { keterangan: '', program: '', semester: '', vol: '', satuan: '', kali: '', harga: '' };
+             monthsOptions.forEach(m => emptyRow[m.name] = '');
              ws.addRow(emptyRow);
         }
 
