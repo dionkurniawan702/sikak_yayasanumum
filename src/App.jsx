@@ -1,46 +1,47 @@
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import ChartOfAccounts from './pages/ChartOfAccounts';
-import JournalEntry from './pages/JournalEntry';
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+const ChartOfAccounts = lazy(() => import('./pages/ChartOfAccounts'));
+const JournalEntry = lazy(() => import('./pages/JournalEntry'));
 
-import FixedAssets from './pages/FixedAssets';
-import GeneralLedger from './pages/GeneralLedger';
-import TrialBalance from './pages/TrialBalance';
-import BalanceSheet from './pages/BalanceSheet';
-import ActivityReport from './pages/ActivityReport';
-import ProgramManagement from './pages/ProgramManagement';
-import CashFlowStatement from './pages/CashFlowStatement';
-import StatementOfChangesInNetAssets from './pages/StatementOfChangesInNetAssets';
-import ProgramReport from './pages/ProgramReport';
-import Budgeting from './pages/Budgeting';
-import UserManagement from './pages/UserManagement';
-import PeriodClosing from './pages/PeriodClosing';
-import AuditLog from './pages/AuditLog';
-import BackupRestore from './pages/BackupRestore';
-import TrashBin from './pages/TrashBin';
-import Profile from './pages/Profile';
-import FieldUnitManagement from './pages/anggaran/FieldUnitManagement';
-import StudentDatabase from './pages/anggaran/StudentDatabase';
-import StudentDashboard from './pages/anggaran/StudentDashboard';
-import DistributionSettings from './pages/anggaran/DistributionSettings';
-import MonthlyRequest from './pages/pelaporan/MonthlyRequest';
-import MonthlyReport from './pages/pelaporan/MonthlyReport';
-import BudgetDashboard from './pages/pelaporan/BudgetDashboard';
-import RealizationDashboard from './pages/pelaporan/RealizationDashboard';
-import FundAvailability from './pages/pelaporan/FundAvailability';
-import IncomeItemManagement from './pages/anggaran/IncomeItemManagement';
-import ExpenseItemManagement from './pages/anggaran/ExpenseItemManagement';
-import BudgetProgramManagement from './pages/anggaran/ProgramManagement';
-import BOSMasterManagement from './pages/anggaran/BOSMasterManagement';
-import ClassManagement from './pages/anggaran/ClassManagement';
-import RAB from './pages/anggaran/RAB';
-import BOSRecipientUnitManagement from './pages/anggaran/BOSRecipientUnitManagement';
-import BOSDatabase from './pages/anggaran/BOSDatabase';
-import BOSSaldo from './pages/pelaporan/BOSSaldo';
-import BOSMonthlyReport from './pages/pelaporan/BOSMonthlyReport';
+const FixedAssets = lazy(() => import('./pages/FixedAssets'));
+const GeneralLedger = lazy(() => import('./pages/GeneralLedger'));
+const TrialBalance = lazy(() => import('./pages/TrialBalance'));
+const BalanceSheet = lazy(() => import('./pages/BalanceSheet'));
+const ActivityReport = lazy(() => import('./pages/ActivityReport'));
+const ProgramManagement = lazy(() => import('./pages/ProgramManagement'));
+const CashFlowStatement = lazy(() => import('./pages/CashFlowStatement'));
+const StatementOfChangesInNetAssets = lazy(() => import('./pages/StatementOfChangesInNetAssets'));
+const ProgramReport = lazy(() => import('./pages/ProgramReport'));
+const Budgeting = lazy(() => import('./pages/Budgeting'));
+const UserManagement = lazy(() => import('./pages/UserManagement'));
+const PeriodClosing = lazy(() => import('./pages/PeriodClosing'));
+const AuditLog = lazy(() => import('./pages/AuditLog'));
+const BackupRestore = lazy(() => import('./pages/BackupRestore'));
+const TrashBin = lazy(() => import('./pages/TrashBin'));
+const Profile = lazy(() => import('./pages/Profile'));
+const FieldUnitManagement = lazy(() => import('./pages/anggaran/FieldUnitManagement'));
+const StudentDatabase = lazy(() => import('./pages/anggaran/StudentDatabase'));
+const StudentDashboard = lazy(() => import('./pages/anggaran/StudentDashboard'));
+const DistributionSettings = lazy(() => import('./pages/anggaran/DistributionSettings'));
+const MonthlyRequest = lazy(() => import('./pages/pelaporan/MonthlyRequest'));
+const MonthlyReport = lazy(() => import('./pages/pelaporan/MonthlyReport'));
+const BudgetDashboard = lazy(() => import('./pages/pelaporan/BudgetDashboard'));
+const RealizationDashboard = lazy(() => import('./pages/pelaporan/RealizationDashboard'));
+const FundAvailability = lazy(() => import('./pages/pelaporan/FundAvailability'));
+const IncomeItemManagement = lazy(() => import('./pages/anggaran/IncomeItemManagement'));
+const ExpenseItemManagement = lazy(() => import('./pages/anggaran/ExpenseItemManagement'));
+const BudgetProgramManagement = lazy(() => import('./pages/anggaran/ProgramManagement'));
+const BOSMasterManagement = lazy(() => import('./pages/anggaran/BOSMasterManagement'));
+const ClassManagement = lazy(() => import('./pages/anggaran/ClassManagement'));
+const RAB = lazy(() => import('./pages/anggaran/RAB'));
+const BOSRecipientUnitManagement = lazy(() => import('./pages/anggaran/BOSRecipientUnitManagement'));
+const BOSDatabase = lazy(() => import('./pages/anggaran/BOSDatabase'));
+const BOSSaldo = lazy(() => import('./pages/pelaporan/BOSSaldo'));
+const BOSMonthlyReport = lazy(() => import('./pages/pelaporan/BOSMonthlyReport'));
 import GenericMasterManagement from './components/GenericMasterManagement';
 import {
     Calendar,
@@ -113,12 +114,22 @@ const SyncOverlay = ({ message }) => (
     </div>
 );
 
+const PageLoader = () => (
+    <div className="flex items-center justify-center min-h-[60vh] w-full">
+        <div className="flex flex-col items-center gap-4 bg-white/50 backdrop-blur-sm p-8 rounded-3xl">
+            <RefreshCw className="w-10 h-10 text-blue-500 animate-spin" />
+            <p className="text-slate-500 font-medium animate-pulse tracking-wide">Memuat modul...</p>
+        </div>
+    </div>
+);
+
 function AppContent() {
     const { state } = useApp();
     return (
         <BrowserRouter>
-            <Routes>
-                <Route path="/login" element={<Login />} />
+            <Suspense fallback={<PageLoader />}>
+                <Routes>
+                    <Route path="/login" element={<Login />} />
 
                 <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
                     <Route index element={<RoleBasedIndex />} />
@@ -212,7 +223,8 @@ function AppContent() {
                     <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />
                     <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
                 </Route>
-            </Routes>
+                </Routes>
+            </Suspense>
         </BrowserRouter>
     );
 }
