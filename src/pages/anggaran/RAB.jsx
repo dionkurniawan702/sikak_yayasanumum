@@ -89,7 +89,7 @@ const generateMonths = (ay) => {
     return months;
 };
 
-export default function RAB() {
+function RABContent() {
     const { state, dispatch } = useApp();
     const lastPlanIdRef = React.useRef(null);
     const {
@@ -3349,5 +3349,41 @@ export default function RAB() {
             )}
         </div>
     );
+}
+
+export default function RAB() {
+    const [isMounting, setIsMounting] = useState(true);
+    const [searchParams] = useSearchParams();
+    const sourceParam = searchParams.get('source');
+
+    useEffect(() => {
+        setIsMounting(true);
+        // Timeout allows browser to render loading spinner before main thread is blocked by RABContent
+        const timer = setTimeout(() => {
+            setIsMounting(false);
+        }, 50);
+        return () => clearTimeout(timer);
+    }, [sourceParam]);
+
+    if (isMounting) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] w-full animate-in fade-in duration-300">
+                <div className="flex flex-col items-center gap-6 bg-white/80 backdrop-blur-md p-10 rounded-[2rem] shadow-xl border border-slate-100">
+                    <div className="relative">
+                        <div className="absolute inset-0 bg-blue-500/20 blur-xl rounded-full animate-pulse" />
+                        <div className="relative w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
+                            <RefreshCw className="text-white animate-spin" size={32} />
+                        </div>
+                    </div>
+                    <div className="text-center space-y-1">
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight">Memuat Data RAB...</h3>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Kalkulasi Anggaran Berlangsung</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    return <RABContent />;
 }
 
