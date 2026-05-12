@@ -29,6 +29,7 @@ const StudentDashboard = lazy(() => import('./pages/anggaran/StudentDashboard'))
 const DistributionSettings = lazy(() => import('./pages/anggaran/DistributionSettings'));
 const MonthlyRequest = lazy(() => import('./pages/pelaporan/MonthlyRequest'));
 const MonthlyReport = lazy(() => import('./pages/pelaporan/MonthlyReport'));
+const ArchiveRequests = lazy(() => import('./pages/pelaporan/ArchiveRequests'));
 const BudgetDashboard = lazy(() => import('./pages/pelaporan/BudgetDashboard'));
 const RealizationDashboard = lazy(() => import('./pages/pelaporan/RealizationDashboard'));
 const FundAvailability = lazy(() => import('./pages/pelaporan/FundAvailability'));
@@ -169,7 +170,7 @@ function AppContent() {
                     <Route path="anggaran/distribusi" element={<DistributionSettings />} />
 
                     <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />
-                    <Route path="pelaporan/arsip-permintaan" element={<Placeholder title="Arsip Permintaan Dana" />} />
+                    <Route path="pelaporan/arsip-permintaan" element={<ArchiveRequests />} />
                     <Route path="pelaporan/bulanan" element={<MonthlyReport />} />
                     <Route path="pelaporan/realisasi-bos" element={<BOSMonthlyReport />} />
                     <Route path="pelaporan/arsip-laporan" element={<Placeholder title="Arsip Laporan Realisasi" />} />
