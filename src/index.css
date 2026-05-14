@@ -139,10 +139,13 @@ body {
 
 .budget-cell-name {
   /* Name column */
+  min-width: 260px;
 }
 
 .budget-cell-number {
   text-align: right;
+  min-width: 160px;
+  white-space: nowrap;
 }
 
 .budget-cell-sisa {

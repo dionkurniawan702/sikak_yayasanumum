@@ -16,21 +16,10 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
  * @param {boolean} props.isField - Whether this is a Field-themed row (indigo theme).
  * @param {React.ReactNode} props.actions - Optional extra actions to render on the main row.
  */
-export default function BudgetRow({
-    data,
-    isExpanded,
-    onToggle,
-    formatCurrency,
-    expandedDetailItems = {},
-    onToggleDetailItem,
-    getUnitName,
-    isBos = false,
-    isField = false,
-    actions = null,
-    // Granular selection props
     selectable = false,
     selectedComponents = new Set(),
-    onComponentToggle
+    onComponentToggle,
+    nameColSpan = 1
 }) {
     // Theme selection
     const activeClass = isBos
@@ -47,7 +36,7 @@ export default function BudgetRow({
                 className="budget-row cursor-pointer hover:bg-slate-50 transition-colors group"
                 onClick={onToggle}
             >
-                <td className="budget-cell budget-cell-name">
+                <td className="budget-cell budget-cell-name" colSpan={nameColSpan}>
                     <div className="flex items-center gap-3">
                         <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -89,7 +78,7 @@ export default function BudgetRow({
                             className={`budget-row-detail group ${hasSubLevel ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                             onClick={() => hasSubLevel && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
                         >
-                            <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }}>
+                            <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }} colSpan={nameColSpan}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-slate-300">└</span>
                                     {hasSubLevel && (
@@ -120,7 +109,7 @@ export default function BudgetRow({
 
                             return (
                                 <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
-                                    <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
+                                    <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }} colSpan={nameColSpan}>
                                         <div className="flex items-center gap-3 py-1.5">
                                             {selectable && (
                                                 <input
@@ -154,6 +143,8 @@ export default function BudgetRow({
                                             </div>
                                         </div>
                                     </td>
+                                    {/* Alignment Fix: Shift numbers to the right to align with Sisa (blue) column */}
+                                    <td className="budget-cell" /> 
                                     <td className="budget-cell budget-cell-number">
                                         <span className="text-[10px] font-black text-slate-400 italic">
                                             @{formatCurrency(comp.harga)}
@@ -164,7 +155,6 @@ export default function BudgetRow({
                                             {formatCurrency(comp.total)}
                                         </span>
                                     </td>
-                                    <td className="budget-cell" />
                                 </tr>
                             );
                         })}

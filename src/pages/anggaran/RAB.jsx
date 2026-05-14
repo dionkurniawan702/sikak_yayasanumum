@@ -2113,10 +2113,12 @@ function RABContent() {
                                                 isExpanded={!!expandedReviewPlans[plan.id]}
                                                 onToggle={() => (isSuperAdmin || isAdminBidang) && toggleReviewPlan(plan.id)}
                                                 formatCurrency={formatRupiah}
-                                                 expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
+                                                expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
-                                                selectable={false}                                                actions={
+                                                selectable={false}
+                                                nameColSpan={3}
+                                                actions={
                                                     (isSuperAdmin || 
                                                      (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
                                                      (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
