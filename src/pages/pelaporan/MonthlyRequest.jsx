@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -487,6 +487,27 @@ export default function MonthlyRequest() {
                                                     TOLAK
                                                 </button>
                                             </>
+                                        )}
+                                        {isSuperAdmin && (req.status === 'APPROVED' || req.status === 'REJECTED') && (
+                                            <button
+                                                onClick={async () => {
+                                                    const confirm = window.confirm(`Batalkan ${req.status === 'APPROVED' ? 'persetujuan' : 'penolakan'} ini dan kembalikan ke status PENDING?`);
+                                                    if (confirm) {
+                                                        setProcessingId(req.id);
+                                                        const updated = { ...req, status: 'PENDING', rejectionReason: null, notified: false };
+                                                        dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                                                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                        setProcessingId(null);
+                                                        alert('Status permintaan dana berhasil direset ke PENDING');
+                                                    }
+                                                }}
+                                                disabled={processingId === req.id}
+                                                title="Batalkan persetujuan / penolakan ini"
+                                                className="p-3 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-500 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                {processingId === req.id ? <Loader2 size={16} className="animate-spin" /> : <RotateCcw size={16} strokeWidth={2.5} />}
+                                                BATAL
+                                            </button>
                                         )}
                                         <button
                                             onClick={() => handlePrint(req)}
