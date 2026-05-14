@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
@@ -12,6 +12,17 @@ export default function MonthlyRequest() {
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
+    const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'warning' }
+
+    const showToast = useCallback((message, type = 'success') => {
+        setToast({ message, type });
+    }, []);
+
+    useEffect(() => {
+        if (!toast) return;
+        const timer = setTimeout(() => setToast(null), 3500);
+        return () => clearTimeout(timer);
+    }, [toast]);
 
     // Add month selection for the request
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -201,7 +212,7 @@ export default function MonthlyRequest() {
         api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newRequest }, state); // Immediate push
         setShowRequestModal(false);
         setSelectedComponents([]);
-        alert('Permintaan dana berhasil diajukan');
+        showToast('Permintaan dana berhasil diajukan!');
     };
 
     const handlePrint = (req) => {
@@ -319,6 +330,22 @@ export default function MonthlyRequest() {
 
     return (
         <div className="p-8 animate-in text-slate-900">
+            {/* Toast Notification */}
+            {toast && (
+                <div
+                    className={`fixed top-6 right-6 z-[9999] flex items-center gap-3 px-6 py-4 rounded-2xl shadow-2xl text-white font-black text-sm uppercase tracking-widest animate-in slide-in-from-top-4 transition-all ${
+                        toast.type === 'success' ? 'bg-emerald-500 shadow-emerald-500/30' :
+                        toast.type === 'error'   ? 'bg-rose-500 shadow-rose-500/30' :
+                                                   'bg-amber-500 shadow-amber-500/30'
+                    }`}
+                >
+                    {toast.type === 'success' ? <CheckCircle size={18} /> : toast.type === 'error' ? <XCircle size={18} /> : <AlertCircle size={18} />}
+                    {toast.message}
+                    <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100 transition-opacity">
+                        <XCircle size={16} />
+                    </button>
+                </div>
+            )}
             {/* Header */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
                 <div className="lg:col-span-2 bg-gradient-to-br from-indigo-700 to-blue-900 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden group">
@@ -456,11 +483,17 @@ export default function MonthlyRequest() {
                                                 <button
                                                     onClick={async () => {
                                                         setProcessingId(req.id);
-                                                        const updated = { ...req, status: 'APPROVED', notified: false };
-                                                        dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
-                                                        setProcessingId(null);
-                                                        alert('Permintaan dana berhasil disetujui');
+                                                        try {
+                                                            const updated = { ...req, status: 'APPROVED', notified: false };
+                                                            dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                                                            await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                            showToast('Permintaan dana berhasil disetujui ✓');
+                                                        } catch (err) {
+                                                            console.error('[ACC Error]', err);
+                                                            showToast('Gagal sinkron ke server, coba lagi.', 'error');
+                                                        } finally {
+                                                            setProcessingId(null);
+                                                        }
                                                     }}
                                                     disabled={processingId === req.id}
                                                     className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
@@ -473,11 +506,17 @@ export default function MonthlyRequest() {
                                                         const reason = window.prompt('Alasan penolakan:');
                                                         if (reason !== null) {
                                                             setProcessingId(req.id);
-                                                            const updated = { ...req, status: 'REJECTED', rejectionReason: reason, notified: false };
-                                                            dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                            await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
-                                                            setProcessingId(null);
-                                                            alert('Permintaan dana berhasil ditolak');
+                                                            try {
+                                                                const updated = { ...req, status: 'REJECTED', rejectionReason: reason, notified: false };
+                                                                dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                                                                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                                showToast('Permintaan dana berhasil ditolak.');
+                                                            } catch (err) {
+                                                                console.error('[TOLAK Error]', err);
+                                                                showToast('Gagal sinkron ke server, coba lagi.', 'error');
+                                                            } finally {
+                                                                setProcessingId(null);
+                                                            }
                                                         }
                                                     }}
                                                     disabled={processingId === req.id}
@@ -491,14 +530,20 @@ export default function MonthlyRequest() {
                                         {isSuperAdmin && (req.status === 'APPROVED' || req.status === 'REJECTED') && (
                                             <button
                                                 onClick={async () => {
-                                                    const confirm = window.confirm(`Batalkan ${req.status === 'APPROVED' ? 'persetujuan' : 'penolakan'} ini dan kembalikan ke status PENDING?`);
-                                                    if (confirm) {
+                                                    const confirmed = window.confirm(`Batalkan ${req.status === 'APPROVED' ? 'persetujuan' : 'penolakan'} ini dan kembalikan ke status PENDING?`);
+                                                    if (confirmed) {
                                                         setProcessingId(req.id);
-                                                        const updated = { ...req, status: 'PENDING', rejectionReason: null, notified: false };
-                                                        dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
-                                                        setProcessingId(null);
-                                                        alert('Status permintaan dana berhasil direset ke PENDING');
+                                                        try {
+                                                            const updated = { ...req, status: 'PENDING', rejectionReason: null, notified: false };
+                                                            dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                                                            await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                                                            showToast('Persetujuan berhasil dibatalkan, status kembali ke PENDING.');
+                                                        } catch (err) {
+                                                            console.error('[BATAL Error]', err);
+                                                            showToast('Gagal sinkron ke server, coba lagi.', 'error');
+                                                        } finally {
+                                                            setProcessingId(null);
+                                                        }
                                                     }
                                                 }}
                                                 disabled={processingId === req.id}
