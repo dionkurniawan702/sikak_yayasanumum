@@ -214,9 +214,17 @@ export const api = {
                 case 'ADD_BUDGET_REQUEST':
                     await syncItem('budget-requests', null, payload, 'POST');
                     break;
-                case 'EDIT_BUDGET_REQUEST':
-                    await syncItem('budget-requests', payload.id, payload);
+                case 'EDIT_BUDGET_REQUEST': {
+                    const BUDGET_REQUEST_FIELDS = ['status', 'description', 'month', 'year',
+                        'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
+                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified'];
+                    const cleanPayload = { id: payload.id };
+                    BUDGET_REQUEST_FIELDS.forEach(f => {
+                        if (payload[f] !== undefined) cleanPayload[f] = payload[f];
+                    });
+                    await syncItem('budget-requests', payload.id, cleanPayload);
                     break;
+                }
                 case 'ADD_BUDGET_REPORT':
                     await syncItem('budget-reports', null, payload, 'POST');
                     break;

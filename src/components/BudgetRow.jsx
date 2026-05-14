@@ -119,30 +119,38 @@ export default function BudgetRow({
                             const isSelected = selectedComponents.has(compId);
 
                             return (
-                                <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 ${isSelected ? 'bg-blue-50/50' : 'bg-white'}`}>
+                                <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
                                     <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
-                                        <div className="flex items-center gap-3 py-1">
+                                        <div className="flex items-center gap-3 py-1.5">
                                             {selectable && (
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
                                                     onChange={() => onComponentToggle && onComponentToggle(compId)}
                                                     onClick={(e) => e.stopPropagation()}
-                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                                    className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
                                                 />
                                             )}
-                                            <div className="flex flex-col">
-                                                <span className="text-[11px] font-bold text-slate-700 italic">{comp.label}</span>
-                                                <div className="flex items-center gap-2 mt-0.5">
-                                                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest bg-slate-100 px-1.5 py-0.5 rounded">
-                                                        {comp.volume} {comp.satuan} x {comp.kali}
+                                            <div className="flex flex-col min-w-0">
+                                                <span
+                                                    className="text-[11px] font-bold text-slate-700 truncate max-w-[220px]"
+                                                    title={comp.label}
+                                                >
+                                                    {comp.label}
+                                                </span>
+                                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    {/* Volume / satuan / kali dalam 1 pill */}
+                                                    <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                                                        {comp.volume} {comp.satuan} × {comp.kali}×
                                                     </span>
-                                                    <span className={`text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded ${comp.useBos ? 'bg-emerald-100 text-emerald-600' : 'bg-blue-100 text-blue-600'}`}>
+                                                    {/* Sumber dana */}
+                                                    <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full whitespace-nowrap ${comp.useBos ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                                                         {comp.useBos ? 'BOS' : 'YAYASAN'}
                                                     </span>
+                                                    {/* Status ACC */}
                                                     {comp.isApproved && (
-                                                        <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-emerald-500 text-white flex items-center gap-1">
-                                                            DI-ACC
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap">
+                                                            ✓ ACC
                                                         </span>
                                                     )}
                                                 </div>
@@ -155,7 +163,7 @@ export default function BudgetRow({
                                         </span>
                                     </td>
                                     <td className="budget-cell budget-cell-number">
-                                        <span className="text-[10px] font-black text-slate-900 italic">
+                                        <span className="text-[11px] font-black text-slate-800 italic">
                                             {formatCurrency(comp.total)}
                                         </span>
                                     </td>

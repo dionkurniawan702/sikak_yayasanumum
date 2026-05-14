@@ -534,7 +534,7 @@ export default function MonthlyRequest() {
                                                     if (confirmed) {
                                                         setProcessingId(req.id);
                                                         try {
-                                                            const updated = { ...req, status: 'PENDING', rejectionReason: null, notified: false };
+                                                            const updated = { ...req, status: 'PENDING', notified: false };
                                                             dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                                                             await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
                                                             showToast('Persetujuan berhasil dibatalkan, status kembali ke PENDING.');

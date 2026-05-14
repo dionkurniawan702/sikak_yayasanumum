@@ -530,9 +530,9 @@ router.put('/budget-requests/:id', async (req, res) => {
     try {
         // Only pick fields that exist in the Prisma BudgetRequest schema
         // Sending unknown fields (e.g. approvedAt, rejectedAt) causes Prisma to throw
-        const ALLOWED_FIELDS = ['status', 'rejectionReason', 'description', 'month', 'year',
+        const ALLOWED_FIELDS = ['status', 'description', 'month', 'year',
             'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
-            'date', 'expenseItemId', 'isDeleted'];
+            'date', 'expenseItemId', 'isDeleted', 'source', 'notified'];
 
         const data = {};
         ALLOWED_FIELDS.forEach(f => {
