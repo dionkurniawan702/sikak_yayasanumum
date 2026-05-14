@@ -16,6 +16,18 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
  * @param {boolean} props.isField - Whether this is a Field-themed row (indigo theme).
  * @param {React.ReactNode} props.actions - Optional extra actions to render on the main row.
  */
+export default function BudgetRow({
+    data,
+    isExpanded,
+    onToggle,
+    formatCurrency,
+    expandedDetailItems = {},
+    onToggleDetailItem,
+    getUnitName,
+    isBos = false,
+    isField = false,
+    actions = null,
+    // Granular selection props
     selectable = false,
     selectedComponents = new Set(),
     onComponentToggle,
