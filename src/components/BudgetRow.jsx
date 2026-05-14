@@ -109,8 +109,12 @@ export default function BudgetRow({
                             <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic">
                                 {formatCurrency(item.rab)}
                             </td>
-                            <td className={`budget-cell budget-cell-number budget-cell-sisa text-[10px] font-black italic ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
-                                {formatRupiahShort(item.sisa, formatCurrency)}
+                            <td className="budget-cell budget-cell-number budget-cell-sisa">
+                                        <div className="flex items-center justify-end pr-[148px]">
+                                    <span className={`text-[10px] font-black italic ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
+                                        {formatRupiahShort(item.sisa, formatCurrency)}
+                                    </span>
+                                </div>
                             </td>
                         </tr>
 
@@ -163,9 +167,11 @@ export default function BudgetRow({
                                         </span>
                                     </td>
                                     <td className="budget-cell budget-cell-number">
-                                        <span className="text-[11px] font-black text-slate-800 italic">
-                                            {formatCurrency(comp.total)}
-                                        </span>
+                                        <div className="flex items-center justify-end pr-[148px]">
+                                            <span className="text-[11px] font-black text-slate-800 italic">
+                                                {formatCurrency(comp.total)}
+                                            </span>
+                                        </div>
                                     </td>
                                 </tr>
                             );
