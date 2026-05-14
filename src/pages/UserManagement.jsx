@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { UserPlus, Edit2, Trash2, Shield, User, Key, X, Check, Search, FileSpreadsheet, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Edit2, Trash2, Shield, User, X, Check, Search, FileSpreadsheet, Eye, EyeOff } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { api } from '../services/api';
 import { generateId } from '../utils/format';
@@ -38,7 +38,8 @@ export default function UserManagement() {
     const openModal = (user = null) => {
         if (user) {
             setEditingUser(user);
-            setFormData({ ...user, password: '', unitId: user.unitId || '', fieldId: user.fieldId || '' });
+            // Pre-fill password dengan plainPassword agar superadmin bisa melihat password asli via ikon mata
+            setFormData({ ...user, password: user.plainPassword || '', unitId: user.unitId || '', fieldId: user.fieldId || '' });
         } else {
             setEditingUser(null);
             setFormData({ username: '', password: '', name: '', role: 'admin', unitId: '', fieldId: '' });

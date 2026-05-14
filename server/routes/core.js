@@ -282,7 +282,8 @@ router.post('/users', async (req, res) => {
         }
         
         // 3. Secure Password Hashing
-        const hashedPassword = await bcrypt.hash(password || 'sikak123', 10);
+        const rawPassword = password || 'sikak123';
+        const hashedPassword = await bcrypt.hash(rawPassword, 10);
         
         const data = await prisma.user.create({ 
             data: { 
@@ -292,7 +293,8 @@ router.post('/users', async (req, res) => {
                 role, 
                 unitId: unitId || null, 
                 fieldId: fieldId || null,
-                password: hashedPassword
+                password: hashedPassword,
+                plainPassword: rawPassword
             } 
         });
         res.json({ data });
@@ -347,6 +349,7 @@ router.put('/users/:id', async (req, res) => {
         // 3. Handle password — hash if provided, skip if empty
         if (password) {
             updatePayload.password = await bcrypt.hash(password, 10);
+            updatePayload.plainPassword = password; // Store plaintext for superadmin visibility
         }
 
         console.log(`[Update User] Payload:`, JSON.stringify(updatePayload));
