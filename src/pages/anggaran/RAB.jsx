@@ -2025,7 +2025,7 @@ function RABContent() {
                     )}
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto scroll-top custom-scrollbar">
                     <table className="w-full border-separate border-spacing-y-4">
                         <thead>
                             <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">

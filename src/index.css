@@ -78,6 +78,16 @@ body {
   @apply bg-slate-600;
 }
 
+/* Scrollbar at top utility */
+.scroll-top {
+  transform: rotateX(180deg);
+  overflow-x: auto;
+}
+
+.scroll-top > * {
+  transform: rotateX(180deg);
+}
+
 /* ========================================
    Budget Dashboard Styles
    ======================================== */
