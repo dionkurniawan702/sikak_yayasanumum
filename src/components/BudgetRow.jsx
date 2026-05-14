@@ -131,11 +131,8 @@ export default function BudgetRow({
                                                     className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer flex-shrink-0"
                                                 />
                                             )}
-                                            <div className="flex flex-col min-w-0">
-                                                <span
-                                                    className="text-[11px] font-bold text-slate-700 truncate max-w-[220px]"
-                                                    title={comp.label}
-                                                >
+                                            <div className="flex flex-col">
+                                                <span className="text-[11px] font-bold text-slate-700 leading-snug">
                                                     {comp.label}
                                                 </span>
                                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
