@@ -1797,6 +1797,28 @@ function RABContent() {
                         </div>
                     </div>
 
+                    {selectedComponents.size > 0 && (
+                        <div className="flex items-center gap-3 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 mb-6 animate-in slide-in-from-top-4">
+                            <span className="text-sm font-bold text-indigo-900">{selectedComponents.size} Rincian Terpilih</span>
+                            <div className="flex items-center gap-2 ml-auto">
+                                <button 
+                                    onClick={() => handleBulkComponentAction('APPROVE')}
+                                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-700 shadow-sm transition-all flex items-center gap-2"
+                                >
+                                    <CheckCircle2 size={14} />
+                                    ACC Rincian
+                                </button>
+                                <button 
+                                    onClick={() => handleBulkComponentAction('REJECT')}
+                                    className="px-4 py-2 bg-rose-600 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-700 shadow-sm transition-all flex items-center gap-2"
+                                >
+                                    <XCircle size={14} />
+                                    Batalkan ACC Rincian
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     <div className="overflow-x-auto">
                         <table className="w-full border-separate border-spacing-y-2">
                             <thead>
