@@ -110,6 +110,22 @@ export default function ProgramManagement() {
 
     const handleDownloadTemplate = async () => {
         const workbook = new ExcelJS.Workbook();
+        
+        // Buat sheet tersembunyi untuk referensi data dropdown
+        const lookupSheet = workbook.addWorksheet('DataLookup', { state: 'hidden' });
+        lookupSheet.addRow(['Unit', 'Bidang']);
+        
+        const unitList = units.map(u => u.name);
+        const fieldList = fields.map(f => f.name);
+        
+        const maxLen = Math.max(unitList.length, fieldList.length);
+        for (let i = 0; i < maxLen; i++) {
+            lookupSheet.addRow([
+                unitList[i] || '',
+                fieldList[i] || ''
+            ]);
+        }
+
         const worksheet = workbook.addWorksheet('Template Import Program');
 
         worksheet.addRow(['Nama Program', 'Keterangan', 'Unit', 'Bidang']);
@@ -129,24 +145,21 @@ export default function ProgramManagement() {
             fgColor: { argb: 'FF4F46E5' }
         };
 
-        const validateRange = (colIndex, list) => {
-            const colLetter = String.fromCharCode(64 + colIndex);
-            if (list && list.length > 0) {
-                const safeList = list.map(item => String(item).replace(/,/g, ' '));
-                const formula = `"${safeList.join(',').substring(0, 250)}"`;
-                worksheet.dataValidations.add(`${colLetter}2:${colLetter}1000`, {
-                    type: 'list',
-                    allowBlank: true,
-                    formulae: [formula]
-                });
-            }
-        };
+        // Tambahkan validasi dropdown ke kolom Unit (C) dan Bidang (D) untuk semua role
+        if (unitList.length > 0) {
+            worksheet.dataValidations.add('C2:C1000', {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`DataLookup!$A$2:$A$${unitList.length + 1}`]
+            });
+        }
 
-        if (currentUser?.role === 'superadmin') {
-            const unitList = units.map(u => u.name);
-            const fieldList = fields.map(f => f.name);
-            validateRange(3, unitList); // C: Unit
-            validateRange(4, fieldList); // D: Bidang
+        if (fieldList.length > 0) {
+            worksheet.dataValidations.add('D2:D1000', {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`DataLookup!$B$2:$B$${fieldList.length + 1}`]
+            });
         }
 
         worksheet.columns.forEach(column => {
