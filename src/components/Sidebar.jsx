@@ -193,7 +193,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/anggaran/item-pengeluaran', label: 'Item Pengeluaran', icon: Receipt },
                         { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
                         { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
-                        { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 }
+                        { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
+                        { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen }
                     ]
                 },
                 {
@@ -263,7 +264,8 @@ export default function Sidebar({ isOpen, onClose }) {
             groups.push({
                 title: 'PENGATURAN',
                 items: [
-                    { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout }
+                    { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
+                    { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen }
                 ]
             });
         }

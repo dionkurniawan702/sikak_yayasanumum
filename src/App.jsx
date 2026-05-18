@@ -43,6 +43,7 @@ const BOSRecipientUnitManagement = lazy(() => import('./pages/anggaran/BOSRecipi
 const BOSDatabase = lazy(() => import('./pages/anggaran/BOSDatabase'));
 const BOSSaldo = lazy(() => import('./pages/pelaporan/BOSSaldo'));
 const BOSMonthlyReport = lazy(() => import('./pages/pelaporan/BOSMonthlyReport'));
+const UserManual = lazy(() => import('./pages/anggaran/UserManual'));
 import GenericMasterManagement from './components/GenericMasterManagement';
 import {
     Calendar,
@@ -223,6 +224,7 @@ function AppContent() {
                     <Route path="anggaran/database-bos" element={<BOSDatabase />} />
                     <Route path="anggaran/master-program" element={<BudgetProgramManagement />} />
                     <Route path="anggaran/master-bos" element={<BOSMasterManagement />} />
+                    <Route path="anggaran/petunjuk" element={<UserManual />} />
                 </Route>
                 </Routes>
             </Suspense>
