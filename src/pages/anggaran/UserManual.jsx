@@ -35,11 +35,18 @@ export default function UserManual() {
         currentUserRole === 'admin_bidang' ? 'bidang' : 'unit'
     );
 
-    const tabs = [
+    const allTabs = [
         { id: 'unit', label: 'Petunjuk Unit', icon: User, color: 'blue' },
         { id: 'bidang', label: 'Petunjuk Bidang', icon: Building2, color: 'emerald' },
         { id: 'superadmin', label: 'Petunjuk Superadmin', icon: Crown, color: 'amber' }
     ];
+
+    const tabs = allTabs.filter(tab => {
+        if (currentUserRole === 'superadmin') return true;
+        if (currentUserRole === 'admin_unit' && tab.id === 'unit') return true;
+        if (currentUserRole === 'admin_bidang' && tab.id === 'bidang') return true;
+        return false;
+    });
 
     return (
         <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
@@ -59,30 +66,32 @@ export default function UserManual() {
             </div>
 
             {/* Tabs */}
-            <div className="flex flex-wrap gap-3">
-                {tabs.map(tab => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-                    const colorClass = tab.color;
-                    
-                    return (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all duration-200 border-2 ${
-                                isActive 
-                                ? `border-${colorClass}-500 bg-${colorClass}-50 text-${colorClass}-700 shadow-md scale-[1.02]` 
-                                : `border-slate-200 bg-white text-slate-500 hover:border-${colorClass}-300 hover:text-slate-700`
-                            }`}
-                        >
-                            <div className={`p-2 rounded-xl ${isActive ? `bg-${colorClass}-500 text-white shadow-sm` : 'bg-slate-100 text-slate-400'}`}>
-                                <Icon size={18} />
-                            </div>
-                            {tab.label}
-                        </button>
-                    );
-                })}
-            </div>
+            {tabs.length > 1 && (
+                <div className="flex flex-wrap gap-3">
+                    {tabs.map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
+                        const colorClass = tab.color;
+                        
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all duration-200 border-2 ${
+                                    isActive 
+                                    ? `border-${colorClass}-500 bg-${colorClass}-50 text-${colorClass}-700 shadow-md scale-[1.02]` 
+                                    : `border-slate-200 bg-white text-slate-500 hover:border-${colorClass}-300 hover:text-slate-700`
+                                }`}
+                            >
+                                <div className={`p-2 rounded-xl ${isActive ? `bg-${colorClass}-500 text-white shadow-sm` : 'bg-slate-100 text-slate-400'}`}>
+                                    <Icon size={18} />
+                                </div>
+                                {tab.label}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
 
             {/* Content Area */}
             <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-200">
