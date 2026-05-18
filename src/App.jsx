@@ -154,6 +154,9 @@ function AppContent() {
                     <Route path="tutup-buku" element={<PeriodClosing />} />
                     <Route path="manajemen-user" element={<UserManagement />} />
                     <Route path="calk" element={<Placeholder title="Catatan Atas Laporan Keuangan" />} />
+                    <Route path="rincian-aset-wakaf" element={<Placeholder title="Rincian Aset Wakaf" />} />
+                    <Route path="laporan-penyaluran" element={<Placeholder title="Laporan Penyaluran" />} />
+                    <Route path="ringkasan-aset-wakaf" element={<Placeholder title="Ringkasan Aset Wakaf" />} />
 
                     <Route path="pengaturan/backup-restore" element={<SuperAdminRoute><BackupRestore /></SuperAdminRoute>} />
                     <Route path="pengaturan/audit-log" element={<SuperAdminRoute><AuditLog /></SuperAdminRoute>} />
