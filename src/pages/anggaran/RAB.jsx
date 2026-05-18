@@ -1283,13 +1283,21 @@ function RABContent() {
 
                 const nextExpense = { ...plan.expense };
                 items.forEach(({ itemId, compIdx }) => {
-                    const planItems = nextExpense[itemId] || [];
+                    let rawPlanItems = nextExpense[itemId];
+                    // Handle legacy data where planItems is a single object instead of an array
+                    let planItems = Array.isArray(rawPlanItems) ? rawPlanItems : (rawPlanItems && typeof rawPlanItems === 'object' && Object.keys(rawPlanItems).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawPlanItems }] : []);
+                    
                     // Update component isApproved status in the plan items
-                    planItems.forEach(pi => {
+                    planItems = planItems.map(pi => {
                         if (pi.components && pi.components[compIdx]) {
-                            pi.components[compIdx].isApproved = (action === 'APPROVE');
+                            const newComps = [...pi.components];
+                            newComps[compIdx] = { ...newComps[compIdx], isApproved: (action === 'APPROVE') };
+                            return { ...pi, components: newComps };
                         }
+                        return pi;
                     });
+                    
+                    nextExpense[itemId] = planItems; // save back as array
                 });
 
                 const updatedPlan = { ...plan, expense: nextExpense, updatedAt: new Date().toISOString() };
@@ -1300,6 +1308,7 @@ function RABContent() {
             setMessage({ type: 'success', text: `${selectedComponents.size} rincian berhasil ${action === 'APPROVE' ? 'disetujui' : 'dibatalkan'}.` });
             setSelectedComponents(new Set());
         } catch (error) {
+            console.error(error);
             setMessage({ type: 'error', text: 'Gagal memproses perubahan massal.' });
         } finally {
             setIsSaving(false);

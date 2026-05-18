@@ -146,7 +146,10 @@ export default function MonthlyRequest() {
 
         const components = [];
         myPlans.forEach(plan => {
-            Object.entries(plan.expense || {}).forEach(([itemId, itemPlans]) => {
+            Object.entries(plan.expense || {}).forEach(([itemId, rawItemPlans]) => {
+                // Handle legacy single-object format
+                const itemPlans = Array.isArray(rawItemPlans) ? rawItemPlans : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] : []);
+                
                 itemPlans.forEach(p => {
                     (p.components || []).forEach(comp => {
                         // NEW: Filter by selected month's allocation
