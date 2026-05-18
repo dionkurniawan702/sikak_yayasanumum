@@ -1842,7 +1842,8 @@ function RABContent() {
                                         const unit = units.find(u => u.id === plan.unitId) || fields.find(f => f.id === plan.fieldId);
                                         // Calculate total by summing all plan totals in each expense category
                                         const total = Object.values(plan.expense || {}).reduce((sum, plans) => {
-                                            return sum + (Array.isArray(plans) ? plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) : 0);
+                                            const planArray = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
+                                            return sum + planArray.reduce((s, p) => s + (parseFloat(p.total) || 0), 0);
                                         }, 0);
 
                                         // Calculate RAP — BOS plans use bosAllocations, Yayasan plans use calculateRAP
@@ -1886,10 +1887,11 @@ function RABContent() {
                                             sisa: rapLimit - total,
                                             breakdown: Object.entries(plan.expense || {})
                                                 .map(([id, plans]) => {
-                                                    const aggregatedTotal = Array.isArray(plans) ? plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) : 0;
+                                                    const planArray = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
+                                                    const aggregatedTotal = planArray.reduce((s, p) => s + (parseFloat(p.total) || 0), 0);
                                                     const aggregatedRap = itemAllocations[id] || 0;
                                                     // Collect all components from all plans for this item
-                                                    const allComponents = Array.isArray(plans) ? plans.flatMap(p => p.components || []) : [];
+                                                    const allComponents = planArray.flatMap(p => p.components || []);
 
                                                     return {
                                                         id,
