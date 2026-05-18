@@ -120,9 +120,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
                         { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
                         { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
-                        { path: '/manajemen-program', label: 'Manajemen Program', icon: List },
-                        { path: '/manajemen-anggaran', label: 'Manajemen Anggaran', icon: Wallet },
-                        { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target }
+                        { path: '/manajemen-program', label: 'Manajemen Program', icon: List }
                     ]
                 },
                 {
@@ -134,23 +132,16 @@ export default function Sidebar({ isOpen, onClose }) {
                     ]
                 },
                 {
-                    title: 'LAPORAN KEUANGAN AKUNTANSI',
+                    title: 'LAPORAN KEUANGAN',
                     items: [
                         { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
                         { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
-                        { path: '/rincian-aset-wakaf', label: 'Rincian Aset Wakaf', icon: Landmark },
                         { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
+                        { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
                         { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
-                        { path: '/perubahan-dana', label: 'Perubahan Dana', icon: TrendingUp },
+                        { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
+                        { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
                         { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText }
-                    ]
-                },
-                {
-                    title: 'LAPORAN KEUANGAN LAINNYA',
-                    items: [
-                        { path: '/laporan-program', label: 'Laporan Perprogram', icon: List },
-                        { path: '/laporan-penyaluran', label: 'Laporan Penyaluran', icon: Send },
-                        { path: '/ringkasan-aset-wakaf', label: 'Ringkasan Aset Wakaf', icon: BookMarked }
                     ]
                 },
                 {
