@@ -1,47 +1,26 @@
 import React, { useState } from 'react';
-import { BookOpen, User, Building2, Crown, ChevronRight, Image as ImageIcon, Send, FileText, Target, Wallet } from 'lucide-react';
+import { BookOpen, User, Building2, Crown, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
-const ScreenshotPlaceholder = ({ title, icon: Icon, colorClass }) => (
-    <div className={`mt-4 rounded-xl border border-slate-200 overflow-hidden shadow-sm flex flex-col bg-slate-50 aspect-video max-h-64`}>
-        <div className="bg-slate-800 px-4 py-2 flex items-center gap-2">
-            <div className="flex gap-1.5">
-                <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-amber-500"></div>
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-            </div>
-            <div className="text-[10px] font-medium text-slate-400 ml-2 bg-slate-700/50 px-2 py-0.5 rounded">
-                sikad.dareliman.or.id
+const StepText = ({ number, title, description, details, colorClass = "blue" }) => (
+    <div className="flex gap-4 mb-8 last:mb-0">
+        <div className="flex-shrink-0 mt-1">
+            <div className={`w-8 h-8 rounded-full bg-${colorClass}-100 text-${colorClass}-600 flex items-center justify-center font-black border border-${colorClass}-200 shadow-sm`}>
+                {number}
             </div>
         </div>
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-slate-50 to-slate-100">
-            <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-3 shadow-inner bg-white border ${colorClass}`}>
-                {Icon ? <Icon size={32} className="opacity-70" /> : <ImageIcon size={32} className="opacity-50 text-slate-400" />}
-            </div>
-            <p className="text-sm font-bold text-slate-600">Ilustrasi: {title}</p>
-            <p className="text-xs text-slate-400 mt-1 max-w-[250px]">
-                Area ini disiapkan untuk menampilkan screenshot aplikasi Anda.
-            </p>
-        </div>
-    </div>
-);
-
-const InstructionStep = ({ step, title, description, screenshot, icon, colorClass }) => (
-    <div className="relative pl-10 pb-10 last:pb-0">
-        {/* Timeline line */}
-        <div className="absolute left-[19px] top-8 bottom-0 w-px bg-slate-200 last:bg-transparent"></div>
-        
-        {/* Step number indicator */}
-        <div className={`absolute left-0 top-0 w-10 h-10 rounded-full flex items-center justify-center text-sm font-black text-white shadow-lg shadow-slate-200 border-4 border-white z-10 ${colorClass}`}>
-            {step}
-        </div>
-        
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all">
+        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm w-full">
             <h4 className="text-lg font-bold text-slate-800 mb-2">{title}</h4>
-            <p className="text-slate-600 leading-relaxed text-sm">{description}</p>
-            
-            {screenshot && (
-                <ScreenshotPlaceholder title={title} icon={icon} colorClass={colorClass.replace('bg-', 'border-').replace('500', '200')} />
+            <p className="text-slate-600 font-medium mb-3 leading-relaxed">{description}</p>
+            {details && (
+                <ul className="space-y-2.5 mt-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                    {details.map((detail, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-sm text-slate-700">
+                            <CheckCircle2 size={18} className={`text-${colorClass}-500 mt-0.5 shrink-0`} />
+                            <span className="leading-relaxed">{detail}</span>
+                        </li>
+                    ))}
+                </ul>
             )}
         </div>
     </div>
@@ -57,29 +36,25 @@ export default function UserManual() {
     );
 
     const tabs = [
-        { id: 'unit', label: 'Panduan Unit', icon: User, color: 'bg-blue-500', hoverColor: 'hover:bg-blue-50', activeColor: 'text-blue-600 bg-blue-50 border-blue-200' },
-        { id: 'bidang', label: 'Panduan Bidang', icon: Building2, color: 'bg-emerald-500', hoverColor: 'hover:bg-emerald-50', activeColor: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-        { id: 'superadmin', label: 'Panduan Superadmin', icon: Crown, color: 'bg-amber-500', hoverColor: 'hover:bg-amber-50', activeColor: 'text-amber-600 bg-amber-50 border-amber-200' }
+        { id: 'unit', label: 'Petunjuk Unit', icon: User, color: 'blue' },
+        { id: 'bidang', label: 'Petunjuk Bidang', icon: Building2, color: 'emerald' },
+        { id: 'superadmin', label: 'Petunjuk Superadmin', icon: Crown, color: 'amber' }
     ];
 
     return (
-        <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
             
             {/* Header */}
-            <div className="bg-gradient-to-r from-slate-900 via-blue-900 to-indigo-900 rounded-[2rem] p-8 shadow-2xl relative overflow-hidden">
-                <div className="absolute top-0 right-0 -mr-20 -mt-20 w-64 h-64 bg-white/5 rounded-full blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
-                
-                <div className="relative z-10 flex items-start gap-6">
-                    <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shadow-inner border border-white/20 shrink-0">
-                        <BookOpen className="text-blue-200 w-8 h-8" />
-                    </div>
-                    <div>
-                        <h1 className="text-3xl font-black text-white tracking-tight mb-2">Buku Petunjuk Penggunaan</h1>
-                        <p className="text-blue-100/80 font-medium max-w-2xl leading-relaxed">
-                            Panduan interaktif untuk membantu Anda memahami fitur dan alur kerja Sistem Keuangan Dareliman (SIKAD). Pilih peran Anda di bawah ini untuk melihat panduan yang relevan.
-                        </p>
-                    </div>
+            <div className="bg-slate-900 rounded-[2rem] p-8 shadow-xl flex items-start gap-6">
+                <div className="w-16 h-16 bg-blue-500/20 rounded-2xl flex items-center justify-center border border-blue-500/30 shrink-0">
+                    <BookOpen className="text-blue-400 w-8 h-8" />
+                </div>
+                <div>
+                    <h1 className="text-3xl font-black text-white tracking-tight mb-2">Buku Petunjuk Penggunaan</h1>
+                    <p className="text-slate-400 font-medium max-w-3xl leading-relaxed">
+                        Panduan langkah demi langkah yang rinci untuk menjalankan siklus keuangan di SIKAD. 
+                        Silakan pilih peran (Role) Anda di bawah ini untuk melihat prosedur kerja yang tepat.
+                    </p>
                 </div>
             </div>
 
@@ -88,17 +63,19 @@ export default function UserManual() {
                 {tabs.map(tab => {
                     const Icon = tab.icon;
                     const isActive = activeTab === tab.id;
+                    const colorClass = tab.color;
+                    
                     return (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
                             className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold transition-all duration-200 border-2 ${
                                 isActive 
-                                ? tab.activeColor + ' shadow-sm scale-[1.02]' 
-                                : 'border-transparent bg-white text-slate-500 hover:text-slate-700 ' + tab.hoverColor + ' shadow-sm'
+                                ? `border-${colorClass}-500 bg-${colorClass}-50 text-${colorClass}-700 shadow-md scale-[1.02]` 
+                                : `border-slate-200 bg-white text-slate-500 hover:border-${colorClass}-300 hover:text-slate-700`
                             }`}
                         >
-                            <div className={`p-2 rounded-xl ${isActive ? tab.color + ' text-white shadow-md' : 'bg-slate-100 text-slate-400'}`}>
+                            <div className={`p-2 rounded-xl ${isActive ? `bg-${colorClass}-500 text-white shadow-sm` : 'bg-slate-100 text-slate-400'}`}>
                                 <Icon size={18} />
                             </div>
                             {tab.label}
@@ -108,48 +85,63 @@ export default function UserManual() {
             </div>
 
             {/* Content Area */}
-            <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-200 shadow-sm">
+            <div className="bg-slate-50 rounded-[2rem] p-8 border border-slate-200">
                 
                 {/* ----------------- UNIT GUIDE ----------------- */}
                 {activeTab === 'unit' && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-slate-800 mb-2">Panduan User Unit</h2>
-                            <p className="text-slate-500">Tugas utama Unit adalah menyusun RAB, mengajukan permintaan dana, dan melaporkan bukti pengeluaran.</p>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="mb-8 border-b border-slate-200 pb-6">
+                            <h2 className="text-2xl font-black text-slate-800 mb-2">Alur Kerja User Unit (Sekolah/Lembaga)</h2>
+                            <p className="text-slate-500">Sebagai Admin Unit, Anda bertanggung jawab menyiapkan data dasar operasional (seperti data siswa), merencanakan anggaran belanja, dan melaporkan bukti penggunaannya secara tertib.</p>
                         </div>
                         
-                        <div className="space-y-4">
-                            <InstructionStep 
-                                step="1" 
-                                title="Cek Saldo Tersedia" 
-                                description="Buka menu 'Saldo Yayasan' atau 'Saldo BOS' untuk melihat batas anggaran yang masih bisa digunakan sesuai dengan RAB yang sudah disetujui."
-                                screenshot={true}
-                                icon={Wallet}
-                                colorClass="bg-blue-500 text-white"
+                        <div className="space-y-2">
+                            <StepText 
+                                number="1" 
+                                colorClass="blue"
+                                title="Persiapan: Database Anggaran (Siswa & Kelas)" 
+                                description="Sebelum menyusun rancangan biaya (RAB), pastikan data operasional sekolah/unit sudah benar dan mutakhir."
+                                details={[
+                                    "Buka menu DATABASE ANGGARAN > Kelas untuk mendaftarkan dan memverifikasi kelas yang aktif pada tahun ajaran ini.",
+                                    "Buka menu DATABASE ANGGARAN > Database Siswa untuk mencatat siswa baru, atau memperbarui status siswa lama (Aktif, Pindah, atau Lulus).",
+                                    "Validitas data siswa sangat krusial karena berpengaruh pada target penerimaan SPP dan alokasi BOS (jika unit Anda menerimanya)."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="2" 
-                                title="Membuat Perencanaan (RAB)" 
-                                description="Masuk ke menu 'RAB Yayasan'. Klik tombol 'Tambah RAB', isi detail barang/jasa, lalu ajukan. Anda harus menunggu persetujuan Superadmin agar RAB bisa dicairkan."
-                                screenshot={true}
-                                icon={Target}
-                                colorClass="bg-blue-500 text-white"
+                            <StepText 
+                                number="2" 
+                                colorClass="blue"
+                                title="Tahap Perencanaan: Membuat RAB (Rencana Anggaran Biaya)" 
+                                description="Setelah database rapi, mulailah merancang anggaran belanja yang dibutuhkan oleh unit Anda."
+                                details={[
+                                    "Masuk ke menu PERENCANAAN (RAB) > RAB Yayasan (atau RAB BOS).",
+                                    "Klik tombol 'Tambah RAB'. Masukkan item barang/jasa, kuantitas, serta perkiraan harga seakurat mungkin.",
+                                    "Pastikan total anggaran tidak melebihi alokasi atau limit yang telah ditetapkan oleh pusat.",
+                                    "Setelah disimpan, RAB akan berstatus 'PENDING'. Anda tidak dapat meminta dana sebelum RAB ini berstatus 'APPROVED' (Disetujui oleh Superadmin)."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="3" 
-                                title="Mengajukan Permintaan Dana" 
-                                description="Saat butuh dana untuk kegiatan, buka menu 'Permintaan Dana'. Pilih RAB yang sudah disetujui, isi nominal yang dibutuhkan, lalu klik 'Ajukan'."
-                                screenshot={true}
-                                icon={Send}
-                                colorClass="bg-blue-500 text-white"
+                            <StepText 
+                                number="3" 
+                                colorClass="blue"
+                                title="Tahap Pencairan: Mengajukan Permintaan Dana" 
+                                description="Jika RAB Anda sudah disetujui (Approved) dan Anda membutuhkan dana tersebut dalam waktu dekat untuk dibelanjakan."
+                                details={[
+                                    "Buka menu REALISASI ANGGARAN > Permintaan Dana.",
+                                    "Buat permintaan baru. Sistem otomatis hanya akan menampilkan daftar RAB yang sudah di-Approve.",
+                                    "Pilih item mana yang mau dicairkan uangnya hari ini, masukkan nominal permintaannya (boleh sebagian dari total RAB).",
+                                    "Kirim permintaan dan tunggu Superadmin memverifikasi dan mentransfer/menyerahkan dana tersebut."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="4" 
-                                title="Melaporkan Pengeluaran" 
-                                description="Setelah dana dicairkan dan dibelanjakan, buka 'Pengeluaran Yayasan'. Catat realisasi penggunaan dana dan lampirkan bukti nota/struk jika diperlukan."
-                                screenshot={true}
-                                icon={FileText}
-                                colorClass="bg-blue-500 text-white"
+                            <StepText 
+                                number="4" 
+                                colorClass="blue"
+                                title="Tahap Akhir: Laporan Pengeluaran (Realisasi)" 
+                                description="Setelah Anda menerima uang dan membelanjakannya, Anda WAJIB melaporkan bukti pemakaiannya secara transparan."
+                                details={[
+                                    "Buka menu REALISASI ANGGARAN > Pengeluaran Yayasan.",
+                                    "Pilih riwayat penerimaan dana yang belum dilaporkan.",
+                                    "Masukkan nominal dana yang 'benar-benar habis terpakai'.",
+                                    "Jika ada sisa uang (kembalian dari toko/supplier), Anda wajib mengisinya pada kolom Sisa/Kembalian. Sistem akan mengarahkan Anda untuk melakukan prosedur 'Pengembalian Saldo' ke pusat."
+                                ]}
                             />
                         </div>
                     </div>
@@ -157,36 +149,55 @@ export default function UserManual() {
 
                 {/* ----------------- BIDANG GUIDE ----------------- */}
                 {activeTab === 'bidang' && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-slate-800 mb-2">Panduan User Bidang</h2>
-                            <p className="text-slate-500">Bidang mengelola anggaran operasional dan kegiatan lintas unit. Alurnya mirip dengan Unit.</p>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="mb-8 border-b border-slate-200 pb-6">
+                            <h2 className="text-2xl font-black text-slate-800 mb-2">Alur Kerja User Bidang</h2>
+                            <p className="text-slate-500">Sebagai Admin Bidang, Anda berfokus pada pengelolaan anggaran kegiatan lintas unit atau operasional divisi khusus di Yayasan.</p>
                         </div>
                         
-                        <div className="space-y-4">
-                            <InstructionStep 
-                                step="1" 
-                                title="Pantau Saldo Bidang" 
-                                description="Buka menu 'Saldo Yayasan' untuk melihat total pagu anggaran khusus kegiatan Bidang Anda yang belum terealisasi."
-                                screenshot={true}
-                                icon={Wallet}
-                                colorClass="bg-emerald-500 text-white"
+                        <div className="space-y-2">
+                            <StepText 
+                                number="1" 
+                                colorClass="emerald"
+                                title="Persiapan: Pengecekan Database & Pagu Anggaran" 
+                                description="Pastikan Anda mengetahui ruang lingkup anggaran yang diserahkan ke Bidang Anda."
+                                details={[
+                                    "Jika Anda berada di Bidang Pendidikan/Keuangan, Anda memiliki akses baca (Read-only) ke menu Database Anggaran untuk memantau data Siswa secara global guna keperluan analisis.",
+                                    "Pantau menu DASHBOARD & SALDO > Saldo Yayasan untuk melihat alokasi pagu dana khusus yang tersedia untuk kegiatan Bidang Anda sebelum mulai membuat rencana."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="2" 
-                                title="Pengajuan RAB Bidang" 
-                                description="Melalui menu 'RAB', Anda bisa merencanakan kebutuhan anggaran dalam satu periode (bulanan/semesteran)."
-                                screenshot={true}
-                                icon={Target}
-                                colorClass="bg-emerald-500 text-white"
+                            <StepText 
+                                number="2" 
+                                colorClass="emerald"
+                                title="Tahap Perencanaan: Membuat RAB Kegiatan Bidang" 
+                                description="Rencanakan secara detail pembiayaan untuk program-program kerja Bidang Anda."
+                                details={[
+                                    "Buka menu PERENCANAAN (RAB) > RAB Yayasan.",
+                                    "Buat rincian kebutuhan operasional rutin atau acara spesifik. Masukkan nominal estimasi yang tajam dan masuk akal.",
+                                    "Simpan pengajuan dan pantau statusnya hingga berstatus 'APPROVED' oleh Superadmin."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="3" 
-                                title="Realisasi & Pelaporan" 
-                                description="Ajukan 'Permintaan Dana' sebelum kegiatan. Setelah kegiatan selesai, wajib laporkan penggunaan sebenarnya di 'Pengeluaran Yayasan'. Sisa dana harus dikembalikan."
-                                screenshot={true}
-                                icon={Send}
-                                colorClass="bg-emerald-500 text-white"
+                            <StepText 
+                                number="3" 
+                                colorClass="emerald"
+                                title="Tahap Pencairan: Permintaan Dana Kegiatan" 
+                                description="Cairkan dana yang RAB-nya sudah disetujui, sesaat sebelum kegiatan/program dieksekusi."
+                                details={[
+                                    "Buka menu REALISASI ANGGARAN > Permintaan Dana.",
+                                    "Tarik dana dari kuota RAB yang tersedia. Pastikan nominal yang ditarik sesuai dengan kebutuhan acara dalam waktu dekat.",
+                                    "Kirim permintaan pencairan ke bagian keuangan pusat (Superadmin)."
+                                ]}
+                            />
+                            <StepText 
+                                number="4" 
+                                colorClass="emerald"
+                                title="Tahap Akhir: Pelaporan Bukti Pengeluaran" 
+                                description="Seluruh dana yang ditarik menjadi tanggung jawab Bidang untuk dipertanggungjawabkan penggunaannya."
+                                details={[
+                                    "Buka menu REALISASI ANGGARAN > Pengeluaran Yayasan sesegera mungkin setelah kegiatan/pembelanjaan selesai.",
+                                    "Input total nilai belanja yang sebenarnya.",
+                                    "Apabila anggaran acara bersisa, nilai sisa tersebut wajib dicatatkan agar sistem mengembalikan saldo tersebut ke kas Yayasan (Pengembalian Saldo)."
+                                ]}
                             />
                         </div>
                     </div>
@@ -194,44 +205,58 @@ export default function UserManual() {
 
                 {/* ----------------- SUPERADMIN GUIDE ----------------- */}
                 {activeTab === 'superadmin' && (
-                    <div className="space-y-6 animate-in fade-in duration-300">
-                        <div className="mb-8">
-                            <h2 className="text-2xl font-black text-slate-800 mb-2">Panduan Superadmin</h2>
-                            <p className="text-slate-500">Superadmin bertanggung jawab memvalidasi anggaran, mencatat jurnal akuntansi, dan memantau laporan.</p>
+                    <div className="animate-in fade-in slide-in-from-bottom-4 duration-300">
+                        <div className="mb-8 border-b border-slate-200 pb-6">
+                            <h2 className="text-2xl font-black text-slate-800 mb-2">Alur Kerja Superadmin (Keuangan Pusat)</h2>
+                            <p className="text-slate-500">Superadmin memiliki hak tertinggi untuk menyetujui arus kas, mencatat penyesuaian jurnal, serta memastikan Laporan Keuangan konsolidasi berjalan akurat (Balance).</p>
                         </div>
                         
-                        <div className="space-y-4">
-                            <InstructionStep 
-                                step="1" 
-                                title="Approval RAB & Permintaan Dana" 
-                                description="Setiap ada pengajuan baru, akan muncul notifikasi angka berkedip di menu kiri. Buka menu tersebut, periksa rinciannya, lalu pilih 'Setujui' atau 'Tolak'."
-                                screenshot={true}
-                                icon={Target}
-                                colorClass="bg-amber-500 text-white"
+                        <div className="space-y-2">
+                            <StepText 
+                                number="1" 
+                                colorClass="amber"
+                                title="Fungsi Kontrol: Verifikasi (Approval) RAB & Pencairan" 
+                                description="Setiap aktivitas finansial dari Unit dan Bidang tidak akan berjalan tanpa persetujuan Anda."
+                                details={[
+                                    "Perhatikan indikator notifikasi (angka berkedip berwarna merah/hijau/kuning) pada menu sidebar sebelah kiri. Itu adalah antrean tugas Anda.",
+                                    "Buka menu PERENCANAAN (RAB) dan periksa kelayakan harga serta urgensi barang yang diajukan Unit/Bidang.",
+                                    "Buka menu Permintaan Dana untuk menyetujui proses transfer uang tunai ke tangan Unit/Bidang.",
+                                    "Gunakan tombol 'Approve' jika valid, atau 'Reject' jika harus dikoreksi/ditolak dengan menuliskan catatan alasan."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="2" 
-                                title="Mencatat Jurnal Umum" 
-                                description="Untuk transaksi yang tidak terjadi otomatis (seperti penyusutan aset atau penyesuaian), catat manual melalui menu 'Jurnal Umum'. Pastikan nilai Debit & Kredit Balance."
-                                screenshot={true}
-                                icon={FileText}
-                                colorClass="bg-amber-500 text-white"
+                            <StepText 
+                                number="2" 
+                                colorClass="amber"
+                                title="Fungsi Akuntansi: Transaksi & Jurnal Umum" 
+                                description="Proses akuntansi utama seperti pencairan dan pelaporan berjalan otomatis, namun Anda butuh Jurnal Umum untuk transaksi non-rutin."
+                                details={[
+                                    "Buka menu TRANSAKSI AKUNTANSI > Jurnal Umum untuk mencatat penyusutan aset tetap, pembayaran hutang/piutang, investasi, atau mutasi antar bank.",
+                                    "Pastikan setiap jurnal yang dibuat selalu Balance (Nilai Debit = Nilai Kredit). Sistem akan menolak jika jurnal tidak seimbang.",
+                                    "Gunakan menu Tutup Buku (Closing) di akhir periode untuk mengunci transaksi agar tidak bisa diedit lagi secara tidak sengaja oleh siapapun."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="3" 
-                                title="Memantau Laporan Keuangan" 
-                                description="Tarik laporan 'Posisi Keuangan (Neraca)', 'Laporan Aktivitas', dan 'Buku Besar' kapan saja secara Real-Time melalui kelompok menu Laporan Keuangan."
-                                screenshot={true}
-                                icon={BookOpen}
-                                colorClass="bg-amber-500 text-white"
+                            <StepText 
+                                number="3" 
+                                colorClass="amber"
+                                title="Fungsi Manajerial: Laporan Keuangan Real-Time" 
+                                description="Seluruh aktivitas dari Unit, Bidang, dan Jurnal Anda akan bermuara pada laporan akhir."
+                                details={[
+                                    "Buka kelompok menu LAPORAN KEUANGAN untuk melihat performa kesehatan yayasan.",
+                                    "Cek 'Posisi Keuangan (Neraca)' untuk mengevaluasi total Aset, Kewajiban, dan Aset Neto berjalan.",
+                                    "Cek 'Laporan Aktivitas' untuk melihat rincian Penerimaan (Surplus) vs Pengeluaran (Defisit).",
+                                    "Tarik laporan 'Buku Besar' kapan saja untuk menelusuri rincian pergerakan dana pada satu akun spesifik (misalnya hanya akun Kas Bank BCA)."
+                                ]}
                             />
-                            <InstructionStep 
-                                step="4" 
-                                title="Manajemen Pengguna (User)" 
-                                description="Di menu 'Manajemen User', Anda bisa menambah akun untuk Unit/Bidang baru, mereset password, serta melihat password mereka."
-                                screenshot={true}
-                                icon={User}
-                                colorClass="bg-amber-500 text-white"
+                            <StepText 
+                                number="4" 
+                                colorClass="amber"
+                                title="Fungsi Administrator: Pengaturan Master Data & User" 
+                                description="Anda yang menentukan tata letak sistem dan akses keamanan."
+                                details={[
+                                    "Gunakan menu PENGATURAN ANGGARAN untuk mendaftarkan Unit baru, Bidang baru, atau Program Belanja baru.",
+                                    "Gunakan menu ADMINISTRASI SISTEM > Manajemen User untuk membuat akun pengguna (login) bagi karyawan.",
+                                    "Superadmin bisa mereset password atau melihat password lama user dengan cara mengklik icon Mata (👁️) pada saat mengedit profil user tersebut."
+                                ]}
                             />
                         </div>
                     </div>
