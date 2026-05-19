@@ -156,7 +156,10 @@ export default function MonthlyRequest() {
                         const isScheduledInMonth = comp.months?.[requestMonth]?.m === true;
                         const monthlyAmount = parseFloat(comp.months?.[requestMonth]?.jumlah) || 0;
 
-                        if (comp.isApproved && isScheduledInMonth && monthlyAmount > 0) {
+                        // Legacy support: comp.isApproved, New system: comp.status === 'APPROVED'
+                        const isActuallyApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+
+                        if (isActuallyApproved && isScheduledInMonth && monthlyAmount > 0) {
                             // Check if already requested in budgetRequests for THIS month
                             const alreadyRequested = (budgetRequests || []).some(req =>
                                 req.month === requestMonth && req.items?.some(reqItem => reqItem.componentId === comp.id)

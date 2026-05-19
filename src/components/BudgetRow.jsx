@@ -129,7 +129,7 @@ export default function BudgetRow({
                                 <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
                                     <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }} colSpan={nameColSpan}>
                                         <div className="flex items-center gap-3 py-1.5">
-                                            {selectable && (
+                                            {selectable && (isReviewMode ? comp.status === 'PENDING' : (comp.status === 'DRAFT' || comp.status === 'REJECTED')) && (
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}
@@ -151,10 +151,25 @@ export default function BudgetRow({
                                                     <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full whitespace-nowrap ${comp.useBos ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                                                         {comp.useBos ? 'BOS' : 'YAYASAN'}
                                                     </span>
-                                                    {/* Status ACC */}
-                                                    {comp.isApproved && (
+                                                    {/* Status Dinamis */}
+                                                    {comp.status === 'APPROVED' && (
                                                         <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap">
                                                             ✓ ACC
+                                                        </span>
+                                                    )}
+                                                    {comp.status === 'PENDING' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500 text-white whitespace-nowrap">
+                                                            ⏳ Menunggu
+                                                        </span>
+                                                    )}
+                                                    {comp.status === 'REJECTED' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500 text-white whitespace-nowrap">
+                                                            ✕ Ditolak
+                                                        </span>
+                                                    )}
+                                                    {comp.status === 'DRAFT' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-300 text-slate-700 whitespace-nowrap">
+                                                            Draft
                                                         </span>
                                                     )}
                                                 </div>

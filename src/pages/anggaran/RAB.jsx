@@ -272,7 +272,8 @@ function RABContent() {
                     income: existingPlan.income || {},
                     expense: migratedExpense,
                     status: existingPlan.status || 'DRAFT',
-                    rejectionReason: existingPlan.rejectionReason || null
+                    rejectionReason: existingPlan.rejectionReason || null,
+                    notified: existingPlan.notified
                 });
 
                 if ((existingPlan.status === 'APPROVED' || existingPlan.status === 'REJECTED') && !existingPlan.notified) {
@@ -628,12 +629,17 @@ function RABContent() {
 
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 0) * (parseFloat(entryForm.harga) || 0);
+        
+        let newStatus = entryForm.status;
+        if (newStatus === 'REJECTED' || !newStatus) newStatus = 'DRAFT';
+
         const newComp = {
             ...entryForm,
             volume: parseFloat(entryForm.volume),
             kali: parseFloat(entryForm.kali),
             harga: parseFloat(entryForm.harga),
-            total
+            total,
+            status: newStatus
         };
 
         setCurrentPlan(prev => {
@@ -1192,11 +1198,15 @@ function RABContent() {
 
         // 2. Strict Validation: Yayasan Item Limits for Submission
         const overBudgetItemSubmit = filteredExpenseItems.find(item => {
-            const detail = submittedPlan.expense[item.id] || { total: 0 };
+            const detail = submittedPlan.expense[item.id] || [];
             const allocated = rapData.itemAllocations[item.id] || 0;
-            if (detail.total <= 0 || allocated === 0) return false;
+            
+            const detailTotal = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.total) || 0), 0) : (detail.total || 0);
+            const detailBos = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.bosAmount) || 0), 0) : (detail.bosAmount || 0);
 
-            const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+            if (detailTotal <= 0 || allocated === 0) return false;
+
+            const yayasanSpent = detailTotal - detailBos;
             return yayasanSpent > (allocated + 100);
         });
 
@@ -1214,7 +1224,8 @@ function RABContent() {
         const overBosItemSubmit = Object.keys(submittedPlan.expense).find(itemId => {
             const detail = submittedPlan.expense[itemId];
             const limit = bosItemMap[itemId] || 0;
-            const spent = parseFloat(detail.bosAmount) || 0;
+            
+            const spent = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.bosAmount) || 0), 0) : (parseFloat(detail.bosAmount) || 0);
             return spent > (limit + 100);
         });
 
@@ -1289,7 +1300,21 @@ function RABContent() {
                     
                     if (planItems[pIdx] && planItems[pIdx].components && planItems[pIdx].components[cIdx]) {
                         const newComps = [...planItems[pIdx].components];
-                        newComps[cIdx] = { ...newComps[cIdx], isApproved: (action === 'APPROVE') };
+                        
+                        let newStatus = newComps[cIdx].status;
+                        let newIsApproved = newComps[cIdx].isApproved;
+                        
+                        if (action === 'SUBMIT') {
+                            newStatus = 'PENDING';
+                        } else if (action === 'APPROVE') {
+                            newStatus = 'APPROVED';
+                            newIsApproved = true;
+                        } else if (action === 'REJECT') {
+                            newStatus = 'REJECTED';
+                            newIsApproved = false;
+                        }
+
+                        newComps[cIdx] = { ...newComps[cIdx], isApproved: newIsApproved, status: newStatus };
                         
                         const newPlanItems = [...planItems];
                         newPlanItems[pIdx] = { ...newPlanItems[pIdx], components: newComps };
@@ -1303,7 +1328,12 @@ function RABContent() {
                 await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
             }
 
-            setMessage({ type: 'success', text: `${selectedComponents.size} rincian berhasil ${action === 'APPROVE' ? 'disetujui' : 'dibatalkan'}.` });
+            let actionText = '';
+            if (action === 'SUBMIT') actionText = 'diajukan untuk direview';
+            else if (action === 'APPROVE') actionText = 'disetujui';
+            else if (action === 'REJECT') actionText = 'ditolak';
+
+            setMessage({ type: 'success', text: `${selectedComponents.size} rincian berhasil ${actionText}.` });
             setSelectedComponents(new Set());
         } catch (error) {
             console.error(error);
@@ -1898,11 +1928,19 @@ function RABContent() {
                                                     const aggregatedTotal = planArray.reduce((s, p) => s + (parseFloat(p.total) || 0), 0);
                                                     const aggregatedRap = itemAllocations[id] || 0;
                                                     // Collect all components from all plans for this item
-                                                    const allComponents = planArray.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => ({
-                                                        ...c,
-                                                        _pIdx: pIdx,
-                                                        _cIdx: cIdx
-                                                    })));
+                                                    const allComponents = planArray.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => {
+                                                        let compStatus = c.status;
+                                                        if (!compStatus) {
+                                                            if (c.isApproved === true) compStatus = 'APPROVED';
+                                                            else compStatus = plan.status === 'APPROVED' ? 'APPROVED' : (plan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
+                                                        }
+                                                        return {
+                                                            ...c,
+                                                            _pIdx: pIdx,
+                                                            _cIdx: cIdx,
+                                                            status: compStatus
+                                                        };
+                                                    }));
 
                                                     return {
                                                         id,
@@ -1928,6 +1966,7 @@ function RABContent() {
                                                 getUnitName={getUnitName}
                                                 isField={!!plan.fieldId}
                                                 selectable={true}
+                                                isReviewMode={true}
                                                 selectedComponents={selectedComponents}
                                                 onComponentToggle={toggleComponentSelection}
                                                 actions={
@@ -2138,7 +2177,25 @@ function RABContent() {
                                             rab: plan.total || 0,
                                             sisa: (plan.limit || allocated) - (plan.total || 0),
                                             // Fix: Disable expansion to prevent redundant rows for consolidated items
-                                            breakdown: [{ id: `COMP-${plan.id}`, name: 'RINCIAN BELANJA', rab: plan.total || 0, rap: plan.limit || allocated, components: plan.components || [] }],
+                                            breakdown: [{ 
+                                                id: `COMP-${plan.id}`, 
+                                                name: 'RINCIAN BELANJA', 
+                                                rab: plan.total || 0, 
+                                                rap: plan.limit || allocated, 
+                                                components: (plan.components || []).map((c, cIdx) => {
+                                                    let compStatus = c.status;
+                                                    if (!compStatus) {
+                                                        if (c.isApproved === true) compStatus = 'APPROVED';
+                                                        else compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
+                                                    }
+                                                    return {
+                                                        ...c,
+                                                        _pIdx: pIdx,
+                                                        _cIdx: cIdx,
+                                                        status: compStatus
+                                                    };
+                                                })
+                                            }],
                                         };
 
                                         return (
@@ -2151,7 +2208,9 @@ function RABContent() {
                                                 expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
-                                                selectable={false}
+                                                selectable={!isSuperAdmin && !isConsolidation}
+                                                selectedComponents={selectedComponents}
+                                                onComponentToggle={toggleComponentSelection}
                                                 nameColSpan={3}
                                                 actions={
                                                     (isSuperAdmin || 
@@ -2445,8 +2504,8 @@ function RABContent() {
                     {!isConsolidation && (
                         <button
                             onClick={handleSubmitReview}
-                            disabled={isSaving || !selectedYearId || isLocked}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95"
+                            disabled={isSaving || !selectedYearId || activePlan.status === 'PENDING'}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95 cursor-pointer"
                         >
                             {fundSourceFilter === 'BOS' ? 'AJUKAN RAB BOS' : 'KIRIM KE YAYASAN'}
                         </button>
@@ -2992,8 +3051,16 @@ function RABContent() {
                                                                     <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
                                                                     <td className="px-4 py-4">
                                                                         <div className="flex items-center justify-center gap-1">
-                                                                            <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14} /></button>
-                                                                            <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14} /></button>
+                                                                            {(comp.status === 'PENDING' || comp.status === 'APPROVED') ? (
+                                                                                <div className="p-2 text-slate-300" title="Rincian sedang diajukan/disetujui">
+                                                                                    <Lock size={14} />
+                                                                                </div>
+                                                                            ) : (
+                                                                                <>
+                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14} /></button>
+                                                                                    <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14} /></button>
+                                                                                </>
+                                                                            )}
                                                                         </div>
                                                                     </td>
                                                                 </tr>
@@ -3288,22 +3355,35 @@ function RABContent() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => handleBulkComponentAction('APPROVE')}
-                                disabled={isSaving}
-                                className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-3 disabled:opacity-50"
-                            >
-                                <CheckCircle2 size={18} />
-                                SETUJUI TERPILIH (ACC)
-                            </button>
-                            <button
-                                onClick={() => handleBulkComponentAction('REJECT')}
-                                disabled={isSaving}
-                                className="px-8 py-4 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-600/30 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50"
-                            >
-                                <XCircle size={18} />
-                                BATALKAN
-                            </button>
+                            {isSuperAdmin || isAdminBidang ? (
+                                <>
+                                    <button
+                                        onClick={() => handleBulkComponentAction('APPROVE')}
+                                        disabled={isSaving}
+                                        className="px-8 py-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-3 disabled:opacity-50"
+                                    >
+                                        <CheckCircle2 size={18} />
+                                        SETUJUI
+                                    </button>
+                                    <button
+                                        onClick={() => handleBulkComponentAction('REJECT')}
+                                        disabled={isSaving}
+                                        className="px-8 py-4 bg-rose-600/20 hover:bg-rose-600 text-rose-400 hover:text-white border border-rose-600/30 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 flex items-center gap-3 disabled:opacity-50"
+                                    >
+                                        <XCircle size={18} />
+                                        TOLAK
+                                    </button>
+                                </>
+                            ) : (
+                                <button
+                                    onClick={() => handleBulkComponentAction('SUBMIT')}
+                                    disabled={isSaving}
+                                    className="px-8 py-4 bg-blue-600 hover:bg-blue-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest transition-all hover:scale-105 active:scale-95 flex items-center gap-3 disabled:opacity-50"
+                                >
+                                    <CheckCircle2 size={18} />
+                                    AJUKAN RINCIAN
+                                </button>
+                            )}
                             <button
                                 onClick={() => setSelectedComponents(new Set())}
                                 className="ml-4 p-4 text-slate-400 hover:text-white transition-colors"
