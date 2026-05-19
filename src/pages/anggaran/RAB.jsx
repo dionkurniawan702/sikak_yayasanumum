@@ -1096,6 +1096,7 @@ function RABContent() {
             expense: currentPlan.expense,
             status: currentPlan.status, // Preserve status
             rejectionReason: currentPlan.rejectionReason,
+            notified: currentPlan.notified, // PRESERVE NOTIFIED FLAG
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
         };
