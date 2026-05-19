@@ -18,6 +18,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
+import BudgetRow from '../../components/BudgetRow';
 
 export default function RealizationDashboard() {
     const { state, dispatch } = useApp();
@@ -135,13 +136,19 @@ export default function RealizationDashboard() {
                 return {
                     id: u.id,
                     name: u.name,
-                    budget: unitRAB[u.id].budget,
-                    spent: unitRAB[u.id].spent,
-                    remaining: unitRAB[u.id].budget - unitRAB[u.id].spent,
+                    rap: unitRAB[u.id].budget,
+                    rab: unitRAB[u.id].spent,
+                    sisa: unitRAB[u.id].budget - unitRAB[u.id].spent,
                     percent: unitRAB[u.id].budget > 0 ? (unitRAB[u.id].spent / unitRAB[u.id].budget) * 100 : 0,
-                    items: itemsList
+                    breakdown: itemsList.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        rap: item.budget,
+                        rab: item.spent,
+                        sisa: item.remaining
+                    }))
                 };
-            }).filter(u => u.budget > 0 || u.spent > 0);
+            }).filter(u => u.rap > 0 || u.rab > 0);
 
         const fieldsList = fields.filter(f => !f.isDeleted && (currentUser.role === 'admin_bidang' ? f.id === currentUser.fieldId : true))
             .map(f => {
@@ -169,18 +176,43 @@ export default function RealizationDashboard() {
                 return {
                     id: f.id,
                     name: f.name,
-                    budget: fieldRAB[f.id].budget,
-                    spent: fieldRAB[f.id].spent,
-                    remaining: fieldRAB[f.id].budget - fieldRAB[f.id].spent,
+                    rap: fieldRAB[f.id].budget,
+                    rab: fieldRAB[f.id].spent,
+                    sisa: fieldRAB[f.id].budget - fieldRAB[f.id].spent,
                     percent: fieldRAB[f.id].budget > 0 ? (fieldRAB[f.id].spent / fieldRAB[f.id].budget) * 100 : 0,
-                    items: itemsList
+                    breakdown: itemsList.map(item => ({
+                        id: item.id,
+                        name: item.name,
+                        rap: item.budget,
+                        rab: item.spent,
+                        sisa: item.remaining
+                    }))
                 };
-            }).filter(f => f.budget > 0 || f.spent > 0);
+            }).filter(f => f.rap > 0 || f.rab > 0);
 
-        const totalBudget = [...unitsList, ...fieldsList].reduce((s, x) => s + x.budget, 0);
-        const totalSpent = [...unitsList, ...fieldsList].reduce((s, x) => s + x.spent, 0);
+        const totalBudget = [...unitsList, ...fieldsList].reduce((s, x) => s + x.rap, 0);
+        const totalSpent = [...unitsList, ...fieldsList].reduce((s, x) => s + x.rab, 0);
 
-        return { unitsList, fieldsList, totalBudget, totalSpent };
+        const totalBidangRAB = fieldsList.reduce((s, x) => s + x.rap, 0);
+        const totalBidangSpent = fieldsList.reduce((s, x) => s + x.rab, 0);
+        const totalBidangRemaining = totalBidangRAB - totalBidangSpent;
+
+        const totalUnitRAB = unitsList.reduce((s, x) => s + x.rap, 0);
+        const totalUnitSpent = unitsList.reduce((s, x) => s + x.rab, 0);
+        const totalUnitRemaining = totalUnitRAB - totalUnitSpent;
+
+        return { 
+            unitsList, 
+            fieldsList, 
+            totalBudget, 
+            totalSpent,
+            totalBidangRAB,
+            totalBidangSpent,
+            totalBidangRemaining,
+            totalUnitRAB,
+            totalUnitSpent,
+            totalUnitRemaining
+        };
     }, [sourceMode, selectedAcademicYearId, units, fields, rabPlans, budgetReports, expenseItems, currentUser]);
 
     const absorptionRate = dashboardData.totalBudget > 0 ? (dashboardData.totalSpent / dashboardData.totalBudget) * 100 : 0;
@@ -280,124 +312,53 @@ export default function RealizationDashboard() {
             </div>
 
             {/* MAIN DATA TABLES */}
-            <div className="space-y-12">
+            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 {/* BIDANG REALISASI */}
                 {currentUser.role !== 'admin_unit' && (
-                    <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden">
-                        <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center gap-4">
-                            <div className="p-3 bg-white rounded-2xl shadow-sm text-indigo-600">
-                                <Layers size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight italic">Serapan Anggaran Per Bidang</h3>
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Konsolidasi Operasional Yayasan</p>
-                            </div>
+                    <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50 mb-12">
+                        <div className="budget-table-title bg-slate-900 text-white">
+                            <Layers size={20} className="text-indigo-400" />
+                            <span className="uppercase tracking-widest text-sm font-black text-white italic">Serapan Anggaran Per Bidang</span>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
+                        <div className="budget-table-scroll">
+                            <table className="budget-table">
                                 <thead>
-                                    <tr className="bg-slate-50/30 text-left">
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Bidang</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Anggaran</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Realisasi</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Efisiensi</th>
+                                    <tr>
+                                        <th className="budget-th budget-th-name">NAMA BIDANG</th>
+                                        <th className="budget-th budget-th-number">RAB (BELANJA)</th>
+                                        <th className="budget-th budget-th-number">REALISASI ANGGARAN</th>
+                                        <th className="budget-th budget-th-number">SISA ANGGARAN</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {dashboardData.fieldsList.map(f => {
-                                        const isExpanded = !!expandedItems[f.id];
-                                        return (
-                                            <React.Fragment key={f.id}>
-                                                <tr 
-                                                    onClick={() => toggleExpand(f.id)}
-                                                    className="hover:bg-slate-50/50 cursor-pointer transition-colors"
-                                                >
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex items-center gap-3">
-                                                            {isExpanded ? (
-                                                                <ChevronDown size={16} className="text-slate-400 shrink-0 animate-in" />
-                                                            ) : (
-                                                                <ChevronRight size={16} className="text-slate-400 shrink-0" />
-                                                            )}
-                                                            <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{f.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-6 text-right font-bold text-slate-600">{formatRupiah(f.budget)}</td>
-                                                    <td className="px-8 py-6 text-right font-black text-slate-900">{formatRupiah(f.spent)}</td>
-                                                    <td className="px-8 py-6 min-w-[200px]">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className={`h-full rounded-full transition-all duration-1000 ${f.percent > 90 ? 'bg-rose-500' : f.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                                    style={{ width: `${Math.min(f.percent, 100)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-slate-500 w-10">{f.percent.toFixed(0)}%</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                {isExpanded && (
-                                                    <tr className="bg-slate-50/20">
-                                                        <td colSpan={4} className="px-8 py-4">
-                                                            <div className="bg-slate-50/40 rounded-3xl p-6 border border-slate-100/80 space-y-4 animate-in">
-                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Detail Rincian Mata Anggaran</h4>
-                                                                <div className="overflow-hidden border border-slate-100 rounded-2xl bg-white shadow-sm">
-                                                                    <table className="w-full text-left">
-                                                                        <thead>
-                                                                            <tr className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                                                                                <th className="px-6 py-3.5">Mata Anggaran (Biaya)</th>
-                                                                                <th className="px-6 py-3.5 text-right">Anggaran (RAB)</th>
-                                                                                <th className="px-6 py-3.5 text-right">Realisasi</th>
-                                                                                <th className="px-6 py-3.5 text-right">Sisa Anggaran</th>
-                                                                                <th className="px-6 py-3.5">Serapan</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-600">
-                                                                            {f.items.map(item => (
-                                                                                <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
-                                                                                    <td className="px-6 py-4">
-                                                                                        <div className="flex flex-col">
-                                                                                            <span className="font-bold text-slate-800">{item.name}</span>
-                                                                                            {item.sourceOfFunds && (
-                                                                                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">{item.sourceOfFunds}</span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </td>
-                                                                                    <td className="px-6 py-4 text-right font-medium text-slate-500">{formatRupiah(item.budget)}</td>
-                                                                                    <td className="px-6 py-4 text-right font-bold text-slate-800">{formatRupiah(item.spent)}</td>
-                                                                                    <td className={`px-6 py-4 text-right font-black ${item.remaining < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
-                                                                                        {formatRupiah(item.remaining)}
-                                                                                    </td>
-                                                                                    <td className="px-6 py-4 min-w-[140px]">
-                                                                                        <div className="flex items-center gap-3">
-                                                                                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                                                                <div 
-                                                                                                    className={`h-full rounded-full transition-all duration-500 ${item.percent > 90 ? 'bg-rose-500' : item.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                                                                    style={{ width: `${Math.min(item.percent, 100)}%` }}
-                                                                                                />
-                                                                                            </div>
-                                                                                            <span className="text-[9px] font-black text-slate-400 w-8 text-right">{item.percent.toFixed(0)}%</span>
-                                                                                        </div>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            ))}
-                                                                            {f.items.length === 0 && (
-                                                                                <tr>
-                                                                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400 text-xs">
-                                                                                        Tidak ada rincian anggaran yang disetujui.
-                                                                                    </td>
-                                                                                </tr>
-                                                                            )}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
+                                <tbody>
+                                    {dashboardData.fieldsList.length > 0 ? (
+                                        <>
+                                            {dashboardData.fieldsList.map(f => (
+                                                <BudgetRow 
+                                                    key={f.id} 
+                                                    data={f} 
+                                                    isExpanded={!!expandedItems[f.id]} 
+                                                    onToggle={() => toggleExpand(f.id)}
+                                                    formatCurrency={formatRupiah}
+                                                    isField={true}
+                                                />
+                                            ))}
+                                            <tr className="budget-row-total bg-slate-50">
+                                                <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                                    TOTAL KESELURUHAN
+                                                </td>
+                                                <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-indigo-100">{formatRupiah(dashboardData.totalBidangRAB)}</td>
+                                                <td className="budget-cell budget-cell-number font-black text-slate-900">{formatRupiah(dashboardData.totalBidangSpent)}</td>
+                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-indigo-50/30 text-indigo-700 font-black">{formatRupiah(dashboardData.totalBidangRemaining)}</td>
+                                            </tr>
+                                        </>
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                                Belum ada data bidang untuk periode ini.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
@@ -406,121 +367,49 @@ export default function RealizationDashboard() {
 
                 {/* UNIT REALISASI */}
                 {currentUser.role !== 'admin_bidang' && (
-                    <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden">
-                        <div className="p-8 border-b border-slate-50 bg-slate-50/50 flex items-center gap-4">
-                            <div className="p-3 bg-white rounded-2xl shadow-sm text-blue-600">
-                                <Building2 size={24} />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight italic">Serapan Anggaran Per Unit</h3>
-                                <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Detail Operasional Pendidikan & Unit Kerja</p>
-                            </div>
+                    <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50">
+                        <div className="budget-table-title bg-slate-900 text-white">
+                            <Building2 size={20} className="text-blue-400" />
+                            <span className="uppercase tracking-widest text-sm font-black text-white italic">Serapan Anggaran Per Unit</span>
                         </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full">
+                        <div className="budget-table-scroll">
+                            <table className="budget-table">
                                 <thead>
-                                    <tr className="bg-slate-50/30 text-left">
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Nama Unit</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Anggaran</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Realisasi</th>
-                                        <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Efisiensi</th>
+                                    <tr>
+                                        <th className="budget-th budget-th-name">NAMA UNIT</th>
+                                        <th className="budget-th budget-th-number">RAB (BELANJA)</th>
+                                        <th className="budget-th budget-th-number">REALISASI ANGGARAN</th>
+                                        <th className="budget-th budget-th-number">SISA ANGGARAN</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {dashboardData.unitsList.map(u => {
-                                        const isExpanded = !!expandedItems[u.id];
-                                        return (
-                                            <React.Fragment key={u.id}>
-                                                <tr 
-                                                    onClick={() => toggleExpand(u.id)}
-                                                    className="hover:bg-slate-50/50 cursor-pointer transition-colors"
-                                                >
-                                                    <td className="px-8 py-6">
-                                                        <div className="flex items-center gap-3">
-                                                            {isExpanded ? (
-                                                                <ChevronDown size={16} className="text-slate-400 shrink-0 animate-in" />
-                                                            ) : (
-                                                                <ChevronRight size={16} className="text-slate-400 shrink-0" />
-                                                            )}
-                                                            <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{u.name}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-8 py-6 text-right font-bold text-slate-600">{formatRupiah(u.budget)}</td>
-                                                    <td className="px-8 py-6 text-right font-black text-slate-900">{formatRupiah(u.spent)}</td>
-                                                    <td className="px-8 py-6 min-w-[200px]">
-                                                        <div className="flex items-center gap-4">
-                                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                                <div 
-                                                                    className={`h-full rounded-full transition-all duration-1000 ${u.percent > 90 ? 'bg-rose-500' : u.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                                    style={{ width: `${Math.min(u.percent, 100)}%` }}
-                                                                />
-                                                            </div>
-                                                            <span className="text-[10px] font-black text-slate-500 w-10">{u.percent.toFixed(0)}%</span>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                                {isExpanded && (
-                                                    <tr className="bg-slate-50/20">
-                                                        <td colSpan={4} className="px-8 py-4">
-                                                            <div className="bg-slate-50/40 rounded-3xl p-6 border border-slate-100/80 space-y-4 animate-in">
-                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Detail Rincian Mata Anggaran</h4>
-                                                                <div className="overflow-hidden border border-slate-100 rounded-2xl bg-white shadow-sm">
-                                                                    <table className="w-full text-left">
-                                                                        <thead>
-                                                                            <tr className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100">
-                                                                                <th className="px-6 py-3.5">Mata Anggaran (Biaya)</th>
-                                                                                <th className="px-6 py-3.5 text-right">Anggaran (RAB)</th>
-                                                                                <th className="px-6 py-3.5 text-right">Realisasi</th>
-                                                                                <th className="px-6 py-3.5 text-right">Sisa Anggaran</th>
-                                                                                <th className="px-6 py-3.5">Serapan</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-600">
-                                                                            {u.items.map(item => (
-                                                                                <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
-                                                                                    <td className="px-6 py-4">
-                                                                                        <div className="flex flex-col">
-                                                                                            <span className="font-bold text-slate-800">{item.name}</span>
-                                                                                            {item.sourceOfFunds && (
-                                                                                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">{item.sourceOfFunds}</span>
-                                                                                            )}
-                                                                                        </div>
-                                                                                    </td>
-                                                                                    <td className="px-6 py-4 text-right font-medium text-slate-500">{formatRupiah(item.budget)}</td>
-                                                                                    <td className="px-6 py-4 text-right font-bold text-slate-800">{formatRupiah(item.spent)}</td>
-                                                                                    <td className={`px-6 py-4 text-right font-black ${item.remaining < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
-                                                                                        {formatRupiah(item.remaining)}
-                                                                                    </td>
-                                                                                    <td className="px-6 py-4 min-w-[140px]">
-                                                                                        <div className="flex items-center gap-3">
-                                                                                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                                                                <div 
-                                                                                                    className={`h-full rounded-full transition-all duration-500 ${item.percent > 90 ? 'bg-rose-500' : item.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                                                                    style={{ width: `${Math.min(item.percent, 100)}%` }}
-                                                                                                />
-                                                                                            </div>
-                                                                                            <span className="text-[9px] font-black text-slate-400 w-8 text-right">{item.percent.toFixed(0)}%</span>
-                                                                                        </div>
-                                                                                    </td>
-                                                                                </tr>
-                                                                            ))}
-                                                                            {u.items.length === 0 && (
-                                                                                <tr>
-                                                                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400 text-xs">
-                                                                                        Tidak ada rincian anggaran yang disetujui.
-                                                                                    </td>
-                                                                                </tr>
-                                                                            )}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
+                                <tbody>
+                                    {dashboardData.unitsList.length > 0 ? (
+                                        <>
+                                            {dashboardData.unitsList.map(u => (
+                                                <BudgetRow 
+                                                    key={u.id} 
+                                                    data={u} 
+                                                    isExpanded={!!expandedItems[u.id]} 
+                                                    onToggle={() => toggleExpand(u.id)}
+                                                    formatCurrency={formatRupiah}
+                                                />
+                                            ))}
+                                            <tr className="budget-row-total bg-slate-50">
+                                                <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                                    TOTAL KESELURUHAN
+                                                </td>
+                                                <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-blue-100">{formatRupiah(dashboardData.totalUnitRAB)}</td>
+                                                <td className="budget-cell budget-cell-number font-black text-slate-900">{formatRupiah(dashboardData.totalUnitSpent)}</td>
+                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-blue-50/30 text-blue-700 font-black">{formatRupiah(dashboardData.totalUnitRemaining)}</td>
+                                            </tr>
+                                        </>
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                                Belum ada data unit untuk periode ini.
+                                            </td>
+                                        </tr>
+                                    )}
                                 </tbody>
                             </table>
                         </div>
