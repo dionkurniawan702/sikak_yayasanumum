@@ -316,34 +316,15 @@ export default function Sidebar({ isOpen, onClose }) {
     };
 
     const handleMouseEnterGroup = (title) => {
-        setExpandedGroups(prev => {
-            const next = { ...prev };
-            next[title] = true;
-            
-            menuGroups.forEach(g => {
-                if (g.title !== title && !checkGroupActive(g)) {
-                    next[g.title] = false;
-                }
-            });
-            return next;
-        });
+        setExpandedGroups({ [title]: true });
     };
 
     const handleMouseLeaveGroup = (title) => {
-        const group = menuGroups.find(g => g.title === title);
-        if (group && !checkGroupActive(group)) {
-            setExpandedGroups(prev => ({ ...prev, [title]: false }));
-        }
+        setExpandedGroups(prev => ({ ...prev, [title]: false }));
     };
 
     const handleMouseLeaveSidebar = () => {
-        setExpandedGroups(prev => {
-            const next = {};
-            menuGroups.forEach(g => {
-                next[g.title] = checkGroupActive(g);
-            });
-            return next;
-        });
+        setExpandedGroups({});
     };
 
     const handleLogout = () => {
