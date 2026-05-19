@@ -46,8 +46,8 @@ export default function RealizationDashboard() {
         // 1. Get Base Budgets (RAB)
         const unitRAB = {};
         const fieldRAB = {};
-        units.forEach(u => unitRAB[u.id] = { budget: 0, spent: 0, items: {} });
-        fields.forEach(f => fieldRAB[f.id] = { budget: 0, spent: 0, items: {} });
+        units.forEach(u => unitRAB[u.id] = { budget: 0, spent: 0, items: {}, spentItems: {} });
+        fields.forEach(f => fieldRAB[f.id] = { budget: 0, spent: 0, items: {}, spentItems: {} });
 
         // Process RAB Plans
         rabPlans.filter(p => p.status === 'APPROVED' && p.academicYearId === selectedAcademicYearId).forEach(plan => {
@@ -101,32 +101,81 @@ export default function RealizationDashboard() {
 
             if (!isField && report.unitId && unitRAB[report.unitId]) {
                 unitRAB[report.unitId].spent += amount;
-                // We track spent in items separately if we want detail, but for now focus on unit/field
+                unitRAB[report.unitId].spentItems[exId] = (unitRAB[report.unitId].spentItems[exId] || 0) + amount;
             } else if (report.fieldId && fieldRAB[report.fieldId]) {
                 fieldRAB[report.fieldId].spent += amount;
+                fieldRAB[report.fieldId].spentItems[exId] = (fieldRAB[report.fieldId].spentItems[exId] || 0) + amount;
             }
         });
 
         // 3. Format for Display
         const unitsList = units.filter(u => !u.isDeleted && (currentUser.role === 'admin_unit' ? u.id === currentUser.unitId : true))
-            .map(u => ({
-                id: u.id,
-                name: u.name,
-                budget: unitRAB[u.id].budget,
-                spent: unitRAB[u.id].spent,
-                remaining: unitRAB[u.id].budget - unitRAB[u.id].spent,
-                percent: unitRAB[u.id].budget > 0 ? (unitRAB[u.id].spent / unitRAB[u.id].budget) * 100 : 0
-            })).filter(u => u.budget > 0 || u.spent > 0);
+            .map(u => {
+                const allItemIds = Array.from(new Set([
+                    ...Object.keys(unitRAB[u.id].items),
+                    ...Object.keys(unitRAB[u.id].spentItems)
+                ]));
+
+                const itemsList = allItemIds.map(exId => {
+                    const exItem = expenseItems.find(e => e.id === exId);
+                    const budget = unitRAB[u.id].items[exId] || 0;
+                    const spent = unitRAB[u.id].spentItems[exId] || 0;
+                    return {
+                        id: exId,
+                        name: exItem?.name || 'Item Pengeluaran Lainnya',
+                        sourceOfFunds: exItem?.sourceOfFunds || '',
+                        budget,
+                        spent,
+                        remaining: budget - spent,
+                        percent: budget > 0 ? (spent / budget) * 100 : 0
+                    };
+                }).filter(item => item.budget > 0 || item.spent > 0)
+                  .sort((a, b) => b.budget - a.budget);
+
+                return {
+                    id: u.id,
+                    name: u.name,
+                    budget: unitRAB[u.id].budget,
+                    spent: unitRAB[u.id].spent,
+                    remaining: unitRAB[u.id].budget - unitRAB[u.id].spent,
+                    percent: unitRAB[u.id].budget > 0 ? (unitRAB[u.id].spent / unitRAB[u.id].budget) * 100 : 0,
+                    items: itemsList
+                };
+            }).filter(u => u.budget > 0 || u.spent > 0);
 
         const fieldsList = fields.filter(f => !f.isDeleted && (currentUser.role === 'admin_bidang' ? f.id === currentUser.fieldId : true))
-            .map(f => ({
-                id: f.id,
-                name: f.name,
-                budget: fieldRAB[f.id].budget,
-                spent: fieldRAB[f.id].spent,
-                remaining: fieldRAB[f.id].budget - fieldRAB[f.id].spent,
-                percent: fieldRAB[f.id].budget > 0 ? (fieldRAB[f.id].spent / fieldRAB[f.id].budget) * 100 : 0
-            })).filter(f => f.budget > 0 || f.spent > 0);
+            .map(f => {
+                const allItemIds = Array.from(new Set([
+                    ...Object.keys(fieldRAB[f.id].items),
+                    ...Object.keys(fieldRAB[f.id].spentItems)
+                ]));
+
+                const itemsList = allItemIds.map(exId => {
+                    const exItem = expenseItems.find(e => e.id === exId);
+                    const budget = fieldRAB[f.id].items[exId] || 0;
+                    const spent = fieldRAB[f.id].spentItems[exId] || 0;
+                    return {
+                        id: exId,
+                        name: exItem?.name || 'Item Pengeluaran Lainnya',
+                        sourceOfFunds: exItem?.sourceOfFunds || '',
+                        budget,
+                        spent,
+                        remaining: budget - spent,
+                        percent: budget > 0 ? (spent / budget) * 100 : 0
+                    };
+                }).filter(item => item.budget > 0 || item.spent > 0)
+                  .sort((a, b) => b.budget - a.budget);
+
+                return {
+                    id: f.id,
+                    name: f.name,
+                    budget: fieldRAB[f.id].budget,
+                    spent: fieldRAB[f.id].spent,
+                    remaining: fieldRAB[f.id].budget - fieldRAB[f.id].spent,
+                    percent: fieldRAB[f.id].budget > 0 ? (fieldRAB[f.id].spent / fieldRAB[f.id].budget) * 100 : 0,
+                    items: itemsList
+                };
+            }).filter(f => f.budget > 0 || f.spent > 0);
 
         const totalBudget = [...unitsList, ...fieldsList].reduce((s, x) => s + x.budget, 0);
         const totalSpent = [...unitsList, ...fieldsList].reduce((s, x) => s + x.spent, 0);
@@ -255,26 +304,100 @@ export default function RealizationDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {dashboardData.fieldsList.map(f => (
-                                        <tr key={f.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-8 py-6">
-                                                <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{f.name}</span>
-                                            </td>
-                                            <td className="px-8 py-6 text-right font-bold text-slate-600">{formatRupiah(f.budget)}</td>
-                                            <td className="px-8 py-6 text-right font-black text-slate-900">{formatRupiah(f.spent)}</td>
-                                            <td className="px-8 py-6 min-w-[200px]">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={`h-full rounded-full transition-all duration-1000 ${f.percent > 90 ? 'bg-rose-500' : f.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                            style={{ width: `${Math.min(f.percent, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-slate-500 w-10">{f.percent.toFixed(0)}%</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {dashboardData.fieldsList.map(f => {
+                                        const isExpanded = !!expandedItems[f.id];
+                                        return (
+                                            <React.Fragment key={f.id}>
+                                                <tr 
+                                                    onClick={() => toggleExpand(f.id)}
+                                                    className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                                                >
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-3">
+                                                            {isExpanded ? (
+                                                                <ChevronDown size={16} className="text-slate-400 shrink-0 animate-in" />
+                                                            ) : (
+                                                                <ChevronRight size={16} className="text-slate-400 shrink-0" />
+                                                            )}
+                                                            <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{f.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-right font-bold text-slate-600">{formatRupiah(f.budget)}</td>
+                                                    <td className="px-8 py-6 text-right font-black text-slate-900">{formatRupiah(f.spent)}</td>
+                                                    <td className="px-8 py-6 min-w-[200px]">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className={`h-full rounded-full transition-all duration-1000 ${f.percent > 90 ? 'bg-rose-500' : f.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                                                                    style={{ width: `${Math.min(f.percent, 100)}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-slate-500 w-10">{f.percent.toFixed(0)}%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {isExpanded && (
+                                                    <tr className="bg-slate-50/20">
+                                                        <td colSpan={4} className="px-8 py-4">
+                                                            <div className="bg-slate-50/40 rounded-3xl p-6 border border-slate-100/80 space-y-4 animate-in">
+                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Detail Rincian Mata Anggaran</h4>
+                                                                <div className="overflow-hidden border border-slate-100 rounded-2xl bg-white shadow-sm">
+                                                                    <table className="w-full text-left">
+                                                                        <thead>
+                                                                            <tr className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                                                                <th className="px-6 py-3.5">Mata Anggaran (Biaya)</th>
+                                                                                <th className="px-6 py-3.5 text-right">Anggaran (RAB)</th>
+                                                                                <th className="px-6 py-3.5 text-right">Realisasi</th>
+                                                                                <th className="px-6 py-3.5 text-right">Sisa Anggaran</th>
+                                                                                <th className="px-6 py-3.5">Serapan</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-600">
+                                                                            {f.items.map(item => (
+                                                                                <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
+                                                                                    <td className="px-6 py-4">
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="font-bold text-slate-800">{item.name}</span>
+                                                                                            {item.sourceOfFunds && (
+                                                                                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">{item.sourceOfFunds}</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td className="px-6 py-4 text-right font-medium text-slate-500">{formatRupiah(item.budget)}</td>
+                                                                                    <td className="px-6 py-4 text-right font-bold text-slate-800">{formatRupiah(item.spent)}</td>
+                                                                                    <td className={`px-6 py-4 text-right font-black ${item.remaining < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                                                                                        {formatRupiah(item.remaining)}
+                                                                                    </td>
+                                                                                    <td className="px-6 py-4 min-w-[140px]">
+                                                                                        <div className="flex items-center gap-3">
+                                                                                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                                                                <div 
+                                                                                                    className={`h-full rounded-full transition-all duration-500 ${item.percent > 90 ? 'bg-rose-500' : item.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                                                                                                    style={{ width: `${Math.min(item.percent, 100)}%` }}
+                                                                                                />
+                                                                                            </div>
+                                                                                            <span className="text-[9px] font-black text-slate-400 w-8 text-right">{item.percent.toFixed(0)}%</span>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                            {f.items.length === 0 && (
+                                                                                <tr>
+                                                                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400 text-xs">
+                                                                                        Tidak ada rincian anggaran yang disetujui.
+                                                                                    </td>
+                                                                                </tr>
+                                                                            )}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -304,26 +427,100 @@ export default function RealizationDashboard() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {dashboardData.unitsList.map(u => (
-                                        <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="px-8 py-6">
-                                                <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{u.name}</span>
-                                            </td>
-                                            <td className="px-8 py-6 text-right font-bold text-slate-600">{formatRupiah(u.budget)}</td>
-                                            <td className="px-8 py-6 text-right font-black text-slate-900">{formatRupiah(u.spent)}</td>
-                                            <td className="px-8 py-6 min-w-[200px]">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={`h-full rounded-full transition-all duration-1000 ${u.percent > 90 ? 'bg-rose-500' : u.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                            style={{ width: `${Math.min(u.percent, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-[10px] font-black text-slate-500 w-10">{u.percent.toFixed(0)}%</span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {dashboardData.unitsList.map(u => {
+                                        const isExpanded = !!expandedItems[u.id];
+                                        return (
+                                            <React.Fragment key={u.id}>
+                                                <tr 
+                                                    onClick={() => toggleExpand(u.id)}
+                                                    className="hover:bg-slate-50/50 cursor-pointer transition-colors"
+                                                >
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-3">
+                                                            {isExpanded ? (
+                                                                <ChevronDown size={16} className="text-slate-400 shrink-0 animate-in" />
+                                                            ) : (
+                                                                <ChevronRight size={16} className="text-slate-400 shrink-0" />
+                                                            )}
+                                                            <span className="font-black text-slate-900 uppercase tracking-tight text-sm">{u.name}</span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-right font-bold text-slate-600">{formatRupiah(u.budget)}</td>
+                                                    <td className="px-8 py-6 text-right font-black text-slate-900">{formatRupiah(u.spent)}</td>
+                                                    <td className="px-8 py-6 min-w-[200px]">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                                                <div 
+                                                                    className={`h-full rounded-full transition-all duration-1000 ${u.percent > 90 ? 'bg-rose-500' : u.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                                                                    style={{ width: `${Math.min(u.percent, 100)}%` }}
+                                                                />
+                                                            </div>
+                                                            <span className="text-[10px] font-black text-slate-500 w-10">{u.percent.toFixed(0)}%</span>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {isExpanded && (
+                                                    <tr className="bg-slate-50/20">
+                                                        <td colSpan={4} className="px-8 py-4">
+                                                            <div className="bg-slate-50/40 rounded-3xl p-6 border border-slate-100/80 space-y-4 animate-in">
+                                                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Detail Rincian Mata Anggaran</h4>
+                                                                <div className="overflow-hidden border border-slate-100 rounded-2xl bg-white shadow-sm">
+                                                                    <table className="w-full text-left">
+                                                                        <thead>
+                                                                            <tr className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-wider border-b border-slate-100">
+                                                                                <th className="px-6 py-3.5">Mata Anggaran (Biaya)</th>
+                                                                                <th className="px-6 py-3.5 text-right">Anggaran (RAB)</th>
+                                                                                <th className="px-6 py-3.5 text-right">Realisasi</th>
+                                                                                <th className="px-6 py-3.5 text-right">Sisa Anggaran</th>
+                                                                                <th className="px-6 py-3.5">Serapan</th>
+                                                                            </tr>
+                                                                        </thead>
+                                                                        <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-600">
+                                                                            {u.items.map(item => (
+                                                                                <tr key={item.id} className="hover:bg-slate-50/50 transition-all">
+                                                                                    <td className="px-6 py-4">
+                                                                                        <div className="flex flex-col">
+                                                                                            <span className="font-bold text-slate-800">{item.name}</span>
+                                                                                            {item.sourceOfFunds && (
+                                                                                                <span className="text-[9px] text-slate-400 uppercase font-black tracking-wider mt-0.5">{item.sourceOfFunds}</span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                    </td>
+                                                                                    <td className="px-6 py-4 text-right font-medium text-slate-500">{formatRupiah(item.budget)}</td>
+                                                                                    <td className="px-6 py-4 text-right font-bold text-slate-800">{formatRupiah(item.spent)}</td>
+                                                                                    <td className={`px-6 py-4 text-right font-black ${item.remaining < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                                                                                        {formatRupiah(item.remaining)}
+                                                                                    </td>
+                                                                                    <td className="px-6 py-4 min-w-[140px]">
+                                                                                        <div className="flex items-center gap-3">
+                                                                                            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                                                                <div 
+                                                                                                    className={`h-full rounded-full transition-all duration-500 ${item.percent > 90 ? 'bg-rose-500' : item.percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                                                                                                    style={{ width: `${Math.min(item.percent, 100)}%` }}
+                                                                                                />
+                                                                                            </div>
+                                                                                            <span className="text-[9px] font-black text-slate-400 w-8 text-right">{item.percent.toFixed(0)}%</span>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            ))}
+                                                                            {u.items.length === 0 && (
+                                                                                <tr>
+                                                                                    <td colSpan={5} className="px-6 py-8 text-center text-slate-400 text-xs">
+                                                                                        Tidak ada rincian anggaran yang disetujui.
+                                                                                    </td>
+                                                                                </tr>
+                                                                            )}
+                                                                        </tbody>
+                                                                    </table>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
