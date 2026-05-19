@@ -150,8 +150,10 @@ export default function MonthlyRequest() {
                 // Handle legacy single-object format
                 const itemPlans = Array.isArray(rawItemPlans) ? rawItemPlans : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] : []);
                 
-                itemPlans.forEach(p => {
-                    (p.components || []).forEach(comp => {
+                itemPlans.forEach((p, pIdx) => {
+                    (p.components || []).forEach((comp, cIdx) => {
+                        const compId = comp.id || `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
+                        
                         // NEW: Filter by selected month's allocation
                         const isScheduledInMonth = comp.months?.[requestMonth]?.m === true;
                         const monthlyAmount = parseFloat(comp.months?.[requestMonth]?.jumlah) || 0;
@@ -162,12 +164,13 @@ export default function MonthlyRequest() {
                         if (isActuallyApproved && isScheduledInMonth && monthlyAmount > 0) {
                             // Check if already requested in budgetRequests for THIS month
                             const alreadyRequested = (budgetRequests || []).some(req =>
-                                req.month === requestMonth && req.items?.some(reqItem => reqItem.componentId === comp.id)
+                                req.month === requestMonth && req.items?.some(reqItem => reqItem.componentId === compId)
                             );
 
                             if (!alreadyRequested) {
                                 components.push({
                                     ...comp,
+                                    id: compId,
                                     total: monthlyAmount, // Only request the amount planned for THIS month
                                     planId: plan.id,
                                     itemMasterName: state.expenseItems.find(i => i.id === itemId)?.name || 'Item',
