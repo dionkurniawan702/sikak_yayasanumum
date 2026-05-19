@@ -125,6 +125,7 @@ export default function BOSMonthlyReport() {
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
     const [searchTerm, setSearchTerm] = useState('');
     const [processingId, setProcessingId] = useState(null);
+    const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -144,9 +145,25 @@ export default function BOSMonthlyReport() {
         const reqMap = {};
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED') {
-                if (r.componentId) {
-                    if (!map[r.componentId]) map[r.componentId] = 0;
-                    map[r.componentId] += parseFloat(r.amount || 0);
+                // Backward-compatible componentId lookup if missing in old reports
+                let effectiveComponentId = r.componentId;
+                if (!effectiveComponentId && r.budgetRequestId) {
+                    const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                    if (req && req.items) {
+                        const match = req.items.find(item => 
+                            item.name === r.category || 
+                            item.name?.toLowerCase() === r.category?.toLowerCase() ||
+                            item.name?.toLowerCase() === r.description?.toLowerCase()
+                        );
+                        if (match) {
+                            effectiveComponentId = match.componentId;
+                        }
+                    }
+                }
+
+                if (effectiveComponentId) {
+                    if (!map[effectiveComponentId]) map[effectiveComponentId] = 0;
+                    map[effectiveComponentId] += parseFloat(r.amount || 0);
                 } else {
                     if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
                     reqMap[r.budgetRequestId] += parseFloat(r.amount || 0);
@@ -154,7 +171,7 @@ export default function BOSMonthlyReport() {
             }
         });
         return { byComponent: map, byRequest: reqMap };
-    }, [budgetReports]);
+    }, [budgetReports, budgetRequests]);
 
     const pendingBOSReporting = useMemo(() => {
         const items = [];
@@ -193,6 +210,39 @@ export default function BOSMonthlyReport() {
         });
         return items;
     }, [bosRequests, reportedAmounts]);
+
+    // Map of unit id → count of pending BOS items (for superadmin badges)
+    const pendingCountByUnit = useMemo(() => {
+        const map = {};
+        (budgetRequests || []).filter(req => {
+            const isYear = req.academicYearId === globalAcademicYearId;
+            if (!isYear || req.status !== 'APPROVED') return false;
+            const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
+            return isBosRequest;
+        }).forEach(req => {
+            const unitKey = req.unitId || 'UNKNOWN';
+            if (req.items && req.items.length > 0) {
+                req.items.forEach(item => {
+                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    if (reportedComp < parseFloat(item.amount || 0)) {
+                        map[unitKey] = (map[unitKey] || 0) + 1;
+                    }
+                });
+            } else {
+                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                if (reportedReq < parseFloat(req.totalAmount || 0)) {
+                    map[unitKey] = (map[unitKey] || 0) + 1;
+                }
+            }
+        });
+        return map;
+    }, [budgetRequests, reportedAmounts, globalAcademicYearId]);
+
+    // Filtered pending items for superadmin based on selected unit
+    const filteredPendingBOSReporting = useMemo(() => {
+        if (!isSuperAdmin || selectedUnitFilter === 'ALL') return pendingBOSReporting;
+        return pendingBOSReporting.filter(item => item.reqUnitId === selectedUnitFilter);
+    }, [pendingBOSReporting, isSuperAdmin, selectedUnitFilter]);
 
     const bosReports = useMemo(() => {
         return (budgetReports || []).filter(r => {
@@ -291,6 +341,44 @@ export default function BOSMonthlyReport() {
 
             {activeTab === 'pending' ? (
                 <div className="space-y-4">
+                    {/* Superadmin: Unit Filter Tabs with green notification badges */}
+                    {isSuperAdmin && pendingBOSReporting.length > 0 && (
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-4">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Filter Berdasarkan Unit</p>
+                            <div className="flex flex-wrap gap-2">
+                                <button
+                                    onClick={() => setSelectedUnitFilter('ALL')}
+                                    className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
+                                        selectedUnitFilter === 'ALL'
+                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                                            : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-200'
+                                    }`}
+                                >
+                                    Semua Unit
+                                    {pendingBOSReporting.length > 0 && (
+                                        <span className="ml-2 bg-amber-400 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{pendingBOSReporting.length}</span>
+                                    )}
+                                </button>
+                                {units.filter(u => pendingCountByUnit[u.id]).map(u => (
+                                    <button
+                                        key={u.id}
+                                        onClick={() => setSelectedUnitFilter(u.id)}
+                                        className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
+                                            selectedUnitFilter === u.id
+                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
+                                                : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-200'
+                                        }`}
+                                    >
+                                        {u.name}
+                                        <span className="ml-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
+                                            {pendingCountByUnit[u.id]}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {pendingBOSReporting.length === 0 ? (
                         <div className="bg-white p-20 rounded-[3rem] border border-slate-100 shadow-sm text-center flex flex-col items-center">
                             <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mb-6 animate-bounce">
@@ -303,9 +391,11 @@ export default function BOSMonthlyReport() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
-                            {pendingBOSReporting.map(item => (
+                            {filteredPendingBOSReporting.map(item => {
+                                const sisaPct = item.amount > 0 ? Math.round((item.sisa / item.amount) * 100) : 0;
+                                return (
                                 <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-lg transition-all group border-l-8 border-l-emerald-500">
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 flex-1 mr-8">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-100">
                                                 DANA BOS • {item.reqDate}
@@ -318,23 +408,41 @@ export default function BOSMonthlyReport() {
                                             {units.find(u => u.id === item.reqUnitId)?.name}
                                         </div>
                                         <p className="mt-2 text-sm text-slate-500">{item.reqDescription}</p>
+
+                                        {/* Progress bar sisa */}
+                                        <div className="mt-4 max-w-md">
+                                            <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                                <span>Terpakai</span><span>Sisa {sisaPct}%</span>
+                                            </div>
+                                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${sisaPct}%` }} />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-10">
+                                    <div className="flex items-center gap-10 shrink-0">
                                         <div className="text-right">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Dana Belum Dilaporkan</p>
                                             <h4 className="text-3xl font-black text-rose-600 italic tracking-tighter">
                                                 {formatRupiah(item.sisa)}
                                             </h4>
+                                            <p className="text-[10px] font-bold text-slate-400">Plafon: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                         </div>
-                                        <button 
-                                            onClick={() => window.location.href = '/pelaporan/bulanan'} 
-                                            className="px-8 py-4 bg-emerald-600 text-white rounded-3xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-600/20 hover:scale-105 transition-all flex items-center gap-2"
-                                        >
-                                            <Save size={16} /> Buat Laporan
-                                        </button>
+                                        {!isSuperAdmin && (
+                                            <button 
+                                                onClick={() => window.location.href = '/pelaporan/bulanan'} 
+                                                className="px-8 py-4 bg-emerald-600 text-white rounded-3xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-600/20 hover:scale-105 transition-all flex items-center gap-2"
+                                            >
+                                                <Save size={16} /> Buat Laporan
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
-                            ))}
+                            )})}
+                            {filteredPendingBOSReporting.length === 0 && (
+                                <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 shadow-sm text-center text-slate-400 italic font-medium">
+                                    Tidak ada rincian BOS untuk unit ini.
+                                </div>
+                            )}
                         </div>
                     )}
                 </div>

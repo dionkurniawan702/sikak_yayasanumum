@@ -181,9 +181,25 @@ export default function MonthlyReport() {
         const reqMap = {};
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED') {
-                if (r.componentId) {
-                    if (!map[r.componentId]) map[r.componentId] = 0;
-                    map[r.componentId] += parseFloat(r.amount || 0);
+                // Backward-compatible componentId lookup if missing in old reports
+                let effectiveComponentId = r.componentId;
+                if (!effectiveComponentId && r.budgetRequestId) {
+                    const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                    if (req && req.items) {
+                        const match = req.items.find(item => 
+                            item.name === r.category || 
+                            item.name?.toLowerCase() === r.category?.toLowerCase() ||
+                            item.name?.toLowerCase() === r.description?.toLowerCase()
+                        );
+                        if (match) {
+                            effectiveComponentId = match.componentId;
+                        }
+                    }
+                }
+
+                if (effectiveComponentId) {
+                    if (!map[effectiveComponentId]) map[effectiveComponentId] = 0;
+                    map[effectiveComponentId] += parseFloat(r.amount || 0);
                 } else {
                     if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
                     reqMap[r.budgetRequestId] += parseFloat(r.amount || 0);
@@ -191,7 +207,7 @@ export default function MonthlyReport() {
             }
         });
         return { byComponent: map, byRequest: reqMap };
-    }, [budgetReports]);
+    }, [budgetReports, budgetRequests]);
 
     const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
