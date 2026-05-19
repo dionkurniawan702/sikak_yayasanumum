@@ -273,6 +273,14 @@ export default function Sidebar({ isOpen, onClose }) {
         return groups;
     }, [isSuperAdmin, isAdminField, isAdminUnit, hasBos, currentUser, state.fields]);
 
+    const groupNotificationCounts = React.useMemo(() => {
+        return {
+            'PERENCANAAN (RAB)': pendingRabYayasanCount + pendingRabBosCount,
+            'REALISASI ANGGARAN': pendingFundRequestCount + pendingReportCount,
+            'DASHBOARD & SALDO': pendingReturnCount
+        };
+    }, [pendingRabYayasanCount, pendingRabBosCount, pendingFundRequestCount, pendingReportCount, pendingReturnCount]);
+
     // Auto-expand groups that contain the active route
     useEffect(() => {
         const currentPath = location.pathname;
@@ -388,17 +396,28 @@ export default function Sidebar({ isOpen, onClose }) {
                         )}
 
                         {/* Group Header */}
-                        <button
-                            onClick={() => toggleGroup(group.title)}
-                             className="w-full flex items-center justify-between px-4 py-4 mt-2 text-[11px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-[0.2em] transition-colors group"
-                        >
-                            <span>{group.title}</span>
-                             {expandedGroups[group.title] ? (
-                                <ChevronDown size={12} className="text-slate-600 group-hover:text-slate-400" />
-                            ) : (
-                                <ChevronRight size={12} className="text-slate-600 group-hover:text-slate-400" />
-                            )}
-                        </button>
+                        {(() => {
+                            const groupCount = groupNotificationCounts[group.title] || 0;
+                            const showDot = groupCount > 0 && !expandedGroups[group.title];
+                            return (
+                                <button
+                                    onClick={() => toggleGroup(group.title)}
+                                    className="w-full flex items-center justify-between px-4 py-4 mt-2 text-[11px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-[0.2em] transition-colors group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span>{group.title}</span>
+                                        {showDot && (
+                                            <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse shrink-0"></span>
+                                        )}
+                                    </div>
+                                    {expandedGroups[group.title] ? (
+                                        <ChevronDown size={12} className="text-slate-600 group-hover:text-slate-400" />
+                                    ) : (
+                                        <ChevronRight size={12} className="text-slate-600 group-hover:text-slate-400" />
+                                    )}
+                                </button>
+                            );
+                        })()}
 
                         {/* Group Items */}
                         {expandedGroups[group.title] && (
