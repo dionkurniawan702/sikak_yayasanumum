@@ -1015,6 +1015,7 @@ export default function MonthlyReport() {
                             <th className="p-2 border border-slate-800 font-bold">Tanggal</th>
                             <th className="p-2 border border-slate-800 font-bold">No. Nota</th>
                             <th className="p-2 border border-slate-800 font-bold">Keterangan</th>
+                            <th className="p-2 border border-slate-800 font-bold">Jenis Belanja</th>
                             <th className="p-2 border border-slate-800 font-bold">Bukti Transaksi</th>
                             <th className="p-2 border border-slate-800 text-center font-bold">Volume</th>
                             <th className="p-2 border border-slate-800 text-right font-bold">Harga</th>
@@ -1029,6 +1030,7 @@ export default function MonthlyReport() {
                                 <td className="p-2 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
                                 <td className="p-2 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
                                 <td className="p-2 border border-slate-800">{report.category || report.description || 'Pengeluaran'}</td>
+                                <td className="p-2 border border-slate-800 whitespace-nowrap">{report.category || '—'}</td>
                                 <td className="p-2 border border-slate-800">{report.buktiTeks || '—'}</td>
                                 <td className="p-2 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
                                 <td className="p-2 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
@@ -1038,14 +1040,14 @@ export default function MonthlyReport() {
                         ))}
                         {filteredReports.length === 0 && (
                             <tr>
-                                <td colSpan="9" className="p-4 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
+                                <td colSpan="10" className="p-4 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
                             </tr>
                         )}
                     </tbody>
                     {filteredReports.length > 0 && (
                         <tfoot>
                             <tr className="bg-slate-100">
-                                <td colSpan="7" className="p-2 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
+                                <td colSpan="8" className="p-2 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
                                 <td className="p-2 border border-slate-800 text-right font-black">{formatRupiah(totalNilai)}</td>
                                 <td className="border border-slate-800"></td>
                             </tr>
