@@ -402,27 +402,14 @@ export default function RealizationDashboard() {
                                     {dashboardData.fieldsList.length > 0 ? (
                                         <>
                                             {dashboardData.fieldsList.map(f => (
-                                                <tr 
-                                                    key={f.id} 
-                                                    className="budget-row hover:bg-slate-50/80 transition-colors duration-150 group cursor-help animate-in"
-                                                    onMouseMove={(e) => handlePopoverMouseMove(e, f)}
-                                                    onMouseLeave={handlePopoverMouseLeave}
-                                                >
-                                                    <td className="budget-cell budget-cell-name">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500 group-hover:scale-150 transition-transform duration-200" />
-                                                            <span className="font-bold text-slate-800 uppercase tracking-tight text-sm">{f.name}</span>
-                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-indigo-50 text-indigo-600 border border-indigo-100 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-auto">
-                                                                Tunjuk Rincian
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="budget-cell budget-cell-number font-medium text-slate-500">{formatRupiah(f.rap)}</td>
-                                                    <td className="budget-cell budget-cell-number font-black text-slate-800">{formatRupiah(f.rab)}</td>
-                                                    <td className={`budget-cell budget-cell-number budget-cell-sisa font-black ${f.sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>
-                                                        {formatRupiah(f.sisa)}
-                                                    </td>
-                                                </tr>
+                                                <BudgetRow
+                                                    key={f.id}
+                                                    data={f}
+                                                    isExpanded={!!expandedItems[f.id]}
+                                                    onToggle={() => toggleExpand(f.id)}
+                                                    formatCurrency={formatRupiah}
+                                                    isField={true}
+                                                />
                                             ))}
                                             <tr className="budget-row-total bg-slate-50">
                                                 <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
@@ -467,27 +454,13 @@ export default function RealizationDashboard() {
                                     {dashboardData.unitsList.length > 0 ? (
                                         <>
                                             {dashboardData.unitsList.map(u => (
-                                                <tr 
-                                                    key={u.id} 
-                                                    className="budget-row hover:bg-slate-50/80 transition-colors duration-150 group cursor-help animate-in"
-                                                    onMouseMove={(e) => handlePopoverMouseMove(e, u)}
-                                                    onMouseLeave={handlePopoverMouseLeave}
-                                                >
-                                                    <td className="budget-cell budget-cell-name">
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 group-hover:scale-150 transition-transform duration-200" />
-                                                            <span className="font-bold text-slate-800 uppercase tracking-tight text-sm">{u.name}</span>
-                                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase bg-blue-50 text-blue-600 border border-blue-100 opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-auto">
-                                                                Tunjuk Rincian
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="budget-cell budget-cell-number font-medium text-slate-500">{formatRupiah(u.rap)}</td>
-                                                    <td className="budget-cell budget-cell-number font-black text-slate-800">{formatRupiah(u.rab)}</td>
-                                                    <td className={`budget-cell budget-cell-number budget-cell-sisa font-black ${u.sisa < 0 ? 'text-rose-600' : 'text-slate-700'}`}>
-                                                        {formatRupiah(u.sisa)}
-                                                    </td>
-                                                </tr>
+                                                <BudgetRow
+                                                    key={u.id}
+                                                    data={u}
+                                                    isExpanded={!!expandedItems[u.id]}
+                                                    onToggle={() => toggleExpand(u.id)}
+                                                    formatCurrency={formatRupiah}
+                                                />
                                             ))}
                                             <tr className="budget-row-total bg-slate-50">
                                                 <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
@@ -520,72 +493,7 @@ export default function RealizationDashboard() {
                 </div>
             </div>
 
-            {/* Hover Breakdown Popover */}
-            {activePopover && (
-                <div 
-                    className="fixed z-50 bg-white/95 backdrop-blur-md rounded-3xl border border-slate-200 shadow-2xl p-6 w-[550px] animate-in fade-in zoom-in-95 duration-200 pointer-events-none"
-                    style={{ 
-                        left: `${activePopover.x}px`, 
-                        top: `${activePopover.y}px`
-                    }}
-                >
-                    <div className="flex items-center gap-3 border-b border-slate-100 pb-3 mb-4">
-                        <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
-                            <Target size={16} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                            <h4 className="text-xs font-black text-slate-800 uppercase tracking-widest truncate">{activePopover.name}</h4>
-                            <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Detail Serapan Anggaran & Pengeluaran</p>
-                        </div>
-                    </div>
-                    
-                    <div className="max-h-[250px] overflow-y-auto pr-1 custom-scrollbar">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="text-[9px] font-black text-slate-400/80 uppercase tracking-[0.15em] border-b border-slate-100 pb-2">
-                                    <th className="pb-2 w-[40%]">Mata Anggaran</th>
-                                    <th className="pb-2 text-right w-[20%]">RAB</th>
-                                    <th className="pb-2 text-right w-[20%]">Realisasi</th>
-                                    <th className="pb-2 text-right w-[20%]">Sisa</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 text-[11px] font-semibold text-slate-600">
-                                {activePopover.breakdown.map((item, idx) => {
-                                    const percent = item.rap > 0 ? (item.rab / item.rap) * 100 : 0;
-                                    return (
-                                        <tr key={idx} className="hover:bg-slate-50/50 transition-colors">
-                                            <td className="py-2.5 pr-2">
-                                                <div className="font-bold text-slate-800">{item.name}</div>
-                                                <div className="flex items-center gap-2 mt-1">
-                                                    <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden w-24">
-                                                        <div 
-                                                            className={`h-full rounded-full ${percent > 90 ? 'bg-rose-500' : percent > 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
-                                                            style={{ width: `${Math.min(percent, 100)}%` }}
-                                                        />
-                                                    </div>
-                                                    <span className="text-[8px] font-bold text-slate-400">{percent.toFixed(0)}%</span>
-                                                </div>
-                                            </td>
-                                            <td className="py-2.5 text-right font-medium text-slate-500">{formatRupiah(item.rap)}</td>
-                                            <td className="py-2.5 text-right font-bold text-slate-800">{formatRupiah(item.rab)}</td>
-                                            <td className={`py-2.5 text-right font-black ${item.sisa < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
-                                                {formatRupiah(item.sisa)}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                                {activePopover.breakdown.length === 0 && (
-                                    <tr>
-                                        <td colSpan={4} className="text-center py-8 text-slate-300 font-bold uppercase tracking-widest text-[9px] italic">
-                                            Tidak ada rincian belanja.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }

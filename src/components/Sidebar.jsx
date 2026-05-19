@@ -364,7 +364,7 @@ export default function Sidebar({ isOpen, onClose }) {
     return (
         <aside 
             onMouseLeave={handleMouseLeaveSidebar}
-            className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] transition-transform duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0 shadow-2xl shadow-slate-950/80' : '-translate-x-full'}`}
+            className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
                 <div className="flex items-center gap-3">
