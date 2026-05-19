@@ -295,11 +295,45 @@ export default function Sidebar({ isOpen, onClose }) {
         });
     }, [location.pathname, location.search, menuGroups]);
 
+    const checkGroupActive = (group) => {
+        const currentPath = location.pathname;
+        const currentSearch = location.search;
+        return group.items.some(item => {
+            const itemBase = (item.path || '').split('?')[0];
+            const itemSearch = (item.path || '').split('?')[1] || '';
+            const currentSearchClean = currentSearch.replace('?', '');
+            
+            if (item.path === '/') return currentPath === '/';
+            return currentPath === itemBase && (itemSearch === '' || itemSearch === currentSearchClean);
+        });
+    };
+
     const toggleGroup = (title) => {
         setExpandedGroups(prev => ({
             ...prev,
             [title]: !prev[title]
         }));
+    };
+
+    const handleMouseEnterGroup = (title) => {
+        setExpandedGroups(prev => {
+            const next = { ...prev };
+            next[title] = true;
+            
+            menuGroups.forEach(g => {
+                if (g.title !== title && !checkGroupActive(g)) {
+                    next[g.title] = false;
+                }
+            });
+            return next;
+        });
+    };
+
+    const handleMouseLeaveGroup = (title) => {
+        const group = menuGroups.find(g => g.title === title);
+        if (group && !checkGroupActive(group)) {
+            setExpandedGroups(prev => ({ ...prev, [title]: false }));
+        }
     };
 
     const handleLogout = () => {
@@ -335,7 +369,12 @@ export default function Sidebar({ isOpen, onClose }) {
 
             <nav className="flex-1 overflow-y-auto min-h-0 px-4 py-6 space-y-1 custom-scrollbar">
                 {menuGroups.map((group, gIdx) => (
-                    <div key={gIdx} className="space-y-1">
+                    <div 
+                        key={gIdx} 
+                        className="space-y-1"
+                        onMouseEnter={() => handleMouseEnterGroup(group.title)}
+                        onMouseLeave={() => handleMouseLeaveGroup(group.title)}
+                    >
                         {/* Accounting System Section (Only for Super Admin at the start) */}
                         {isSuperAdmin && gIdx === 0 && (
                             <div className="px-4 py-2 mt-4 mb-2 flex items-center gap-3">
