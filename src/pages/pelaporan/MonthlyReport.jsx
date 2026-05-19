@@ -332,7 +332,7 @@ export default function MonthlyReport() {
         setFormData({
             date: new Date().toISOString().split('T')[0],
             amount: item.sisa > 0 ? item.sisa : 0,
-            description: `${item.reqDescription} - ${item.name}`,
+            description: '',
             buktiTeks: '',
             nomorNota: '',
             volume: '',
