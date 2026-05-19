@@ -305,8 +305,85 @@ export default function MonthlyReport() {
     }, [pendingItems, isSuperAdmin, selectedUnitFilter]);
 
     const verificationReports = useMemo(() => {
-        return (budgetReports || []).filter(rel => rel.status === 'PENDING' && rel.academicYearId === globalAcademicYearId);
-    }, [budgetReports, globalAcademicYearId]);
+        return (budgetReports || []).filter(rel => {
+            if (rel.status !== 'PENDING') return false;
+            if (rel.academicYearId !== globalAcademicYearId) return false;
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+            return true;
+        });
+    }, [budgetReports, globalAcademicYearId, sourceMode]);
+
+    const [selectedReportIds, setSelectedReportIds] = useState([]);
+
+    React.useEffect(() => {
+        setSelectedReportIds([]);
+    }, [sourceMode, activeTab]);
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedReportIds(verificationReports.map(r => r.id));
+        } else {
+            setSelectedReportIds([]);
+        }
+    };
+
+    const handleSelectRow = (id) => {
+        setSelectedReportIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleBulkApprove = async () => {
+        if (selectedReportIds.length === 0) return;
+        if (window.confirm(`Setujui ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
+            setProcessingId('BULK');
+            try {
+                const updatedReports = selectedReportIds.map(id => {
+                    const r = budgetReports.find(x => x.id === id);
+                    return r ? { ...r, status: 'APPROVED', notified: false } : null;
+                }).filter(Boolean);
+
+                for (const report of updatedReports) {
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                }
+
+                alert(`${selectedReportIds.length} laporan berhasil disetujui`);
+                setSelectedReportIds([]);
+            } catch (err) {
+                alert('Gagal memproses persetujuan masal: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkReject = async () => {
+        if (selectedReportIds.length === 0) return;
+        if (window.confirm(`Tolak ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
+            setProcessingId('BULK');
+            try {
+                const updatedReports = selectedReportIds.map(id => {
+                    const r = budgetReports.find(x => x.id === id);
+                    return r ? { ...r, status: 'REJECTED', notified: false } : null;
+                }).filter(Boolean);
+
+                for (const report of updatedReports) {
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                }
+
+                alert(`${selectedReportIds.length} laporan berhasil ditolak`);
+                setSelectedReportIds([]);
+            } catch (err) {
+                alert('Gagal memproses penolakan masal: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
 
     const draftReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -863,16 +940,46 @@ export default function MonthlyReport() {
                         </div>
                     </div>
 
-                    <div className="card overflow-hidden rounded-2xl border-0 shadow-xl">
-                        <div className="bg-slate-900 px-6 py-4 flex items-center gap-3">
+                    <div className="card overflow-hidden rounded-2xl border-0 shadow-xl animate-in fade-in duration-300">
+                        <div className="bg-slate-900 px-6 py-4 flex items-center gap-3 flex-wrap">
                             <CheckCircle2 size={14} className="text-emerald-400" />
                             <span className="text-[10px] font-black text-white uppercase tracking-widest">Daftar Menunggu Persetujuan</span>
-                            <span className="ml-auto text-[9px] text-slate-400 font-bold">{verificationReports.length} laporan</span>
+                            <span className="text-[9px] text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-full">{verificationReports.length} laporan</span>
+                            
+                            {selectedReportIds.length > 0 && (
+                                <div className="ml-auto flex items-center gap-2 animate-in slide-in-from-right-5 duration-300">
+                                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest mr-2">{selectedReportIds.length} Terpilih</span>
+                                    <button
+                                        onClick={handleBulkApprove}
+                                        disabled={processingId !== null}
+                                        className="px-4 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-1.5 active:scale-95"
+                                    >
+                                        {processingId === 'BULK' ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                                        Setujui Masal
+                                    </button>
+                                    <button
+                                        onClick={handleBulkReject}
+                                        disabled={processingId !== null}
+                                        className="px-4 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50 flex items-center gap-1.5 active:scale-95"
+                                    >
+                                        {processingId === 'BULK' ? <Loader2 size={12} className="animate-spin" /> : <AlertCircle size={12} />}
+                                        Tolak Masal
+                                    </button>
+                                </div>
+                            )}
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
+                                        <th className="px-5 py-3 w-12 text-center">
+                                            <input 
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                checked={verificationReports.length > 0 && selectedReportIds.length === verificationReports.length}
+                                                onChange={handleSelectAll}
+                                            />
+                                        </th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Unit / Tgl</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
@@ -885,7 +992,15 @@ export default function MonthlyReport() {
                                 <tbody>
                                     {verificationReports.length > 0
                                         ? verificationReports.map((report) => (
-                                            <tr key={report.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                            <tr key={report.id} className={`border-b border-slate-100 hover:bg-slate-50/50 transition-colors ${selectedReportIds.includes(report.id) ? 'bg-indigo-50/30' : ''}`}>
+                                                <td className="px-5 py-4 text-center">
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                                        checked={selectedReportIds.includes(report.id)}
+                                                        onChange={() => handleSelectRow(report.id)}
+                                                    />
+                                                </td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-1 mb-1">
                                                         <Building2 size={10} className="text-slate-400" />
@@ -902,7 +1017,7 @@ export default function MonthlyReport() {
                                                     <div className="flex items-center justify-center gap-2">
                                                         <button 
                                                             onClick={() => handleApproveReport(report)} 
-                                                            disabled={processingId === report.id}
+                                                            disabled={processingId !== null}
                                                             className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                                                         >
                                                             {processingId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
@@ -910,8 +1025,8 @@ export default function MonthlyReport() {
                                                         </button>
                                                         <button 
                                                             onClick={() => handleRejectReport(report)} 
-                                                            disabled={processingId === report.id}
-                                                            className="px-3 py-1.5 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                                            disabled={processingId !== null}
+                                                            className="px-3 py-1.5 bg-rose-550 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
                                                         >
                                                             {processingId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
                                                             Tolak
@@ -922,7 +1037,7 @@ export default function MonthlyReport() {
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="7" className="px-8 py-20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
+                                                <td colSpan="8" className="px-8 py-20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
                                             </tr>
                                         )}
                                 </tbody>
