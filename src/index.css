@@ -66,6 +66,33 @@ body {
   display: none; /* Chrome, Safari and Opera */
 }
 
+/* Premium styled vertical scrollbar for the dark sidebar nav */
+.sidebar-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #475569 #0f172a; /* thumb track */
+}
+
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 8px; /* Slightly wider for better visibility and clicking */
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: #0f172a; /* Solid deep slate background */
+  border-left: 1px solid #1e293b; /* Subtle separator line */
+  border-radius: 9999px;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: #475569; /* Solid highly visible slate-gray */
+  border-radius: 9999px;
+  border: 2px solid #0f172a; /* Breathing space around the thumb */
+  transition: background 0.2s ease;
+}
+
+.sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #64748b; /* Brighter slate-gray on hover */
+}
+
 /* Scrollbar at top utility */
 .scroll-top {
   transform: rotateX(180deg);

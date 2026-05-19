@@ -388,7 +388,7 @@ export default function Sidebar({ isOpen, onClose }) {
                 </div>
             </div>
 
-            <nav className="flex-1 overflow-y-auto min-h-0 px-4 py-6 space-y-1 custom-scrollbar">
+            <nav className="flex-1 overflow-y-auto min-h-0 px-4 py-6 space-y-1 sidebar-scrollbar">
                 {menuGroups.map((group, gIdx) => (
                     <div 
                         key={gIdx} 
