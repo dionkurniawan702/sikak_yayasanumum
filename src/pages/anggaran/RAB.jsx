@@ -841,6 +841,42 @@ function RABContent() {
         });
     };
 
+    const handleAjukanDraftsInModal = async (draftIndexes) => {
+        if (!editingItem || draftIndexes.length === 0) return;
+        
+        const mId = editingItem.itemId || editingItem.id;
+        const newComps = [...(editingItem.components || [])];
+        
+        draftIndexes.forEach(idx => {
+            newComps[idx] = { ...newComps[idx], status: 'PENDING' };
+        });
+
+        const updatedPlanItem = { ...editingItem, components: newComps };
+        setEditingItem(updatedPlanItem);
+
+        // Auto-save logic
+        const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: [updatedPlanItem] } };
+        setCurrentPlan(nextPlan);
+
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const dbPlan = {
+            id: planId,
+            academicYearId: selectedYearId,
+            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+            income: nextPlan.income,
+            expense: nextPlan.expense,
+            status: nextPlan.status,
+            rejectionReason: nextPlan.rejectionReason,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.username
+        };
+
+        await persistPlanToServer(dbPlan);
+        showToast(`${draftIndexes.length} rincian berhasil diajukan!`);
+    };
+
     const handleResetBudget = (itemId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         if (!window.confirm('Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)')) return;
@@ -3011,77 +3047,103 @@ function RABContent() {
                                                 </div>
                                             </div>
 
-                                            <div className="overflow-hidden rounded-3xl border-2 border-slate-200 bg-white shadow-xl shadow-slate-200/20">
-                                                <table className="w-full text-left border-collapse">
-                                                    <thead className="bg-slate-900 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
-                                                        <tr>
-                                                            <th className="px-6 py-5 w-[30%] text-white">Keterangan / Rincian</th>
-                                                            <th className="px-4 py-5 text-indigo-400">Program Belanja</th>
-                                                            <th className="px-4 py-5 text-center text-white">Vol</th>
-                                                            <th className="px-4 py-5 text-center text-white">Sat</th>
-                                                            <th className="px-4 py-5 text-center text-white">Kali</th>
-                                                            <th className="px-4 py-5 text-right w-[15%] text-white">Harga Satuan</th>
-                                                            <th className="px-6 py-5 text-right w-[15%] text-white">Subtotal</th>
-                                                            <th className="px-4 py-5 text-center w-[12%] text-white">Aksi</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100 italic">
-                                                        {(() => {
-                                                            const comps = item?.components || [];
-                                                            if (comps.length === 0) {
-                                                                return (
-                                                                    <tr>
-                                                                        <td colSpan={8} className="px-6 py-12 text-center">
-                                                                            <Package size={40} className="mx-auto text-slate-300 mb-2 opacity-30" />
-                                                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-30">Belum ada rincian belanja</p>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            }
-                                                            return comps.map((comp, idx) => (
-                                                                <tr key={idx} className="group hover:bg-slate-50 transition-colors">
-                                                                    <td className="px-6 py-4 font-black text-slate-800 text-xs italic">{comp.label}</td>
-                                                                    <td className="px-4 py-4 text-xs font-bold text-indigo-600">
-                                                                        {allPrograms.find(p => p.id === comp.programId)?.name || '-'}
-                                                                    </td>
-                                                                    <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.volume}</td>
-                                                                    <td className="px-4 py-4 text-center font-black text-slate-400 text-[10px] uppercase">{comp.satuan}</td>
-                                                                    <td className="px-4 py-4 text-center font-black text-slate-600 text-[11px]">{comp.kali}x</td>
-                                                                    <td className="px-4 py-4 text-right font-black text-slate-500 text-[11px]">{formatRupiah(comp.harga)}</td>
-                                                                    <td className="px-6 py-4 text-right font-black text-slate-900 text-xs">{formatRupiah(comp.total)}</td>
-                                                                    <td className="px-4 py-4">
-                                                                        <div className="flex items-center justify-center gap-1">
-                                                                            {(comp.status === 'PENDING' || comp.status === 'APPROVED') ? (
-                                                                                <div className="p-2 text-slate-300" title="Rincian sedang diajukan/disetujui">
-                                                                                    <Lock size={14} />
-                                                                                </div>
-                                                                            ) : (
-                                                                                <>
-                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-blue-400 hover:text-blue-600"><Pencil size={14} /></button>
-                                                                                    <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-300 hover:text-rose-600"><Trash2 size={14} /></button>
-                                                                                </>
-                                                                            )}
+                                            <div className="space-y-6">
+                                                {(() => {
+                                                    const comps = item?.components || [];
+                                                    const draftIndexes = comps.map((c, idx) => (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) ? idx : -1).filter(i => i !== -1);
+                                                    
+                                                    return (
+                                                        <>
+                                                            {draftIndexes.length > 0 && (
+                                                                <div className="card p-6 bg-amber-50 border-amber-200 shadow-sm rounded-3xl">
+                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                                        <div>
+                                                                            <h3 className="font-black text-amber-900 text-lg flex items-center gap-2">
+                                                                                <Package size={18} /> Rincian Belum Diajukan (Draft)
+                                                                            </h3>
+                                                                            <p className="text-xs text-amber-700 font-medium mt-1">Ada {draftIndexes.length} rincian yang belum diajukan ke Superadmin.</p>
                                                                         </div>
-                                                                    </td>
-                                                                </tr>
-                                                            ));
-                                                        })()}
-                                                    </tbody>
-                                                    <tfoot className="bg-slate-50 border-t border-slate-200">
-                                                        <tr>
-                                                            <td colSpan={6} className="px-6 py-6 font-black text-[10px] uppercase tracking-[0.2em] italic text-slate-400">Total Akumulasi Rincian</td>
-                                                            <td className="px-6 py-6 text-right font-black text-sm italic text-slate-900">{formatRupiah(item.total)}</td>
-                                                            <td className="px-4 py-6 text-center">
-                                                                <button
-                                                                    onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setShowCompModal(true); }}
-                                                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:scale-110 transition-all mx-auto"
-                                                                >
-                                                                    <Plus size={20} strokeWidth={3} />
-                                                                </button>
-                                                            </td>
-                                                        </tr>
-                                                    </tfoot>
-                                                </table>
+                                                                        <button 
+                                                                            onClick={() => handleAjukanDraftsInModal(draftIndexes)}
+                                                                            className="px-5 py-3 bg-amber-500 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-600 transition-colors shrink-0 flex items-center gap-2"
+                                                                        >
+                                                                            <Send size={16} /> Ajukan {draftIndexes.length} Rincian
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {comps.length === 0 ? (
+                                                                <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
+                                                                    <Package size={40} className="mx-auto text-slate-300 mb-4 opacity-30" />
+                                                                    <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-50">Belum ada rincian belanja</p>
+                                                                    <button
+                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                        className="mt-6 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all mx-auto inline-flex items-center gap-2"
+                                                                    >
+                                                                        <Plus size={16} strokeWidth={3} /> Tambah Rincian Pertama
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <div className="space-y-4">
+                                                                    {comps.map((comp, idx) => {
+                                                                        const isDraft = comp.status === 'DRAFT' || comp.status === 'REJECTED' || !comp.status;
+                                                                        const isApproved = comp.status === 'APPROVED';
+                                                                        const isPending = comp.status === 'PENDING';
+                                                                        return (
+                                                                            <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                                                                <div className="flex-1">
+                                                                                    <h4 className="font-black text-slate-800 text-base mb-2">{comp.label}</h4>
+                                                                                    <div className="flex flex-wrap items-center gap-3">
+                                                                                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md line-clamp-1 max-w-[200px]">{allPrograms.find(p => p.id === comp.programId)?.name || 'Tanpa Program'}</span>
+                                                                                        <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vol: {comp.volume} {comp.satuan} &times; {comp.kali}</span>
+                                                                                        <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Harga: {formatRupiah(comp.harga)}</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-6 mt-6 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                                                                    <div className="text-right">
+                                                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-1">Subtotal</p>
+                                                                                        <span className="font-black text-slate-900 text-lg">{formatRupiah(comp.total)}</span>
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
+                                                                                        {(isPending || isApproved) ? (
+                                                                                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                                                                <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
+                                                                                            </div>
+                                                                                        ) : (
+                                                                                            <>
+                                                                                                <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                                                <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
+                                                                                                <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>
+                                                                                            </>
+                                                                                        )}
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                    
+                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
+                                                                        <div className="flex items-center gap-5">
+                                                                            <button
+                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                                className="w-14 h-14 flex items-center justify-center bg-blue-600 text-white rounded-[1.25rem] shadow-lg shadow-blue-200 hover:scale-105 transition-all"
+                                                                            >
+                                                                                <Plus size={24} strokeWidth={3} />
+                                                                            </button>
+                                                                            <div>
+                                                                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Akumulasi Rincian</p>
+                                                                                <p className="font-black text-2xl text-slate-900 tracking-tight">{formatRupiah(item.total)}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </>
+                                                    );
+                                                })()}
                                             </div>
                                         </div>
                                     </div>
