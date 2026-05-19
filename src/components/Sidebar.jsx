@@ -324,15 +324,34 @@ export default function Sidebar({ isOpen, onClose }) {
     };
 
     const handleMouseEnterGroup = (title) => {
-        setExpandedGroups({ [title]: true });
+        setExpandedGroups(prev => {
+            const next = { ...prev };
+            next[title] = true;
+            
+            menuGroups.forEach(g => {
+                if (g.title !== title && !checkGroupActive(g)) {
+                    next[g.title] = false;
+                }
+            });
+            return next;
+        });
     };
 
     const handleMouseLeaveGroup = (title) => {
-        setExpandedGroups(prev => ({ ...prev, [title]: false }));
+        const group = menuGroups.find(g => g.title === title);
+        if (group && !checkGroupActive(group)) {
+            setExpandedGroups(prev => ({ ...prev, [title]: false }));
+        }
     };
 
     const handleMouseLeaveSidebar = () => {
-        setExpandedGroups({});
+        setExpandedGroups(prev => {
+            const next = {};
+            menuGroups.forEach(g => {
+                next[g.title] = checkGroupActive(g);
+            });
+            return next;
+        });
     };
 
     const handleLogout = () => {
