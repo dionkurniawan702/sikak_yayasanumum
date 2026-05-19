@@ -145,6 +145,7 @@ export default function MonthlyReport() {
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
     const [processingId, setProcessingId] = useState(null);
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
+    const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
 
     // Filter state for history
     const [search, setSearch] = useState('');
@@ -250,6 +251,42 @@ export default function MonthlyReport() {
         });
         return items;
     }, [requestsForYear, reportedAmounts]);
+
+    // Map of unit/field id → count of pending items (for superadmin badges)
+    const pendingCountByUnit = useMemo(() => {
+        const map = {};
+        const allItems = [];
+        (budgetRequests || []).filter(req => {
+            const isYear = req.academicYearId === globalAcademicYearId;
+            if (!isYear || req.status !== 'APPROVED') return false;
+            const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return false;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
+            return true;
+        }).forEach(req => {
+            const unitKey = req.unitId || req.fieldId || 'UNKNOWN';
+            if (req.items && req.items.length > 0) {
+                req.items.forEach(item => {
+                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    if (reportedComp < parseFloat(item.amount || 0)) {
+                        map[unitKey] = (map[unitKey] || 0) + 1;
+                    }
+                });
+            } else {
+                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                if (reportedReq < parseFloat(req.totalAmount || 0)) {
+                    map[unitKey] = (map[unitKey] || 0) + 1;
+                }
+            }
+        });
+        return map;
+    }, [budgetRequests, reportedAmounts, globalAcademicYearId, sourceMode]);
+
+    // Filtered pending items for superadmin based on selected unit
+    const filteredPendingItems = useMemo(() => {
+        if (!isSuperAdmin || selectedUnitFilter === 'ALL') return pendingItems;
+        return pendingItems.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
+    }, [pendingItems, isSuperAdmin, selectedUnitFilter]);
 
     const verificationReports = useMemo(() => {
         return (budgetReports || []).filter(rel => rel.status === 'PENDING' && rel.academicYearId === globalAcademicYearId);
@@ -562,38 +599,95 @@ export default function MonthlyReport() {
                             </div>
                         )}
 
+                        {/* Superadmin: Unit Filter Tabs with green notification badges */}
+                        {isSuperAdmin && (
+                            <div className="mb-6">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Filter Berdasarkan Unit</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <button
+                                        onClick={() => setSelectedUnitFilter('ALL')}
+                                        className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
+                                            selectedUnitFilter === 'ALL'
+                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                                : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200'
+                                        }`}
+                                    >
+                                        Semua Unit
+                                        {pendingItems.length > 0 && (
+                                            <span className="ml-2 bg-amber-400 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
+                                        )}
+                                    </button>
+                                    {[...units, ...fields].filter(u => pendingCountByUnit[u.id]).map(u => (
+                                        <button
+                                            key={u.id}
+                                            onClick={() => setSelectedUnitFilter(u.id)}
+                                            className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
+                                                selectedUnitFilter === u.id
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-200'
+                                            }`}
+                                        >
+                                            {u.name}
+                                            <span className="ml-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
+                                                {pendingCountByUnit[u.id]}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="flex items-center gap-2 mb-2 px-2">
                             <AlertCircle size={16} className="text-blue-500" />
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian yang Menunggu Laporan</span>
                         </div>
 
-                        {pendingItems.length > 0 ? pendingItems.map(item => (
+                        {filteredPendingItems.length > 0 ? filteredPendingItems.map(item => {
+                            const unitName = units.find(u => u.id === item.reqUnitId)?.name || fields.find(f => f.id === item.reqUnitId)?.name;
+                            const sisaPct = item.amount > 0 ? Math.round((item.sisa / item.amount) * 100) : 0;
+                            return (
                             <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all border-l-8 border-l-blue-600">
-                                <div>
+                                <div className="flex-1">
                                     <h4 className="font-black text-slate-900 text-xl mb-1">{item.name}</h4>
-                                    <div className="flex items-center gap-4 text-slate-400 text-xs font-bold">
+                                    <div className="flex flex-wrap items-center gap-3 text-slate-400 text-xs font-bold">
                                         <span className="flex items-center gap-1"><History size={14} /> {item.reqDate}</span>
                                         <span className="flex items-center gap-1 font-black text-blue-600 italic">REQ: {item.reqId.slice(0, 8)}</span>
+                                        {isSuperAdmin && unitName && (
+                                            <span className="flex items-center gap-1 px-2 py-0.5 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black">
+                                                <Building2 size={10} /> {unitName}
+                                            </span>
+                                        )}
                                     </div>
-                                    <p className="mt-4 text-sm text-slate-500 font-medium">{item.reqDescription}</p>
+                                    <p className="mt-3 text-sm text-slate-500 font-medium">{item.reqDescription}</p>
+                                    {/* Progress bar sisa */}
+                                    <div className="mt-4">
+                                        <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            <span>Terpakai</span><span>Sisa {sisaPct}%</span>
+                                        </div>
+                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${sisaPct}%` }} />
+                                        </div>
+                                    </div>
                                 </div>
 
-                                <div className="text-right">
+                                <div className="text-right shrink-0">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Rincian</p>
-                                    <h4 className="text-2xl font-black text-blue-700 mb-2">{formatRupiah(item.sisa)}</h4>
-                                    <p className="text-[10px] font-bold text-slate-400 mb-4">Plafon Rincian: {formatRupiah(parseFloat(item.amount || 0))}</p>
-                                    <button
-                                        onClick={() => handleOpenReportForm(item)}
-                                        className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
-                                    >
-                                        <FileCheck size={16} />
-                                        <span>Buat Laporan</span>
-                                    </button>
+                                    <h4 className="text-2xl font-black text-blue-700 mb-1">{formatRupiah(item.sisa)}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 mb-4">Plafon: {formatRupiah(parseFloat(item.amount || 0))}</p>
+                                    {!isSuperAdmin && (
+                                        <button
+                                            onClick={() => handleOpenReportForm(item)}
+                                            className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
+                                        >
+                                            <FileCheck size={16} />
+                                            <span>Buat Laporan</span>
+                                        </button>
+                                    )}
                                 </div>
                             </div>
-                        )) : (
+                        )}) : (
                             <div className="card p-20 text-center text-slate-400 italic font-medium">
-                                Tidak ada rincian dana yang menunggu laporan.
+                                {selectedUnitFilter !== 'ALL' ? 'Tidak ada rincian untuk unit ini.' : 'Tidak ada rincian dana yang menunggu laporan.'}
                             </div>
                         )}
                     </div>
