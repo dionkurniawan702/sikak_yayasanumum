@@ -661,6 +661,7 @@ export default function MonthlyReport() {
                         {filteredPendingItems.length > 0 ? filteredPendingItems.map(item => {
                             const unitName = units.find(u => u.id === item.reqUnitId)?.name || fields.find(f => f.id === item.reqUnitId)?.name;
                             const sisaPct = item.amount > 0 ? Math.round((item.sisa / item.amount) * 100) : 0;
+                            const terpakaiPct = item.amount > 0 ? Math.round(((item.amount - item.sisa) / item.amount) * 100) : 0;
                             return (
                             <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all border-l-8 border-l-blue-600">
                                 <div className="flex-1">
@@ -675,13 +676,13 @@ export default function MonthlyReport() {
                                         )}
                                     </div>
                                     <p className="mt-3 text-sm text-slate-500 font-medium">{item.reqDescription}</p>
-                                    {/* Progress bar sisa */}
+                                    {/* Progress bar terpakai */}
                                     <div className="mt-4">
                                         <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            <span>Terpakai</span><span>Sisa {sisaPct}%</span>
+                                            <span>Terpakai {terpakaiPct}%</span><span>Sisa {sisaPct}%</span>
                                         </div>
                                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${sisaPct}%` }} />
+                                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${terpakaiPct}%` }} />
                                         </div>
                                     </div>
                                 </div>
@@ -689,7 +690,7 @@ export default function MonthlyReport() {
                                 <div className="text-right shrink-0">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Rincian</p>
                                     <h4 className="text-2xl font-black text-blue-700 mb-1">{formatRupiah(item.sisa)}</h4>
-                                    <p className="text-[10px] font-bold text-slate-400 mb-4">Plafon: {formatRupiah(parseFloat(item.amount || 0))}</p>
+                                    <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                     {!isSuperAdmin && (
                                         <button
                                             onClick={() => handleOpenReportForm(item)}

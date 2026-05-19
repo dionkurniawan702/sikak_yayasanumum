@@ -393,6 +393,7 @@ export default function BOSMonthlyReport() {
                         <div className="grid grid-cols-1 gap-4">
                             {filteredPendingBOSReporting.map(item => {
                                 const sisaPct = item.amount > 0 ? Math.round((item.sisa / item.amount) * 100) : 0;
+                                const terpakaiPct = item.amount > 0 ? Math.round(((item.amount - item.sisa) / item.amount) * 100) : 0;
                                 return (
                                 <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-lg transition-all group border-l-8 border-l-emerald-500">
                                     <div className="space-y-1 flex-1 mr-8">
@@ -409,13 +410,13 @@ export default function BOSMonthlyReport() {
                                         </div>
                                         <p className="mt-2 text-sm text-slate-500">{item.reqDescription}</p>
 
-                                        {/* Progress bar sisa */}
+                                        {/* Progress bar terpakai */}
                                         <div className="mt-4 max-w-md">
                                             <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                                <span>Terpakai</span><span>Sisa {sisaPct}%</span>
+                                                <span>Terpakai {terpakaiPct}%</span><span>Sisa {sisaPct}%</span>
                                             </div>
                                             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${sisaPct}%` }} />
+                                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${terpakaiPct}%` }} />
                                             </div>
                                         </div>
                                     </div>
@@ -425,7 +426,7 @@ export default function BOSMonthlyReport() {
                                             <h4 className="text-3xl font-black text-rose-600 italic tracking-tighter">
                                                 {formatRupiah(item.sisa)}
                                             </h4>
-                                            <p className="text-[10px] font-bold text-slate-400">Plafon: {formatRupiah(parseFloat(item.amount || 0))}</p>
+                                            <p className="text-[10px] font-bold text-slate-400">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                         </div>
                                         {!isSuperAdmin && (
                                             <button 
