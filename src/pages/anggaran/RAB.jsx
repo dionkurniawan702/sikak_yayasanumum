@@ -845,17 +845,28 @@ function RABContent() {
         if (!editingItem || draftIndexes.length === 0) return;
         
         const mId = editingItem.itemId || editingItem.id;
-        const newComps = [...(editingItem.components || [])];
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
+        const plans = currentPlan[type][mId] || [];
+        const planIndex = plans.findIndex(p => p.id === editingItem.planId) !== -1 
+            ? plans.findIndex(p => p.id === editingItem.planId) 
+            : 0;
         
+        const plan = plans[planIndex];
+        if (!plan) return;
+
+        const newComps = [...(plan.components || [])];
         draftIndexes.forEach(idx => {
-            newComps[idx] = { ...newComps[idx], status: 'PENDING' };
+            if (newComps[idx]) {
+                newComps[idx] = { ...newComps[idx], status: 'PENDING' };
+            }
         });
 
-        const updatedPlanItem = { ...editingItem, components: newComps };
-        setEditingItem(updatedPlanItem);
+        const updatedPlan = { ...plan, components: newComps };
+        const newPlans = [...plans];
+        newPlans[planIndex] = updatedPlan;
 
         // Auto-save logic
-        const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: [updatedPlanItem] } };
+        const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: newPlans } };
         setCurrentPlan(nextPlan);
 
         const basePlanId = `${selectedYearId}-${selectedUnitId}`;
@@ -1329,17 +1340,41 @@ function RABContent() {
             const currentPlanId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
             let currentPlanUpdated = null;
 
-            for (const [planId, items] of Object.entries(selectionsByPlan)) {
-                const plan = rabPlans.find(p => p.id === planId);
+            for (const [planSubId, items] of Object.entries(selectionsByPlan)) {
+                // Find the main plan where plan.expense has a sub-plan with id === planSubId
+                // OR where plan.id === planSubId (if it's the main plan ID)
+                const plan = rabPlans.find(p => {
+                    if (p.id === planSubId) return true;
+                    const nextExpense = p.expense || {};
+                    return Object.values(nextExpense).some(plansArr => 
+                        Array.isArray(plansArr) && plansArr.some(subP => subP.id === planSubId)
+                    );
+                });
+
                 if (!plan) continue;
 
                 const nextExpense = { ...plan.expense };
-                items.forEach(({ itemId, pIdx, cIdx }) => {
+                items.forEach(({ itemId: rawItemId, pIdx, cIdx }) => {
+                    // Let's resolve the actual itemId!
+                    // If rawItemId starts with 'COMP-', it's not the real itemId.
+                    // We must find which key in nextExpense contains the sub-plan with id === planSubId.
+                    let itemId = rawItemId;
+                    if (rawItemId.startsWith('COMP-')) {
+                        const foundKey = Object.keys(nextExpense).find(k => 
+                            Array.isArray(nextExpense[k]) && nextExpense[k].some(subP => subP.id === planSubId)
+                        );
+                        if (foundKey) itemId = foundKey;
+                    }
+
                     let rawPlanItems = nextExpense[itemId];
                     let planItems = Array.isArray(rawPlanItems) ? rawPlanItems : (rawPlanItems && typeof rawPlanItems === 'object' && Object.keys(rawPlanItems).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawPlanItems }] : []);
                     
-                    if (planItems[pIdx] && planItems[pIdx].components && planItems[pIdx].components[cIdx]) {
-                        const newComps = [...planItems[pIdx].components];
+                    // Find the exact index of the sub-plan with id === planSubId
+                    const actualPIdx = planItems.findIndex(subP => subP.id === planSubId);
+                    const targetIdx = actualPIdx !== -1 ? actualPIdx : pIdx;
+
+                    if (planItems[targetIdx] && planItems[targetIdx].components && planItems[targetIdx].components[cIdx]) {
+                        const newComps = [...planItems[targetIdx].components];
                         
                         let newStatus = newComps[cIdx].status;
                         let newIsApproved = newComps[cIdx].isApproved;
@@ -1357,7 +1392,7 @@ function RABContent() {
                         newComps[cIdx] = { ...newComps[cIdx], isApproved: newIsApproved, status: newStatus };
                         
                         const newPlanItems = [...planItems];
-                        newPlanItems[pIdx] = { ...newPlanItems[pIdx], components: newComps };
+                        newPlanItems[targetIdx] = { ...newPlanItems[targetIdx], components: newComps };
                         
                         nextExpense[itemId] = newPlanItems;
                     }
@@ -1367,7 +1402,7 @@ function RABContent() {
                 dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
                 await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
 
-                if (planId === currentPlanId) {
+                if (plan.id === currentPlanId || planSubId === currentPlanId) {
                     currentPlanUpdated = updatedPlan;
                 }
             }
