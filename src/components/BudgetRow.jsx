@@ -29,6 +29,7 @@ export default function BudgetRow({
     actions = null,
     // Granular selection props
     selectable = false,
+    isReviewMode = false,
     selectedComponents = new Set(),
     onComponentToggle,
     nameColSpan = 1
