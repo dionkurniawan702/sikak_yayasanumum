@@ -1271,9 +1271,9 @@ function RABContent() {
         // Group selections by planId
         const selectionsByPlan = {};
         selectedComponents.forEach(id => {
-            const [planId, itemId, compIdx] = id.split('|');
+            const [planId, itemId, pIdx, cIdx] = id.split('|');
             if (!selectionsByPlan[planId]) selectionsByPlan[planId] = [];
-            selectionsByPlan[planId].push({ itemId, compIdx: parseInt(compIdx) });
+            selectionsByPlan[planId].push({ itemId, pIdx: parseInt(pIdx), cIdx: parseInt(cIdx) });
         });
 
         try {
@@ -1282,22 +1282,19 @@ function RABContent() {
                 if (!plan) continue;
 
                 const nextExpense = { ...plan.expense };
-                items.forEach(({ itemId, compIdx }) => {
+                items.forEach(({ itemId, pIdx, cIdx }) => {
                     let rawPlanItems = nextExpense[itemId];
-                    // Handle legacy data where planItems is a single object instead of an array
                     let planItems = Array.isArray(rawPlanItems) ? rawPlanItems : (rawPlanItems && typeof rawPlanItems === 'object' && Object.keys(rawPlanItems).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawPlanItems }] : []);
                     
-                    // Update component isApproved status in the plan items
-                    planItems = planItems.map(pi => {
-                        if (pi.components && pi.components[compIdx]) {
-                            const newComps = [...pi.components];
-                            newComps[compIdx] = { ...newComps[compIdx], isApproved: (action === 'APPROVE') };
-                            return { ...pi, components: newComps };
-                        }
-                        return pi;
-                    });
-                    
-                    nextExpense[itemId] = planItems; // save back as array
+                    if (planItems[pIdx] && planItems[pIdx].components && planItems[pIdx].components[cIdx]) {
+                        const newComps = [...planItems[pIdx].components];
+                        newComps[cIdx] = { ...newComps[cIdx], isApproved: (action === 'APPROVE') };
+                        
+                        const newPlanItems = [...planItems];
+                        newPlanItems[pIdx] = { ...newPlanItems[pIdx], components: newComps };
+                        
+                        nextExpense[itemId] = newPlanItems;
+                    }
                 });
 
                 const updatedPlan = { ...plan, expense: nextExpense, updatedAt: new Date().toISOString() };
@@ -1900,7 +1897,11 @@ function RABContent() {
                                                     const aggregatedTotal = planArray.reduce((s, p) => s + (parseFloat(p.total) || 0), 0);
                                                     const aggregatedRap = itemAllocations[id] || 0;
                                                     // Collect all components from all plans for this item
-                                                    const allComponents = planArray.flatMap(p => p.components || []);
+                                                    const allComponents = planArray.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => ({
+                                                        ...c,
+                                                        _pIdx: pIdx,
+                                                        _cIdx: cIdx
+                                                    })));
 
                                                     return {
                                                         id,

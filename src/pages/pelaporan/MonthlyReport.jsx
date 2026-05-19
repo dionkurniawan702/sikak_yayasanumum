@@ -175,16 +175,21 @@ export default function MonthlyReport() {
         }
     }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, dispatch, state]);
 
-    // Calculate total reported amount per request (only count PENDING, APPROVED, VERIFIED)
     const reportedAmounts = useMemo(() => {
         const map = {};
+        const reqMap = {};
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED') {
-                if (!map[r.budgetRequestId]) map[r.budgetRequestId] = 0;
-                map[r.budgetRequestId] += parseFloat(r.amount || 0);
+                if (r.componentId) {
+                    if (!map[r.componentId]) map[r.componentId] = 0;
+                    map[r.componentId] += parseFloat(r.amount || 0);
+                } else {
+                    if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
+                    reqMap[r.budgetRequestId] += parseFloat(r.amount || 0);
+                }
             }
         });
-        return map;
+        return { byComponent: map, byRequest: reqMap };
     }, [budgetReports]);
 
     const requestsForYear = useMemo(() => {
@@ -204,11 +209,47 @@ export default function MonthlyReport() {
         });
     }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
 
-    const pendingReports = requestsForYear.filter(req => {
-        if (req.status !== 'APPROVED') return false;
-        const totalReported = reportedAmounts[req.id] || 0;
-        return totalReported < parseFloat(req.totalAmount || 0);
-    });
+    const pendingItems = useMemo(() => {
+        const items = [];
+        requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
+            // If the old system fully reported the request without component tracking, hide all items
+            const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+            if (reportedReq >= parseFloat(req.totalAmount || 0) && Object.keys(reportedAmounts.byComponent).length === 0) {
+                return;
+            }
+
+            if (req.items && req.items.length > 0) {
+                req.items.forEach(item => {
+                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    if (reportedComp < parseFloat(item.amount || 0)) {
+                        items.push({
+                            ...item,
+                            reqId: req.id,
+                            reqDate: req.date,
+                            reqDescription: req.description,
+                            reqUnitId: req.unitId,
+                            expenseItemId: req.expenseItemId,
+                            sisa: parseFloat(item.amount || 0) - reportedComp
+                        });
+                    }
+                });
+            } else {
+                if (reportedReq < parseFloat(req.totalAmount || 0)) {
+                    items.push({
+                        reqId: req.id,
+                        reqDate: req.date,
+                        reqDescription: req.description,
+                        reqUnitId: req.unitId,
+                        expenseItemId: req.expenseItemId,
+                        name: 'General (Legacy)',
+                        amount: req.totalAmount,
+                        sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                    });
+                }
+            }
+        });
+        return items;
+    }, [requestsForYear, reportedAmounts]);
 
     const verificationReports = useMemo(() => {
         return (budgetReports || []).filter(rel => rel.status === 'PENDING' && rel.academicYearId === globalAcademicYearId);
@@ -285,14 +326,13 @@ export default function MonthlyReport() {
         umurEkonomis: ''
     });
 
-    const handleOpenReportForm = (req) => {
+    const handleOpenReportForm = (item) => {
         setEditingDraftId(null);
-        setSelectedRequest(req);
-        const sisaDana = parseFloat(req.totalAmount || req.amount || 0) - (reportedAmounts[req.id] || 0);
+        setSelectedRequest(item); // Note: item contains both component info and reqId
         setFormData({
             date: new Date().toISOString().split('T')[0],
-            amount: sisaDana > 0 ? sisaDana : 0,
-            description: req.description || '',
+            amount: item.sisa > 0 ? item.sisa : 0,
+            description: `${item.reqDescription} - ${item.name}`,
             buktiTeks: '',
             nomorNota: '',
             volume: '',
@@ -307,7 +347,17 @@ export default function MonthlyReport() {
     const handleEditDraft = (draft) => {
         const req = budgetRequests.find(r => r.id === draft.budgetRequestId);
         if (!req) return alert("Data induk tidak ditemukan!");
-        setSelectedRequest(req);
+        
+        let item = { reqId: req.id, sisa: draft.amount, reqDescription: req.description, name: draft.category, reqUnitId: req.unitId, fieldId: req.fieldId };
+        if (draft.componentId) {
+            const reqItem = req.items?.find(i => i.componentId === draft.componentId);
+            if (reqItem) {
+                const reportedComp = (reportedAmounts.byComponent[draft.componentId] || 0) - parseFloat(draft.amount || 0);
+                item = { ...reqItem, ...item, sisa: parseFloat(reqItem.amount || 0) - reportedComp };
+            }
+        }
+        
+        setSelectedRequest(item);
         setEditingDraftId(draft.id);
         setFormData({
             date: draft.date ? draft.date.split('T')[0] : new Date().toISOString().split('T')[0],
@@ -331,7 +381,7 @@ export default function MonthlyReport() {
         }
 
         const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
-        const sisaDana = parseFloat(selectedRequest.totalAmount || selectedRequest.amount || 0) - (reportedAmounts[selectedRequest.id] || 0) + currentDraftAmount;
+        const sisaDana = selectedRequest.sisa + currentDraftAmount;
         
         if (parseFloat(formData.amount) > sisaDana) {
             return alert(`Jumlah realisasi tidak boleh melebihi sisa dana (${formatRupiah(sisaDana)}).`);
@@ -339,17 +389,18 @@ export default function MonthlyReport() {
 
         const reportData = {
             id: editingDraftId || `REL-${Date.now()}`,
-            requestId: selectedRequest.id,
-            budgetRequestId: selectedRequest.id,
-            unitId: selectedRequest.unitId,
+            requestId: selectedRequest.reqId,
+            budgetRequestId: selectedRequest.reqId,
+            componentId: selectedRequest.componentId,
+            unitId: selectedRequest.reqUnitId,
             fieldId: selectedRequest.fieldId,
             academicYearId: globalAcademicYearId,
-            planId: selectedRequest.items?.[0]?.planId, // Sync plan identification
+            planId: selectedRequest.planId,
             source: sourceMode, // Tag as YAYASAN or BOS
             amount: parseFloat(formData.amount),
             date: formData.date,
             description: formData.description,
-            category: selectedRequest.items?.[0]?.name || 'General',
+            category: selectedRequest.name || 'General',
             // Field baru
             buktiTeks: formData.buktiTeks,
             nomorNota: formData.nomorNota,
@@ -446,8 +497,8 @@ export default function MonthlyReport() {
                         className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                     >
                         Perlu Dilaporkan
-                        {pendingReports.length > 0 && (
-                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingReports.length}</span>
+                        {pendingItems.length > 0 && (
+                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
                         )}
                     </button>
                     <button
@@ -513,26 +564,26 @@ export default function MonthlyReport() {
 
                         <div className="flex items-center gap-2 mb-2 px-2">
                             <AlertCircle size={16} className="text-blue-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana yang sudah dicairkan & Menunggu Laporan</span>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian yang Menunggu Laporan</span>
                         </div>
 
-                        {pendingReports.length > 0 ? pendingReports.map(req => (
-                            <div key={req.id} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all border-l-8 border-l-blue-600">
+                        {pendingItems.length > 0 ? pendingItems.map(item => (
+                            <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all border-l-8 border-l-blue-600">
                                 <div>
-                                    <h4 className="font-black text-slate-900 text-xl mb-1">{expenseItems.find(i => i.id === req.expenseItemId)?.name || 'Pengeluaran'}</h4>
+                                    <h4 className="font-black text-slate-900 text-xl mb-1">{item.name}</h4>
                                     <div className="flex items-center gap-4 text-slate-400 text-xs font-bold">
-                                        <span className="flex items-center gap-1"><History size={14} /> {req.date}</span>
-                                        <span className="flex items-center gap-1 font-black text-blue-600 italic">#{req.id.slice(0, 8)}</span>
+                                        <span className="flex items-center gap-1"><History size={14} /> {item.reqDate}</span>
+                                        <span className="flex items-center gap-1 font-black text-blue-600 italic">REQ: {item.reqId.slice(0, 8)}</span>
                                     </div>
-                                    <p className="mt-4 text-sm text-slate-500 font-medium">{req.description}</p>
+                                    <p className="mt-4 text-sm text-slate-500 font-medium">{item.reqDescription}</p>
                                 </div>
 
                                 <div className="text-right">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Cair</p>
-                                    <h4 className="text-2xl font-black text-blue-700 mb-2">{formatRupiah(parseFloat(req.totalAmount || 0) - (reportedAmounts[req.id] || 0))}</h4>
-                                    <p className="text-[10px] font-bold text-slate-400 mb-4">Total: {formatRupiah(parseFloat(req.totalAmount || 0))}</p>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Rincian</p>
+                                    <h4 className="text-2xl font-black text-blue-700 mb-2">{formatRupiah(item.sisa)}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 mb-4">Plafon Rincian: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                     <button
-                                        onClick={() => handleOpenReportForm(req)}
+                                        onClick={() => handleOpenReportForm(item)}
                                         className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
                                     >
                                         <FileCheck size={16} />
@@ -542,7 +593,7 @@ export default function MonthlyReport() {
                             </div>
                         )) : (
                             <div className="card p-20 text-center text-slate-400 italic font-medium">
-                                Tidak ada dana yang menunggu laporan.
+                                Tidak ada rincian dana yang menunggu laporan.
                             </div>
                         )}
                     </div>

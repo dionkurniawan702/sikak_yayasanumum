@@ -141,20 +141,58 @@ export default function BOSMonthlyReport() {
 
     const reportedAmounts = useMemo(() => {
         const map = {};
+        const reqMap = {};
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED') {
-                if (!map[r.budgetRequestId]) map[r.budgetRequestId] = 0;
-                map[r.budgetRequestId] += parseFloat(r.amount || 0);
+                if (r.componentId) {
+                    if (!map[r.componentId]) map[r.componentId] = 0;
+                    map[r.componentId] += parseFloat(r.amount || 0);
+                } else {
+                    if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
+                    reqMap[r.budgetRequestId] += parseFloat(r.amount || 0);
+                }
             }
         });
-        return map;
+        return { byComponent: map, byRequest: reqMap };
     }, [budgetReports]);
 
-    const pendingBOSReporting = bosRequests.filter(req => {
-        if (req.status !== 'APPROVED') return false;
-        const totalReported = reportedAmounts[req.id] || 0;
-        return totalReported < parseFloat(req.totalAmount || 0);
-    });
+    const pendingBOSReporting = useMemo(() => {
+        const items = [];
+        bosRequests.filter(req => req.status === 'APPROVED').forEach(req => {
+            const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+            if (reportedReq >= parseFloat(req.totalAmount || 0) && Object.keys(reportedAmounts.byComponent).length === 0) {
+                return;
+            }
+
+            if (req.items && req.items.length > 0) {
+                req.items.forEach(item => {
+                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    if (reportedComp < parseFloat(item.amount || 0)) {
+                        items.push({
+                            ...item,
+                            reqId: req.id,
+                            reqDate: req.date,
+                            reqDescription: req.description,
+                            reqUnitId: req.unitId,
+                            sisa: parseFloat(item.amount || 0) - reportedComp
+                        });
+                    }
+                });
+            } else {
+                if (reportedReq < parseFloat(req.totalAmount || 0)) {
+                    items.push({
+                        reqId: req.id,
+                        reqDate: req.date,
+                        reqDescription: req.description,
+                        reqUnitId: req.unitId,
+                        name: 'General (Legacy)',
+                        sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                    });
+                }
+            }
+        });
+        return items;
+    }, [bosRequests, reportedAmounts]);
 
     const bosReports = useMemo(() => {
         return (budgetReports || []).filter(r => {
@@ -265,26 +303,27 @@ export default function BOSMonthlyReport() {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 gap-4">
-                            {pendingBOSReporting.map(req => (
-                                <div key={req.id} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-lg transition-all group border-l-8 border-l-emerald-500">
+                            {pendingBOSReporting.map(item => (
+                                <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-lg transition-all group border-l-8 border-l-emerald-500">
                                     <div className="space-y-1">
                                         <div className="flex items-center gap-2 mb-2">
                                             <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-100">
-                                                DANA BOS • {req.month}
+                                                DANA BOS • {item.reqDate}
                                             </span>
-                                            <span className="text-[10px] font-bold text-slate-400 italic">{req.date}</span>
+                                            <span className="text-[10px] font-bold text-slate-400 italic">REQ: {item.reqId.slice(0, 8)}</span>
                                         </div>
-                                        <h4 className="text-2xl font-black text-slate-800 italic tracking-tight">{req.description}</h4>
+                                        <h4 className="text-2xl font-black text-slate-800 italic tracking-tight">{item.name}</h4>
                                         <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
                                             <Building2 size={14} />
-                                            {units.find(u => u.id === req.unitId)?.name}
+                                            {units.find(u => u.id === item.reqUnitId)?.name}
                                         </div>
+                                        <p className="mt-2 text-sm text-slate-500">{item.reqDescription}</p>
                                     </div>
                                     <div className="flex items-center gap-10">
                                         <div className="text-right">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Dana Belum Dilaporkan</p>
                                             <h4 className="text-3xl font-black text-rose-600 italic tracking-tighter">
-                                                {formatRupiah(parseFloat(req.totalAmount) - (reportedAmounts[req.id] || 0))}
+                                                {formatRupiah(item.sisa)}
                                             </h4>
                                         </div>
                                         <button 

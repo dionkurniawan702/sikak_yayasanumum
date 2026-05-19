@@ -120,7 +120,9 @@ export default function BudgetRow({
 
                         {/* Level 3: Components (Granular Review) */}
                         {isDetailExpanded && item.components && item.components.map((comp, cIdx) => {
-                            const compId = `${data.id}|${item.id}|${cIdx}`;
+                            const pIndex = comp._pIdx !== undefined ? comp._pIdx : 0;
+                            const compIndex = comp._cIdx !== undefined ? comp._cIdx : cIdx;
+                            const compId = `${data.id}|${item.id}|${pIndex}|${compIndex}`;
                             const isSelected = selectedComponents.has(compId);
 
                             return (
