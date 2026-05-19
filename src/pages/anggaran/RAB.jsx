@@ -874,7 +874,7 @@ function RABContent() {
         };
 
         await persistPlanToServer(dbPlan);
-        showToast(`${draftIndexes.length} rincian berhasil diajukan!`);
+        setMessage({ type: 'success', text: `${draftIndexes.length} rincian berhasil diajukan!` });
     };
 
     const handleResetBudget = (itemId) => {
@@ -1325,6 +1325,10 @@ function RABContent() {
         });
 
         try {
+            const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+            const currentPlanId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+            let currentPlanUpdated = null;
+
             for (const [planId, items] of Object.entries(selectionsByPlan)) {
                 const plan = rabPlans.find(p => p.id === planId);
                 if (!plan) continue;
@@ -1362,6 +1366,36 @@ function RABContent() {
                 const updatedPlan = { ...plan, expense: nextExpense, updatedAt: new Date().toISOString() };
                 dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
                 await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+
+                if (planId === currentPlanId) {
+                    currentPlanUpdated = updatedPlan;
+                }
+            }
+
+            if (currentPlanUpdated) {
+                const rawExpense = currentPlanUpdated.expense || {};
+                const migratedExpense = {};
+                Object.entries(rawExpense).forEach(([itemId, data]) => {
+                    if (Array.isArray(data)) {
+                        migratedExpense[itemId] = data;
+                    } else if (data && typeof data === 'object' && Object.keys(data).length > 0) {
+                        migratedExpense[itemId] = [{
+                            id: `P-${itemId}-LEGACY`,
+                            itemId: itemId,
+                            ...data
+                        }];
+                    } else {
+                        migratedExpense[itemId] = [];
+                    }
+                });
+
+                setCurrentPlan({
+                    income: currentPlanUpdated.income || {},
+                    expense: migratedExpense,
+                    status: currentPlanUpdated.status || 'DRAFT',
+                    rejectionReason: currentPlanUpdated.rejectionReason || null,
+                    notified: currentPlanUpdated.notified
+                });
             }
 
             let actionText = '';
