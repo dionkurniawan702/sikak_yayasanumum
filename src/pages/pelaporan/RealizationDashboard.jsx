@@ -51,17 +51,53 @@ export default function RealizationDashboard() {
         fields.forEach(f => fieldRAB[f.id] = { budget: 0, spent: 0, items: {}, spentItems: {} });
 
         // Process RAB Plans
-        rabPlans.filter(p => p.status === 'APPROVED' && p.academicYearId === selectedAcademicYearId).forEach(plan => {
-            Object.entries(plan.expense || {}).forEach(([exId, detail]) => {
-                const bosAmount = parseFloat(detail.bosAmount) || 0;
-                const totalAmount = parseFloat(detail.total) || 0;
-                
+        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId).forEach(plan => {
+            Object.keys(plan.expense || {}).forEach(exId => {
+                const rawItemPlans = plan.expense[exId];
+                const itemPlans = Array.isArray(rawItemPlans)
+                    ? rawItemPlans
+                    : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [rawItemPlans] : []);
+
                 let amount = 0;
-                if (isBOS) {
-                    if (detail.useBos) amount = bosAmount;
-                } else {
-                    amount = totalAmount - bosAmount;
-                }
+                itemPlans.forEach(p => {
+                    if (p.components && p.components.length > 0) {
+                        // New Granular Approval System: Sum only approved components
+                        p.components.forEach(comp => {
+                            const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                            if (isApproved) {
+                                const compTotal = parseFloat(comp.total) || 0;
+                                const useBos = comp.useBos || false;
+                                const bosAmount = parseFloat(comp.bosAmount) || 0;
+                                
+                                if (isBOS) {
+                                    if (useBos) {
+                                        amount += bosAmount > 0 ? bosAmount : compTotal;
+                                    }
+                                } else {
+                                    const bosPortion = useBos ? (bosAmount > 0 ? bosAmount : compTotal) : 0;
+                                    amount += compTotal - bosPortion;
+                                }
+                            }
+                        });
+                    } else {
+                        // Legacy/Fallback Plan Status System
+                        const isApproved = plan.status === 'APPROVED' || p.status === 'APPROVED' || p.isApproved === true;
+                        if (isApproved) {
+                            const total = parseFloat(p.total) || 0;
+                            const useBos = p.useBos || false;
+                            const bosAmount = parseFloat(p.bosAmount) || 0;
+                            
+                            if (isBOS) {
+                                if (useBos) {
+                                    amount += bosAmount > 0 ? bosAmount : total;
+                                }
+                            } else {
+                                const bosPortion = useBos ? (bosAmount > 0 ? bosAmount : total) : 0;
+                                amount += total - bosPortion;
+                            }
+                        }
+                    }
+                });
 
                 if (amount <= 0) return;
 

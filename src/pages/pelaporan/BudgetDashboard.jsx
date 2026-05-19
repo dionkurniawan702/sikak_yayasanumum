@@ -148,12 +148,42 @@ export default function BudgetDashboard() {
 
         // 1. Process Consolidated RAB Plans (The Master Budget Source)
         // BUG FIX: Only use this as the single source for RAB to avoid double counting with requests
-        rabPlans.filter(p => p.status === 'APPROVED' && p.academicYearId === selectedAcademicYearId).forEach(plan => {
-            Object.entries(plan.expense || {}).forEach(([exId, detail]) => {
-                // EXCLUDE BOS portion from General RAB (Foundation) to ensure isolated views
-                const bosPortion = detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0;
-                const amount = (parseFloat(detail.total) || 0) - bosPortion;
-                
+        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId).forEach(plan => {
+            Object.keys(plan.expense || {}).forEach(exId => {
+                const rawItemPlans = plan.expense[exId];
+                const itemPlans = Array.isArray(rawItemPlans)
+                    ? rawItemPlans
+                    : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [rawItemPlans] : []);
+
+                let amount = 0;
+                itemPlans.forEach(p => {
+                    if (p.components && p.components.length > 0) {
+                        // New Granular Approval System: Sum only approved components
+                        p.components.forEach(comp => {
+                            const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                            if (isApproved) {
+                                const compTotal = parseFloat(comp.total) || 0;
+                                const useBos = comp.useBos || false;
+                                const bosAmount = parseFloat(comp.bosAmount) || 0;
+                                
+                                // General RAB (Foundation) = Total - BOS Amount
+                                const bosPortion = useBos ? (bosAmount > 0 ? bosAmount : compTotal) : 0;
+                                amount += compTotal - bosPortion;
+                            }
+                        });
+                    } else {
+                        // Legacy/Fallback Plan Status System
+                        const isApproved = plan.status === 'APPROVED' || p.status === 'APPROVED' || p.isApproved === true;
+                        if (isApproved) {
+                            const total = parseFloat(p.total) || 0;
+                            const useBos = p.useBos || false;
+                            const bosAmount = parseFloat(p.bosAmount) || 0;
+                            const bosPortion = useBos ? (bosAmount > 0 ? bosAmount : total) : 0;
+                            amount += total - bosPortion;
+                        }
+                    }
+                });
+
                 if (amount <= 0) return;
 
                 const exItem = expenseItems.find(e => e.id === exId);
@@ -283,11 +313,37 @@ export default function BudgetDashboard() {
 
         // RAB BOS (Expenses)
         rabPlans?.forEach(plan => {
-            if (plan.academicYearId === selectedAcademicYearId && plan.status === 'APPROVED') {
-                Object.values(plan.expense || {}).forEach(item => {
-                    if (item.useBos && plan.unitId) {
+            if (plan.academicYearId === selectedAcademicYearId) {
+                Object.keys(plan.expense || {}).forEach(exId => {
+                    const rawItemPlans = plan.expense[exId];
+                    const itemPlans = Array.isArray(rawItemPlans)
+                        ? rawItemPlans
+                        : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [rawItemPlans] : []);
+
+                    let bosAmount = 0;
+                    itemPlans.forEach(p => {
+                        if (p.components && p.components.length > 0) {
+                            p.components.forEach(comp => {
+                                const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                                if (isApproved && comp.useBos) {
+                                    const compTotal = parseFloat(comp.total) || 0;
+                                    const cBos = parseFloat(comp.bosAmount) || 0;
+                                    bosAmount += cBos > 0 ? cBos : compTotal;
+                                }
+                            });
+                        } else {
+                            const isApproved = plan.status === 'APPROVED' || p.status === 'APPROVED' || p.isApproved === true;
+                            if (isApproved && p.useBos) {
+                                const total = parseFloat(p.total) || 0;
+                                const pBos = parseFloat(p.bosAmount) || 0;
+                                bosAmount += pBos > 0 ? pBos : total;
+                            }
+                        }
+                    });
+
+                    if (bosAmount > 0 && plan.unitId) {
                         if (uBosRAB[plan.unitId] !== undefined) {
-                            uBosRAB[plan.unitId] += (parseFloat(item.bosAmount) || 0);
+                            uBosRAB[plan.unitId] += bosAmount;
                         }
                     }
                 });
@@ -305,12 +361,38 @@ export default function BudgetDashboard() {
                 a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted
             );
             const plan = (rabPlans || []).find(p =>
-                p.unitId === u.id && p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED'
+                p.unitId === u.id && p.academicYearId === selectedAcademicYearId
             );
             const breakdown = unitAllocations.map(alloc => {
                 const exItem = expenseItems.find(e => e.id === alloc.expenseItemId);
-                const usedDetail = plan?.expense?.[alloc.expenseItemId];
-                const itemRab = usedDetail?.useBos ? (parseFloat(usedDetail?.bosAmount) || 0) : 0;
+                
+                // Calculate itemRab based on approved components/plans
+                const rawItemPlans = plan?.expense?.[alloc.expenseItemId];
+                const itemPlans = Array.isArray(rawItemPlans)
+                    ? rawItemPlans
+                    : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [rawItemPlans] : []);
+
+                let itemRab = 0;
+                itemPlans.forEach(p => {
+                    if (p.components && p.components.length > 0) {
+                        p.components.forEach(comp => {
+                            const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                            if (isApproved && comp.useBos) {
+                                const compTotal = parseFloat(comp.total) || 0;
+                                const cBos = parseFloat(comp.bosAmount) || 0;
+                                itemRab += cBos > 0 ? cBos : compTotal;
+                            }
+                        });
+                    } else {
+                        const isApproved = plan?.status === 'APPROVED' || p.status === 'APPROVED' || p.isApproved === true;
+                        if (isApproved && p.useBos) {
+                            const total = parseFloat(p.total) || 0;
+                            const pBos = parseFloat(p.bosAmount) || 0;
+                            itemRab += pBos > 0 ? pBos : total;
+                        }
+                    }
+                });
+
                 const itemRap = parseFloat(alloc.amount) || 0;
                 return {
                     id: alloc.id || alloc.expenseItemId,
