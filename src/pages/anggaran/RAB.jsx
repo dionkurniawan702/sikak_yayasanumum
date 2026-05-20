@@ -1220,13 +1220,49 @@ function RABContent() {
         setIsSaving(true);
         const basePlanId = `${selectedYearId}-${selectedUnitId}`;
         const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+
+        // Automatically sweep and update all DRAFT/REJECTED components in both income and expense to PENDING
+        const updatedExpense = { ...currentPlan.expense };
+        Object.keys(updatedExpense).forEach(itemId => {
+            const plans = updatedExpense[itemId];
+            if (Array.isArray(plans)) {
+                updatedExpense[itemId] = plans.map(p => {
+                    const comps = p.components || [];
+                    const updatedComps = comps.map(c => {
+                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) {
+                            return { ...c, status: 'PENDING' };
+                        }
+                        return c;
+                    });
+                    return { ...p, components: updatedComps };
+                });
+            }
+        });
+
+        const updatedIncome = { ...currentPlan.income };
+        Object.keys(updatedIncome).forEach(itemId => {
+            const plans = updatedIncome[itemId];
+            if (Array.isArray(plans)) {
+                updatedIncome[itemId] = plans.map(p => {
+                    const comps = p.components || [];
+                    const updatedComps = comps.map(c => {
+                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) {
+                            return { ...c, status: 'PENDING' };
+                        }
+                        return c;
+                    });
+                    return { ...p, components: updatedComps };
+                });
+            }
+        });
+
         const submittedPlan = {
             id: planId,
             academicYearId: selectedYearId,
             unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
             fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-            income: currentPlan.income,
-            expense: currentPlan.expense,
+            income: updatedIncome,
+            expense: updatedExpense,
             status: 'PENDING',
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
@@ -1290,6 +1326,15 @@ function RABContent() {
         try {
             dispatch({ type: 'SET_RAB_PLAN', payload: submittedPlan });
             await api.pushAction({ type: 'SET_RAB_PLAN', payload: submittedPlan }, state);
+            
+            // Sync local currentPlan state
+            setCurrentPlan(prev => ({
+                ...prev,
+                income: updatedIncome,
+                expense: updatedExpense,
+                status: 'PENDING'
+            }));
+
             setMessage({ type: 'success', text: 'RAB telah dikirim ke Yayasan untuk direview.' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal mengirim RAB: ' + error.message });
