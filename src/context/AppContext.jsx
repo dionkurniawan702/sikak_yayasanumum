@@ -721,8 +721,67 @@ export function AppProvider({ children }) {
         }
     }, [isRemote, state.currentUser]); // Trigger on mount or user change
 
+    // Real-time Background Polling (No-Reload Updates)
+    useEffect(() => {
+        if (!isRemote || !state.currentUser || !state.isInitialized) return;
 
+        const pollData = async () => {
+            // Hanya lakukan poll jika tab aktif dan tidak sedang melakukan sync manual/auto
+            if (document.visibilityState !== 'visible' || state.isSyncing) return;
 
+            try {
+                const freshData = await api.fetchAllData();
+                if (freshData) {
+                    // Bandingkan setiap array data utama untuk mendeteksi perubahan nyata
+                    const keysToCheck = [
+                        'accounts', 'journals', 'assets', 'programs', 'expensePrograms',
+                        'units', 'fields', 'students', 'rabPlans', 'budgetRequests',
+                        'budgetReports', 'bosStages', 'bosPosList', 'incomeItems',
+                        'expenseItems', 'distributionSettings', 'academicYears', 'classes',
+                        'users', 'classGroups', 'positions', 'studentStatuses',
+                        'parentStatuses', 'bosAllocations'
+                    ];
+
+                    const hasChanged = keysToCheck.some(key => {
+                        const local = state[key] || [];
+                        const server = freshData[key] || [];
+                        return JSON.stringify(local) !== JSON.stringify(server);
+                    });
+
+                    if (hasChanged) {
+                        console.log('[Poll] Terdeteksi perubahan data di server, memperbarui state...');
+                        dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+                    }
+                }
+            } catch (err) {
+                console.warn('[Poll] Gagal menarik data latar belakang:', err.message);
+            }
+        };
+
+        // Lakukan polling setiap 15 detik
+        const intervalId = setInterval(pollData, 15000);
+
+        // Langsung tarik data baru ketika tab kembali dibuka/difokuskan
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                pollData();
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+
+        return () => {
+            clearInterval(intervalId);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, [
+        isRemote, state.currentUser, state.isInitialized, state.isSyncing,
+        state.accounts, state.journals, state.assets, state.programs, state.expensePrograms,
+        state.units, state.fields, state.students, state.rabPlans, state.budgetRequests,
+        state.budgetReports, state.bosStages, state.bosPosList, state.incomeItems,
+        state.expenseItems, state.distributionSettings, state.academicYears, state.classes,
+        state.users, state.classGroups, state.positions, state.studentStatuses,
+        state.parentStatuses, state.bosAllocations
+    ]);
 
     // Auto-Sync Trigger (Background)
     useEffect(() => {
