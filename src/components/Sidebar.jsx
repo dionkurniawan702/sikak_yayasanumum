@@ -323,36 +323,6 @@ export default function Sidebar({ isOpen, onClose }) {
         }));
     };
 
-    const handleMouseEnterGroup = (title) => {
-        setExpandedGroups(prev => {
-            const next = { ...prev };
-            next[title] = true;
-            
-            menuGroups.forEach(g => {
-                if (g.title !== title && !checkGroupActive(g)) {
-                    next[g.title] = false;
-                }
-            });
-            return next;
-        });
-    };
-
-    const handleMouseLeaveGroup = (title) => {
-        const group = menuGroups.find(g => g.title === title);
-        if (group && !checkGroupActive(group)) {
-            setExpandedGroups(prev => ({ ...prev, [title]: false }));
-        }
-    };
-
-    const handleMouseLeaveSidebar = () => {
-        setExpandedGroups(prev => {
-            const next = {};
-            menuGroups.forEach(g => {
-                next[g.title] = checkGroupActive(g);
-            });
-            return next;
-        });
-    };
 
     const handleLogout = () => {
         if (window.confirm('Keluar dari sistem?')) {
@@ -363,7 +333,6 @@ export default function Sidebar({ isOpen, onClose }) {
 
     return (
         <aside 
-            onMouseLeave={handleMouseLeaveSidebar}
             className={`sidebar fixed inset-y-0 bg-slate-900 w-72 z-[1000] lg:translate-x-0 transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
             <div className="sidebar-brand p-8 border-b border-slate-800 shrink-0">
@@ -393,8 +362,6 @@ export default function Sidebar({ isOpen, onClose }) {
                     <div 
                         key={gIdx} 
                         className="space-y-1"
-                        onMouseEnter={() => handleMouseEnterGroup(group.title)}
-                        onMouseLeave={() => handleMouseLeaveGroup(group.title)}
                     >
                         {/* Accounting System Section (Only for Super Admin at the start) */}
                         {isSuperAdmin && gIdx === 0 && (
