@@ -14,6 +14,11 @@ export default function MonthlyRequest() {
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
     const [reviewRequest, setReviewRequest] = useState(null); // { req, accIds: [], tolakIds: [] }
     const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'warning' }
+    
+    // NEW FILTERS FOR SUPERADMIN
+    const [filterUnit, setFilterUnit] = useState('ALL');
+    const [filterStatus, setFilterStatus] = useState('ALL');
+    const [modalSearchTerm, setModalSearchTerm] = useState('');
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({ message, type });
@@ -122,12 +127,21 @@ export default function MonthlyRequest() {
             if (sourceMode === 'BOS' && !isBosRequest) return false;
             if (sourceMode === 'YAYASAN' && isBosRequest) return false;
 
-            if (isSuperAdmin) return true;
+            // Status Filter
+            if (filterStatus !== 'ALL' && req.status !== filterStatus) return false;
+
+            if (isSuperAdmin) {
+                // Unit Filter for Superadmin
+                if (filterUnit !== 'ALL') {
+                    return req.unitId === filterUnit || req.fieldId === filterUnit;
+                }
+                return true;
+            }
             if (myUnitId) return req.unitId === myUnitId;
             if (myFieldId) return req.fieldId === myFieldId;
             return false;
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, sourceMode]);
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, sourceMode, filterStatus, filterUnit]);
 
     // Aggregate Approved components from RAB Plans that are NOT yet requested
     const approvedComponents = useMemo(() => {
@@ -492,9 +506,40 @@ export default function MonthlyRequest() {
             </div>
 
             {/* Request History */}
-            <div className="flex items-center gap-3 mb-6">
-                <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Calendar size={18} /></div>
-                <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Riwayat Permintaan Dana</h3>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Calendar size={18} /></div>
+                    <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Riwayat Permintaan Dana</h3>
+                </div>
+                
+                {/* Filters */}
+                <div className="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-100">
+                    {isSuperAdmin && (
+                        <select 
+                            value={filterUnit} 
+                            onChange={(e) => setFilterUnit(e.target.value)}
+                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
+                        >
+                            <option value="ALL">Semua Unit & Bidang</option>
+                            <optgroup label="Unit Pendidikan">
+                                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            </optgroup>
+                            <optgroup label="Bidang">
+                                {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            </optgroup>
+                        </select>
+                    )}
+                    <select 
+                        value={filterStatus} 
+                        onChange={(e) => setFilterStatus(e.target.value)}
+                        className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
+                    >
+                        <option value="ALL">Semua Status</option>
+                        <option value="PENDING">Menunggu (Pending)</option>
+                        <option value="APPROVED">Disetujui (ACC)</option>
+                        <option value="REJECTED">Ditolak</option>
+                    </select>
+                </div>
             </div>
 
             <div className="grid grid-cols-1 gap-4">
@@ -724,24 +769,36 @@ export default function MonthlyRequest() {
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setReviewRequest(null)} />
                     <div className="bg-slate-50 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl flex flex-col animate-in slide-in-from-bottom-8">
-                        <div className="p-10 bg-white border-b border-slate-100 flex items-center justify-between">
+                        <div className="p-10 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
                             <div>
                                 <h2 className="text-3xl font-black text-slate-900 mb-1">Review Rincian Dana</h2>
                                 <p className="text-slate-500 font-medium italic">Anda dapat menyetujui (ACC) atau Menolak per-rincian. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></p>
                             </div>
-                            <div className="flex gap-3">
-                                <button onClick={() => {
-                                    setReviewRequest(prev => ({ ...prev, accIds: prev.req.items.map(i => i.componentId), tolakIds: [] }));
-                                }} className="px-5 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={16}/> ACC SEMUA</button>
-                                <button onClick={() => {
-                                    setReviewRequest(prev => ({ ...prev, tolakIds: prev.req.items.map(i => i.componentId), accIds: [] }));
-                                }} className="px-5 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2"><XCircle size={16}/> TOLAK SEMUA</button>
+                            <div className="flex flex-col gap-3">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                                    <input 
+                                        type="text" 
+                                        placeholder="Cari rincian..." 
+                                        value={modalSearchTerm}
+                                        onChange={(e) => setModalSearchTerm(e.target.value)}
+                                        className="w-full bg-slate-50 border-0 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={() => {
+                                        setReviewRequest(prev => ({ ...prev, accIds: prev.req.items.map(i => i.componentId), tolakIds: [] }));
+                                    }} className="flex-1 px-4 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"><Check size={16}/> ACC SEMUA</button>
+                                    <button onClick={() => {
+                                        setReviewRequest(prev => ({ ...prev, tolakIds: prev.req.items.map(i => i.componentId), accIds: [] }));
+                                    }} className="flex-1 px-4 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"><XCircle size={16}/> TOLAK SEMUA</button>
+                                </div>
                             </div>
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-slate-900 bg-slate-50/50">
                             <div className="grid grid-cols-1 gap-4">
-                                {reviewRequest.req.items.map(item => {
+                                {(modalSearchTerm ? reviewRequest.req.items.filter(i => i.name.toLowerCase().includes(modalSearchTerm.toLowerCase())) : reviewRequest.req.items).map(item => {
                                     const isAcc = reviewRequest.accIds.includes(item.componentId);
                                     const isTolak = reviewRequest.tolakIds.includes(item.componentId);
                                     
