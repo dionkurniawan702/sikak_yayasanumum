@@ -28,7 +28,7 @@ function AsetBadge({ kategori, umurEkonomis }) {
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
