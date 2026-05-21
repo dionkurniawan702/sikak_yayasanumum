@@ -1579,7 +1579,50 @@ function RABContent() {
                     }
                 });
 
-                const updatedPlan = { ...plan, expense: nextExpense, updatedAt: new Date().toISOString() };
+                // Auto-update plan status if no PENDING components remain
+                let hasPending = false;
+                Object.values(nextExpense).forEach(plansArr => {
+                    const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
+                    arr.forEach(p => {
+                        (p.components || []).forEach(c => {
+                            if (c.status === 'PENDING') hasPending = true;
+                        });
+                    });
+                });
+                
+                Object.values(plan.income || {}).forEach(plansArr => {
+                    const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
+                    arr.forEach(p => {
+                        (p.components || []).forEach(c => {
+                            if (c.status === 'PENDING') hasPending = true;
+                        });
+                    });
+                });
+
+                let newPlanStatus = plan.status;
+                if (!hasPending && plan.status === 'PENDING') {
+                    // Check if there's at least one APPROVED component to ensure it's actually approved, not just empty
+                    let hasApproved = false;
+                    Object.values(nextExpense).forEach(plansArr => {
+                        const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
+                        arr.forEach(p => {
+                            (p.components || []).forEach(c => {
+                                if (c.status === 'APPROVED' || c.isApproved) hasApproved = true;
+                            });
+                        });
+                    });
+                    
+                    if (hasApproved) {
+                        newPlanStatus = 'APPROVED';
+                    }
+                }
+
+                const updatedPlan = { 
+                    ...plan, 
+                    expense: nextExpense, 
+                    status: newPlanStatus,
+                    updatedAt: new Date().toISOString() 
+                };
                 dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
                 await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
 
