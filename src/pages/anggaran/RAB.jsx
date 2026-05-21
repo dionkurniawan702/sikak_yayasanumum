@@ -149,6 +149,8 @@ function RABContent() {
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
     const [expandedDetailItems, setExpandedDetailItems] = useState({});
     const [selectedComponents, setSelectedComponents] = useState(new Set());
+    const [programSearchQuery, setProgramSearchQuery] = useState('');
+    const [showProgramDropdown, setShowProgramDropdown] = useState(false);
 
     const toggleComponentSelection = (id) => {
         setSelectedComponents(prev => {
@@ -203,6 +205,19 @@ function RABContent() {
             setFundSourceFilter(sourceParam);
         }
     }, [sourceParam]);
+
+    // Close program dropdown when clicking outside
+    useEffect(() => {
+        if (!showProgramDropdown) return;
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('[data-program-dropdown]')) {
+                setShowProgramDropdown(false);
+                setProgramSearchQuery('');
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [showProgramDropdown]);
 
     // Auto-clear success messages
     useEffect(() => {
@@ -3355,12 +3370,69 @@ function RABContent() {
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                            
                                                             <div className="space-y-2">
                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
-                                                                <select className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none" value={entryForm.programId || ''} onChange={e => setEntryForm({ ...entryForm, programId: e.target.value })}>
-                                                                    <option value="">Pilih Program...</option>
-                                                                    {expensePrograms?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                                                                </select>
+                                                                <div className="relative" data-program-dropdown>
+                                                                    <div
+                                                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none cursor-pointer flex items-center justify-between"
+                                                                        onClick={() => setShowProgramDropdown(v => !v)}
+                                                                    >
+                                                                        <span className={entryForm.programId ? 'text-slate-700' : 'text-slate-400'}>
+                                                                            {entryForm.programId
+                                                                                ? expensePrograms?.find(p => p.id === entryForm.programId)?.name || 'Pilih Program...'
+                                                                                : 'Pilih Program...'}
+                                                                        </span>
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform text-slate-400 ${showProgramDropdown ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                                                    </div>
+                                                                    {showProgramDropdown && (
+                                                                        <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border-2 border-slate-100 rounded-2xl shadow-2xl overflow-hidden">
+                                                                            <div className="p-2 border-b border-slate-100">
+                                                                                <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2">
+                                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                                                                    <input
+                                                                                        autoFocus
+                                                                                        type="text"
+                                                                                        className="flex-1 bg-transparent text-xs font-bold text-slate-700 outline-none placeholder-slate-400"
+                                                                                        placeholder="Ketik untuk cari program..."
+                                                                                        value={programSearchQuery}
+                                                                                        onChange={e => setProgramSearchQuery(e.target.value)}
+                                                                                        onClick={e => e.stopPropagation()}
+                                                                                    />
+                                                                                    {programSearchQuery && (
+                                                                                        <button onClick={e => { e.stopPropagation(); setProgramSearchQuery(''); }} className="text-slate-300 hover:text-slate-500">
+                                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                                                                        </button>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="max-h-52 overflow-y-auto">
+                                                                                <div
+                                                                                    className="px-4 py-2.5 text-xs text-slate-400 font-bold cursor-pointer hover:bg-slate-50"
+                                                                                    onClick={() => { setEntryForm({ ...entryForm, programId: '' }); setShowProgramDropdown(false); setProgramSearchQuery(''); }}
+                                                                                >
+                                                                                    — Pilih Program —
+                                                                                </div>
+                                                                                {expensePrograms?.filter(p => !p?.isDeleted && p.name?.toLowerCase().includes(programSearchQuery.toLowerCase())).map(p => (
+                                                                                    <div
+                                                                                        key={p.id}
+                                                                                        className={`px-4 py-2.5 text-xs font-bold cursor-pointer transition-colors ${
+                                                                                            entryForm.programId === p.id
+                                                                                                ? 'bg-blue-600 text-white'
+                                                                                                : 'text-slate-700 hover:bg-slate-50'
+                                                                                        }`}
+                                                                                        onClick={() => { setEntryForm({ ...entryForm, programId: p.id }); setShowProgramDropdown(false); setProgramSearchQuery(''); }}
+                                                                                    >
+                                                                                        {p.name}
+                                                                                    </div>
+                                                                                ))}
+                                                                                {expensePrograms?.filter(p => !p?.isDeleted && p.name?.toLowerCase().includes(programSearchQuery.toLowerCase())).length === 0 && (
+                                                                                    <div className="px-4 py-4 text-xs text-slate-400 italic text-center">Tidak ada program yang cocok</div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
 
                                                             <div className="space-y-2">

@@ -28,11 +28,39 @@ function AsetBadge({ kategori, umurEkonomis }) {
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, expenseItems, isSuperAdmin, idx }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-    const expenseItemName = expenseItems?.find(e => e.id === report.expenseItemId)?.name || '—';
+    
+    let exId = report.expenseItemId;
+    if (!exId && report.planId && report.componentId) {
+        const plan = rabPlans?.find(p => p.id === report.planId);
+        if (plan && plan.expense) {
+            for (const [itemId, plans] of Object.entries(plan.expense)) {
+                const itemPlans = Array.isArray(plans) ? plans : [plans];
+                for (const p of itemPlans) {
+                    if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
+                        exId = itemId;
+                        break;
+                    }
+                }
+                if (exId) break;
+            }
+        }
+    }
+    if (!exId && report.budgetRequestId) {
+        const req = budgetRequests?.find(r => r.id === report.budgetRequestId);
+        if (req) {
+            if (report.componentId && req.items) {
+                const reqItem = req.items.find(i => i.componentId === report.componentId);
+                if (reqItem && reqItem.expenseItemId) exId = reqItem.expenseItemId;
+            }
+            if (!exId && req.expenseItemId) exId = req.expenseItemId;
+        }
+    }
+    
+    const expenseItemName = expenseItems?.find(e => e.id === exId)?.name || '—';
 
     return (
         <>
@@ -157,7 +185,7 @@ export default function MonthlyReport() {
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
 
-    const { budgetRequests = [], budgetReports = [], expenseItems = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
+    const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -912,7 +940,7 @@ export default function MonthlyReport() {
                                 <tbody>
                                     {filteredReports.length > 0
                                         ? filteredReports.map((report, idx) => (
-                                            <ReportRow key={report.id} report={report} units={units} expenseItems={expenseItems} isSuperAdmin={isSuperAdmin} idx={idx} />
+                                            <ReportRow key={report.id} report={report} units={units} expenseItems={expenseItems} rabPlans={rabPlans} budgetRequests={budgetRequests} isSuperAdmin={isSuperAdmin} idx={idx} />
                                         ))
                                         : (
                                             <tr>
