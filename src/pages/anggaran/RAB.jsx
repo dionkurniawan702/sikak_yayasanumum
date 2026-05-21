@@ -880,8 +880,49 @@ function RABContent() {
         const newPlans = [...plans];
         newPlans[planIndex] = updatedPlan;
 
-        // Auto-save logic
-        const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: newPlans } };
+        // Sweep ALL expense items: mark all DRAFT/REJECTED components as PENDING
+        const sweepedExpense = { ...currentPlan.expense };
+        Object.keys(sweepedExpense).forEach(itemId => {
+            const itemPlans = sweepedExpense[itemId];
+            if (Array.isArray(itemPlans)) {
+                sweepedExpense[itemId] = itemPlans.map(p => ({
+                    ...p,
+                    components: (p.components || []).map(c =>
+                        (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status)
+                            ? { ...c, status: 'PENDING' }
+                            : c
+                    )
+                }));
+            }
+        });
+        // Override with the specifically updated item
+        sweepedExpense[mId] = newPlans;
+
+        // Also sweep income
+        const sweepedIncome = { ...currentPlan.income };
+        Object.keys(sweepedIncome).forEach(itemId => {
+            const itemPlans = sweepedIncome[itemId];
+            if (Array.isArray(itemPlans)) {
+                sweepedIncome[itemId] = itemPlans.map(p => ({
+                    ...p,
+                    components: (p.components || []).map(c =>
+                        (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status)
+                            ? { ...c, status: 'PENDING' }
+                            : c
+                    )
+                }));
+            }
+        });
+
+        // Set plan status to PENDING so superadmin gets notified
+        const nextPlan = { 
+            ...currentPlan, 
+            expense: sweepedExpense, 
+            income: sweepedIncome,
+            status: 'PENDING',
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.username
+        };
         setCurrentPlan(nextPlan);
 
         const basePlanId = `${selectedYearId}-${selectedUnitId}`;
@@ -893,14 +934,16 @@ function RABContent() {
             fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
             income: nextPlan.income,
             expense: nextPlan.expense,
-            status: nextPlan.status,
-            rejectionReason: nextPlan.rejectionReason,
-            updatedAt: new Date().toISOString(),
-            updatedBy: currentUser?.username
+            status: 'PENDING',
+            notified: false,
+            rejectionReason: null,
+            updatedAt: nextPlan.updatedAt,
+            updatedBy: nextPlan.updatedBy
         };
 
         await persistPlanToServer(dbPlan);
-        setMessage({ type: 'success', text: `${draftIndexes.length} rincian berhasil diajukan!` });
+        setMessage({ type: 'success', text: `RAB berhasil diajukan ke Yayasan untuk direview!` });
+        setTimeout(() => setMessage(null), 5000);
     };
 
     const handleResetBudget = (itemId) => {
@@ -1353,6 +1396,37 @@ function RABContent() {
             setMessage({ type: 'success', text: 'RAB telah dikirim ke Yayasan untuk direview.' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal mengirim RAB: ' + error.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 5000);
+        }
+    };
+
+    const handleCancelSubmission = async () => {
+        if (!selectedYearId || !selectedUnitId) return;
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const plan = rabPlans.find(p => p.id === planId);
+        if (!plan || plan.status !== 'PENDING') return;
+
+        if (!window.confirm('Batalkan pengajuan RAB ini? Status akan kembali ke Draft dan dapat diedit kembali.')) return;
+
+        const updatedPlan = {
+            ...plan,
+            status: 'DRAFT',
+            rejectionReason: null,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.username
+        };
+
+        setIsSaving(true);
+        try {
+            dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+            await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+            setCurrentPlan(prev => ({ ...prev, status: 'DRAFT' }));
+            setMessage({ type: 'success', text: 'Pengajuan RAB berhasil dibatalkan. RAB kembali ke status Draft.' });
+        } catch (error) {
+            setMessage({ type: 'error', text: 'Gagal membatalkan pengajuan: ' + error.message });
         } finally {
             setIsSaving(false);
             setTimeout(() => setMessage(null), 5000);
@@ -2666,13 +2740,14 @@ function RABContent() {
                         <Download size={16} />
                         EXPORT EXCEL
                     </button>
-                    {!isConsolidation && (
+                    {!isConsolidation && !isSuperAdmin && activePlan.status === 'PENDING' && (
                         <button
-                            onClick={handleSubmitReview}
-                            disabled={isSaving || !selectedYearId || activePlan.status === 'PENDING'}
-                            className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-3 rounded-2xl font-black text-xs transition-all shadow-xl shadow-emerald-100 disabled:opacity-50 active:scale-95 cursor-pointer"
+                            onClick={handleCancelSubmission}
+                            disabled={isSaving}
+                            className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-6 py-3 rounded-2xl font-black text-xs transition-all shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
                         >
-                            {fundSourceFilter === 'BOS' ? 'AJUKAN RAB BOS' : 'KIRIM KE YAYASAN'}
+                            <XCircle size={16} />
+                            BATALKAN PENGAJUAN
                         </button>
                     )}
                 </div>
@@ -3190,13 +3265,13 @@ function RABContent() {
                                                                             <h3 className="font-black text-amber-900 text-lg flex items-center gap-2">
                                                                                 <Package size={18} /> Rincian Belum Diajukan (Draft)
                                                                             </h3>
-                                                                            <p className="text-xs text-amber-700 font-medium mt-1">Ada {draftIndexes.length} rincian yang belum diajukan ke Superadmin.</p>
+                                                                            <p className="text-xs text-amber-700 font-medium mt-1">Ada {draftIndexes.length} rincian yang belum dikirim. Klik tombol di bawah untuk mengajukan RAB ini ke Yayasan untuk direview.</p>
                                                                         </div>
                                                                         <button 
                                                                             onClick={() => handleAjukanDraftsInModal(draftIndexes)}
                                                                             className="px-5 py-3 bg-amber-500 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-600 transition-colors shrink-0 flex items-center gap-2"
                                                                         >
-                                                                            <Send size={16} /> Ajukan {draftIndexes.length} Rincian
+                                                                            <Send size={16} /> Ajukan RAB ke Yayasan
                                                                         </button>
                                                                     </div>
                                                                 </div>
@@ -3279,7 +3354,7 @@ function RABContent() {
 
                                     {/* Modal Footer */}
                                     <div className="p-10 border-t border-slate-100 bg-white flex items-center justify-between">
-                                        <button onClick={() => setEditingItem(null)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase hover:bg-slate-200 transition-all">BATALKAN</button>
+                                        <button onClick={() => setEditingItem(null)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase hover:bg-slate-200 transition-all">TUTUP</button>
                                         {(() => {
                                             const canSave = item.total > 0;
                                             return (
