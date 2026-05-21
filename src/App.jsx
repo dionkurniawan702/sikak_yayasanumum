@@ -116,6 +116,33 @@ const SyncOverlay = ({ message }) => (
     </div>
 );
 
+const GlobalProgressLoader = () => {
+    const [isLoading, setIsLoading] = React.useState(false);
+
+    React.useEffect(() => {
+        const handleStart = () => setIsLoading(true);
+        const handleEnd = () => setIsLoading(false);
+
+        window.addEventListener('app-loading-start', handleStart);
+        window.addEventListener('app-loading-end', handleEnd);
+
+        return () => {
+            window.removeEventListener('app-loading-start', handleStart);
+            window.removeEventListener('app-loading-end', handleEnd);
+        };
+    }, []);
+
+    React.useEffect(() => {
+        if (isLoading) {
+            document.body.classList.add('cursor-loading-active');
+        } else {
+            document.body.classList.remove('cursor-loading-active');
+        }
+    }, [isLoading]);
+
+    return null;
+};
+
 const PageLoader = () => (
     <div className="flex items-center justify-center min-h-[60vh] w-full">
         <div className="flex flex-col items-center gap-4 bg-white/50 backdrop-blur-sm p-8 rounded-3xl">
@@ -129,6 +156,7 @@ function AppContent() {
     const { state } = useApp();
     return (
         <BrowserRouter>
+            <GlobalProgressLoader />
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     <Route path="/login" element={<Login />} />

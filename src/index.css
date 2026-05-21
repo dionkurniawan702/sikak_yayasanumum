@@ -32,6 +32,17 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes progress {
+  0% { transform: translateX(-100%); }
+  50% { transform: translateX(100%); }
+  100% { transform: translateX(200%); }
+}
+
+.cursor-loading-active,
+.cursor-loading-active * {
+  cursor: progress !important;
+}
+
 /* Custom UI Components */
 .btn {
   @apply flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl font-bold transition-all duration-300 active:scale-95;

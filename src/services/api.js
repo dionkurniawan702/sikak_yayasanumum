@@ -3,6 +3,23 @@ import { generateId } from '../utils/format';
 export const isRemote = true; 
 const API_URL = isRemote ? '/api' : '';
 
+let activeRequests = 0;
+
+function incrementLoading() {
+    activeRequests++;
+    if (activeRequests === 1) {
+        window.dispatchEvent(new CustomEvent('app-loading-start'));
+    }
+}
+
+function decrementLoading() {
+    activeRequests--;
+    if (activeRequests <= 0) {
+        activeRequests = 0;
+        window.dispatchEvent(new CustomEvent('app-loading-end'));
+    }
+}
+
 /**
  * Global Safe Fetch Helper
  * Handles:
@@ -11,6 +28,7 @@ const API_URL = isRemote ? '/api' : '';
  * 3. Malformed JSON Body Diagnostics (The "null" error detector)
  */
 async function safeFetch(url, options = {}) {
+    incrementLoading();
     const token = localStorage.getItem('jwt_token');
     const headers = { 
         'Content-Type': 'application/json',
@@ -67,6 +85,8 @@ async function safeFetch(url, options = {}) {
         if (error.message === 'SESSION_EXPIRED') throw error;
         console.error(`[SAFE-FETCH CRITICAL] ${url}`, error);
         throw error;
+    } finally {
+        decrementLoading();
     }
 }
 
