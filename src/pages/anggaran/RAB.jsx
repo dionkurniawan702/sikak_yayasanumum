@@ -178,8 +178,61 @@ function RABContent() {
     const monthsOptions = useMemo(() => activeYear ? generateMonths(activeYear) : [], [activeYear]);
     const allPrograms = useMemo(() => {
         if (activeTab === 'INCOME') return programs.filter(p => !p.isDeleted && p.type === 'INCOME');
-        return expensePrograms.filter(p => !p.isDeleted);
+        return expensePrograms;
     }, [programs, expensePrograms, activeTab]);
+
+    // AUTO-REPAIR STUCK PENDING PLANS
+    useEffect(() => {
+        if (!isSuperAdmin || !rabPlans || rabPlans.length === 0) return;
+        
+        let needsUpdate = false;
+        
+        // Use a timeout to avoid immediate state updates during render phase
+        const timer = setTimeout(async () => {
+            for (const plan of rabPlans) {
+                if (plan.status === 'PENDING') {
+                    let hasPendingComp = false;
+                    let hasApprovedComp = false;
+                    
+                    // Check expense components
+                    Object.values(plan.expense || {}).forEach(plans => {
+                        const arr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
+                        arr.forEach(p => {
+                            (p.components || []).forEach(c => {
+                                if (c.status === 'PENDING') hasPendingComp = true;
+                                if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
+                            });
+                        });
+                    });
+                    
+                    // Check income components
+                    Object.values(plan.income || {}).forEach(plans => {
+                        const arr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
+                        arr.forEach(p => {
+                            (p.components || []).forEach(c => {
+                                if (c.status === 'PENDING') hasPendingComp = true;
+                                if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
+                            });
+                        });
+                    });
+                    
+                    if (!hasPendingComp && hasApprovedComp) {
+                        // All components are approved (or draft), none are pending. Fix the plan status.
+                        const updatedPlan = {
+                            ...plan,
+                            status: 'APPROVED',
+                            updatedAt: new Date().toISOString()
+                        };
+                        dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+                        await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+                        needsUpdate = true;
+                    }
+                }
+            }
+        }, 1000);
+        
+        return () => clearTimeout(timer);
+    }, [rabPlans, isSuperAdmin, dispatch, state]);
 
     const toggleDetailItem = (parentId, itemId) => {
         const key = `${parentId}|${itemId}`;
