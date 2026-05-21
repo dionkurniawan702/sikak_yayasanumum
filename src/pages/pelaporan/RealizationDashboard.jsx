@@ -162,19 +162,21 @@ export default function RealizationDashboard() {
             const amount = parseFloat(report.amount) || 0;
             let exId = report.expenseItemId;
             
-            if (!exId && report.planId && report.componentId) {
-                const plan = rabPlans.find(p => p.id === report.planId);
-                if (plan && plan.expense) {
-                    for (const [itemId, plans] of Object.entries(plan.expense)) {
-                        const itemPlans = Array.isArray(plans) ? plans : [plans];
-                        for (const p of itemPlans) {
-                            if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
-                                exId = itemId;
-                                break;
+            if (!exId && report.componentId) {
+                for (const plan of rabPlans) {
+                    if (plan.expense) {
+                        for (const [itemId, plans] of Object.entries(plan.expense)) {
+                            const itemPlans = Array.isArray(plans) ? plans : [plans];
+                            for (const p of itemPlans) {
+                                if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
+                                    exId = itemId;
+                                    break;
+                                }
                             }
+                            if (exId) break;
                         }
-                        if (exId) break;
                     }
+                    if (exId) break;
                 }
             }
 
@@ -205,9 +207,39 @@ export default function RealizationDashboard() {
                         if (reqItem && reqItem.expenseItemId) {
                             exId = reqItem.expenseItemId;
                         }
+                        
+                        // Ultimate Fallback: Match by component name if ID was lost due to RAB edits
+                        if (!exId && reqItem && reqItem.name) {
+                            for (const plan of rabPlans) {
+                                if (plan.expense) {
+                                    for (const [itemId, plans] of Object.entries(plan.expense)) {
+                                        const itemPlans = Array.isArray(plans) ? plans : [plans];
+                                        for (const p of itemPlans) {
+                                            if (p.components && p.components.some(c => (c.name === reqItem.name || c.label === reqItem.name))) {
+                                                exId = itemId;
+                                                break;
+                                            }
+                                        }
+                                        if (exId) break;
+                                    }
+                                }
+                                if (exId) break;
+                            }
+                        }
                     }
                     if (!exId && req.expenseItemId) {
                         exId = req.expenseItemId;
+                    }
+                }
+            }
+
+            // Fallback: If plan only has ONE category, it MUST be that one
+            if (!exId && report.planId) {
+                const plan = rabPlans.find(p => p.id === report.planId);
+                if (plan && plan.expense) {
+                    const itemIds = Object.keys(plan.expense);
+                    if (itemIds.length === 1) {
+                        exId = itemIds[0];
                     }
                 }
             }
