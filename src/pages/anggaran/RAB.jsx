@@ -946,6 +946,53 @@ function RABContent() {
         setTimeout(() => setMessage(null), 5000);
     };
 
+    const handleBatalkanRincian = async (compIdx) => {
+        if (!editingItem) return;
+        const mId = editingItem.itemId || editingItem.id;
+        const plans = currentPlan.expense[mId] || [];
+        const planIndex = plans.findIndex(p => p.id === editingItem.planId) !== -1
+            ? plans.findIndex(p => p.id === editingItem.planId)
+            : 0;
+        const plan = plans[planIndex];
+        if (!plan) return;
+
+        const newComps = [...(plan.components || [])];
+        if (newComps[compIdx]) {
+            newComps[compIdx] = { ...newComps[compIdx], status: 'DRAFT' };
+        }
+
+        const updatedPlan = { ...plan, components: newComps };
+        const newPlans = [...plans];
+        newPlans[planIndex] = updatedPlan;
+
+        const nextPlan = {
+            ...currentPlan,
+            expense: { ...currentPlan.expense, [mId]: newPlans },
+            status: 'DRAFT',
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.username
+        };
+        setCurrentPlan(nextPlan);
+
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const dbPlan = {
+            id: planId,
+            academicYearId: selectedYearId,
+            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+            income: nextPlan.income,
+            expense: nextPlan.expense,
+            status: 'DRAFT',
+            rejectionReason: null,
+            updatedAt: nextPlan.updatedAt,
+            updatedBy: nextPlan.updatedBy
+        };
+        await persistPlanToServer(dbPlan);
+        setMessage({ type: 'success', text: 'Pengajuan rincian dibatalkan. Rincian kembali ke status Draft.' });
+        setTimeout(() => setMessage(null), 4000);
+    };
+
     const handleResetBudget = (itemId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         if (!window.confirm('Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)')) return;
@@ -3313,8 +3360,19 @@ function RABContent() {
                                                                                     </div>
                                                                                     <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
                                                                                         {(isPending || isApproved) ? (
-                                                                                            <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                                                                <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
+                                                                                            <div className="flex items-center gap-2">
+                                                                                                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                                                                    <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
+                                                                                                </div>
+                                                                                                {isPending && !isSuperAdmin && activePlan.status !== 'APPROVED' && (
+                                                                                                    <button
+                                                                                                        onClick={() => handleBatalkanRincian(idx)}
+                                                                                                        className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm"
+                                                                                                        title="Batalkan Pengajuan Rincian Ini"
+                                                                                                    >
+                                                                                                        <XCircle size={15} />
+                                                                                                    </button>
+                                                                                                )}
                                                                                             </div>
                                                                                         ) : (
                                                                                             <>
