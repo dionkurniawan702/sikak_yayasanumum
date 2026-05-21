@@ -143,6 +143,22 @@ export default function MonthlyRequest() {
         }).sort((a, b) => new Date(b.date) - new Date(a.date));
     }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, sourceMode, filterStatus, filterUnit]);
 
+    // Calculate which units have pending requests for the red dot indicator
+    const pendingUnitIds = useMemo(() => {
+        const ids = new Set();
+        (budgetRequests || []).forEach(req => {
+            const isBosRequest = req.source === 'BOS' || req.items?.some(i => i.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return;
+
+            if (req.status === 'PENDING') {
+                if (req.unitId) ids.add(req.unitId);
+                if (req.fieldId) ids.add(req.fieldId);
+            }
+        });
+        return ids;
+    }, [budgetRequests, sourceMode]);
+
     // Aggregate Approved components from RAB Plans that are NOT yet requested
     const approvedComponents = useMemo(() => {
         if (!rabPlans || !requestMonth) return [];
@@ -522,10 +538,10 @@ export default function MonthlyRequest() {
                         >
                             <option value="ALL">Semua Unit & Bidang</option>
                             <optgroup label="Unit Pendidikan">
-                                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                {units.map(u => <option key={u.id} value={u.id}>{pendingUnitIds.has(u.id) ? '🔴 ' : ''}{u.name}</option>)}
                             </optgroup>
                             <optgroup label="Bidang">
-                                {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                {fields.map(f => <option key={f.id} value={f.id}>{pendingUnitIds.has(f.id) ? '🔴 ' : ''}{f.name}</option>)}
                             </optgroup>
                         </select>
                     )}
