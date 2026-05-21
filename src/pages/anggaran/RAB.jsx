@@ -2786,17 +2786,6 @@ function RABContent() {
                     >
                         <Download size={16} />
                         EXPORT EXCEL
-                    </button>
-                    {!isConsolidation && !isSuperAdmin && activePlan.status === 'PENDING' && (
-                        <button
-                            onClick={handleCancelSubmission}
-                            disabled={isSaving}
-                            className="bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 px-6 py-3 rounded-2xl font-black text-xs transition-all shadow-sm active:scale-95 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
-                        >
-                            <XCircle size={16} />
-                            BATALKAN PENGAJUAN
-                        </button>
-                    )}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
