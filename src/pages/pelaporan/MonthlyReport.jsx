@@ -258,6 +258,24 @@ export default function MonthlyReport() {
         });
     }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
 
+    const draftReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
+            const effectiveStatus = rel.status || (rel.id?.startsWith('REL-') ? 'DRAFT' : 'APPROVED');
+            if (effectiveStatus !== 'DRAFT') return false;
+            if (rel.academicYearId !== globalAcademicYearId) return false;
+            if (isSuperAdmin) return false; 
+            if (myUnitId && rel.unitId !== myUnitId) return false;
+            if (myFieldId && rel.fieldId !== myFieldId) return false;
+            
+            // Filter by source
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+
+            return true;
+        });
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+
     const pendingItems = useMemo(() => {
         const items = [];
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
@@ -270,7 +288,8 @@ export default function MonthlyReport() {
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    if (reportedComp < parseFloat(item.amount || 0)) {
+                    const itemDrafts = draftReports.filter(d => d.componentId === item.componentId);
+                    if (reportedComp < parseFloat(item.amount || 0) || itemDrafts.length > 0) {
                         items.push({
                             ...item,
                             reqId: req.id,
@@ -283,7 +302,9 @@ export default function MonthlyReport() {
                     }
                 });
             } else {
-                if (reportedReq < parseFloat(req.totalAmount || 0)) {
+                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                const reqDrafts = draftReports.filter(d => d.budgetRequestId === req.id);
+                if (reportedReq < parseFloat(req.totalAmount || 0) || reqDrafts.length > 0) {
                     items.push({
                         reqId: req.id,
                         reqDate: req.date,
@@ -417,20 +438,6 @@ export default function MonthlyReport() {
         }
     };
 
-    const draftReports = useMemo(() => {
-        return (budgetReports || []).filter(rel => {
-            // Safety Catch: If status is missing but ID starts with REL-, treat as DRAFT
-            // This handles cases where the DB hasn't been updated with the status column yet
-            const effectiveStatus = rel.status || (rel.id?.startsWith('REL-') ? 'DRAFT' : 'APPROVED');
-            
-            if (effectiveStatus !== 'DRAFT') return false;
-            if (rel.academicYearId !== globalAcademicYearId) return false;
-            if (isSuperAdmin) return false; 
-            if (myUnitId && rel.unitId !== myUnitId) return false;
-            if (myFieldId && rel.fieldId !== myFieldId) return false;
-            return true;
-        });
-    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId]);
 
     const baseReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -688,42 +695,6 @@ export default function MonthlyReport() {
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* List of pending/draft reports */}
                     <div className="lg:col-span-2 space-y-6">
-                        
-                        {/* DRAFTS SECTION */}
-                        {draftReports.length > 0 && (
-                            <div className="card p-6 bg-amber-50 border-amber-200 shadow-sm mb-8">
-                                <div className="flex items-center justify-between mb-4">
-                                    <div>
-                                        <h3 className="font-black text-amber-900 text-lg flex items-center gap-2">
-                                            <Package size={18} /> Nota Belum Diajukan (Draft)
-                                        </h3>
-                                        <p className="text-xs text-amber-700 font-medium">Laporan di bawah ini sudah memotong saldo, tetapi belum dikirim ke Superadmin.</p>
-                                    </div>
-                                    <button onClick={handleSubmitDrafts} className="px-4 py-2 bg-amber-500 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-600 transition-colors">
-                                        Ajukan {draftReports.length} Laporan
-                                    </button>
-                                </div>
-                                <div className="space-y-3">
-                                    {draftReports.map(draft => (
-                                        <div key={draft.id} className="flex items-center justify-between bg-white p-4 rounded-2xl border border-amber-100 shadow-sm">
-                                            <div>
-                                                <p className="text-sm font-black text-slate-800">{draft.description}</p>
-                                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Nota: {draft.nomorNota || '-'} | Vol: {draft.volume} {draft.satuan}</p>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <span className="font-black text-amber-600 text-sm">{formatRupiah(parseFloat(draft.amount || 0))}</span>
-                                                <button onClick={() => handleEditDraft(draft)} className="text-indigo-500 hover:text-indigo-700 p-2 bg-indigo-50 rounded-lg font-bold text-xs" title="Edit Draft">
-                                                    Edit
-                                                </button>
-                                                <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-2 bg-rose-50 rounded-lg font-bold text-xs" title="Hapus Draft">
-                                                    Hapus
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
 
                         {/* Superadmin: Unit Filter Tabs with green notification badges */}
                         {isSuperAdmin && (
@@ -785,7 +756,6 @@ export default function MonthlyReport() {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="mt-3 text-sm text-slate-500 font-medium">{item.reqDescription}</p>
                                     {/* Progress bar terpakai */}
                                     <div className="mt-4">
                                         <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
@@ -795,6 +765,53 @@ export default function MonthlyReport() {
                                             <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${terpakaiPct}%` }} />
                                         </div>
                                     </div>
+                                    
+                                    {/* LOCAL DRAFTS SECTION */}
+                                    {(() => {
+                                        const localDrafts = draftReports.filter(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
+                                        if (localDrafts.length === 0) return null;
+                                        return (
+                                            <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                                                <div className="flex items-center justify-between mb-3 border-b border-amber-200/50 pb-2">
+                                                    <h5 className="font-black text-amber-900 text-xs flex items-center gap-1.5 uppercase tracking-widest">
+                                                        <Package size={14} /> Draft Nota
+                                                    </h5>
+                                                    <button onClick={() => {
+                                                        if (window.confirm(`Ajukan ${localDrafts.length} draft laporan ini ke Superadmin?`)) {
+                                                            localDrafts.forEach(draft => {
+                                                                const updated = { ...draft, status: 'PENDING' };
+                                                                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                                                                api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                                                            });
+                                                        }
+                                                    }} className="px-3 py-1 bg-amber-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-600 transition-colors shadow-sm shadow-amber-500/20">
+                                                        Ajukan Draft
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {localDrafts.map(draft => (
+                                                        <div key={draft.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
+                                                            <div>
+                                                                <p className="text-xs font-bold text-slate-800">{draft.description}</p>
+                                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Nota: {draft.nomorNota || '-'} | Vol: {draft.volume} {draft.satuan}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-black text-amber-600 text-xs">{formatRupiah(parseFloat(draft.amount || 0))}</span>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button onClick={() => handleEditDraft(draft)} className="text-indigo-500 hover:text-indigo-700 p-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors" title="Edit">
+                                                                        <Edit2 size={12} strokeWidth={3} />
+                                                                    </button>
+                                                                    <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors" title="Hapus">
+                                                                        <Trash2 size={12} strokeWidth={3} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 <div className="text-right shrink-0">
