@@ -2799,10 +2799,38 @@ function RABContent() {
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
                         <div className="flex items-center justify-between">
-                            <p className={`font-black uppercase tracking-tight ${activePlan.status === 'APPROVED' ? 'text-emerald-600' :
-                                (activePlan.status === 'PENDING' ? 'text-indigo-600' : 'text-rose-600')
-                                }`}>
-                                {activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim')}
+                            <p className={`font-black uppercase tracking-tight text-[11px] ${(activePlan.status === 'APPROVED' || activePlan.status === 'PENDING') ? 'text-indigo-600' : 'text-rose-600'}`}>
+                                {(() => {
+                                    if (!activePlan || !activePlan.expense) return activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim');
+                                    
+                                    let approvedCount = 0;
+                                    let pendingCount = 0;
+                                    let draftCount = 0;
+                                    let totalComps = 0;
+
+                                    Object.values(activePlan.expense).forEach(plans => {
+                                        const planArray = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
+                                        planArray.forEach(p => {
+                                            (p.components || []).forEach(c => {
+                                                totalComps++;
+                                                if (c.status === 'APPROVED' || c.isApproved) approvedCount++;
+                                                else if (c.status === 'PENDING') pendingCount++;
+                                                else draftCount++;
+                                            });
+                                        });
+                                    });
+
+                                    if (totalComps === 0) return activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim');
+
+                                    if (activePlan.status === 'APPROVED' && approvedCount === totalComps) return 'SEMUA DISETUJUI';
+
+                                    const texts = [];
+                                    if (approvedCount > 0) texts.push(`${approvedCount} DI-ACC`);
+                                    if (pendingCount > 0) texts.push(`${pendingCount} MENUNGGU`);
+                                    if (draftCount > 0) texts.push(`${draftCount} DRAFT`);
+
+                                    return texts.length > 0 ? texts.join(' • ') : 'Belum Ada Rincian';
+                                })()}
                             </p>
                             {isSuperAdmin && activePlan.status === 'APPROVED' && (
                                 <button
