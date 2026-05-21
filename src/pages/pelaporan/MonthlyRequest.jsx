@@ -587,7 +587,18 @@ export default function MonthlyRequest() {
                                                 </>
                                             )}
                                         </div>
-                                        <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
+                                        <div className="flex flex-col gap-1.5 my-2">
+                                            {(req.items || []).map((item, idx) => (
+                                                <div key={idx} className="flex items-start md:items-center gap-2 text-sm">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 md:mt-0 flex-shrink-0"></span>
+                                                    <span className="font-bold text-slate-800">{item.name}</span>
+                                                    <span className="font-black text-slate-400 italic text-[11px] bg-slate-50 px-2 py-0.5 rounded-md ml-auto">{formatRupiah(item.amount)}</span>
+                                                </div>
+                                            ))}
+                                            {(!req.items || req.items.length === 0) && (
+                                                <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
+                                            )}
+                                        </div>
                                         {isSuperAdmin && (
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200">
