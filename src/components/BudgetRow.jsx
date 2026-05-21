@@ -46,10 +46,10 @@ export default function BudgetRow({
     return (
         <>
             <tr
-                className="budget-row cursor-pointer hover:bg-slate-50 transition-colors group"
+                className="budget-row cursor-pointer bg-white hover:bg-slate-50 transition-colors group"
                 onClick={onToggle}
             >
-                <td className="budget-cell budget-cell-name" colSpan={nameColSpan}>
+                <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" colSpan={nameColSpan}>
                     <div className="flex items-center gap-3">
                         <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -88,10 +88,10 @@ export default function BudgetRow({
                 return (
                     <React.Fragment key={item.id || idx}>
                         <tr
-                            className={`budget-row-detail group ${hasSubLevel ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                            className={`budget-row-detail group bg-white ${hasSubLevel ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                             onClick={() => hasSubLevel && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
                         >
-                            <td className="budget-cell budget-cell-name" style={{ paddingLeft: '44px' }} colSpan={nameColSpan}>
+                            <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '44px' }} colSpan={nameColSpan}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-slate-300">└</span>
                                     {hasSubLevel && (
@@ -127,8 +127,8 @@ export default function BudgetRow({
                             const isSelected = selectedComponents.has(compId);
 
                             return (
-                                <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 ${isSelected ? 'bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
-                                    <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }} colSpan={nameColSpan}>
+                                <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white ${isSelected ? '!bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
+                                    <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '80px' }} colSpan={nameColSpan}>
                                         <div className="flex items-center gap-3 py-1.5">
                                             {selectable && (isReviewMode ? comp.status === 'PENDING' : (comp.status === 'DRAFT' || comp.status === 'REJECTED')) && (
                                                 <input
@@ -197,8 +197,8 @@ export default function BudgetRow({
 
                         {/* Traditional Source Breakdown (if no components) */}
                         {isDetailExpanded && !item.components && item.sources && Object.entries(item.sources).map(([unitId, amount]) => (
-                            <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300">
-                                <td className="budget-cell budget-cell-name" style={{ paddingLeft: '80px' }}>
+                            <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white">
+                                <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '80px' }}>
                                     <div className="flex items-center gap-1.5 py-0.5">
                                         <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
                                         <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">

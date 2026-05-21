@@ -2388,10 +2388,10 @@ function RABContent() {
                 <div className="overflow-x-auto scroll-top">
                     <table className="w-full border-separate border-spacing-y-4">
                         <thead>
-                            <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
-                                <th className="px-6 py-1 text-left w-12">#</th>
-                                <th className="px-6 py-1 text-left">{labelText}</th>
-                                <th className="px-6 py-1 text-center">Semester</th>
+                            <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic relative">
+                                <th className="px-6 py-1 text-left w-12 sticky left-0 z-20 bg-slate-50">#</th>
+                                <th className="px-6 py-1 text-left sticky left-[48px] z-20 bg-slate-50" style={{ minWidth: '250px' }}>{labelText}</th>
+                                <th className="px-6 py-1 text-center sticky left-[298px] z-20 bg-slate-50">Semester</th>
                                 <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
                                 <th className="px-6 py-1 text-right">Draft RAB</th>
                                 <th className="px-6 py-1 text-right">Aksi</th>
@@ -2580,8 +2580,8 @@ function RABContent() {
 
                                 return (
                                     <tr key={`TEMP-${itemMaster.id}`} className="group bg-white hover:bg-slate-50 transition-all duration-300">
-                                        <td className="px-6 py-4 border-y border-l border-slate-100 font-black text-slate-300 text-xs italic">--</td>
-                                        <td className="px-6 py-4 border-y border-slate-100">
+                                        <td className="px-6 py-4 border-y border-l border-slate-100 font-black text-slate-300 text-xs italic sticky left-0 z-10 bg-inherit">--</td>
+                                        <td className="px-6 py-4 border-y border-slate-100 sticky left-[48px] z-10 bg-inherit">
                                             <div className="flex items-center gap-4 opacity-40">
                                                 <div className="p-4 rounded-2xl bg-slate-50 text-slate-300">
                                                     {isIncome ? <DollarSign size={18} /> : <TrendingUp size={18} />}
@@ -2589,7 +2589,7 @@ function RABContent() {
                                                 <span className="font-black text-slate-800 text-sm">{itemMaster.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 border-y border-slate-100 text-center text-slate-300 font-black text-[9px]">BELUM ADA INPUT</td>
+                                        <td className="px-6 py-4 border-y border-slate-100 text-center text-slate-300 font-black text-[9px] sticky left-[298px] z-10 bg-inherit">BELUM ADA INPUT</td>
                                         <td className="px-6 py-4 border-y border-slate-100 text-right font-black text-slate-400 text-xs italic">{formatRupiah(allocated)}</td>
                                         <td className="px-6 py-4 border-y border-slate-100 text-right font-black text-slate-300 text-sm italic">{formatRupiah(0)}</td>
                                         <td className="px-6 py-4 border-y border-r border-slate-100 text-right">
