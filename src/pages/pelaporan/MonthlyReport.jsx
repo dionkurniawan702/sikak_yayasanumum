@@ -68,6 +68,18 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                 className={`border-b border-slate-100 cursor-pointer transition-colors ${open ? 'bg-indigo-50/40' : 'hover:bg-slate-50/80'}`}
                 onClick={() => setOpen(o => !o)}
             >
+                {!isSuperAdmin && (
+                    <td className="px-5 py-4 text-center" onClick={e => e.stopPropagation()}>
+                        {selectable && (
+                            <input 
+                                type="checkbox" 
+                                checked={isSelected} 
+                                onChange={() => onToggleSelect(report.id)}
+                                className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shadow-sm"
+                            />
+                        )}
+                    </td>
+                )}
                 <td className="px-5 py-4 text-center">
                     <span className="text-[10px] font-black text-slate-400">{idx + 1}</span>
                 </td>
@@ -162,6 +174,19 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 )}
                                 <div className="text-[9px] text-slate-400 font-bold font-mono mt-2">ID: {report.id?.slice(0, 16)}...</div>
                             </div>
+                            {/* Actions for Draft (Unit Only) */}
+                            {!isSuperAdmin && report.status === 'DRAFT' && onEdit && onDelete && (
+                                <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
+                                    <div className="flex gap-3 justify-end">
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-indigo-600 hover:!bg-indigo-50 hover:!border-indigo-200 shadow-sm">
+                                            <Edit2 size={14} className="mr-1 inline-block" /> Edit Draft
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm">
+                                            <Trash2 size={14} className="mr-1 inline-block" /> Hapus Draft
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </td>
                 </tr>
@@ -178,6 +203,7 @@ export default function MonthlyReport() {
     const [processingId, setProcessingId] = useState(null);
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
+    const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission
 
     // Filter state for history
     const [search, setSearch] = useState('');
@@ -372,6 +398,7 @@ export default function MonthlyReport() {
 
     React.useEffect(() => {
         setSelectedReportIds([]);
+        setSelectedHistoryIds([]);
     }, [sourceMode, activeTab]);
 
     const handleSelectAll = (e) => {
@@ -438,7 +465,44 @@ export default function MonthlyReport() {
         }
     };
 
+    const handleSelectAllHistory = (e) => {
+        if (e.target.checked) {
+            setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+        } else {
+            setSelectedHistoryIds([]);
+        }
+    };
 
+    const handleToggleSelectHistory = (id) => {
+        setSelectedHistoryIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleBulkSubmitHistory = async () => {
+        if (selectedHistoryIds.length === 0) return;
+        if (window.confirm(`Anda akan mengajukan ${selectedHistoryIds.length} laporan terpilih ke Superadmin. Lanjutkan?`)) {
+            setProcessingId('BULK_HISTORY');
+            try {
+                const updatedReports = selectedHistoryIds.map(id => {
+                    const r = budgetReports.find(x => x.id === id);
+                    return r ? { ...r, status: 'PENDING' } : null;
+                }).filter(Boolean);
+
+                for (const report of updatedReports) {
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                }
+
+                alert(`${selectedHistoryIds.length} laporan berhasil diajukan!`);
+                setSelectedHistoryIds([]);
+            } catch (err) {
+                alert('Gagal mengajukan laporan: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
     const baseReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;
@@ -933,15 +997,37 @@ export default function MonthlyReport() {
 
                     {/* Dense Table */}
                     <div className="card overflow-hidden rounded-2xl border-0 shadow-xl">
-                        <div className="bg-slate-900 px-6 py-4 flex items-center gap-3">
-                            <History size={14} className="text-indigo-400" />
-                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Riwayat Laporan Realisasi</span>
-                            <span className="ml-auto text-[9px] text-slate-400 font-bold">{filteredReports.length} data ditampilkan</span>
+                        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <History size={14} className="text-indigo-400" />
+                                <span className="text-[10px] font-black text-white uppercase tracking-widest">Riwayat Laporan Realisasi</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                {!isSuperAdmin && selectedHistoryIds.length > 0 && (
+                                    <button 
+                                        onClick={handleBulkSubmitHistory} 
+                                        disabled={processingId === 'BULK_HISTORY'}
+                                        className="px-3 py-1.5 bg-indigo-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/30">
+                                        {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Terpilih`}
+                                    </button>
+                                )}
+                                <span className="text-[9px] text-slate-400 font-bold">{filteredReports.length} data ditampilkan</span>
+                            </div>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
+                                        {!isSuperAdmin && (
+                                            <th className="px-5 py-3 w-12 text-center">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shadow-sm"
+                                                    onChange={handleSelectAllHistory}
+                                                    checked={filteredReports.filter(r => r.status === 'DRAFT').length > 0 && selectedHistoryIds.length === filteredReports.filter(r => r.status === 'DRAFT').length}
+                                                />
+                                            </th>
+                                        )}
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-10">No</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
@@ -957,7 +1043,21 @@ export default function MonthlyReport() {
                                 <tbody>
                                     {filteredReports.length > 0
                                         ? filteredReports.map((report, idx) => (
-                                            <ReportRow key={report.id} report={report} units={units} expenseItems={expenseItems} rabPlans={rabPlans} budgetRequests={budgetRequests} isSuperAdmin={isSuperAdmin} idx={idx} />
+                                            <ReportRow 
+                                                key={report.id} 
+                                                report={report} 
+                                                units={units} 
+                                                expenseItems={expenseItems} 
+                                                rabPlans={rabPlans} 
+                                                budgetRequests={budgetRequests} 
+                                                isSuperAdmin={isSuperAdmin} 
+                                                idx={idx} 
+                                                selectable={!isSuperAdmin && report.status === 'DRAFT'}
+                                                isSelected={selectedHistoryIds.includes(report.id)}
+                                                onToggleSelect={handleToggleSelectHistory}
+                                                onEdit={() => handleEditDraft(report)}
+                                                onDelete={() => handleDeleteDraft(report.id)}
+                                            />
                                         ))
                                         : (
                                             <tr>
@@ -970,7 +1070,7 @@ export default function MonthlyReport() {
                                 {filteredReports.length > 0 && (
                                     <tfoot>
                                         <tr className="bg-slate-900 text-white">
-                                            <td colSpan="5" className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
+                                            <td colSpan={isSuperAdmin ? 5 : 6} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
                                             <td className="px-5 py-4 text-right font-black text-emerald-400 text-base">{formatRupiah(totalNilai)}</td>
                                             <td colSpan="4"></td>
                                         </tr>
