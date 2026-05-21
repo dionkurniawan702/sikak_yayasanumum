@@ -28,10 +28,11 @@ function AsetBadge({ kategori, umurEkonomis }) {
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, isSuperAdmin, idx }) {
+function ReportRow({ report, units, expenseItems, isSuperAdmin, idx }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    const expenseItemName = expenseItems?.find(e => e.id === report.expenseItemId)?.name || '—';
 
     return (
         <>
@@ -68,6 +69,9 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
                     <span className="text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</span>
                 </td>
                 <td className="px-5 py-4 text-center">
+                    <span className="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-widest">{expenseItemName}</span>
+                </td>
+                <td className="px-5 py-4 text-center">
                     <AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} />
                 </td>
                 <td className="px-5 py-4 text-center">
@@ -99,7 +103,7 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
             {/* Accordion Detail */}
             {open && (
                 <tr className="bg-slate-50/80 border-b border-slate-100">
-                    <td colSpan="9" className="px-8 py-6">
+                    <td colSpan="10" className="px-8 py-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Rincian Pembelian */}
                             <div className="space-y-3">
@@ -899,6 +903,7 @@ export default function MonthlyReport() {
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Mata Anggaran</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Kategori</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
                                         <th className="px-5 py-3 w-8"></th>
@@ -907,11 +912,11 @@ export default function MonthlyReport() {
                                 <tbody>
                                     {filteredReports.length > 0
                                         ? filteredReports.map((report, idx) => (
-                                            <ReportRow key={report.id} report={report} units={units} isSuperAdmin={isSuperAdmin} idx={idx} />
+                                            <ReportRow key={report.id} report={report} units={units} expenseItems={expenseItems} isSuperAdmin={isSuperAdmin} idx={idx} />
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="9" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
+                                                <td colSpan="10" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
                                                     {baseReports.length === 0 ? 'Belum ada laporan yang dibuat.' : 'Tidak ada data yang cocok dengan filter.'}
                                                 </td>
                                             </tr>
@@ -922,7 +927,7 @@ export default function MonthlyReport() {
                                         <tr className="bg-slate-900 text-white">
                                             <td colSpan="5" className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
                                             <td className="px-5 py-4 text-right font-black text-emerald-400 text-base">{formatRupiah(totalNilai)}</td>
-                                            <td colSpan="3"></td>
+                                            <td colSpan="4"></td>
                                         </tr>
                                     </tfoot>
                                 )}
@@ -1038,7 +1043,7 @@ export default function MonthlyReport() {
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="8" className="px-8 py-20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
+                                                <td colSpan="8" className="px-8 py-4 bg-indigo-50/20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
                                             </tr>
                                         )}
                                 </tbody>
