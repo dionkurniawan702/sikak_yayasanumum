@@ -247,12 +247,18 @@ export default function BOSMonthlyReport() {
     const bosReports = useMemo(() => {
         return (budgetReports || []).filter(r => {
             if (r.academicYearId !== globalAcademicYearId) return false;
-            if (!isSuperAdmin && r.unitId !== myUnitId) return false;
             // Link to a BOS request
             const req = budgetRequests.find(br => br.id === r.budgetRequestId);
-            return req?.items?.[0]?.planId?.endsWith('-BOS');
+            if (!req?.items?.[0]?.planId?.endsWith('-BOS')) return false;
+
+            if (isSuperAdmin) {
+                if (selectedUnitFilter !== 'ALL') return r.unitId === selectedUnitFilter;
+                return true;
+            }
+            if (myUnitId) return r.unitId === myUnitId;
+            return false;
         });
-    }, [budgetReports, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId]);
+    }, [budgetReports, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, selectedUnitFilter]);
 
     const filteredReports = useMemo(() => {
         return bosReports.filter(r => {
@@ -304,19 +310,31 @@ export default function BOSMonthlyReport() {
                     </p>
                 </div>
 
-                <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                    <button 
-                        onClick={() => setActiveTab('pending')}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Perlu Dilaporkan ({pendingBOSReporting.length})
-                    </button>
-                    <button 
-                        onClick={() => setActiveTab('history')}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                    >
-                        Riwayat & Verifikasi
-                    </button>
+                <div className="flex flex-col md:flex-row items-center gap-3">
+                    <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+                        <button 
+                            onClick={() => setActiveTab('pending')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Perlu Dilaporkan ({pendingBOSReporting.length})
+                        </button>
+                        <button 
+                            onClick={() => setActiveTab('history')}
+                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                        >
+                            Riwayat & Verifikasi
+                        </button>
+                    </div>
+                    {isSuperAdmin && (
+                        <select 
+                            value={selectedUnitFilter} 
+                            onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-emerald-100 outline-none cursor-pointer shadow-sm h-10"
+                        >
+                            <option value="ALL">Semua Unit</option>
+                            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                    )}
                 </div>
             </div>
 
@@ -341,43 +359,7 @@ export default function BOSMonthlyReport() {
 
             {activeTab === 'pending' ? (
                 <div className="space-y-4">
-                    {/* Superadmin: Unit Filter Tabs with green notification badges */}
-                    {isSuperAdmin && pendingBOSReporting.length > 0 && (
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm mb-4">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 italic">Filter Berdasarkan Unit</p>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    onClick={() => setSelectedUnitFilter('ALL')}
-                                    className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
-                                        selectedUnitFilter === 'ALL'
-                                            ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                                            : 'bg-white text-slate-500 border-slate-200 hover:border-emerald-200'
-                                    }`}
-                                >
-                                    Semua Unit
-                                    {pendingBOSReporting.length > 0 && (
-                                        <span className="ml-2 bg-amber-400 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{pendingBOSReporting.length}</span>
-                                    )}
-                                </button>
-                                {units.filter(u => pendingCountByUnit[u.id]).map(u => (
-                                    <button
-                                        key={u.id}
-                                        onClick={() => setSelectedUnitFilter(u.id)}
-                                        className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
-                                            selectedUnitFilter === u.id
-                                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-md'
-                                                : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-200'
-                                        }`}
-                                    >
-                                        {u.name}
-                                        <span className="ml-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
-                                            {pendingCountByUnit[u.id]}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-                    )}
+
 
                     {pendingBOSReporting.length === 0 ? (
                         <div className="bg-white p-20 rounded-[3rem] border border-slate-100 shadow-sm text-center flex flex-col items-center">

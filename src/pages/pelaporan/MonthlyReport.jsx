@@ -390,9 +390,12 @@ export default function MonthlyReport() {
             const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
             if (sourceMode === 'BOS' && !isBosReport) return false;
             if (sourceMode === 'YAYASAN' && isBosReport) return false;
+            if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
+                if (rel.unitId !== selectedUnitFilter && rel.fieldId !== selectedUnitFilter) return false;
+            }
             return true;
         });
-    }, [budgetReports, globalAcademicYearId, sourceMode]);
+    }, [budgetReports, globalAcademicYearId, sourceMode, isSuperAdmin, selectedUnitFilter]);
 
     const [selectedReportIds, setSelectedReportIds] = useState([]);
 
@@ -513,12 +516,17 @@ export default function MonthlyReport() {
             if (sourceMode === 'BOS' && !isBosReport) return false;
             if (sourceMode === 'YAYASAN' && isBosReport) return false;
 
-            if (isSuperAdmin) return true;
+            if (isSuperAdmin) {
+                if (selectedUnitFilter !== 'ALL') {
+                    return rel.unitId === selectedUnitFilter || rel.fieldId === selectedUnitFilter;
+                }
+                return true;
+            }
             if (myUnitId) return rel.unitId === myUnitId;
             if (myFieldId) return rel.fieldId === myFieldId;
             return false;
         });
-    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode, selectedUnitFilter]);
 
     // Apply filters to history
     const filteredReports = useMemo(() => {
@@ -725,32 +733,49 @@ export default function MonthlyReport() {
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
-                    <button
-                        onClick={() => setActiveTab('pending')}
-                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
-                    >
-                        Perlu Dilaporkan
-                        {pendingItems.length > 0 && (
-                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('history')}
-                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
-                    >
-                        Riwayat Laporan
-                    </button>
-                    {isSuperAdmin && (
+                <div className="flex flex-col md:flex-row items-center gap-3">
+                    <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
                         <button
-                            onClick={() => setActiveTab('verification')}
-                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-indigo-600 shadow-sm shadow-indigo-500/5' : 'text-slate-500'}`}
+                            onClick={() => setActiveTab('pending')}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                         >
-                            Verifikasi Laporan
-                            {verificationReports.length > 0 && (
-                                <span className="ml-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{verificationReports.length}</span>
+                            Perlu Dilaporkan
+                            {pendingItems.length > 0 && (
+                                <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
                             )}
                         </button>
+                        <button
+                            onClick={() => setActiveTab('history')}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
+                        >
+                            Riwayat Laporan
+                        </button>
+                        {isSuperAdmin && (
+                            <button
+                                onClick={() => setActiveTab('verification')}
+                                className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-indigo-600 shadow-sm shadow-indigo-500/5' : 'text-slate-500'}`}
+                            >
+                                Verifikasi Laporan
+                                {verificationReports.length > 0 && (
+                                    <span className="ml-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{verificationReports.length}</span>
+                                )}
+                            </button>
+                        )}
+                    </div>
+                    {isSuperAdmin && (
+                        <select 
+                            value={selectedUnitFilter} 
+                            onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer h-10"
+                        >
+                            <option value="ALL">Semua Unit & Bidang</option>
+                            <optgroup label="Bidang">
+                                {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                            </optgroup>
+                            <optgroup label="Unit Pendidikan">
+                                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                            </optgroup>
+                        </select>
                     )}
                 </div>
             </div>
@@ -760,43 +785,7 @@ export default function MonthlyReport() {
                     {/* List of pending/draft reports */}
                     <div className="lg:col-span-2 space-y-6">
 
-                        {/* Superadmin: Unit Filter Tabs with green notification badges */}
-                        {isSuperAdmin && (
-                            <div className="mb-6">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Filter Berdasarkan Unit</p>
-                                <div className="flex flex-wrap gap-2">
-                                    <button
-                                        onClick={() => setSelectedUnitFilter('ALL')}
-                                        className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
-                                            selectedUnitFilter === 'ALL'
-                                                ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                                                : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200'
-                                        }`}
-                                    >
-                                        Semua Unit
-                                        {pendingItems.length > 0 && (
-                                            <span className="ml-2 bg-amber-400 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
-                                        )}
-                                    </button>
-                                    {[...units, ...fields].filter(u => pendingCountByUnit[u.id]).map(u => (
-                                        <button
-                                            key={u.id}
-                                            onClick={() => setSelectedUnitFilter(u.id)}
-                                            className={`relative px-4 py-2 rounded-2xl text-[11px] font-black transition-all border ${
-                                                selectedUnitFilter === u.id
-                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
-                                                    : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-200'
-                                            }`}
-                                        >
-                                            {u.name}
-                                            <span className="ml-2 bg-emerald-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full">
-                                                {pendingCountByUnit[u.id]}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+
 
                         <div className="flex items-center gap-2 mb-2 px-2">
                             <AlertCircle size={16} className="text-blue-500" />
