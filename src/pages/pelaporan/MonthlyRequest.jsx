@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -12,6 +12,7 @@ export default function MonthlyRequest() {
     const [selectedComponents, setSelectedComponents] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
+    const [reviewRequest, setReviewRequest] = useState(null); // { req, accIds: [], tolakIds: [] }
     const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'warning' }
 
     const showToast = useCallback((message, type = 'success') => {
@@ -224,6 +225,74 @@ export default function MonthlyRequest() {
         setShowRequestModal(false);
         setSelectedComponents([]);
         showToast('Permintaan dana berhasil diajukan!');
+    };
+
+    const handleSaveReview = async () => {
+        setProcessingId('saving-review');
+        try {
+            const { req, accIds, tolakIds } = reviewRequest;
+            
+            const accItems = req.items.filter(i => accIds.includes(i.componentId));
+            const tolakItems = req.items.filter(i => tolakIds.includes(i.componentId));
+            const pendingItems = req.items.filter(i => !accIds.includes(i.componentId) && !tolakIds.includes(i.componentId));
+            
+            // If all are ACC
+            if (accItems.length === req.items.length) {
+                const updated = { ...req, status: 'APPROVED', notified: false };
+                dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+            } 
+            // If all are TOLAK
+            else if (tolakItems.length === req.items.length) {
+                const reason = window.prompt('Alasan penolakan keseluruhan:');
+                const updated = { ...req, status: 'REJECTED', rejectionReason: reason || 'Ditolak Superadmin', notified: false };
+                dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+            }
+            // Partial Action
+            else {
+                // 1. Handle ACC Items
+                if (accItems.length > 0) {
+                    if (pendingItems.length === 0 && tolakItems.length > 0) {
+                        // Original request becomes the APPROVED one
+                        const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
+                        const updated = { ...req, status: 'APPROVED', items: accItems, totalAmount: accTotal, notified: false };
+                        dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                    } else {
+                        // Create a NEW request for the APPROVED items
+                        const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
+                        const newAcc = { ...req, id: generateId('REQ') + '-ACC', status: 'APPROVED', items: accItems, totalAmount: accTotal, notified: false };
+                        dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newAcc });
+                        await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newAcc }, state);
+                    }
+                }
+                
+                // 2. Handle TOLAK Items
+                if (tolakItems.length > 0) {
+                    const tolakTotal = tolakItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
+                    const newRej = { ...req, id: req.id + '-REJ', status: 'REJECTED', items: tolakItems, totalAmount: tolakTotal, rejectionReason: 'Sebagian ditolak', notified: false };
+                    dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRej });
+                    await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newRej }, state);
+                }
+                
+                // 3. Handle PENDING Items (Remaining original request)
+                if (pendingItems.length > 0) {
+                    const pendingTotal = pendingItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
+                    const updatedPending = { ...req, items: pendingItems, totalAmount: pendingTotal, status: 'PENDING' };
+                    dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updatedPending });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updatedPending }, state);
+                }
+            }
+            
+            showToast('Persetujuan berhasil disimpan!');
+            setReviewRequest(null);
+        } catch (err) {
+            console.error(err);
+            showToast('Gagal memproses persetujuan.', 'error');
+        } finally {
+            setProcessingId(null);
+        }
     };
 
     const handlePrint = (req) => {
@@ -490,53 +559,13 @@ export default function MonthlyRequest() {
                                     </div>
                                     <div className="flex items-center gap-2">
                                         {isSuperAdmin && req.status === 'PENDING' && (
-                                            <>
-                                                <button
-                                                    onClick={async () => {
-                                                        setProcessingId(req.id);
-                                                        try {
-                                                            const updated = { ...req, status: 'APPROVED', notified: false };
-                                                            dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                            await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
-                                                            showToast('Permintaan dana berhasil disetujui ✓');
-                                                        } catch (err) {
-                                                            console.error('[ACC Error]', err);
-                                                            showToast('Gagal sinkron ke server, coba lagi.', 'error');
-                                                        } finally {
-                                                            setProcessingId(null);
-                                                        }
-                                                    }}
-                                                    disabled={processingId === req.id}
-                                                    className="p-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {processingId === req.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} strokeWidth={3} />}
-                                                    ACC
-                                                </button>
-                                                <button
-                                                    onClick={async () => {
-                                                        const reason = window.prompt('Alasan penolakan:');
-                                                        if (reason !== null) {
-                                                            setProcessingId(req.id);
-                                                            try {
-                                                                const updated = { ...req, status: 'REJECTED', rejectionReason: reason, notified: false };
-                                                                dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                                                                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
-                                                                showToast('Permintaan dana berhasil ditolak.');
-                                                            } catch (err) {
-                                                                console.error('[TOLAK Error]', err);
-                                                                showToast('Gagal sinkron ke server, coba lagi.', 'error');
-                                                            } finally {
-                                                                setProcessingId(null);
-                                                            }
-                                                        }
-                                                    }}
-                                                    disabled={processingId === req.id}
-                                                    className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed"
-                                                >
-                                                    {processingId === req.id ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} strokeWidth={3} />}
-                                                    TOLAK
-                                                </button>
-                                            </>
+                                            <button
+                                                onClick={() => setReviewRequest({ req, accIds: [], tolakIds: [] })}
+                                                className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
+                                            >
+                                                <Search size={16} strokeWidth={3} />
+                                                REVIEW RINCIAN
+                                            </button>
                                         )}
                                         {isSuperAdmin && (req.status === 'APPROVED' || req.status === 'REJECTED') && (
                                             <button
@@ -684,6 +713,90 @@ export default function MonthlyRequest() {
                                 >
                                     <Send size={18} />
                                     AJUKAN PENCAIRAN {sourceMode}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {/* Modal Review Permintaan (Superadmin) */}
+            {reviewRequest && (
+                <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setReviewRequest(null)} />
+                    <div className="bg-slate-50 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl flex flex-col animate-in slide-in-from-bottom-8">
+                        <div className="p-10 bg-white border-b border-slate-100 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-3xl font-black text-slate-900 mb-1">Review Rincian Dana</h2>
+                                <p className="text-slate-500 font-medium italic">Anda dapat menyetujui (ACC) atau Menolak per-rincian. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></p>
+                            </div>
+                            <div className="flex gap-3">
+                                <button onClick={() => {
+                                    setReviewRequest(prev => ({ ...prev, accIds: prev.req.items.map(i => i.componentId), tolakIds: [] }));
+                                }} className="px-5 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center gap-2"><Check size={16}/> ACC SEMUA</button>
+                                <button onClick={() => {
+                                    setReviewRequest(prev => ({ ...prev, tolakIds: prev.req.items.map(i => i.componentId), accIds: [] }));
+                                }} className="px-5 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center gap-2"><XCircle size={16}/> TOLAK SEMUA</button>
+                            </div>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-slate-900 bg-slate-50/50">
+                            <div className="grid grid-cols-1 gap-4">
+                                {reviewRequest.req.items.map(item => {
+                                    const isAcc = reviewRequest.accIds.includes(item.componentId);
+                                    const isTolak = reviewRequest.tolakIds.includes(item.componentId);
+                                    
+                                    return (
+                                        <div key={item.componentId} className={`p-6 rounded-[2rem] border-2 transition-all flex items-center justify-between group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
+                                            <div className="flex items-center gap-6">
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isAcc ? 'bg-emerald-50 text-emerald-600' : isTolak ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                    {isAcc ? <Check size={24} strokeWidth={3} /> : isTolak ? <XCircle size={24} strokeWidth={3} /> : <FileText size={20} />}
+                                                </div>
+                                                <div>
+                                                    <h4 className="font-black text-lg tracking-tight leading-tight mb-1">{item.name}</h4>
+                                                    <p className={`text-[12px] font-bold ${isAcc ? 'text-emerald-600' : isTolak ? 'text-rose-600' : 'text-slate-500'}`}>{formatRupiah(item.amount)}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex gap-3">
+                                                <button onClick={() => {
+                                                    setReviewRequest(prev => ({
+                                                        ...prev,
+                                                        accIds: isAcc ? prev.accIds.filter(id => id !== item.componentId) : [...prev.accIds, item.componentId],
+                                                        tolakIds: prev.tolakIds.filter(id => id !== item.componentId)
+                                                    }));
+                                                }} className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isAcc ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}`}>
+                                                    <Check size={16} className="inline mr-2" /> ACC
+                                                </button>
+                                                <button onClick={() => {
+                                                    setReviewRequest(prev => ({
+                                                        ...prev,
+                                                        tolakIds: isTolak ? prev.tolakIds.filter(id => id !== item.componentId) : [...prev.tolakIds, item.componentId],
+                                                        accIds: prev.accIds.filter(id => id !== item.componentId)
+                                                    }));
+                                                }} className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isTolak ? 'bg-rose-500 border-rose-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-rose-500 hover:text-rose-500'}`}>
+                                                    <XCircle size={16} className="inline mr-2" /> TOLAK
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        <div className="p-10 bg-white border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Di-ACC</p>
+                                <h3 className="text-3xl font-black text-emerald-600 italic tracking-tighter">
+                                    {formatRupiah(reviewRequest.req.items.filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}
+                                </h3>
+                            </div>
+                            <div className="flex gap-4">
+                                <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                                <button
+                                    onClick={handleSaveReview}
+                                    disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0)}
+                                    className="btn bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all"
+                                >
+                                    {processingId === 'saving-review' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                    SIMPAN PERSETUJUAN
                                 </button>
                             </div>
                         </div>
