@@ -397,6 +397,20 @@ export default function MonthlyReport() {
         });
     }, [budgetReports, globalAcademicYearId, sourceMode, isSuperAdmin, selectedUnitFilter]);
 
+    const pendingVerificationUnits = useMemo(() => {
+        const set = new Set();
+        (budgetReports || []).forEach(rel => {
+            if (rel.status !== 'PENDING') return;
+            if (rel.academicYearId !== globalAcademicYearId) return;
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return;
+            if (sourceMode === 'YAYASAN' && isBosReport) return;
+            if (rel.unitId) set.add(rel.unitId);
+            if (rel.fieldId) set.add(rel.fieldId);
+        });
+        return set;
+    }, [budgetReports, globalAcademicYearId, sourceMode]);
+
     const [selectedReportIds, setSelectedReportIds] = useState([]);
 
     React.useEffect(() => {
@@ -733,49 +747,32 @@ export default function MonthlyReport() {
                         )}
                     </div>
                 </div>
-                <div className="flex flex-col md:flex-row items-center gap-3">
-                    <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
+                <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
+                    <button
+                        onClick={() => setActiveTab('pending')}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
+                    >
+                        Perlu Dilaporkan
+                        {pendingItems.length > 0 && (
+                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
+                        )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('history')}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
+                    >
+                        Riwayat Laporan
+                    </button>
+                    {isSuperAdmin && (
                         <button
-                            onClick={() => setActiveTab('pending')}
-                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
+                            onClick={() => setActiveTab('verification')}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-indigo-600 shadow-sm shadow-indigo-500/5' : 'text-slate-500'}`}
                         >
-                            Perlu Dilaporkan
-                            {pendingItems.length > 0 && (
-                                <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
+                            Verifikasi Laporan
+                            {verificationReports.length > 0 && (
+                                <span className="ml-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{verificationReports.length}</span>
                             )}
                         </button>
-                        <button
-                            onClick={() => setActiveTab('history')}
-                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
-                        >
-                            Riwayat Laporan
-                        </button>
-                        {isSuperAdmin && (
-                            <button
-                                onClick={() => setActiveTab('verification')}
-                                className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-indigo-600 shadow-sm shadow-indigo-500/5' : 'text-slate-500'}`}
-                            >
-                                Verifikasi Laporan
-                                {verificationReports.length > 0 && (
-                                    <span className="ml-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{verificationReports.length}</span>
-                                )}
-                            </button>
-                        )}
-                    </div>
-                    {isSuperAdmin && (
-                        <select 
-                            value={selectedUnitFilter} 
-                            onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer h-10"
-                        >
-                            <option value="ALL">Semua Unit & Bidang</option>
-                            <optgroup label="Bidang">
-                                {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
-                            </optgroup>
-                            <optgroup label="Unit Pendidikan">
-                                {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                            </optgroup>
-                        </select>
                     )}
                 </div>
             </div>
@@ -1072,12 +1069,27 @@ export default function MonthlyReport() {
             ) : activeTab === 'verification' && isSuperAdmin ? (
                 /* VERIFICATION TAB */
                 <div className="space-y-6">
-                    <div className="card p-6 bg-indigo-50 border-indigo-100 flex items-center gap-4">
-                        <AlertCircle size={24} className="text-indigo-600" />
-                        <div>
-                            <h3 className="font-black text-indigo-900 text-lg">Persetujuan Laporan Realisasi</h3>
-                            <p className="text-xs text-indigo-600 font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
+                    <div className="card p-6 bg-indigo-50 border-indigo-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <AlertCircle size={24} className="text-indigo-600" />
+                            <div>
+                                <h3 className="font-black text-indigo-900 text-lg">Persetujuan Laporan Realisasi</h3>
+                                <p className="text-xs text-indigo-600 font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
+                            </div>
                         </div>
+                        <select 
+                            value={selectedUnitFilter} 
+                            onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                            className="bg-white border-0 rounded-xl px-4 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer shadow-sm shrink-0 w-full md:w-auto"
+                        >
+                            <option value="ALL">Semua Unit & Bidang</option>
+                            <optgroup label="Bidang">
+                                {fields.map(f => <option key={f.id} value={f.id} className={pendingVerificationUnits.has(f.id) ? 'text-rose-600' : ''}>{f.name} {pendingVerificationUnits.has(f.id) ? '🔴' : ''}</option>)}
+                            </optgroup>
+                            <optgroup label="Unit Pendidikan">
+                                {units.map(u => <option key={u.id} value={u.id} className={pendingVerificationUnits.has(u.id) ? 'text-rose-600' : ''}>{u.name} {pendingVerificationUnits.has(u.id) ? '🔴' : ''}</option>)}
+                            </optgroup>
+                        </select>
                     </div>
 
                     <div className="card overflow-hidden rounded-2xl border-0 shadow-xl animate-in fade-in duration-300">

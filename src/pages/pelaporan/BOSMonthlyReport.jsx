@@ -260,6 +260,19 @@ export default function BOSMonthlyReport() {
         });
     }, [budgetReports, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, selectedUnitFilter]);
 
+    const pendingVerificationUnits = useMemo(() => {
+        const set = new Set();
+        (budgetReports || []).forEach(r => {
+            if (r.status !== 'PENDING') return;
+            if (r.academicYearId !== globalAcademicYearId) return;
+            // Link to a BOS request
+            const req = budgetRequests.find(br => br.id === r.budgetRequestId);
+            if (!req?.items?.[0]?.planId?.endsWith('-BOS')) return;
+            if (r.unitId) set.add(r.unitId);
+        });
+        return set;
+    }, [budgetReports, budgetRequests, globalAcademicYearId]);
+
     const filteredReports = useMemo(() => {
         return bosReports.filter(r => {
             const q = searchTerm.toLowerCase();
@@ -310,31 +323,19 @@ export default function BOSMonthlyReport() {
                     </p>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center gap-3">
-                    <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                        <button 
-                            onClick={() => setActiveTab('pending')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            Perlu Dilaporkan ({pendingBOSReporting.length})
-                        </button>
-                        <button 
-                            onClick={() => setActiveTab('history')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
-                        >
-                            Riwayat & Verifikasi
-                        </button>
-                    </div>
-                    {isSuperAdmin && (
-                        <select 
-                            value={selectedUnitFilter} 
-                            onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-emerald-100 outline-none cursor-pointer shadow-sm h-10"
-                        >
-                            <option value="ALL">Semua Unit</option>
-                            {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                        </select>
-                    )}
+                <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
+                    <button 
+                        onClick={() => setActiveTab('pending')}
+                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Perlu Dilaporkan ({pendingBOSReporting.length})
+                    </button>
+                    <button 
+                        onClick={() => setActiveTab('history')}
+                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                        Riwayat & Verifikasi
+                    </button>
                 </div>
             </div>
 
@@ -437,6 +438,16 @@ export default function BOSMonthlyReport() {
                                 <History size={16} />
                                 <span className="text-[10px] font-black uppercase tracking-widest">Data Realisasi BOS</span>
                             </div>
+                            {isSuperAdmin && (
+                                <select 
+                                    value={selectedUnitFilter} 
+                                    onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                                    className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-emerald-100 outline-none cursor-pointer shadow-sm w-[200px]"
+                                >
+                                    <option value="ALL">Semua Unit</option>
+                                    {units.map(u => <option key={u.id} value={u.id} className={pendingVerificationUnits.has(u.id) ? 'text-rose-600' : ''}>{u.name} {pendingVerificationUnits.has(u.id) ? '🔴' : ''}</option>)}
+                                </select>
+                            )}
                             <div className="flex-1 flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-2xl px-5 py-3 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
                                 <Search size={16} className="text-slate-400" />
                                 <input 
