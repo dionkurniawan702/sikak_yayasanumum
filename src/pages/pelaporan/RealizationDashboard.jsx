@@ -29,6 +29,7 @@ export default function RealizationDashboard() {
         expenseItems = [], 
         rabPlans = [],
         budgetReports = [],
+        budgetRequests = [],
         academicYears = [],
         bosAllocations = []
     } = state;
@@ -177,6 +178,49 @@ export default function RealizationDashboard() {
                 }
             }
 
+            // Exhaustive search across all plans if componentId exists but planId didn't match
+            if (!exId && report.componentId) {
+                for (const plan of rabPlans) {
+                    if (plan.expense) {
+                        for (const [itemId, plans] of Object.entries(plan.expense)) {
+                            const itemPlans = Array.isArray(plans) ? plans : [plans];
+                            for (const p of itemPlans) {
+                                if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
+                                    exId = itemId;
+                                    break;
+                                }
+                            }
+                            if (exId) break;
+                        }
+                    }
+                    if (exId) break;
+                }
+            }
+
+            if (!exId && report.budgetRequestId) {
+                const req = budgetRequests.find(r => r.id === report.budgetRequestId);
+                if (req) {
+                    if (report.componentId && req.items) {
+                        const reqItem = req.items.find(i => i.componentId === report.componentId);
+                        if (reqItem && reqItem.expenseItemId) {
+                            exId = reqItem.expenseItemId;
+                        }
+                    }
+                    if (!exId && req.expenseItemId) {
+                        exId = req.expenseItemId;
+                    }
+                }
+            }
+            
+            // Last resort: Match by category name
+            if (!exId && report.category) {
+                const catLower = report.category.toLowerCase().trim();
+                const matched = expenseItems.find(e => e.name.toLowerCase().trim() === catLower || catLower.includes(e.name.toLowerCase().trim()));
+                if (matched) {
+                    exId = matched.id;
+                }
+            }
+
             const exItem = expenseItems.find(e => e.id === exId);
             const itemName = (exItem?.name || '').toLowerCase().trim();
             const isField = (exItem && exItem.fieldId && !exItem.unitId) || 
@@ -298,7 +342,7 @@ export default function RealizationDashboard() {
             totalUnitSpent,
             totalUnitRemaining
         };
-    }, [sourceMode, selectedAcademicYearId, units, fields, rabPlans, budgetReports, expenseItems, currentUser]);
+    }, [sourceMode, selectedAcademicYearId, units, fields, rabPlans, budgetReports, budgetRequests, expenseItems, currentUser]);
 
     const absorptionRate = dashboardData.totalBudget > 0 ? (dashboardData.totalSpent / dashboardData.totalBudget) * 100 : 0;
 
