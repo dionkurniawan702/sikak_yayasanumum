@@ -16,7 +16,7 @@ export default function MonthlyRequest() {
     const [toast, setToast] = useState(null); // { message, type: 'success'|'error'|'warning' }
     
     // NEW FILTERS FOR SUPERADMIN
-    const [filterUnit, setFilterUnit] = useState('ALL');
+    const [filterUnit, setFilterUnit] = useState('NONE');
     const [filterStatus, setFilterStatus] = useState('ALL');
     const [modalSearchTerm, setModalSearchTerm] = useState('');
 
@@ -131,6 +131,9 @@ export default function MonthlyRequest() {
             if (filterStatus !== 'ALL' && req.status !== filterStatus) return false;
 
             if (isSuperAdmin) {
+                // Require Superadmin to select a unit first
+                if (filterUnit === 'NONE') return false;
+
                 // Unit Filter for Superadmin
                 if (filterUnit !== 'ALL') {
                     return req.unitId === filterUnit || req.fieldId === filterUnit;
@@ -536,7 +539,8 @@ export default function MonthlyRequest() {
                             onChange={(e) => setFilterUnit(e.target.value)}
                             className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
                         >
-                            <option value="ALL">Semua Unit & Bidang</option>
+                            <option value="NONE" disabled>Pilih Unit & Bidang</option>
+                            <option value="ALL">Semua Unit & Bidang (Tampilkan Semua)</option>
                             <optgroup label="Unit Pendidikan">
                                 {units.map(u => <option key={u.id} value={u.id}>{pendingUnitIds.has(u.id) ? '🔴 ' : ''}{u.name}</option>)}
                             </optgroup>
@@ -561,8 +565,20 @@ export default function MonthlyRequest() {
             <div className="grid grid-cols-1 gap-4">
                 {filteredRequests.length === 0 ? (
                     <div className="p-20 text-center bg-white/40 backdrop-blur-md rounded-[32px] border-2 border-dashed border-slate-200">
-                        <FileText size={48} className="mx-auto text-slate-300 mb-4" />
-                        <p className="font-bold text-slate-400 italic">Belum ada riwayat permintaan dana.</p>
+                        {isSuperAdmin && filterUnit === 'NONE' ? (
+                            <>
+                                <Search size={48} className="mx-auto text-indigo-300 mb-4" />
+                                <h3 className="text-xl font-black text-slate-700 mb-2">Silakan Pilih Unit/Bidang Terlebih Dahulu</h3>
+                                <p className="font-medium text-slate-500 max-w-md mx-auto">
+                                    Pilih unit pendidikan atau bidang pada menu di atas untuk memunculkan riwayat pengajuan dananya.
+                                </p>
+                            </>
+                        ) : (
+                            <>
+                                <FileText size={48} className="mx-auto text-slate-300 mb-4" />
+                                <p className="font-bold text-slate-400 italic">Belum ada riwayat permintaan dana.</p>
+                            </>
+                        )}
                     </div>
                 ) : (
                     filteredRequests.map(req => (
