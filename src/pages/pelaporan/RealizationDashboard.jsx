@@ -159,7 +159,24 @@ export default function RealizationDashboard() {
             (isBOS ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
         ).forEach(report => {
             const amount = parseFloat(report.amount) || 0;
-            const exId = report.expenseItemId;
+            let exId = report.expenseItemId;
+            
+            if (!exId && report.planId && report.componentId) {
+                const plan = rabPlans.find(p => p.id === report.planId);
+                if (plan && plan.expense) {
+                    for (const [itemId, plans] of Object.entries(plan.expense)) {
+                        const itemPlans = Array.isArray(plans) ? plans : [plans];
+                        for (const p of itemPlans) {
+                            if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
+                                exId = itemId;
+                                break;
+                            }
+                        }
+                        if (exId) break;
+                    }
+                }
+            }
+
             const exItem = expenseItems.find(e => e.id === exId);
             const itemName = (exItem?.name || '').toLowerCase().trim();
             const isField = (exItem && exItem.fieldId && !exItem.unitId) || 

@@ -245,7 +245,7 @@ export default function MonthlyReport() {
                             reqDate: req.date,
                             reqDescription: req.description,
                             reqUnitId: req.unitId,
-                            expenseItemId: req.expenseItemId,
+                            expenseItemId: item.expenseItemId || req.expenseItemId,
                             sisa: parseFloat(item.amount || 0) - reportedComp
                         });
                     }
@@ -539,7 +539,8 @@ export default function MonthlyReport() {
             harga: formData.harga,
             kategoriAset: formData.kategoriAset,
             umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
-            status: 'DRAFT'
+            status: 'DRAFT',
+            expenseItemId: selectedRequest.expenseItemId
         };
 
         if (editingDraftId) {

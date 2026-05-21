@@ -174,7 +174,8 @@ export default function MonthlyRequest() {
                                     total: monthlyAmount, // Only request the amount planned for THIS month
                                     planId: plan.id,
                                     itemMasterName: state.expenseItems.find(i => i.id === itemId)?.name || 'Item',
-                                    planDescription: p.description
+                                    planDescription: p.description,
+                                    expenseItemId: itemId
                                 });
                             }
                         }
@@ -213,7 +214,8 @@ export default function MonthlyRequest() {
                 componentId: c.id,
                 name: c.label || c.name,
                 amount: c.total,
-                planId: c.planId
+                planId: c.planId,
+                expenseItemId: c.expenseItemId
             }))
         };
 
