@@ -244,22 +244,31 @@ export default function FieldUnitManagement() {
 
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
 
-    const handleDeduplicate = async () => {
-        if (!window.confirm('Bersihkan semua data duplikat (Bidang/Unit dengan nama yang sama)? Proses ini akan menggabungkan data dan tidak bisa dibatalkan.')) return;
+    const handleDeduplicate = async (silent = false) => {
+        if (!silent && !window.confirm('Bersihkan semua data duplikat (Bidang/Unit dengan nama yang sama)? Proses ini akan menggabungkan data dan tidak bisa dibatalkan.')) return;
         
-        setLoading(true);
+        if (!silent) setLoading(true);
         try {
             const response = await api.post('/repair/deduplicate');
-            window.alert(`${response.message}\n\nDetail:\n${response.details.join('\n')}`);
+            if (!silent) {
+                window.alert(`${response.message}\n\nDetail:\n${response.details.join('\n')}`);
+            }
             // Force refresh data
             const freshData = await api.fetchAllData();
             if (freshData) dispatch({ type: 'SET_ALL_DATA', payload: freshData });
         } catch (err) {
-            window.alert('Gagal membersihkan duplikat: ' + err.message);
+            if (!silent) window.alert('Gagal membersihkan duplikat: ' + err.message);
+            console.error('Auto deduplicate failed:', err);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
+
+    // Auto-clean duplicates on mount to fix the 200% database corruption automatically
+    useEffect(() => {
+        handleDeduplicate(true);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleDuplicateUnit = async (sourceUnit) => {
         const newName = window.prompt(`Masukkan nama unit baru (Duplikat dari ${sourceUnit.name}):`, `${sourceUnit.name} 2`);

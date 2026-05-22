@@ -1411,6 +1411,30 @@ router.post('/repair/deduplicate', async (req, res) => {
                 { model: 'expenseProgram', fk: 'fieldId' }
             ]);
 
+            // 1b. Deduplicate DistributionSettings
+            const allDistSettings = await tx.distributionSetting.findMany();
+            const distGroups = {};
+            let distDupsCount = 0;
+            allDistSettings.forEach(s => {
+                const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}-${s.percentage}`;
+                if (!distGroups[key]) distGroups[key] = [];
+                distGroups[key].push(s);
+            });
+            for (const key in distGroups) {
+                const group = distGroups[key];
+                if (group.length > 1) {
+                    const master = group.find(i => !i.isDeleted) || group[0];
+                    const dups = group.filter(i => i.id !== master.id);
+                    for (const dup of dups) {
+                        await tx.distributionSetting.delete({ where: { id: dup.id } });
+                        distDupsCount++;
+                    }
+                }
+            }
+            if (distDupsCount > 0) {
+                results.push(`Removed ${distDupsCount} duplicate distribution settings`);
+            }
+
             // 2. Deduplicate Units (within each field)
             const allUnits = await tx.unit.findMany(); // Manual due to scope (fieldId)
             const unitGroups = {};
