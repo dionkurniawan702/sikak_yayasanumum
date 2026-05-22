@@ -698,13 +698,45 @@ export default function MonthlyReport() {
     };
 
     const handleApproveReport = async (report) => {
-        if (window.confirm('Setujui laporan ini? Jurnal akan dicatat jika diperlukan.')) {
+        if (window.confirm('Setujui laporan ini? Draf Jurnal (Menunggu COA) akan otomatis dibuat.')) {
             setProcessingId(report.id);
-            const updated = { ...report, status: 'APPROVED', notified: false };
+            
+            // 1. Create Draft Journal
+            const journalId = `JRN-${Date.now()}`;
+            const unitName = state.units.find(u => u.id === report.unitId)?.name || '';
+            const fieldName = state.fields.find(f => f.id === report.fieldId)?.name || '';
+            const expItem = state.expenseItems.find(e => e.id === report.expenseItemId);
+            
+            const expName = expItem?.name || report.description || 'Pengeluaran';
+            const targetName = unitName || fieldName || 'Yayasan';
+            
+            const programId = state.programs.find(p => p.category === report.category)?.id || 'PRG-GEN';
+            
+            const draftJournal = {
+                id: journalId,
+                date: report.date || new Date().toISOString().slice(0, 10),
+                name: targetName,
+                description: `Realisasi: ${expName} - ${targetName}`,
+                reference: report.nomorNota || report.planId || '',
+                proof: report.buktiTeks || '',
+                programId: programId,
+                entries: [
+                    { accountId: '', accountName: 'MENUNGGU COA (Debit)', debit: Number(report.amount) || 0, credit: 0 },
+                    { accountId: '', accountName: 'MENUNGGU COA (Kredit)', debit: 0, credit: Number(report.amount) || 0 }
+                ],
+                isDeleted: false
+            };
+
+            dispatch({ type: 'ADD_JOURNAL', payload: draftJournal });
+            await api.pushAction({ type: 'ADD_JOURNAL', payload: draftJournal }, state);
+
+            // 2. Update Report Status
+            const updated = { ...report, status: 'APPROVED', notified: false, journalId };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            
             setProcessingId(null);
-            alert('Laporan berhasil disetujui');
+            alert('Laporan berhasil disetujui dan draf jurnal otomatis dibuat!');
         }
     };
 

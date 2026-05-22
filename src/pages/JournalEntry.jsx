@@ -124,6 +124,10 @@ export default function JournalEntry() {
 
     function handleSave() {
         if (!date || !description || !isBalanced) return alert('Periksa kembali input jurnal!');
+        
+        const hasEmptyAccount = rows.some(r => !r.accountId && (parseFloat(r.debit) || parseFloat(r.credit)));
+        if (hasEmptyAccount) return alert('Semua baris jurnal yang memiliki nominal harus diisi dengan akun (COA) yang sesuai!');
+
         const entries = rows
             .filter(r => r.accountId && (parseFloat(r.debit) || parseFloat(r.credit)))
             .map(r => ({
@@ -297,7 +301,14 @@ export default function JournalEntry() {
                                     </td>
                                     <td className="px-8 py-4">
                                         <p className="font-bold text-slate-800 text-sm">{j.description}</p>
-                                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
+                                        <div className="flex gap-2 mt-1 items-center">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
+                                            {j.entries?.some(e => !e.accountId) && (
+                                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                    <AlertTriangle size={10} /> Menunggu COA
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="px-8 py-4 text-right font-black text-slate-800">
                                         <CurrencyDisplay value={j.entries.reduce((s, e) => s + e.debit, 0)} />
