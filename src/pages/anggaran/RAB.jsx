@@ -3197,54 +3197,54 @@ function RABContent() {
                 </div>
             ) : (
 
-                /* DETAIL VIEW (SIDEBAR + TABLE/REVIEW) */
-                <div className="flex flex-col lg:flex-row gap-6 min-h-[70vh]">
-                    {/* Sidebar */}
-                    <div className="w-full lg:w-[320px] space-y-6">
+                /* DETAIL VIEW (HEADER + TABLE/REVIEW) */
+                <div className="flex flex-col gap-6 min-h-[70vh]">
+                    {/* Header Info */}
+                    <div className="w-full flex flex-col xl:flex-row gap-6">
                         {/* Selected Entity Card */}
-                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex flex-col items-center">
-                            <div className="p-3 bg-blue-50 rounded-2xl mb-3">
-                                <Building2 size={24} className="text-blue-600" />
+                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 xl:w-1/3">
+                            <div className="p-4 bg-blue-50 rounded-2xl">
+                                <Building2 size={32} className="text-blue-600" />
                             </div>
-                            <h3 className="text-lg font-black text-slate-900 text-center tracking-tight leading-tight">
-                                {isConsolidation ? 'Yayasan (Konsolidasi)' : (
-                                    selectedUnitId.startsWith('FIELD-')
-                                        ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
-                                        : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
-                                )}
-                            </h3>
-                            <p className="text-slate-400 text-[9px] font-black uppercase tracking-widest mt-1 italic">
-                                {isConsolidation ? 'KONSOLIDASI DATA STRATEGIS' : (selectedUnitId.startsWith('FIELD-') ? 'BIDANG STRUKTURAL' : 'UNIT PENDIDIKAN')}
-                            </p>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                                    {isConsolidation ? 'Yayasan (Konsolidasi)' : (
+                                        selectedUnitId.startsWith('FIELD-')
+                                            ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
+                                            : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
+                                    )}
+                                </h3>
+                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">
+                                    {isConsolidation ? 'KONSOLIDASI DATA STRATEGIS' : (selectedUnitId.startsWith('FIELD-') ? 'BIDANG STRUKTURAL' : 'UNIT PENDIDIKAN')}
+                                </p>
+                            </div>
                         </div>
 
-                        {/* Quick Stats Cards in Sidebar */}
-                        <div className="grid grid-cols-1 gap-3">
-                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-5 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">
+                        {/* Quick Stats Cards in Header */}
+                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group flex flex-col justify-center">
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">
                                     {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
                                 </p>
-                                <h3 className="text-xl font-black italic">
+                                <h3 className="text-2xl font-black italic">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget)}
                                 </h3>
                             </div>
                             {isBosRecipient && fundSourceFilter === 'all' && (
-                                <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-5 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group">
-                                    <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">RAP BOS</p>
-                                    <h3 className="text-xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>
+                                <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group flex flex-col justify-center">
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">RAP BOS</p>
+                                    <h3 className="text-2xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>
                                 </div>
                             )}
-                            <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-5 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group">
-                                <p className="text-[8px] font-black uppercase tracking-widest opacity-80 mb-1">Rencana RAB (Total)</p>
-                                <h3 className="text-xl font-black italic">{formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}</h3>
+                            <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group flex flex-col justify-center">
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Rencana RAB (Total)</p>
+                                <h3 className="text-2xl font-black italic">{formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}</h3>
                             </div>
                         </div>
-
-                        {/* Financial Analysis Tooltip / Mini Panel */}
                     </div>
 
                     {/* Content Component */}
-                    <div className="flex-1 bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
+                    <div className="w-full flex-1 bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
                         {/* Tab Switcher */}
                         <div className="bg-slate-50/50 flex border-b border-slate-100">
                             <button
