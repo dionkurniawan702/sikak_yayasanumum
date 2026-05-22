@@ -3068,23 +3068,23 @@ function RABContent() {
                                 Konsolidasi <span className="text-blue-400">Anggaran</span>
                             </h2>
 
-                            <div className={`grid grid-cols-1 md:grid-cols-2 ${isBosRecipient ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-6 lg:gap-8`}>
+                            <div className={`grid grid-cols-1 md:grid-cols-2 ${(isBosRecipient && fundSourceFilter === 'BOS') ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-6 lg:gap-8`}>
                                 <div className="space-y-2 min-w-0">
                                     <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60 truncate" title="Total RAP">Total RAP</p>
                                     <h3 className="text-2xl font-black italic truncate" title={formatRupiah(rapData.totalTarget)}>{formatRupiah(rapData.totalTarget)}</h3>
                                 </div>
-                                {isBosRecipient && (
+                                {isBosRecipient && fundSourceFilter === 'BOS' && (
                                     <div className="space-y-2 min-w-0">
                                         <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest opacity-60 truncate" title="Total RAP BOS">Total RAP BOS</p>
                                         <h3 className="text-2xl font-black italic truncate" title={formatRupiah(totalBosAllocated)}>{formatRupiah(totalBosAllocated)}</h3>
                                     </div>
                                 )}
                                 <div className="space-y-2 min-w-0">
-                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60 truncate" title="Total Rencana Belanja">Total Rencana Belanja</p>
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60 truncate" title="Total RAB">Total RAB</p>
                                     <h3 className="text-2xl font-black italic truncate" title={formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}>{formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}</h3>
                                 </div>
                                 <div className="space-y-2 min-w-0">
-                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60 truncate" title="Sisa Dana Strategis">Sisa Dana Strategis</p>
+                                    <p className="text-[10px] font-black text-blue-300 uppercase tracking-widest opacity-60 truncate" title="Sisa Rencana Anggaran">Sisa Rencana Anggaran</p>
                                     <h3 className={`text-2xl font-black italic truncate ${balance < 0 ? 'text-rose-400' : 'text-emerald-400'}`} title={formatRupiah(balance)}>
                                         {formatRupiah(balance)}
                                     </h3>
