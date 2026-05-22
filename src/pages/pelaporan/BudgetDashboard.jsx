@@ -649,6 +649,7 @@ export default function BudgetDashboard() {
                                                 expandedDetailItems={expandedDetailItems}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isField={true}
+                                                getUnitName={getUnitName}
                                             />
                                         ))}
                                         <tr className="budget-row-total bg-slate-50">

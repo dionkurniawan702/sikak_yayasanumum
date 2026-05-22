@@ -195,25 +195,40 @@ export default function BudgetRow({
                             );
                         })}
 
-                        {/* Traditional Source Breakdown (if no components) */}
-                        {isDetailExpanded && !item.components && item.sources && Object.entries(item.sources).map(([unitId, amount]) => (
-                            <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white">
-                                <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '80px' }}>
-                                    <div className="flex items-center gap-1.5 py-0.5">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
-                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
-                                            {getUnitName ? getUnitName(unitId) : unitId}
+                        {/* Source Breakdown per Unit (for Field/Bidang items) */}
+                        {isDetailExpanded && !item.components && item.sources && Object.keys(item.sources).length > 0 && (
+                            <>
+                                {/* Header Row */}
+                                <tr className="animate-in slide-in-from-left-2 duration-200">
+                                    <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-indigo-50/40" style={{ paddingLeft: '80px' }} colSpan={4}>
+                                        <span className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">
+                                            📌 Kontribusi Per Unit
                                         </span>
-                                    </div>
-                                </td>
-                                <td className="budget-cell budget-cell-number">
-                                    <span className="text-[9px] font-black text-indigo-400 italic">
-                                        {formatCurrency(amount)}
-                                    </span>
-                                </td>
-                                <td colSpan="2" className="budget-cell" />
-                            </tr>
-                        ))}
+                                    </td>
+                                </tr>
+                                {/* Unit rows */}
+                                {Object.entries(item.sources)
+                                    .sort(([, a], [, b]) => b - a)
+                                    .map(([unitId, amount]) => (
+                                    <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white hover:bg-indigo-50/30 transition-colors">
+                                        <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '92px' }}>
+                                            <div className="flex items-center gap-2 py-1">
+                                                <div className="w-1 h-4 rounded-full bg-indigo-200 flex-shrink-0" />
+                                                <span className="text-[10px] font-bold text-slate-600 tracking-tight">
+                                                    {getUnitName ? getUnitName(unitId) : unitId}
+                                                </span>
+                                            </div>
+                                        </td>
+                                        <td className="budget-cell budget-cell-number">
+                                            <span className="text-[10px] font-black text-indigo-500 italic">
+                                                {formatCurrency(amount)}
+                                            </span>
+                                        </td>
+                                        <td colSpan="2" className="budget-cell bg-indigo-50/20" />
+                                    </tr>
+                                ))}
+                            </>
+                        )}
                     </React.Fragment>
                 );
             })}
