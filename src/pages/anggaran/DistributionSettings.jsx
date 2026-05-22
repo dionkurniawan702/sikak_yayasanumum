@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Share2, Plus, Trash2, Save, Info, ArrowRight, Building2, Layers, Percent } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { api } from '../../services/api';
 
 export default function DistributionSettings() {
     const { state, dispatch } = useApp();
