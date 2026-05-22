@@ -102,7 +102,7 @@ export default function JournalEntry() {
 
     function handleEdit(journal) {
         setEditingJournal(journal);
-        setDate(journal.date);
+        setDate(journal.date ? journal.date.split('T')[0] : '');
         setName(journal.name || '');
         setDescription(journal.description);
         setReference(journal.reference || '');
@@ -307,7 +307,7 @@ export default function JournalEntry() {
                                 <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
                                     <td className="px-8 py-4">
                                         <p className="font-bold text-blue-600 text-xs">{j.id}</p>
-                                        <p className="text-slate-500 text-xs font-medium">{j.date}</p>
+                                        <p className="text-slate-500 text-xs font-medium">{formatTanggal(j.date)}</p>
                                     </td>
                                     <td className="px-8 py-4">
                                         <p className="font-bold text-slate-800 text-sm">{j.description}</p>
