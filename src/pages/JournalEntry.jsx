@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal, generateId } from '../utils/format';
 import {
     Plus, Trash2, Save, AlertTriangle, CheckCircle, Calendar, FileText,
-    Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users
+    Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users, Search, FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';
