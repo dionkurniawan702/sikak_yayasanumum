@@ -712,11 +712,12 @@ export default function MonthlyReport() {
             
             const programId = state.programs.find(p => p.category === report.category)?.id || 'PRG-GEN';
             
+            const descriptionText = report.description ? ` (${report.description})` : '';
             const draftJournal = {
                 id: journalId,
-                date: report.date || new Date().toISOString().slice(0, 10),
+                date: report.date ? new Date(report.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
                 name: targetName,
-                description: `Realisasi: ${expName} - ${targetName}`,
+                description: `Realisasi: ${expName} - ${targetName}${descriptionText}`,
                 reference: report.nomorNota || report.planId || '',
                 proof: report.buktiTeks || '',
                 programId: programId,

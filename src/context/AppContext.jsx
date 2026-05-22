@@ -423,7 +423,7 @@ function appReducer(state, action) {
             };
             break;
         case 'ADD_JOURNAL': {
-            const journalId = generateId('JRN');
+            const journalId = action.payload.id || generateId('JRN');
             const newJournal = { ...action.payload, id: journalId, programId: action.payload.programId || 'PRG-GEN' };
             const detectedAssets = getPotentialAssetsFromJournal(newJournal, state.accounts);
             newState = { ...state, journals: [...state.journals, newJournal], assets: [...state.assets, ...detectedAssets] };

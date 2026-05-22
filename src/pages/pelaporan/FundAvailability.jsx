@@ -234,11 +234,12 @@ export default function FundAvailability() {
         const fieldName = state.fields.find(f => f.id === ret.fieldId)?.name || '';
         const targetName = unitName || fieldName || 'Yayasan';
         
+        const descriptionText = ret.description ? ` (${ret.description})` : '';
         const draftJournal = {
             id: journalId,
-            date: new Date().toISOString().slice(0, 10),
+            date: ret.date ? new Date(ret.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
             name: targetName,
-            description: `Pengembalian Sisa Dana: ${targetName}`,
+            description: `Pengembalian Sisa Dana: ${targetName}${descriptionText}`,
             reference: ret.id,
             proof: ret.buktiTeks || '',
             programId: 'PRG-GEN',

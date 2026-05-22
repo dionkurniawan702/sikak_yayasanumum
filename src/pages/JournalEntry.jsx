@@ -24,7 +24,7 @@ export default function JournalEntry() {
     })).filter(g => g.accounts.length > 0);
     const fileInputRef = useRef(null);
 
-    const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+    const [date, setDate] = useState('');
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [reference, setReference] = useState('');
@@ -155,7 +155,7 @@ export default function JournalEntry() {
     }
 
     function resetForm() {
-        setDate(new Date().toISOString().slice(0, 10));
+        setDate('');
         setName('');
         setDescription('');
         setReference('');
