@@ -48,7 +48,7 @@ export default function BudgetDashboard() {
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
 
     const toggleDetailItem = (parentId, itemId) => {
-        const key = `${parentId}-${itemId}`;
+        const key = `${parentId}|${itemId}`;
         setExpandedDetailItems(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
