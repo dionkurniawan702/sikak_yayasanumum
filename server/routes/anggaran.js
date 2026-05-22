@@ -1436,34 +1436,6 @@ router.post('/repair/deduplicate', async (req, res) => {
                 results.push(`Removed ${distDupsCount} duplicate distribution settings`);
             }
 
-            // 1c. Normalize DistributionSettings percentages to exactly 100%
-            const remainingSettings = await tx.distributionSetting.findMany({ where: { isDeleted: false } });
-            const incomeGroups = {};
-            remainingSettings.forEach(s => {
-                const key = `${s.unitId}-${s.incomeItemId}`;
-                if (!incomeGroups[key]) incomeGroups[key] = [];
-                incomeGroups[key].push(s);
-            });
-            let normalizedCount = 0;
-            for (const key in incomeGroups) {
-                const group = incomeGroups[key];
-                const total = group.reduce((sum, s) => sum + parseFloat(s.percentage || 0), 0);
-                // If the total is not 100 (allowing tiny float differences), scale them back
-                if (total > 0 && Math.abs(total - 100) > 0.01) {
-                    for (const s of group) {
-                        const newPercentage = (parseFloat(s.percentage || 0) / total) * 100;
-                        await tx.distributionSetting.update({
-                            where: { id: s.id },
-                            data: { percentage: newPercentage }
-                        });
-                        normalizedCount++;
-                    }
-                }
-            }
-            if (normalizedCount > 0) {
-                results.push(`Normalized ${normalizedCount} distribution settings to exactly 100%`);
-            }
-
             // 2. Deduplicate Units (within each field)
             const allUnits = await tx.unit.findMany(); // Manual due to scope (fieldId)
             const unitGroups = {};

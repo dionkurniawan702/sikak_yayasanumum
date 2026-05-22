@@ -239,7 +239,8 @@ export default function FieldUnitManagement() {
     };
 
     const calculateTotal = (incomeId) => {
-        return (unitDistributions[incomeId] || []).reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
+        const sum = (unitDistributions[incomeId] || []).reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
+        return Number(sum.toFixed(2));
     };
 
     const generateId = () => Date.now().toString(36) + Math.random().toString(36).substr(2, 5);
