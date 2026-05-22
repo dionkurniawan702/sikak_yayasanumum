@@ -3,7 +3,7 @@ import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal, generateId } from '../utils/format';
 import {
     Plus, Trash2, Save, AlertTriangle, CheckCircle, Calendar, FileText,
-    Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users, Search, FileSpreadsheet, ArchiveRestore
+    Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users, Search, FileSpreadsheet
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';
@@ -84,14 +84,6 @@ export default function JournalEntry() {
         .sort((a, b) => b.id.localeCompare(a.id))
         .slice(0, 50);
 
-    const trashJournals = journals
-        .filter(j => j.isDeleted)
-        .filter(j => 
-            j.description.toLowerCase().includes(historySearch.toLowerCase()) || 
-            (j.name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
-            j.id.toLowerCase().includes(historySearch.toLowerCase())
-        )
-        .sort((a, b) => b.id.localeCompare(a.id));
 
     function addRow() {
         setRows([...rows, { accountId: '', debit: '', credit: '' }]);
@@ -175,30 +167,10 @@ export default function JournalEntry() {
     }
 
     const handleDelete = async (id) => {
-        if (window.confirm('Pindahkan jurnal ini ke tong sampah?')) {
-            const j = journals.find(x => x.id === id);
-            const updated = { ...j, isDeleted: true, deletedAt: new Date().toISOString() };
-            dispatch({ type: 'EDIT_JOURNAL', payload: updated });
-            await api.pushAction({ type: 'EDIT_JOURNAL', payload: updated }, state);
-            alert('Jurnal dipindahkan ke tong sampah.');
-        }
-    };
-
-    const handleRestore = async (id) => {
-        if (window.confirm('Pulihkan jurnal ini dari tong sampah?')) {
-            const j = journals.find(x => x.id === id);
-            const updated = { ...j, isDeleted: false, deletedAt: null };
-            dispatch({ type: 'EDIT_JOURNAL', payload: updated });
-            await api.pushAction({ type: 'EDIT_JOURNAL', payload: updated }, state);
-            alert('Jurnal berhasil dipulihkan.');
-        }
-    };
-
-    const handleHardDelete = async (id) => {
-        if (window.confirm('PERINGATAN: Yakin ingin menghapus permanen jurnal ini? Data tidak dapat dipulihkan.')) {
+        if (window.confirm('Yakin ingin menghapus jurnal ini? Jurnal akan dipindahkan ke tempat sampah.')) {
             dispatch({ type: 'DELETE_JOURNAL', payload: id });
             await api.pushAction({ type: 'DELETE_JOURNAL', payload: id }, state);
-            alert('Jurnal berhasil dihapus secara permanen dari sistem.');
+            alert('Jurnal berhasil dipindahkan ke tempat sampah.');
         }
     };
 
@@ -212,7 +184,6 @@ export default function JournalEntry() {
                 <div className="flex gap-2">
                     <button onClick={() => setViewMode('input')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === 'input' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-400'}`}>Input</button>
                     <button onClick={() => setViewMode('list')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === 'list' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-slate-400'}`}>Riwayat</button>
-                    <button onClick={() => setViewMode('trash')} className={`px-6 py-2 rounded-xl text-sm font-bold transition-all ${viewMode === 'trash' ? 'bg-rose-600 text-white shadow-lg' : 'bg-white text-rose-400'}`}>Sampah</button>
                 </div>
             </div>
 
@@ -360,61 +331,6 @@ export default function JournalEntry() {
                                     </td>
                                 </tr>
                             ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
-            {viewMode === 'trash' && (
-                <div className="bg-white rounded-3xl border border-rose-100 shadow-xl overflow-hidden animate-in">
-                    <table className="w-full text-left">
-                        <thead className="bg-rose-50 text-[10px] font-black text-rose-400 uppercase tracking-widest">
-                            <tr>
-                                <th colSpan={4} className="px-8 py-4">
-                                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                                        <div className="relative flex-1 w-full">
-                                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-400" />
-                                            <input className="form-input pl-12 rounded-2xl border-rose-200" placeholder="Cari di sampah..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
-                                        </div>
-                                    </div>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th className="px-8 py-6">ID / Tanggal Hapus</th>
-                                <th className="px-8 py-6">Deskripsi Transaksi</th>
-                                <th className="px-8 py-6 text-right">Nilai Total</th>
-                                <th className="px-8 py-6 text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {trashJournals.map(j => (
-                                <tr key={j.id} className="hover:bg-rose-50/30 transition-colors opacity-75">
-                                    <td className="px-8 py-4">
-                                        <p className="font-bold text-rose-600 text-xs">{j.id}</p>
-                                        <p className="text-slate-500 text-xs font-medium">{j.deletedAt ? new Date(j.deletedAt).toLocaleDateString() : '-'}</p>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <p className="font-bold text-slate-800 text-sm line-through">{j.description}</p>
-                                        <div className="flex gap-2 mt-1 items-center">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-4 text-right font-black text-slate-800">
-                                        <CurrencyDisplay value={j.entries.reduce((s, e) => s + e.debit, 0)} />
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <div className="flex justify-center gap-2">
-                                            <button onClick={() => handleRestore(j.id)} className="p-2 text-slate-400 hover:text-emerald-600 transition-all bg-white rounded-lg shadow-sm border border-slate-100" title="Pulihkan Jurnal"><ArchiveRestore size={16}/></button>
-                                            <button onClick={() => handleHardDelete(j.id)} className="p-2 text-rose-400 hover:text-rose-600 transition-all bg-white rounded-lg shadow-sm border border-slate-100" title="Hapus Permanen"><Trash2 size={16}/></button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {trashJournals.length === 0 && (
-                                <tr>
-                                    <td colSpan={4} className="text-center py-12 text-slate-400 text-xs font-bold uppercase tracking-widest italic">Tong sampah kosong</td>
-                                </tr>
-                            )}
                         </tbody>
                     </table>
                 </div>
