@@ -154,7 +154,7 @@ export default function RealizationDashboard() {
 
         // 2. Get Actual Spending (Reports)
         budgetReports.filter(r => 
-            r.status === 'APPROVED' && 
+            r.status !== 'REJECTED' && 
             r.academicYearId === selectedAcademicYearId && 
             !r.isDeleted &&
             (isBOS ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
