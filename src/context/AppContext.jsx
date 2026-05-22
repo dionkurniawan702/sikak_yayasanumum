@@ -432,7 +432,7 @@ function appReducer(state, action) {
         case 'DELETE_JOURNAL':
             newState = {
                 ...state,
-                journals: state.journals.map(j => j.id === action.payload ? { ...j, isDeleted: true, deletedAt: new Date().toISOString() } : j)
+                journals: state.journals.filter(j => j.id !== action.payload)
             };
             break;
         case 'ADD_ASSET':
