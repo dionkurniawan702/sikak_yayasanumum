@@ -75,6 +75,7 @@ export default function JournalEntry() {
     const difference = Math.abs(totalDebit - totalCredit);
 
     const filteredJournals = journals
+        .filter(j => !j.isDeleted)
         .filter(j => 
             j.description.toLowerCase().includes(historySearch.toLowerCase()) || 
             (j.name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
