@@ -3129,7 +3129,7 @@ function RABContent() {
                                     <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
                                         <th className="px-6 py-2 text-left">Unit / Bidang</th>
                                         <th className="px-6 py-2 text-right">Target (RAP)</th>
-                                        <th className="px-6 py-2 text-right">Realisasi RAB</th>
+                                        <th className="px-6 py-2 text-right">Target RAB</th>
                                         <th className="px-6 py-2 text-right">Status / Sisa</th>
                                     </tr>
                                 </thead>
