@@ -187,7 +187,17 @@ export default function FieldUnitManagement() {
                     }
                 }, state);
 
-                // 4. Refresh fresh data
+                // Dispatch locally first (batch=true clears ALL old settings for this unit)
+                dispatch({
+                    type: 'UPDATE_DISTRIBUTION_SETTINGS',
+                    payload: {
+                        unitId: targetUnitIdForFinance,
+                        settings: allSettingsToPush,
+                        batch: true
+                    }
+                });
+
+                // 4. Refresh fresh data from server to ensure consistency
                 const freshData = await api.fetchAllData();
                 if (freshData) {
                     dispatch({ type: 'SET_ALL_DATA', payload: freshData });

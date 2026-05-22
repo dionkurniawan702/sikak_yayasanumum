@@ -506,8 +506,12 @@ function appReducer(state, action) {
             newState = { ...state, users: state.users.map(u => u.id === action.payload ? { ...u, isDeleted: true, deletedAt: new Date().toISOString() } : u) };
             break;
         case 'UPDATE_DISTRIBUTION_SETTINGS': {
-            const { unitId, incomeItemId, settings } = action.payload;
-            const otherSettings = state.distributionSettings.filter(s => !(s.unitId === unitId && s.incomeItemId === incomeItemId));
+            const { unitId, incomeItemId, settings, batch } = action.payload;
+            // batch=true: remove ALL settings for this unitId (used when saving from Edit Unit modal)
+            // batch=false/undefined: remove only for the specific incomeItemId
+            const otherSettings = batch
+                ? state.distributionSettings.filter(s => s.unitId !== unitId)
+                : state.distributionSettings.filter(s => !(s.unitId === unitId && s.incomeItemId === incomeItemId));
             newState = { ...state, distributionSettings: [...otherSettings, ...settings] };
             break;
         }
