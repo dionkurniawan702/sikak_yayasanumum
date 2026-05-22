@@ -576,6 +576,15 @@ function appReducer(state, action) {
         case 'EDIT_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload.id ? action.payload : i) }; break;
         case 'DELETE_CLASS': newState = { ...state, classes: state.classes.map(i => i.id === action.payload ? { ...i, isDeleted: true, deletedAt: new Date().toISOString() } : i) }; break;
 
+        case 'SET_RAB_PLAN': {
+            const exists = state.rabPlans?.some(p => p.id === action.payload.id);
+            if (exists) {
+                newState = { ...state, rabPlans: state.rabPlans.map(p => p.id === action.payload.id ? action.payload : p) };
+            } else {
+                newState = { ...state, rabPlans: [...(state.rabPlans || []), action.payload] };
+            }
+            break;
+        }
 
         case 'ADD_BOS_STAGE': newState = { ...state, bosStages: [...state.bosStages, action.payload] }; break;
         case 'EDIT_BOS_STAGE': newState = { ...state, bosStages: state.bosStages.map(i => i.id === action.payload.id ? { ...i, ...action.payload } : i) }; break;

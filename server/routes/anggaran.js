@@ -1436,6 +1436,24 @@ router.post('/repair/deduplicate', async (req, res) => {
                 results.push(`Removed ${distDupsCount} duplicate distribution settings`);
             }
 
+            // 1c. Bulatkan kembali ke angka utuh (hilangkan koma-komaan)
+            const remainingSettings = await tx.distributionSetting.findMany({ where: { isDeleted: false } });
+            let roundedCount = 0;
+            for (const s of remainingSettings) {
+                const currentVal = parseFloat(s.percentage || 0);
+                const roundedVal = Math.round(currentVal);
+                if (Math.abs(currentVal - roundedVal) > 0.001) {
+                    await tx.distributionSetting.update({
+                        where: { id: s.id },
+                        data: { percentage: roundedVal }
+                    });
+                    roundedCount++;
+                }
+            }
+            if (roundedCount > 0) {
+                results.push(`Rounded ${roundedCount} percentages back to integers`);
+            }
+
             // 2. Deduplicate Units (within each field)
             const allUnits = await tx.unit.findMany(); // Manual due to scope (fieldId)
             const unitGroups = {};
