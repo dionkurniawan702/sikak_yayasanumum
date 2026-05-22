@@ -246,6 +246,7 @@ export default function BOSMonthlyReport() {
 
     const bosReports = useMemo(() => {
         return (budgetReports || []).filter(r => {
+            if (r.isDeleted || r.status === 'REJECTED') return false;
             if (r.academicYearId !== globalAcademicYearId) return false;
             // Link to a BOS request
             const req = budgetRequests.find(br => br.id === r.budgetRequestId);

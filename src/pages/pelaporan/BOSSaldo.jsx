@@ -134,6 +134,7 @@ export default function BOSSaldo() {
         units = [],
         academicYears = [],
         budgetReports = [],
+        budgetRequests = [],
         currentUser
     } = state;
 
@@ -166,7 +167,7 @@ export default function BOSSaldo() {
         const allocated = yearAllocations.reduce((s, a) => s + (parseFloat(a.amount) || 0), 0);
 
         const yearReports = budgetReports.filter(r => {
-            if (r.isDeleted || r.status !== 'APPROVED' || r.kategoriAset === 'PENGEMBALIAN') return false;
+            if (r.isDeleted || r.status === 'REJECTED' || r.kategoriAset === 'PENGEMBALIAN') return false;
             if (selectedYearId && r.academicYearId !== selectedYearId) return false;
             
             // FILTER: ONLY BOS

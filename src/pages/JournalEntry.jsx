@@ -164,6 +164,13 @@ export default function JournalEntry() {
         setRows([{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }]);
     }
 
+    const handleDelete = async (id) => {
+        if (window.confirm('Yakin ingin menghapus jurnal ini?')) {
+            dispatch({ type: 'DELETE_JOURNAL', payload: id });
+            await api.pushAction({ type: 'DELETE_JOURNAL', payload: id }, state);
+        }
+    };
+
     return (
         <div className="p-8">
             <div className="flex justify-between items-center mb-8">
@@ -316,7 +323,7 @@ export default function JournalEntry() {
                                     <td className="px-8 py-4">
                                         <div className="flex justify-center gap-2">
                                             <button onClick={() => handleEdit(j)} className="p-2 text-slate-300 hover:text-blue-600 transition-all"><Pencil size={16}/></button>
-                                            <button onClick={() => dispatch({type:'DELETE_JOURNAL', payload: j.id})} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16}/></button>
+                                            <button onClick={() => handleDelete(j.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16}/></button>
                                         </div>
                                     </td>
                                 </tr>
