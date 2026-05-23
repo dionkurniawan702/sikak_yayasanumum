@@ -122,6 +122,27 @@ export default function FieldUnitManagement() {
         e.preventDefault();
         if (loading) return;
         
+        // Manual Validation
+        for (const incomeId of selectedIncomeItems) {
+            const rules = unitDistributions[incomeId] || [];
+            const itemName = incomeItems.find(i => i.id === incomeId)?.name || 'Item';
+            
+            // 1. Check if Expense Item is selected
+            for (const rule of rules) {
+                if (!rule.expenseItemId) {
+                    window.alert(`Mohon lengkapi pilihan "Pos Pengeluaran" untuk distribusi dana: ${itemName}`);
+                    return;
+                }
+            }
+
+            // 2. Check if Percentage Total is 100%
+            const total = rules.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
+            if (Math.abs(total - 100) > 0.01) {
+                window.alert(`Total persentase distribusi untuk "${itemName}" harus 100%. (Saat ini ${total}%)`);
+                return;
+            }
+        }
+
         setLoading(true);
         setError(null);
         
@@ -704,7 +725,6 @@ export default function FieldUnitManagement() {
                                                                                             </label>
                                                                                             {rule.destType === 'unit' ? (
                                                                                                 <select 
-                                                                                                    required
                                                                                                     className="form-select w-full !py-2.5 !text-sm !rounded-xl"
                                                                                                     value={rule.expenseItemId}
                                                                                                     onChange={e => updateDistributionRule(incomeId, rule.id, { expenseItemId: e.target.value })}
@@ -715,7 +735,6 @@ export default function FieldUnitManagement() {
                                                                                             ) : (
                                                                                                 <div className="flex gap-2 w-full">
                                                                                                     <select
-                                                                                                        required
                                                                                                         className="form-select w-1/2 !py-2.5 !text-sm !rounded-xl"
                                                                                                         value={rule.destId || formData.fieldId}
                                                                                                         onChange={e => updateDistributionRule(incomeId, rule.id, { destId: e.target.value })}
@@ -724,7 +743,6 @@ export default function FieldUnitManagement() {
                                                                                                         {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                                                                                                     </select>
                                                                                                     <select
-                                                                                                        required
                                                                                                         className="form-select w-1/2 !py-2.5 !text-sm !rounded-xl"
                                                                                                         value={rule.expenseItemId}
                                                                                                         onChange={e => updateDistributionRule(incomeId, rule.id, { expenseItemId: e.target.value })}
@@ -742,7 +760,6 @@ export default function FieldUnitManagement() {
                                                                                             <div className="relative">
                                                                                                 <input 
                                                                                                     type="number" 
-                                                                                                    required
                                                                                                     className="form-input !py-2.5 !text-sm !font-black !rounded-xl !pr-8"
                                                                                                     value={rule.percentage}
                                                                                                     onChange={e => updateDistributionRule(incomeId, rule.id, { percentage: e.target.value })}
