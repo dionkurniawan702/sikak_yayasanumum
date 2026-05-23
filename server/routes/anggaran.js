@@ -459,6 +459,38 @@ router.get('/distribution-settings', async (req, res) => {
     }
 });
 
+router.get('/fix-dist-dupes', async (req, res) => {
+    try {
+        const client = getPrisma(req);
+        const settings = await client.distributionSetting.findMany({ where: { isDeleted: false } });
+        
+        const keepIds = new Set();
+        const deleteIds = [];
+        const seenKeys = new Set();
+        
+        for (const s of settings) {
+            // Include unitId, incomeItemId, destId, expenseItemId, and percentage to identify identical rules
+            const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.expenseItemId}-${parseFloat(s.percentage)}`;
+            if (!seenKeys.has(key)) {
+                seenKeys.add(key);
+                keepIds.add(s.id);
+            } else {
+                deleteIds.push(s.id);
+            }
+        }
+        
+        if (deleteIds.length > 0) {
+            await client.distributionSetting.deleteMany({
+                where: { id: { in: deleteIds } }
+            });
+        }
+        
+        res.json({ message: `Deduplication complete. Deleted ${deleteIds.length} duplicate rules.` });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.post('/distribution-settings', async (req, res) => {
     try {
         const { unitId, incomeItemId, settings, batch = false } = req.body;
@@ -483,6 +515,7 @@ router.post('/distribution-settings', async (req, res) => {
             }),
             getPrisma(req).distributionSetting.createMany({
                 data: uniqueSettings.map(s => ({
+                    id: s.id,
                     unitId: s.unitId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
