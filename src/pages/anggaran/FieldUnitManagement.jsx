@@ -453,7 +453,18 @@ export default function FieldUnitManagement() {
                         ) : (
                             units.filter(u => !u.isDeleted).length > 0 ? units.filter(u => !u.isDeleted).map(unit => {
                                 const unitSettings = distributionSettings.filter(s => s.unitId === unit.id);
-                                const configuredItems = [...new Set(unitSettings.map(s => s.incomeItemId))].length;
+                                const uniqueIncomeItems = [...new Set(unitSettings.map(s => s.incomeItemId))];
+                                const configuredItems = uniqueIncomeItems.length;
+
+                                let hasUnder100 = false;
+                                let hasOver100 = false;
+                                uniqueIncomeItems.forEach(incomeId => {
+                                    const sum = unitSettings.filter(s => s.incomeItemId === incomeId)
+                                                            .reduce((acc, curr) => acc + (parseFloat(curr.percentage) || 0), 0);
+                                    const total = Number(sum.toFixed(2));
+                                    if (total < 100) hasUnder100 = true;
+                                    if (total > 100) hasOver100 = true;
+                                });
 
                                 return (
                                     <tr key={unit.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -471,9 +482,23 @@ export default function FieldUnitManagement() {
                                             </span>
                                         </td>
                                         <td className="px-8 py-5">
-                                            <div className={`flex items-center gap-2 font-bold text-xs ${configuredItems > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                {configuredItems > 0 ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                                                <span>{configuredItems} Item Penerimaan</span>
+                                            <div className="flex flex-col gap-2">
+                                                <div className={`flex items-center gap-2 font-bold text-xs ${configuredItems > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                    {configuredItems > 0 ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                                                    <span>{configuredItems} Item Penerimaan</span>
+                                                </div>
+                                                {hasUnder100 && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-rose-600 uppercase tracking-widest bg-rose-50 px-2.5 py-1.5 rounded-lg w-fit border border-rose-100 shadow-sm animate-pulse">
+                                                        <AlertCircle size={12} />
+                                                        <span>Ada Alokasi Kurang dr 100%</span>
+                                                    </div>
+                                                )}
+                                                {hasOver100 && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-2.5 py-1.5 rounded-lg w-fit border border-amber-200 shadow-sm animate-pulse">
+                                                        <AlertCircle size={12} />
+                                                        <span>Ada Alokasi Lebih dr 100%</span>
+                                                    </div>
+                                                )}
                                             </div>
                                         </td>
                                         <td className="px-8 py-5 text-right">
