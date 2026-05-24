@@ -465,6 +465,8 @@ export default function FieldUnitManagement() {
                                     if (total < 100) hasUnder100 = true;
                                     if (total > 100) hasOver100 = true;
                                 });
+                                
+                                const isAll100 = configuredItems > 0 && !hasUnder100 && !hasOver100;
 
                                 return (
                                     <tr key={unit.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -497,6 +499,12 @@ export default function FieldUnitManagement() {
                                                     <div className="flex items-center gap-1.5 text-[10px] font-black text-amber-600 uppercase tracking-widest bg-amber-50 px-2.5 py-1.5 rounded-lg w-fit border border-amber-200 shadow-sm animate-pulse">
                                                         <AlertCircle size={12} />
                                                         <span>Ada Alokasi Lebih dr 100%</span>
+                                                    </div>
+                                                )}
+                                                {isAll100 && (
+                                                    <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest bg-emerald-50 px-2.5 py-1.5 rounded-lg w-fit border border-emerald-100 shadow-sm">
+                                                        <CheckCircle2 size={12} />
+                                                        <span>Semua Alokasi 100%</span>
                                                     </div>
                                                 )}
                                             </div>
