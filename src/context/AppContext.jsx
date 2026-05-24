@@ -305,7 +305,19 @@ function appReducer(state, action) {
                 students: serverData.students || state.students || [],
                 incomeItems: serverData.incomeItems || state.incomeItems || [],
                 expenseItems: serverData.expenseItems || state.expenseItems || [],
-                distributionSettings: serverData.distributionSettings || state.distributionSettings || [],
+                distributionSettings: (() => {
+                    const rawData = serverData.distributionSettings || state.distributionSettings || [];
+                    const uniqueMap = new Map();
+                    // Sort descending by percentage to keep the one with highest percentage if duplicates exist
+                    const sorted = [...rawData].sort((a, b) => parseFloat(b.percentage || 0) - parseFloat(a.percentage || 0));
+                    for (const s of sorted) {
+                        const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}`;
+                        if (!uniqueMap.has(key)) {
+                            uniqueMap.set(key, s);
+                        }
+                    }
+                    return Array.from(uniqueMap.values());
+                })(),
                 budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
                 budgetReports: serverData.budgetReports || state.budgetReports || [],
                 academicYears: (serverData.academicYears || state.academicYears || []).map(serverAy => {

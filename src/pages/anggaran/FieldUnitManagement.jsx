@@ -135,12 +135,6 @@ export default function FieldUnitManagement() {
                 }
             }
 
-            // 2. Check if Percentage Total is 100%
-            const total = rules.reduce((sum, r) => sum + (parseFloat(r.percentage) || 0), 0);
-            if (Math.abs(total - 100) > 0.01) {
-                window.alert(`Total persentase distribusi untuk "${itemName}" harus 100%. (Saat ini ${total}%)`);
-                return;
-            }
         }
 
         setLoading(true);
@@ -686,8 +680,8 @@ export default function FieldUnitManagement() {
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-4">
-                                                                            <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${total === 100 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
-                                                                                Total: {total}% {total !== 100 && '(Harus 100%)'}
+                                                                            <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                                                Total: {total}%
                                                                             </div>
                                                                             <div className={`text-slate-300 transition-transform duration-300 ${expandedIncomeItem === incomeId ? 'rotate-180 text-blue-600' : ''}`}>
                                                                                 <ChevronDown size={20} />

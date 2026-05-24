@@ -55,10 +55,6 @@ export default function DistributionSettings() {
     const totalPercentage = Number(totalPercentageRaw.toFixed(2));
 
     const handleSave = async () => {
-        if (totalPercentage !== 100) {
-            alert('Total persentase harus 100%!');
-            return;
-        }
         
         try {
             const settingsWithNames = tempSettings.map(s => {
@@ -155,8 +151,8 @@ export default function DistributionSettings() {
                     <div className="card shadow-xl overflow-hidden">
                         <div className="p-6 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                             <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Daftar Distribusi Dana</h3>
-                            <div className={`px-4 py-1.5 rounded-full text-xs font-black transition-all ${totalPercentage === 100 ? 'bg-emerald-500 text-white' : 'bg-rose-100 text-rose-600 border border-rose-200'}`}>
-                                Total: {totalPercentage}% {totalPercentage !== 100 && '(Harus 100%)'}
+                            <div className="px-4 py-1.5 rounded-full text-xs font-black transition-all bg-emerald-500 text-white">
+                                Total: {totalPercentage}%
                             </div>
                         </div>
 

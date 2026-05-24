@@ -1430,7 +1430,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureBosAllocationColumns();
             await ensureBudgetSourceColumns();
             await ensureStudentGenderColumn();
-            await repairDistributions();
+            // await repairDistributions(); // REMOVED: Causing random data deletion!
 
             console.log('[Background Tasks] All startup checks completed successfully.');
 

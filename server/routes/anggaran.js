@@ -501,8 +501,10 @@ router.post('/distribution-settings', async (req, res) => {
         const uniqueSettings = [];
         const seen = new Set();
         if (Array.isArray(settings)) {
-            for (const s of settings) {
-                const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}-${s.percentage}`;
+            // Sort by percentage descending so if there are duplicates, we keep the one with the highest percentage
+            const sortedSettings = [...settings].sort((a, b) => parseFloat(b.percentage || 0) - parseFloat(a.percentage || 0));
+            for (const s of sortedSettings) {
+                const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}`;
                 if (!seen.has(key)) {
                     uniqueSettings.push(s);
                     seen.add(key);
@@ -515,10 +517,10 @@ router.post('/distribution-settings', async (req, res) => {
             getPrisma(req).distributionSetting.deleteMany({
                 where: batch ? { unitId } : { unitId, incomeItemId }
             }),
-            // Insert the fresh ones
+            // Insert the fresh ones (preserving existing UUIDs to maintain stability and prevent unnecessary re-generation)
             getPrisma(req).distributionSetting.createMany({
                 data: uniqueSettings.map(s => ({
-                    id: crypto.randomUUID(), // Always generate a fresh UUID to prevent ID collision issues during upsert-like behavior
+                    id: s.id || crypto.randomUUID(),
                     unitId: s.unitId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
