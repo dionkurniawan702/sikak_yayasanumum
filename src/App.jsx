@@ -116,32 +116,7 @@ const SyncOverlay = ({ message }) => (
     </div>
 );
 
-const GlobalProgressLoader = () => {
-    const [isLoading, setIsLoading] = React.useState(false);
-
-    React.useEffect(() => {
-        const handleStart = () => setIsLoading(true);
-        const handleEnd = () => setIsLoading(false);
-
-        window.addEventListener('app-loading-start', handleStart);
-        window.addEventListener('app-loading-end', handleEnd);
-
-        return () => {
-            window.removeEventListener('app-loading-start', handleStart);
-            window.removeEventListener('app-loading-end', handleEnd);
-        };
-    }, []);
-
-    React.useEffect(() => {
-        if (isLoading) {
-            document.body.classList.add('cursor-loading-active');
-        } else {
-            document.body.classList.remove('cursor-loading-active');
-        }
-    }, [isLoading]);
-
-    return null;
-};
+// Global cursor loading removed by user request
 
 const PageLoader = () => (
     <div className="flex items-center justify-center min-h-[60vh] w-full">
@@ -170,7 +145,6 @@ function AppContent() {
     return (
         <BrowserRouter>
             {state.isInitialLoading && <InitialLoadingScreen />}
-            <GlobalProgressLoader />
             <Suspense fallback={<PageLoader />}>
                 <Routes>
                     <Route path="/login" element={<Login />} />
