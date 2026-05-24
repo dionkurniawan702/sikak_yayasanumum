@@ -759,7 +759,8 @@ export default function FieldUnitManagement() {
                                                                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block ml-1">Persentase</label>
                                                                                             <div className="relative">
                                                                                                 <input 
-                                                                                                    type="number" 
+                                                                                                    type="number"
+                                                                                                    step="any"
                                                                                                     className="form-input !py-2.5 !text-sm !font-black !rounded-xl !pr-8"
                                                                                                     value={rule.percentage}
                                                                                                     onChange={e => updateDistributionRule(incomeId, rule.id, { percentage: e.target.value })}

@@ -51,7 +51,8 @@ export default function DistributionSettings() {
         }));
     };
 
-    const totalPercentage = tempSettings.reduce((sum, s) => sum + (parseFloat(s.percentage) || 0), 0);
+    const totalPercentageRaw = tempSettings.reduce((sum, s) => sum + (parseFloat(s.percentage) || 0), 0);
+    const totalPercentage = Number(totalPercentageRaw.toFixed(2));
 
     const handleSave = async () => {
         if (totalPercentage !== 100) {
@@ -206,7 +207,8 @@ export default function DistributionSettings() {
                                         <label className="form-label">Persentase</label>
                                         <div className="relative">
                                             <input 
-                                                type="number" 
+                                                type="number"
+                                                step="any"
                                                 className="form-input !py-3 !text-sm !pr-10 font-bold"
                                                 value={row.percentage}
                                                 onChange={e => handleUpdateRow(row.id, 'percentage', e.target.value)}
