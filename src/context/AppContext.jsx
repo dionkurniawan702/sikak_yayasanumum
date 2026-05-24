@@ -92,6 +92,16 @@ function loadState() {
                 merged.accounts = initialAccounts;
             }
 
+            // Restore currentUser securely from separate key to avoid quota loss
+            try {
+                const storedUser = localStorage.getItem('currentUser');
+                if (storedUser) {
+                    merged.currentUser = JSON.parse(storedUser);
+                }
+            } catch (e) {
+                console.error('Failed to parse currentUser from local storage', e);
+            }
+
             // Migration: Standardize 'Saldo Dana' to 'Aset Neto'
             if (merged.accounts) {
                 merged.accounts = merged.accounts.map(acc => {
@@ -250,6 +260,7 @@ function appReducer(state, action) {
             newState = { ...state, rabPlans: state.rabPlans.filter(p => p.id !== action.payload) };
             break;
         case 'LOGIN':
+            localStorage.setItem('currentUser', JSON.stringify(action.payload));
             newState = { ...state, currentUser: action.payload };
             break;
         case 'SET_GLOBAL_YEAR':
@@ -401,6 +412,7 @@ function appReducer(state, action) {
         }
         case 'LOGOUT':
             localStorage.removeItem('jwt_token');
+            localStorage.removeItem('currentUser');
             newState = { ...state, currentUser: null };
             break;
         case 'ADD_ACCOUNT':
