@@ -1377,9 +1377,10 @@ const repairDistributions = async () => {
         const toDelete = [];
 
         for (const s of allSettings) {
-            // Unique key: Unit + IncomeItem + Target + ExpenseItem + Percentage
-            // Including percentage makes it much safer to avoid deleting valid multiple allocations
-            const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}-${s.percentage}`;
+            // Unique key: Unit + IncomeItem + Target + ExpenseItem
+            // We DO NOT include percentage, so if there are multiple rules for the same destination,
+            // we keep the first one we see and delete the older duplicates (or vice versa).
+            const key = `${s.unitId}-${s.incomeItemId}-${s.destId}-${s.destType}-${s.expenseItemId}`;
             
             if (seen.has(key)) {
                 toDelete.push(s.id);

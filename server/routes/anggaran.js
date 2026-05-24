@@ -510,12 +510,14 @@ router.post('/distribution-settings', async (req, res) => {
         }
 
         await getPrisma(req).$transaction([
+            // Forcefully delete all existing rules for the given unit and income item
             getPrisma(req).distributionSetting.deleteMany({
                 where: batch ? { unitId } : { unitId, incomeItemId }
             }),
+            // Insert the fresh ones
             getPrisma(req).distributionSetting.createMany({
                 data: uniqueSettings.map(s => ({
-                    id: s.id,
+                    id: require('crypto').randomUUID(), // Always generate a fresh UUID to prevent ID collision issues during upsert-like behavior
                     unitId: s.unitId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
@@ -533,6 +535,44 @@ router.post('/distribution-settings', async (req, res) => {
 });
 
 // --- BUDGET REQUESTS & REPORTS ---
+router.get('/clean-duplicates', async (req, res) => {
+    try {
+        const settings = await getPrisma(req).distributionSetting.findMany();
+        
+        // Group by Unit + IncomeItem + ExpenseItem + DestId
+        const groups = {};
+        for (const s of settings) {
+            const key = `${s.unitId}-${s.incomeItemId}-${s.expenseItemId}-${s.destId}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(s);
+        }
+
+        let deletedCount = 0;
+        const toDeleteIds = [];
+
+        for (const key in groups) {
+            const items = groups[key];
+            if (items.length > 1) {
+                const keep = items[items.length - 1];
+                for (let i = 0; i < items.length - 1; i++) {
+                    toDeleteIds.push(items[i].id);
+                }
+            }
+        }
+
+        if (toDeleteIds.length > 0) {
+            const result = await getPrisma(req).distributionSetting.deleteMany({
+                where: { id: { in: toDeleteIds } }
+            });
+            res.json({ message: `Berhasil menghapus ${result.count} data duplikat!`, deletedIds: toDeleteIds });
+        } else {
+            res.json({ message: "Tidak ada duplikasi yang ditemukan. Data sudah bersih." });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/budget-requests', async (req, res) => {
     try {
         const requests = await getPrisma(req).budgetRequest.findMany({
