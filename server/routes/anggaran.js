@@ -1,5 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 const router = express.Router();
 
 // Helper to get Prisma Client from the request (attached in index.js)
@@ -517,7 +518,7 @@ router.post('/distribution-settings', async (req, res) => {
             // Insert the fresh ones
             getPrisma(req).distributionSetting.createMany({
                 data: uniqueSettings.map(s => ({
-                    id: require('crypto').randomUUID(), // Always generate a fresh UUID to prevent ID collision issues during upsert-like behavior
+                    id: crypto.randomUUID(), // Always generate a fresh UUID to prevent ID collision issues during upsert-like behavior
                     unitId: s.unitId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
