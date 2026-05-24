@@ -680,7 +680,7 @@ export default function FieldUnitManagement() {
                                                                             </div>
                                                                         </div>
                                                                         <div className="flex items-center gap-4">
-                                                                            <div className="px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all bg-emerald-50 text-emerald-600 border border-emerald-100">
+                                                                            <div className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${total === 100 ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
                                                                                 Total: {total}%
                                                                             </div>
                                                                             <div className={`text-slate-300 transition-transform duration-300 ${expandedIncomeItem === incomeId ? 'rotate-180 text-blue-600' : ''}`}>
