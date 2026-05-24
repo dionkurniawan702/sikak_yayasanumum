@@ -316,7 +316,12 @@ function appReducer(state, action) {
                             uniqueMap.set(key, s);
                         }
                     }
-                    return Array.from(uniqueMap.values());
+                    // Add stable sort so items don't randomly swap positions in UI
+                    return Array.from(uniqueMap.values()).sort((a, b) => {
+                        if (a.incomeItemId !== b.incomeItemId) return (a.incomeItemId || '').localeCompare(b.incomeItemId || '');
+                        if (a.expenseItemId !== b.expenseItemId) return (a.expenseItemId || '').localeCompare(b.expenseItemId || '');
+                        return (a.id || '').localeCompare(b.id || '');
+                    });
                 })(),
                 budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
                 budgetReports: serverData.budgetReports || state.budgetReports || [],
