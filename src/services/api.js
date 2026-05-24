@@ -48,7 +48,7 @@ async function safeFetch(url, options = {}) {
                 rawBody
             });
 
-            if (response.status === 401 || response.status === 403) {
+            if (response.status === 401) {
                 localStorage.removeItem('jwt_token');
                 throw new Error('SESSION_EXPIRED');
             }
