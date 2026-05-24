@@ -444,7 +444,7 @@ export const api = {
                 students: state.students || [],
                 incomeItems: state.incomeItems || [],
                 expenseItems: state.expenseItems || [],
-                distributionSettings: state.distributionSettings || [],
+                // distributionSettings removed from auto-sync to prevent dormant tabs from resurrecting deleted rules
                 academicYears: state.academicYears || [],
                 classGroups: state.classGroups || [],
                 positions: state.positions || [],
