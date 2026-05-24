@@ -152,10 +152,24 @@ const PageLoader = () => (
     </div>
 );
 
+const InitialLoadingScreen = () => (
+    <div className="fixed inset-0 z-[99999] bg-white flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+        <div className="relative mb-8">
+            <div className="absolute inset-0 bg-blue-500/20 blur-2xl rounded-full animate-pulse" />
+            <div className="relative w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40">
+                <RefreshCw className="text-white animate-spin" size={48} />
+            </div>
+        </div>
+        <h2 className="text-3xl font-black text-slate-800 mb-3 tracking-tight">SIKAD Dareliman</h2>
+        <p className="text-slate-500 font-medium text-lg animate-pulse">Sedang memuat data dari server...</p>
+    </div>
+);
+
 function AppContent() {
     const { state } = useApp();
     return (
         <BrowserRouter>
+            {state.isInitialLoading && <InitialLoadingScreen />}
             <GlobalProgressLoader />
             <Suspense fallback={<PageLoader />}>
                 <Routes>

@@ -39,7 +39,8 @@ const defaultState = {
     syncMessage: '',
     lastSyncedAt: null,
     syncResults: null,
-    version: '1.3.1'
+    version: '1.3.1',
+    isInitialLoading: false
 };
 
 const CURRENT_VERSION = '1.3.1';
@@ -241,6 +242,9 @@ function getPotentialAssetsFromJournal(journal, accounts) {
 function appReducer(state, action) {
     let newState;
     switch (action.type) {
+        case 'SET_INITIAL_LOADING':
+            newState = { ...state, isInitialLoading: action.payload };
+            break;
         case 'SET_RAB_PLAN': {
             const index = state.rabPlans.findIndex(p => p.id === action.payload.id);
             let updatedRabPlans = [...state.rabPlans];
@@ -725,17 +729,16 @@ export function AppProvider({ children }) {
 
         // ALWAYS fetch fresh data on mount if we have a token and are in remote mode
         if (isRemote && token && !isLoginPage) {
-            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
+            dispatch({ type: 'SET_INITIAL_LOADING', payload: true });
             api.fetchAllData().then(data => {
                 if (data) {
                     dispatch({ type: 'SET_ALL_DATA', payload: data });
-                    dispatch({ type: 'SET_SYNCING', payload: { status: false } });
                 } else {
                     dispatch({ type: 'SET_ONLINE_STATUS', payload: false });
-                    dispatch({ type: 'SET_SYNCING', payload: { status: false } });
                 }
+                dispatch({ type: 'SET_INITIAL_LOADING', payload: false });
             }).catch(err => {
-                dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+                dispatch({ type: 'SET_INITIAL_LOADING', payload: false });
                 if (err.message === 'SESSION_EXPIRED') {
                     dispatch({ type: 'LOGOUT' });
                     window.location.href = '/login?expired=true';
