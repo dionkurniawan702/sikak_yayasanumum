@@ -408,17 +408,33 @@ export default function MonthlyRequest() {
                     </div>
 
                     <div class="footer">
-                        <div class="signature">
-                            <p>Diajukan oleh,</p>
-                            <div class="space"></div>
-                            <p>____________________</p>
-                            <p>( Kepala Unit / Bidang )</p>
+                        <div class="left-side" style="width: 45%;">
+                            <div class="signature" style="margin: 0 auto; margin-bottom: 40px;">
+                                <p>Menyetujui,</p>
+                                <div class="space"></div>
+                                <p>____________________</p>
+                                <p>( Bendahara Yayasan )</p>
+                            </div>
+                            <div class="signature" style="margin: 0 auto;">
+                                <p>Memeriksa,</p>
+                                <div class="space"></div>
+                                <p>____________________</p>
+                                <p>( Kabid. Keuangan )</p>
+                            </div>
                         </div>
-                        <div class="signature">
-                            <p>Mengetahui,</p>
-                            <div class="space"></div>
-                            <p>____________________</p>
-                            <p>( Bendahara Yayasan )</p>
+                        <div class="right-side" style="width: 45%;">
+                            <div class="signature" style="margin: 0 auto; margin-bottom: 40px;">
+                                <p>Pemohon,</p>
+                                <div class="space"></div>
+                                <p>____________________</p>
+                                <p>( Kepala Unit / Bidang )</p>
+                            </div>
+                            <div class="signature" style="margin: 0 auto;">
+                                <p>Pemohon,</p>
+                                <div class="space"></div>
+                                <p>____________________</p>
+                                <p>( Bendahara Unit )</p>
+                            </div>
                         </div>
                     </div>
 
