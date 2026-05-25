@@ -3032,6 +3032,71 @@ function RABContent() {
                     </div>
                 </div>
 
+                {/* FORCE HEAL BUTTON */}
+                {activePlan?.status === 'DRAFT' && (
+                    <div className="flex justify-end mb-4">
+                        <button 
+                            onClick={async () => {
+                                if (!window.confirm("Perbaiki status rincian yang nyangkut menjadi DRAFT?")) return;
+                                
+                                const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+                                const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+                                const plan = rabPlans.find(p => p.id === planId);
+                                if (!plan) return alert("RAB belum tersimpan di server");
+
+                                const updatedExpense = { ...plan.expense };
+                                Object.keys(updatedExpense).forEach(itemId => {
+                                    const rawPlans = updatedExpense[itemId];
+                                    const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+                                    
+                                    updatedExpense[itemId] = plansArr.map(p => {
+                                        const comps = p.components || [];
+                                        const updatedComps = comps.map(c => ({
+                                            ...c,
+                                            status: 'DRAFT',
+                                            isApproved: false
+                                        }));
+                                        return { ...p, components: updatedComps };
+                                    });
+                                });
+
+                                const updatedIncome = { ...plan.income };
+                                Object.keys(updatedIncome).forEach(itemId => {
+                                    const rawPlans = updatedIncome[itemId];
+                                    const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+                                    
+                                    updatedIncome[itemId] = plansArr.map(p => {
+                                        const comps = p.components || [];
+                                        const updatedComps = comps.map(c => ({
+                                            ...c,
+                                            status: 'DRAFT',
+                                            isApproved: false
+                                        }));
+                                        return { ...p, components: updatedComps };
+                                    });
+                                });
+
+                                const updatedPlan = {
+                                    ...plan,
+                                    status: 'DRAFT',
+                                    expense: updatedExpense,
+                                    income: updatedIncome,
+                                    updatedAt: new Date().toISOString()
+                                };
+
+                                dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+                                await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+                                setCurrentPlan(updatedPlan);
+                                
+                                alert("Berhasil diperbaiki! Silakan klik rinciannya sekarang.");
+                            }}
+                            className="px-6 py-2 bg-rose-600 text-white font-bold text-xs rounded-xl shadow-lg hover:bg-rose-700 uppercase tracking-widest animate-pulse"
+                        >
+                            Klik Ini Jika Rincian Masih Nyangkut
+                        </button>
+                    </div>
+                )}
+
                 <div className="flex items-center gap-3 ml-auto">
                     <button
                         onClick={handleExportRAB}
