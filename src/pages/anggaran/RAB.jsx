@@ -190,7 +190,7 @@ function RABContent() {
         // Use a timeout to avoid immediate state updates during render phase
         const timer = setTimeout(async () => {
             for (const plan of rabPlans) {
-                if (plan.status === 'PENDING' || plan.status === 'APPROVED') {
+                if (plan.status === 'PENDING' || plan.status === 'APPROVED' || plan.status === 'DRAFT') {
                     let hasPendingComp = false;
                     let hasApprovedComp = false;
                     
@@ -256,6 +256,50 @@ function RABContent() {
                                     ...c,
                                     status: 'APPROVED',
                                     isApproved: true
+                                }));
+                                return { ...p, components: updatedComps };
+                            });
+                        });
+
+                        const updatedPlan = {
+                            ...plan,
+                            expense: updatedExpense,
+                            income: updatedIncome,
+                            updatedAt: new Date().toISOString()
+                        };
+                        dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+                        await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+                        needsUpdate = true;
+                    }
+                    else if (plan.status === 'DRAFT' && hasPendingComp) {
+                        // The plan is DRAFT, but some components are stuck in pending (due to cancel submission). Cascade DRAFT.
+                        const updatedExpense = { ...plan.expense };
+                        Object.keys(updatedExpense).forEach(itemId => {
+                            const rawPlans = updatedExpense[itemId];
+                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+                            
+                            updatedExpense[itemId] = plansArr.map(p => {
+                                const comps = p.components || [];
+                                const updatedComps = comps.map(c => ({
+                                    ...c,
+                                    status: 'DRAFT',
+                                    isApproved: false
+                                }));
+                                return { ...p, components: updatedComps };
+                            });
+                        });
+
+                        const updatedIncome = { ...plan.income };
+                        Object.keys(updatedIncome).forEach(itemId => {
+                            const rawPlans = updatedIncome[itemId];
+                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+                            
+                            updatedIncome[itemId] = plansArr.map(p => {
+                                const comps = p.components || [];
+                                const updatedComps = comps.map(c => ({
+                                    ...c,
+                                    status: 'DRAFT',
+                                    isApproved: false
                                 }));
                                 return { ...p, components: updatedComps };
                             });
@@ -1555,9 +1599,43 @@ function RABContent() {
 
         if (!window.confirm('Batalkan pengajuan RAB ini? Status akan kembali ke Draft dan dapat diedit kembali.')) return;
 
+        const updatedExpense = { ...plan.expense };
+        Object.keys(updatedExpense).forEach(itemId => {
+            const rawPlans = updatedExpense[itemId];
+            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+            
+            updatedExpense[itemId] = plansArr.map(p => {
+                const comps = p.components || [];
+                const updatedComps = comps.map(c => ({
+                    ...c,
+                    status: 'DRAFT',
+                    isApproved: false
+                }));
+                return { ...p, components: updatedComps };
+            });
+        });
+
+        const updatedIncome = { ...plan.income };
+        Object.keys(updatedIncome).forEach(itemId => {
+            const rawPlans = updatedIncome[itemId];
+            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+            
+            updatedIncome[itemId] = plansArr.map(p => {
+                const comps = p.components || [];
+                const updatedComps = comps.map(c => ({
+                    ...c,
+                    status: 'DRAFT',
+                    isApproved: false
+                }));
+                return { ...p, components: updatedComps };
+            });
+        });
+
         const updatedPlan = {
             ...plan,
             status: 'DRAFT',
+            expense: updatedExpense,
+            income: updatedIncome,
             rejectionReason: null,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
