@@ -190,7 +190,7 @@ function RABContent() {
         // Use a timeout to avoid immediate state updates during render phase
         const timer = setTimeout(async () => {
             for (const plan of rabPlans) {
-                if (plan.status === 'PENDING') {
+                if (plan.status === 'PENDING' || plan.status === 'APPROVED') {
                     let hasPendingComp = false;
                     let hasApprovedComp = false;
                     
@@ -199,7 +199,7 @@ function RABContent() {
                         const arr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
                         arr.forEach(p => {
                             (p.components || []).forEach(c => {
-                                if (c.status === 'PENDING') hasPendingComp = true;
+                                if (c.status === 'PENDING' || !c.status) hasPendingComp = true;
                                 if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
                             });
                         });
@@ -210,17 +210,59 @@ function RABContent() {
                         const arr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
                         arr.forEach(p => {
                             (p.components || []).forEach(c => {
-                                if (c.status === 'PENDING') hasPendingComp = true;
+                                if (c.status === 'PENDING' || !c.status) hasPendingComp = true;
                                 if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
                             });
                         });
                     });
                     
-                    if (!hasPendingComp && hasApprovedComp) {
+                    if (plan.status === 'PENDING' && !hasPendingComp && hasApprovedComp) {
                         // All components are approved (or draft), none are pending. Fix the plan status.
                         const updatedPlan = {
                             ...plan,
                             status: 'APPROVED',
+                            updatedAt: new Date().toISOString()
+                        };
+                        dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+                        await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+                        needsUpdate = true;
+                    }
+                    else if (plan.status === 'APPROVED' && hasPendingComp) {
+                        // The plan is approved, but some components are stuck in pending. Cascade the approval.
+                        const updatedExpense = { ...plan.expense };
+                        Object.keys(updatedExpense).forEach(itemId => {
+                            if (Array.isArray(updatedExpense[itemId])) {
+                                updatedExpense[itemId] = updatedExpense[itemId].map(p => {
+                                    const comps = p.components || [];
+                                    const updatedComps = comps.map(c => ({
+                                        ...c,
+                                        status: 'APPROVED',
+                                        isApproved: true
+                                    }));
+                                    return { ...p, components: updatedComps };
+                                });
+                            }
+                        });
+
+                        const updatedIncome = { ...plan.income };
+                        Object.keys(updatedIncome).forEach(itemId => {
+                            if (Array.isArray(updatedIncome[itemId])) {
+                                updatedIncome[itemId] = updatedIncome[itemId].map(p => {
+                                    const comps = p.components || [];
+                                    const updatedComps = comps.map(c => ({
+                                        ...c,
+                                        status: 'APPROVED',
+                                        isApproved: true
+                                    }));
+                                    return { ...p, components: updatedComps };
+                                });
+                            }
+                        });
+
+                        const updatedPlan = {
+                            ...plan,
+                            expense: updatedExpense,
+                            income: updatedIncome,
                             updatedAt: new Date().toISOString()
                         };
                         dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
@@ -1537,9 +1579,44 @@ function RABContent() {
         const plan = rabPlans.find(p => p.id === planId);
         if (!plan) return;
 
+        // Cascade the approval/rejection to all components
+        const updatedExpense = { ...plan.expense };
+        Object.keys(updatedExpense).forEach(itemId => {
+            const plans = updatedExpense[itemId];
+            if (Array.isArray(plans)) {
+                updatedExpense[itemId] = plans.map(p => {
+                    const comps = p.components || [];
+                    const updatedComps = comps.map(c => ({
+                        ...c,
+                        status: status,
+                        isApproved: status === 'APPROVED'
+                    }));
+                    return { ...p, components: updatedComps };
+                });
+            }
+        });
+
+        const updatedIncome = { ...plan.income };
+        Object.keys(updatedIncome).forEach(itemId => {
+            const plans = updatedIncome[itemId];
+            if (Array.isArray(plans)) {
+                updatedIncome[itemId] = plans.map(p => {
+                    const comps = p.components || [];
+                    const updatedComps = comps.map(c => ({
+                        ...c,
+                        status: status,
+                        isApproved: status === 'APPROVED'
+                    }));
+                    return { ...p, components: updatedComps };
+                });
+            }
+        });
+
         const updatedPlan = {
             ...plan,
             status: status,
+            expense: updatedExpense,
+            income: updatedIncome,
             rejectionReason: reason,
             notified: false, // For unit notification
             approvedAt: status === 'APPROVED' ? new Date().toISOString() : null,
