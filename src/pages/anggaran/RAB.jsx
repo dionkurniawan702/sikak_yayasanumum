@@ -1789,11 +1789,12 @@ function RABContent() {
             const basePlanId = `${selectedYearId}-${selectedUnitId}`;
             const currentPlanId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
             let currentPlanUpdated = null;
+            
+            const modifiedPlans = new Map();
 
             for (const [planSubId, items] of Object.entries(selectionsByPlan)) {
                 // Find the main plan where plan.expense has a sub-plan with id === planSubId
-                // OR where plan.id === planSubId (if it's the main plan ID)
-                const plan = rabPlans.find(p => {
+                const foundMainPlan = rabPlans.find(p => {
                     if (p.id === planSubId) return true;
                     const nextExpense = p.expense || {};
                     return Object.values(nextExpense).some(plansArr => 
@@ -1801,13 +1802,18 @@ function RABContent() {
                     );
                 });
 
-                if (!plan) continue;
+                if (!foundMainPlan) continue;
+                const mainPlanId = foundMainPlan.id;
+                
+                let plan = modifiedPlans.get(mainPlanId);
+                if (!plan) {
+                    plan = JSON.parse(JSON.stringify(foundMainPlan));
+                    modifiedPlans.set(mainPlanId, plan);
+                }
 
-                const nextExpense = { ...plan.expense };
+                const nextExpense = plan.expense || {};
                 items.forEach(({ itemId: rawItemId, pIdx, cIdx }) => {
                     // Let's resolve the actual itemId!
-                    // If rawItemId starts with 'COMP-', it's not the real itemId.
-                    // We must find which key in nextExpense contains the sub-plan with id === planSubId.
                     let itemId = rawItemId;
                     if (rawItemId.startsWith('COMP-')) {
                         const foundKey = Object.keys(nextExpense).find(k => 
@@ -1819,38 +1825,60 @@ function RABContent() {
                     let rawPlanItems = nextExpense[itemId];
                     let planItems = Array.isArray(rawPlanItems) ? rawPlanItems : (rawPlanItems && typeof rawPlanItems === 'object' && Object.keys(rawPlanItems).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawPlanItems }] : []);
                     
-                    // Find the exact index of the sub-plan with id === planSubId
-                    const actualPIdx = planItems.findIndex(subP => subP.id === planSubId);
-                    const targetIdx = actualPIdx !== -1 ? actualPIdx : pIdx;
-
-                    if (planItems[targetIdx] && planItems[targetIdx].components && planItems[targetIdx].components[cIdx]) {
-                        const newComps = [...planItems[targetIdx].components];
-                        
-                        let newStatus = newComps[cIdx].status;
-                        let newIsApproved = newComps[cIdx].isApproved;
-                        
-                        if (action === 'SUBMIT') {
-                            newStatus = 'PENDING';
-                        } else if (action === 'APPROVE') {
-                            newStatus = 'APPROVED';
-                            newIsApproved = true;
-                        } else if (action === 'REJECT') {
-                            newStatus = 'REJECTED';
-                            newIsApproved = false;
+                    if (activeTab !== 'REVIEW' && planItems.length > 1) {
+                        // We forced consolidation in the UI, so cIdx maps to the flattened array!
+                        let runningCount = 0;
+                        for (let i = 0; i < planItems.length; i++) {
+                            const comps = planItems[i].components || [];
+                            if (cIdx >= runningCount && cIdx < runningCount + comps.length) {
+                                const localCIdx = cIdx - runningCount;
+                                const comp = comps[localCIdx];
+                                let newStatus = comp.status;
+                                let newIsApproved = comp.isApproved;
+                                
+                                if (action === 'SUBMIT') newStatus = 'PENDING';
+                                else if (action === 'APPROVE') { newStatus = 'APPROVED'; newIsApproved = true; }
+                                else if (action === 'REJECT') { newStatus = 'REJECTED'; newIsApproved = false; }
+                                
+                                comp.status = newStatus;
+                                comp.isApproved = newIsApproved;
+                                break;
+                            }
+                            runningCount += comps.length;
                         }
+                    } else {
+                        // Normal logic
+                        const actualPIdx = planItems.findIndex(subP => subP.id === planSubId);
+                        const targetIdx = actualPIdx !== -1 ? actualPIdx : pIdx;
 
-                        newComps[cIdx] = { ...newComps[cIdx], isApproved: newIsApproved, status: newStatus };
-                        
-                        const newPlanItems = [...planItems];
-                        newPlanItems[targetIdx] = { ...newPlanItems[targetIdx], components: newComps };
-                        
-                        nextExpense[itemId] = newPlanItems;
+                        if (planItems[targetIdx] && planItems[targetIdx].components && planItems[targetIdx].components[cIdx]) {
+                            const comp = planItems[targetIdx].components[cIdx];
+                            let newStatus = comp.status;
+                            let newIsApproved = comp.isApproved;
+                            
+                            if (action === 'SUBMIT') {
+                                newStatus = 'PENDING';
+                            } else if (action === 'APPROVE') {
+                                newStatus = 'APPROVED';
+                                newIsApproved = true;
+                            } else if (action === 'REJECT') {
+                                newStatus = 'REJECTED';
+                                newIsApproved = false;
+                            }
+
+                            comp.status = newStatus;
+                            comp.isApproved = newIsApproved;
+                        }
                     }
+                    nextExpense[itemId] = planItems;
                 });
+            }
 
+            // Now dispatch all modified plans!
+            for (const plan of modifiedPlans.values()) {
                 // Auto-update plan status if no PENDING components remain
                 let hasPending = false;
-                Object.values(nextExpense).forEach(plansArr => {
+                Object.values(plan.expense || {}).forEach(plansArr => {
                     const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
                     arr.forEach(p => {
                         (p.components || []).forEach(c => {
@@ -1870,9 +1898,9 @@ function RABContent() {
 
                 let newPlanStatus = plan.status;
                 if (!hasPending && plan.status === 'PENDING') {
-                    // Check if there's at least one APPROVED component to ensure it's actually approved, not just empty
+                    // Check if there's at least one APPROVED component
                     let hasApproved = false;
-                    Object.values(nextExpense).forEach(plansArr => {
+                    Object.values(plan.expense || {}).forEach(plansArr => {
                         const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
                         arr.forEach(p => {
                             (p.components || []).forEach(c => {
@@ -1886,40 +1914,21 @@ function RABContent() {
                     }
                 }
 
-                const updatedPlan = { 
-                    ...plan, 
-                    expense: nextExpense, 
-                    status: newPlanStatus,
-                    updatedAt: new Date().toISOString() 
-                };
-                dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+                plan.status = newPlanStatus;
+                plan.updatedAt = new Date().toISOString();
+                
+                dispatch({ type: 'SET_RAB_PLAN', payload: plan });
+                await api.pushAction({ type: 'SET_RAB_PLAN', payload: plan }, state);
 
-                if (plan.id === currentPlanId || planSubId === currentPlanId) {
-                    currentPlanUpdated = updatedPlan;
+                if (plan.id === currentPlanId) {
+                    currentPlanUpdated = plan;
                 }
             }
 
             if (currentPlanUpdated) {
-                const rawExpense = currentPlanUpdated.expense || {};
-                const migratedExpense = {};
-                Object.entries(rawExpense).forEach(([itemId, data]) => {
-                    if (Array.isArray(data)) {
-                        migratedExpense[itemId] = data;
-                    } else if (data && typeof data === 'object' && Object.keys(data).length > 0) {
-                        migratedExpense[itemId] = [{
-                            id: `P-${itemId}-LEGACY`,
-                            itemId: itemId,
-                            ...data
-                        }];
-                    } else {
-                        migratedExpense[itemId] = [];
-                    }
-                });
-
                 setCurrentPlan({
                     income: currentPlanUpdated.income || {},
-                    expense: migratedExpense,
+                    expense: currentPlanUpdated.expense || {},
                     status: currentPlanUpdated.status || 'DRAFT',
                     rejectionReason: currentPlanUpdated.rejectionReason || null,
                     notified: currentPlanUpdated.notified
