@@ -161,6 +161,65 @@ function RABContent() {
         });
     };
 
+    const handleSelectAll = () => {
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
+        const items = type === 'income' ? incomeItems : expenseItems; // Using all items instead of filtered ones to ensure we catch everything
+        const newSelected = new Set(selectedComponents);
+        
+        let addedCount = 0;
+
+        items.forEach(itemMaster => {
+            let allPlans = activePlan[type]?.[itemMaster.id] || [];
+            const planArray = Array.isArray(allPlans) ? allPlans : (allPlans && typeof allPlans === 'object' && Object.keys(allPlans).length > 0 ? [{ id: `P-${itemMaster.id}-LEGACY`, itemId: itemMaster.id, ...allPlans }] : []);
+            
+            // Re-apply force consolidation logic if it's not review mode
+            if (activeTab !== 'REVIEW' && planArray.length > 1) {
+                const first = planArray[0];
+                const allComps = planArray.flatMap(p => p.components || []);
+                const virtualPlan = { ...first, components: allComps, total: planArray.reduce((s, p) => s + (parseFloat(p.total) || 0), 0) };
+                
+                (virtualPlan.components || []).forEach((c, cIdx) => {
+                    let compStatus = c.status;
+                    if (!compStatus) compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
+                    
+                    const isReviewMode = activeTab === 'REVIEW';
+                    const canSelect = isReviewMode ? compStatus === 'PENDING' : (compStatus === 'DRAFT' || compStatus === 'REJECTED');
+                    
+                    if (canSelect) {
+                        const pIdx = 0; // Because we forced consolidated to 1 plan
+                        const compId = `${virtualPlan.id}|COMP-${virtualPlan.id}|${pIdx}|${cIdx}`;
+                        newSelected.add(compId);
+                        addedCount++;
+                    }
+                });
+            } else {
+                planArray.forEach((plan, pIdx) => {
+                    (plan.components || []).forEach((c, cIdx) => {
+                        let compStatus = c.status;
+                        if (!compStatus) compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
+                        
+                        const isReviewMode = activeTab === 'REVIEW';
+                        const canSelect = isReviewMode ? compStatus === 'PENDING' : (compStatus === 'DRAFT' || compStatus === 'REJECTED');
+                        
+                        if (canSelect) {
+                            const compId = `${plan.id}|COMP-${plan.id}|${pIdx}|${cIdx}`;
+                            newSelected.add(compId);
+                            addedCount++;
+                        }
+                    });
+                });
+            }
+        });
+
+        if (addedCount === 0) {
+            // If already all selected or none to select, maybe clear?
+            if (selectedComponents.size > 0) setSelectedComponents(new Set());
+            else alert("Tidak ada rincian yang bisa dipilih (semua sudah diajukan/disetujui).");
+        } else {
+            setSelectedComponents(newSelected);
+        }
+    };
+
     const toggleReviewPlan = (id) => setExpandedReviewPlans(prev => ({ ...prev, [id]: !prev[id] }));
     const toggleDashboardPlan = (id) => setExpandedDashboardPlans(prev => ({ ...prev, [id]: !prev[id] }));
 
@@ -2634,6 +2693,17 @@ function RABContent() {
                             title="RESET FILTER"
                         >
                             <RotateCcw size={16} className="group-active:rotate-180 transition-transform duration-500" />
+                        </button>
+                    )}
+
+                    {/* Pilih Semua Button */}
+                    {!isConsolidation && (
+                        <button
+                            onClick={handleSelectAll}
+                            className="p-3 ml-auto bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all group font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
+                            title="Pilih Semua Rincian"
+                        >
+                            <CheckSquare size={16} /> PILIH SEMUA
                         </button>
                     )}
                 </div>
