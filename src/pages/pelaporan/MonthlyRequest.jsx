@@ -783,7 +783,7 @@ export default function MonthlyRequest() {
                                                 </div>
                                                 <div>
                                                     <p className={`text-[9px] font-black uppercase tracking-widest mb-1 ${selectedComponents.includes(comp.id) ? 'text-indigo-100' : 'text-slate-400'}`}>
-                                                        {comp.itemMasterName} • {comp.planDescription}
+                                                        {comp.itemMasterName}
                                                     </p>
                                                     <h4 className="font-black text-lg tracking-tight leading-tight">{comp.label || comp.name}</h4>
                                                     <p className={`text-[10px] font-bold ${selectedComponents.includes(comp.id) ? 'text-indigo-200' : 'text-slate-400'}`}>
