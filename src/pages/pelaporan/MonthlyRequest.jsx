@@ -527,7 +527,7 @@ export default function MonthlyRequest() {
                 </div>
             )}
             {/* Header */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
                 <div className="lg:col-span-2 bg-gradient-to-br from-indigo-700 to-blue-900 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden group">
                     <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform">
                         <Send size={160} />
@@ -572,14 +572,6 @@ export default function MonthlyRequest() {
                             </div>
                         )}
                     </div>
-                </div>
-
-                <div className="card p-8 bg-white/40 backdrop-blur-xl border-white rounded-[32px] flex flex-col items-center justify-center text-center group hover:bg-white transition-all shadow-xl">
-                    <div className="w-14 h-14 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <TrendingUp size={24} />
-                    </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Saldo Tersedia (ACC)</p>
-                    <h2 className="text-2xl font-black text-slate-900">{formatRupiah(stats.approved)}</h2>
                 </div>
 
                 <div className="card p-8 bg-white/40 backdrop-blur-xl border-white rounded-[32px] flex flex-col items-center justify-center text-center group hover:bg-white transition-all shadow-xl text-slate-900">
