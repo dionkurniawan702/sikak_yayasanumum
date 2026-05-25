@@ -183,7 +183,7 @@ function RABContent() {
 
     // AUTO-REPAIR STUCK PENDING PLANS
     useEffect(() => {
-        if (!isSuperAdmin || !rabPlans || rabPlans.length === 0) return;
+        if (!rabPlans || rabPlans.length === 0) return;
         
         let needsUpdate = false;
         
@@ -231,32 +231,34 @@ function RABContent() {
                         // The plan is approved, but some components are stuck in pending. Cascade the approval.
                         const updatedExpense = { ...plan.expense };
                         Object.keys(updatedExpense).forEach(itemId => {
-                            if (Array.isArray(updatedExpense[itemId])) {
-                                updatedExpense[itemId] = updatedExpense[itemId].map(p => {
-                                    const comps = p.components || [];
-                                    const updatedComps = comps.map(c => ({
-                                        ...c,
-                                        status: 'APPROVED',
-                                        isApproved: true
-                                    }));
-                                    return { ...p, components: updatedComps };
-                                });
-                            }
+                            const rawPlans = updatedExpense[itemId];
+                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+                            
+                            updatedExpense[itemId] = plansArr.map(p => {
+                                const comps = p.components || [];
+                                const updatedComps = comps.map(c => ({
+                                    ...c,
+                                    status: 'APPROVED',
+                                    isApproved: true
+                                }));
+                                return { ...p, components: updatedComps };
+                            });
                         });
 
                         const updatedIncome = { ...plan.income };
                         Object.keys(updatedIncome).forEach(itemId => {
-                            if (Array.isArray(updatedIncome[itemId])) {
-                                updatedIncome[itemId] = updatedIncome[itemId].map(p => {
-                                    const comps = p.components || [];
-                                    const updatedComps = comps.map(c => ({
-                                        ...c,
-                                        status: 'APPROVED',
-                                        isApproved: true
-                                    }));
-                                    return { ...p, components: updatedComps };
-                                });
-                            }
+                            const rawPlans = updatedIncome[itemId];
+                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+                            
+                            updatedIncome[itemId] = plansArr.map(p => {
+                                const comps = p.components || [];
+                                const updatedComps = comps.map(c => ({
+                                    ...c,
+                                    status: 'APPROVED',
+                                    isApproved: true
+                                }));
+                                return { ...p, components: updatedComps };
+                            });
                         });
 
                         const updatedPlan = {
@@ -1582,34 +1584,34 @@ function RABContent() {
         // Cascade the approval/rejection to all components
         const updatedExpense = { ...plan.expense };
         Object.keys(updatedExpense).forEach(itemId => {
-            const plans = updatedExpense[itemId];
-            if (Array.isArray(plans)) {
-                updatedExpense[itemId] = plans.map(p => {
-                    const comps = p.components || [];
-                    const updatedComps = comps.map(c => ({
-                        ...c,
-                        status: status,
-                        isApproved: status === 'APPROVED'
-                    }));
-                    return { ...p, components: updatedComps };
-                });
-            }
+            const rawPlans = updatedExpense[itemId];
+            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+            
+            updatedExpense[itemId] = plansArr.map(p => {
+                const comps = p.components || [];
+                const updatedComps = comps.map(c => ({
+                    ...c,
+                    status: status,
+                    isApproved: status === 'APPROVED'
+                }));
+                return { ...p, components: updatedComps };
+            });
         });
 
         const updatedIncome = { ...plan.income };
         Object.keys(updatedIncome).forEach(itemId => {
-            const plans = updatedIncome[itemId];
-            if (Array.isArray(plans)) {
-                updatedIncome[itemId] = plans.map(p => {
-                    const comps = p.components || [];
-                    const updatedComps = comps.map(c => ({
-                        ...c,
-                        status: status,
-                        isApproved: status === 'APPROVED'
-                    }));
-                    return { ...p, components: updatedComps };
-                });
-            }
+            const rawPlans = updatedIncome[itemId];
+            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+            
+            updatedIncome[itemId] = plansArr.map(p => {
+                const comps = p.components || [];
+                const updatedComps = comps.map(c => ({
+                    ...c,
+                    status: status,
+                    isApproved: status === 'APPROVED'
+                }));
+                return { ...p, components: updatedComps };
+            });
         });
 
         const updatedPlan = {
