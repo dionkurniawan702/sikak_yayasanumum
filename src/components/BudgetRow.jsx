@@ -1,6 +1,11 @@
 import React from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
+const monthMap = {
+    '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'Mei', '06': 'Jun',
+    '07': 'Jul', '08': 'Ags', '09': 'Sep', '10': 'Okt', '11': 'Nov', '12': 'Des'
+};
+
 /**
  * Shared BudgetRow component for premium budget tables.
  * 
@@ -173,6 +178,27 @@ export default function BudgetRow({
                                                             Draft
                                                         </span>
                                                     )}
+                                                    {(() => {
+                                                        const selectedMonths = Object.keys(comp.months || {}).filter(mId => comp.months[mId]?.m === true || comp.months[mId]?.jumlah > 0);
+                                                        if (selectedMonths.length === 12) {
+                                                            return (
+                                                                <span className="text-[8px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full uppercase tracking-widest border border-emerald-100 whitespace-nowrap">
+                                                                    12 Bulan
+                                                                </span>
+                                                            );
+                                                        } else if (selectedMonths.length > 0) {
+                                                            return selectedMonths.sort().map(mId => {
+                                                                const parts = mId.split('-');
+                                                                const mName = parts[1] ? monthMap[parts[1]] : mId;
+                                                                return (
+                                                                    <span key={mId} className="text-[8px] font-black text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full uppercase tracking-widest border border-slate-200 whitespace-nowrap">
+                                                                        {mName}
+                                                                    </span>
+                                                                );
+                                                            });
+                                                        }
+                                                        return null;
+                                                    })()}
                                                 </div>
                                             </div>
                                         </div>
