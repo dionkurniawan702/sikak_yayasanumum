@@ -1802,7 +1802,7 @@ function RABContent() {
                     if (planSubId.startsWith('P-') && planSubId.endsWith('-LEGACY')) {
                         const expectedItemId = planSubId.replace('P-', '').replace('-LEGACY', '');
                         if (nextExpense[expectedItemId] && !Array.isArray(nextExpense[expectedItemId])) {
-                            return true;
+                            if (p.id === currentPlanId) return true;
                         }
                     }
 
