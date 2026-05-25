@@ -1797,6 +1797,15 @@ function RABContent() {
                 const foundMainPlan = rabPlans.find(p => {
                     if (p.id === planSubId) return true;
                     const nextExpense = p.expense || {};
+                    
+                    // Support for legacy plans
+                    if (planSubId.startsWith('P-') && planSubId.endsWith('-LEGACY')) {
+                        const expectedItemId = planSubId.replace('P-', '').replace('-LEGACY', '');
+                        if (nextExpense[expectedItemId] && !Array.isArray(nextExpense[expectedItemId])) {
+                            return true;
+                        }
+                    }
+
                     return Object.values(nextExpense).some(plansArr => 
                         Array.isArray(plansArr) && plansArr.some(subP => subP.id === planSubId)
                     );
@@ -1816,9 +1825,14 @@ function RABContent() {
                     // Let's resolve the actual itemId!
                     let itemId = rawItemId;
                     if (rawItemId.startsWith('COMP-')) {
-                        const foundKey = Object.keys(nextExpense).find(k => 
-                            Array.isArray(nextExpense[k]) && nextExpense[k].some(subP => subP.id === planSubId)
-                        );
+                        const foundKey = Object.keys(nextExpense).find(k => {
+                            if (Array.isArray(nextExpense[k])) {
+                                return nextExpense[k].some(subP => subP.id === planSubId);
+                            } else if (planSubId === `P-${k}-LEGACY`) {
+                                return true;
+                            }
+                            return false;
+                        });
                         if (foundKey) itemId = foundKey;
                     }
 
