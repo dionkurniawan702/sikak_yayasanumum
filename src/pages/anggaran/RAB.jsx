@@ -3466,6 +3466,23 @@ function RABContent() {
                                                                                         <span className="w-1 h-1 rounded-full bg-slate-200" />
                                                                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Harga: {formatRupiah(comp.harga)}</span>
                                                                                     </div>
+                                                                                    {(() => {
+                                                                                        const selectedMonths = monthsOptions.filter(m => comp.months?.[m.id]?.m === true || comp.months?.[m.id]?.jumlah > 0);
+                                                                                        if (selectedMonths.length === 12) {
+                                                                                            return <div className="mt-3 flex flex-wrap gap-2"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-black uppercase tracking-widest border border-emerald-100">Setiap Bulan (12 Bulan Penuh)</span></div>;
+                                                                                        } else if (selectedMonths.length > 0) {
+                                                                                            return (
+                                                                                                <div className="mt-3 flex flex-wrap gap-1.5">
+                                                                                                    {selectedMonths.map(m => (
+                                                                                                        <span key={m.id} className="px-2 py-1 bg-slate-50 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200">
+                                                                                                            {m.label || m.name || m.id}
+                                                                                                        </span>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            );
+                                                                                        }
+                                                                                        return null;
+                                                                                    })()}
                                                                                 </div>
                                                                                 <div className="flex items-center gap-6 mt-6 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
                                                                                     <div className="text-right">
