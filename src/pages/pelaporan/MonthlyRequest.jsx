@@ -162,6 +162,57 @@ export default function MonthlyRequest() {
         return ids;
     }, [budgetRequests, sourceMode]);
 
+    const monthlyTotals = useMemo(() => {
+        if (!rabPlans) return {};
+        
+        const myPlans = rabPlans.filter(p => {
+            if (isSuperAdmin) return true;
+            if (myUnitId) return p.unitId === myUnitId;
+            if (myFieldId) return p.fieldId === myFieldId;
+            return false;
+        }).filter(p => {
+            const isBosPlan = p.id?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosPlan) return false;
+            if (sourceMode === 'YAYASAN' && isBosPlan) return false;
+            return p.academicYearId === globalAcademicYearId;
+        });
+
+        const totals = {};
+        yearMonths.forEach(m => totals[m.id] = 0);
+
+        myPlans.forEach(plan => {
+            Object.entries(plan.expense || {}).forEach(([itemId, rawItemPlans]) => {
+                const itemPlans = Array.isArray(rawItemPlans) ? rawItemPlans : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] : []);
+                
+                itemPlans.forEach((p, pIdx) => {
+                    (p.components || []).forEach((comp, cIdx) => {
+                        const isActuallyApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                        if (!isActuallyApproved) return;
+                        
+                        const compId = comp.id || `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
+                        
+                        yearMonths.forEach(m => {
+                            const monthId = m.id;
+                            const isScheduledInMonth = comp.months?.[monthId]?.m === true;
+                            const monthlyAmount = parseFloat(comp.months?.[monthId]?.jumlah) || 0;
+                            
+                            if (isScheduledInMonth && monthlyAmount > 0) {
+                                const alreadyRequested = (budgetRequests || []).some(req =>
+                                    req.month === monthId && req.items?.some(reqItem => reqItem.componentId === compId)
+                                );
+                                
+                                if (!alreadyRequested) {
+                                    totals[monthId] += monthlyAmount;
+                                }
+                            }
+                        });
+                    });
+                });
+            });
+        });
+        return totals;
+    }, [rabPlans, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, myFieldId, sourceMode]);
+
     // Aggregate Approved components from RAB Plans that are NOT yet requested
     const approvedComponents = useMemo(() => {
         if (!rabPlans || !requestMonth) return [];
@@ -736,7 +787,9 @@ export default function MonthlyRequest() {
                                             className="bg-white border-2 border-indigo-100 rounded-xl px-4 py-2 text-sm font-black text-indigo-900 focus:ring-4 focus:ring-indigo-50 outline-none transition-all cursor-pointer shadow-sm"
                                         >
                                             {yearMonths.map(m => (
-                                                <option key={m.id} value={m.id}>BULAN: {m.label.toUpperCase()}</option>
+                                                <option key={m.id} value={m.id}>
+                                                    BULAN: {m.label.toUpperCase()} {monthlyTotals[m.id] > 0 ? `- Rp ${monthlyTotals[m.id].toLocaleString('id-ID')}` : ''}
+                                                </option>
                                             ))}
                                         </select>
                                     </div>
