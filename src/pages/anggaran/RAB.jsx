@@ -400,8 +400,8 @@ function RABContent() {
         const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
         const existingPlan = (rabPlans || []).find(p => p.id === planId);
         
-        // Track status and notified changes so the modal can show up even if data loads late
-        const planKey = existingPlan ? `${planId}-${existingPlan.status}-${existingPlan.notified}` : planId;
+        // Track status, notified, and updatedAt changes so the modal can show up even if data loads late or auto-repair runs
+        const planKey = existingPlan ? `${planId}-${existingPlan.status}-${existingPlan.notified}-${existingPlan.updatedAt}` : planId;
 
         if (lastPlanIdRef.current !== planKey) {
             if (existingPlan) {
