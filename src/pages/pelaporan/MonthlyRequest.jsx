@@ -243,7 +243,7 @@ export default function MonthlyRequest() {
             status: 'PENDING',
             totalAmount,
             source: sourceMode, // Tag as YAYASAN or BOS
-            description: selectedData.map(c => c.label || c.name).join(', '),
+            description: selectedData.length > 0 ? (selectedData[0].label || selectedData[0].name) : 'Pengajuan Dana',
             items: selectedData.map(c => ({
                 componentId: c.id,
                 name: c.label || c.name,

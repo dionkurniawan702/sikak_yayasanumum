@@ -592,7 +592,7 @@ function RABContent() {
                         total: plans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0),
                         components: allComponents,
                         months: aggrMonths,
-                        description: Array.from(new Set(allComponents.map(c => c.label))).join(', ')
+                        description: allComponents.length > 0 ? allComponents[0].label : ''
                     }];
                 } else {
                     consolidatedExpense[itemId] = plans;
@@ -1046,7 +1046,7 @@ function RABContent() {
                     semester: firstSemester,
                     programId: firstProgramId,
                     months: aggregatedMonths,
-                    description: components.map(c => c.label).join(', ')
+                    description: components.length > 0 ? components[0].label : ''
                 };
 
                 return updatedPlan;
@@ -1911,7 +1911,9 @@ function RABContent() {
                 });
 
                 let newPlanStatus = plan.status;
-                if (!hasPending && plan.status === 'PENDING') {
+                if (hasPending) {
+                    newPlanStatus = 'PENDING';
+                } else if (!hasPending && plan.status === 'PENDING') {
                     // Check if there's at least one APPROVED component
                     let hasApproved = false;
                     Object.values(plan.expense || {}).forEach(plansArr => {
@@ -2793,7 +2795,7 @@ function RABContent() {
                                         total: allPlans.reduce((s, p) => s + (parseFloat(p.total) || 0), 0),
                                         components: allComps,
                                         months: aggrMonths,
-                                        description: Array.from(new Set(allComps.map(c => c.label))).join(', ')
+                                        description: allComps.length > 0 ? allComps[0].label : ''
                                     }];
                                 }
                                 
@@ -3643,7 +3645,7 @@ function RABContent() {
                                     useBos: plans.some(p => p.useBos),
                                     components: allComponents,
                                     months: aggrMonths,
-                                    description: Array.from(new Set(allComponents.map(c => c.label))).join(', ')
+                                    description: allComponents.length > 0 ? allComponents[0].label : ''
                                 };
                             } else {
                                 item = plans.find(p => p.id === editingItem.planId) || plans.find(p => p.id === editingItem.id) || plans[0] || {
