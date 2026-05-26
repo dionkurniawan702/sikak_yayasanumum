@@ -422,8 +422,8 @@ export default function MonthlyRequest() {
                         .info table { width: 100%; }
                         .info td { vertical-align: top; }
                         .content { margin-bottom: 40px; }
-                        .content table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        .content th, .content td { border: 1px solid #000; padding: 10px; text-align: left; }
+                        .content table { width: 100%; border-collapse: collapse; margin-top: 20px; line-height: 1.3; font-size: 14px; }
+                        .content th, .content td { border: 1px solid #000; padding: 4px 8px; text-align: left; }
                         .content th { background: #f2f2f2; text-align: center; }
                         .footer { margin-top: 50px; display: flex; justify-content: space-between; }
                         .signature { text-align: center; width: 200px; }
