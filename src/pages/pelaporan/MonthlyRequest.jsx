@@ -424,9 +424,10 @@ export default function MonthlyRequest() {
                         .content { margin-bottom: 40px; }
                         .content table { width: 100%; border-collapse: collapse; margin-top: 20px; }
                         .content th, .content td { border: 1px solid #000; padding: 10px; text-align: left; }
-                        .content th { background: #f2f2f2; }
+                        .content th { background: #f2f2f2; text-align: center; }
                         .footer { margin-top: 50px; display: flex; justify-content: space-between; }
                         .signature { text-align: center; width: 200px; }
+                        .signature p { margin: 0; }
                         .signature .space { height: 80px; }
                         @media print { .no-print { display: none; } }
                     </style>
@@ -442,7 +443,7 @@ export default function MonthlyRequest() {
                     </div>
 
                     <div class="info">
-                        <h2 style="text-align: center; text-decoration: underline; margin-bottom: 5px;">SURAT PERMINTAAN DANA (${req.source || 'YAYASAN'})</h2>
+                        <h2 style="text-align: center; text-decoration: underline; margin-bottom: 5px;">SURAT PERMINTAAN DANA</h2>
                         <p style="text-align: center; margin-top: 0;">Nomor: ${req.id}</p>
                         
                         <table style="margin-top: 20px;">
@@ -466,7 +467,7 @@ export default function MonthlyRequest() {
                                 <tr>
                                     <th width="30">No</th>
                                     <th>Mata Anggaran</th>
-                                    <th>Deskripsi Keperluan</th>
+                                    <th>Rincian Pengeluaran</th>
                                     <th style="text-align: right;">Total Dana</th>
                                 </tr>
                             </thead>
@@ -496,29 +497,29 @@ export default function MonthlyRequest() {
                         <div class="left-side" style="width: 45%;">
                             <div class="signature" style="margin: 0 auto; margin-bottom: 40px;">
                                 <p>Menyetujui,</p>
+                                <p>Bendahara Yayasan</p>
                                 <div class="space"></div>
                                 <p>____________________</p>
-                                <p>( Bendahara Yayasan )</p>
                             </div>
                             <div class="signature" style="margin: 0 auto;">
                                 <p>Memeriksa,</p>
+                                <p>Kabid. Keuangan</p>
                                 <div class="space"></div>
                                 <p>____________________</p>
-                                <p>( Kabid. Keuangan )</p>
                             </div>
                         </div>
                         <div class="right-side" style="width: 45%;">
                             <div class="signature" style="margin: 0 auto; margin-bottom: 40px;">
                                 <p>Pemohon,</p>
+                                <p>Kepala Unit / Bidang</p>
                                 <div class="space"></div>
                                 <p>____________________</p>
-                                <p>( Kepala Unit / Bidang )</p>
                             </div>
                             <div class="signature" style="margin: 0 auto;">
                                 <p>Pemohon,</p>
+                                <p>Bendahara Unit</p>
                                 <div class="space"></div>
                                 <p>____________________</p>
-                                <p>( Bendahara Unit )</p>
                             </div>
                         </div>
                     </div>
