@@ -487,13 +487,11 @@ export default function MonthlyRequest() {
                                     </tr>
                                     `;
                                 }).join('')}
-                            </tbody>
-                            <tfoot>
                                 <tr>
                                     <th colspan="3" style="text-align: right;">TOTAL PENGAJUAN</th>
                                     <th style="text-align: right;">${formatRupiah(req.totalAmount)}</th>
                                 </tr>
-                            </tfoot>
+                            </tbody>
                         </table>
                     </div>
 
