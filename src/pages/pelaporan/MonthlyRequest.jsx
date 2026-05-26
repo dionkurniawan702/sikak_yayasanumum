@@ -473,14 +473,14 @@ export default function MonthlyRequest() {
                             <tbody>
                                 ${req.items.map((item, idx) => {
                                     const maName = state.expenseItems?.find(e => e.id === item.expenseItemId)?.name || '-';
-                                    return \`
+                                    return `
                                     <tr>
-                                        <td>\${idx + 1}</td>
-                                        <td>\${maName}</td>
-                                        <td>\${item.name}</td>
-                                        <td style="text-align: right;">\${formatRupiah(item.amount)}</td>
+                                        <td>${idx + 1}</td>
+                                        <td>${maName}</td>
+                                        <td>${item.name}</td>
+                                        <td style="text-align: right;">${formatRupiah(item.amount)}</td>
                                     </tr>
-                                    \`;
+                                    `;
                                 }).join('')}
                             </tbody>
                             <tfoot>
