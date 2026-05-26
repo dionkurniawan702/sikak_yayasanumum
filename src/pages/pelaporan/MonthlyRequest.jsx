@@ -434,7 +434,7 @@ export default function MonthlyRequest() {
                 </head>
                 <body>
                     <div class="header">
-                        <img src="/logo-yayasan.png" alt="Logo" class="logo" onerror="this.style.display='none'" />
+                        <img src="${window.location.origin}/logo-yayasan.png" alt="Logo" class="logo" onerror="this.style.display='none'" />
                         <div class="header-text">
                             <h1>YAYASAN DAR EL-IMAN</h1>
                             <p>Jl. Gajah Mada Gang BPKP II No.Dalam, Kp. Olo, Kec. Nanggalo, Kota Padang, Sumatera Barat 25173</p>
