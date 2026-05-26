@@ -470,7 +470,7 @@ export default function MonthlyRequest() {
                             <thead>
                                 <tr>
                                     <th width="30">No</th>
-                                    <th>Mata Anggaran</th>
+                                    <th>Item Pengeluaran</th>
                                     <th>Rincian Pengeluaran</th>
                                     <th style="text-align: right;">Total Dana</th>
                                 </tr>
