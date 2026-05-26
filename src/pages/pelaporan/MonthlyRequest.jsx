@@ -455,6 +455,10 @@ export default function MonthlyRequest() {
                                 <td>Unit / Bidang</td>
                                 <td>: ${unitName}</td>
                             </tr>
+                            <tr>
+                                <td>Sumber Dana</td>
+                                <td>: ${req.source || 'YAYASAN'}</td>
+                            </tr>
                         </table>
                     </div>
 
