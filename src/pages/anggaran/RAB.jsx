@@ -1769,7 +1769,7 @@ function RABContent() {
             setShowRejectionInput(null);
             setRejectionReason('');
         } catch (error) {
-            setMessage({ type: 'error', text: 'Gagal memproses persetujuan.' });
+            setMessage({ type: 'error', text: 'Gagal memproses persetujuan: ' + error.message });
         }
     };
 
