@@ -1432,8 +1432,7 @@ function RABContent() {
             return true;
         } catch (error) {
             console.error('Failed to persist RAB plan:', error);
-            setMessage({ type: 'error', text: 'Koneksi bermasalah: Data tersimpan di draf lokal, namun gagal sinkron ke server.' });
-            return false;
+            throw error;
         }
     };
 
