@@ -518,16 +518,39 @@ app.post('/api/sync', async (req, res) => {
                 if (students && Array.isArray(students)) {
                     for (const s of students) {
                         try {
+                            // --- DUPLICATE PREVENTION LOGIC ---
+                            let targetId = s.id;
+                            
+                            // 1. Check if the exact ID exists
+                            const existingById = await tx.student.findUnique({ where: { id: s.id } });
+                            
+                            if (!existingById) {
+                                // 2. ID doesn't exist. Check for duplicates by name + unitId
+                                const existingByName = await tx.student.findFirst({
+                                    where: { 
+                                        name: s.name,
+                                        unitId: s.unitId,
+                                        isDeleted: false
+                                    }
+                                });
+                                
+                                if (existingByName) {
+                                    // Found a duplicate! Map the incoming ID to the existing DB ID.
+                                    targetId = existingByName.id;
+                                    console.log(`[Sync] Merging duplicate student: ${s.name}. Using existing ID: ${targetId} instead of new ID: ${s.id}`);
+                                }
+                            }
+
                             await tx.student.upsert({
-                                where: { id: s.id },
+                                where: { id: targetId },
                                 update: {
-                                    id: s.id, nis: s.nis, name: s.name, unitId: s.unitId,
+                                    nis: s.nis, name: s.name, unitId: s.unitId,
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
                                     isDeleted: !!s.isDeleted
                                 },
                                 create: {
-                                    id: s.id, nis: s.nis, name: s.name, unitId: s.unitId,
+                                    id: targetId, nis: s.nis, name: s.name, unitId: s.unitId,
                                     classId: s.classId || null, academicYearId: s.academicYearId || null,
                                     statusId: s.statusId || null, parentStatusId: s.parentStatusId || null,
                                     isDeleted: !!s.isDeleted
@@ -535,10 +558,10 @@ app.post('/api/sync', async (req, res) => {
                             });
 
                             if (s.incomeDetails && Array.isArray(s.incomeDetails) && s.incomeDetails.length > 0) {
-                                await tx.studentIncomeDetail.deleteMany({ where: { studentId: s.id } });
+                                await tx.studentIncomeDetail.deleteMany({ where: { studentId: targetId } });
                                 await tx.studentIncomeDetail.createMany({
                                     data: s.incomeDetails.map(d => ({
-                                        studentId: s.id,
+                                        studentId: targetId,
                                         incomeItemId: d.incomeItemId,
                                         amount: parseFloat(d.amount) || 0
                                     }))
