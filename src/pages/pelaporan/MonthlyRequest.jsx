@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -19,6 +19,7 @@ export default function MonthlyRequest() {
     const [filterUnit, setFilterUnit] = useState('NONE');
     const [filterStatus, setFilterStatus] = useState('ALL');
     const [modalSearchTerm, setModalSearchTerm] = useState('');
+    const [expandedCards, setExpandedCards] = useState({});
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({ message, type });
@@ -662,15 +663,34 @@ export default function MonthlyRequest() {
                                                 </>
                                             )}
                                         </div>
-                                        <div className="flex flex-col gap-1.5 my-2">
-                                            {(req.items || []).map((item, idx) => (
-                                                <div key={idx} className="flex items-start md:items-center gap-2 text-sm">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 md:mt-0 flex-shrink-0"></span>
-                                                    <span className="font-bold text-slate-800">{item.name}</span>
-                                                    <span className="font-black text-slate-400 italic text-[11px] bg-slate-50 px-2 py-0.5 rounded-md ml-auto">{formatRupiah(item.amount)}</span>
+                                        <div className="flex flex-col gap-2 my-4">
+                                            {req.items && req.items.length > 0 ? (
+                                                <div>
+                                                    <button 
+                                                        onClick={() => {
+                                                            setExpandedCards(prev => ({...prev, [req.id]: !prev[req.id]}));
+                                                        }}
+                                                        className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
+                                                    >
+                                                        {expandedCards[req.id] ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                                                        {expandedCards[req.id] ? 'Sembunyikan Rincian' : `Lihat ${req.items.length} Rincian Item`}
+                                                    </button>
+                                                    
+                                                    {expandedCards[req.id] && (
+                                                        <div className="mt-3 pl-3 border-l-2 border-indigo-100 flex flex-col gap-2">
+                                                            {req.items.map((item, idx) => (
+                                                                <div key={idx} className="flex items-start md:items-center justify-between gap-4 text-sm bg-slate-50/50 p-2 rounded-lg hover:bg-slate-50 transition-colors">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></span>
+                                                                        <span className="font-bold text-slate-700">{item.name}</span>
+                                                                    </div>
+                                                                    <span className="font-black text-slate-500 italic text-[11px] whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm">{formatRupiah(item.amount)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
-                                            ))}
-                                            {(!req.items || req.items.length === 0) && (
+                                            ) : (
                                                 <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
                                             )}
                                         </div>
