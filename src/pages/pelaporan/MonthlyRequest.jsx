@@ -384,14 +384,39 @@ export default function MonthlyRequest() {
         const printWindow = window.open('', '_blank');
         const unitName = units.find(u => u.id === req.unitId)?.name || fields.find(f => f.id === req.fieldId)?.name || 'Unit/Bidang';
 
+        let periodLabel = '-';
+        if (req.month) {
+            const found = yearMonths.find(m => m.id === req.month);
+            if (found) {
+                periodLabel = found.label;
+            } else {
+                const [yyyy, mm] = req.month.split('-');
+                if (yyyy && mm) {
+                    const monthNamesArr = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+                    periodLabel = `${monthNamesArr[parseInt(mm, 10) - 1]} '${yyyy.slice(-2)}`;
+                } else {
+                    periodLabel = req.month;
+                }
+            }
+        }
+
+        let formattedDate = req.date;
+        try {
+            formattedDate = new Date(req.date).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' });
+        } catch (e) {
+            console.error(e);
+        }
+
         const html = `
             <html>
                 <head>
                     <title>Surat Pengajuan Dana - ${req.id}</title>
                     <style>
                         body { font-family: 'Times New Roman', serif; padding: 50px; line-height: 1.6; }
-                        .header { text-align: center; border-bottom: 3px double #000; padding-bottom: 20px; margin-bottom: 30px; }
-                        .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; }
+                        .header { display: flex; align-items: center; justify-content: center; position: relative; border-bottom: 3px double #000; padding-bottom: 20px; margin-bottom: 30px; text-align: center; }
+                        .header img.logo { position: absolute; left: 0; top: 0; width: 80px; height: auto; }
+                        .header .header-text { flex: 1; }
+                        .header h1 { margin: 0; font-size: 24px; text-transform: uppercase; font-weight: bold; }
                         .header p { margin: 5px 0; font-size: 14px; }
                         .info { margin-bottom: 30px; }
                         .info table { width: 100%; }
@@ -408,19 +433,22 @@ export default function MonthlyRequest() {
                 </head>
                 <body>
                     <div class="header">
-                        <h1>DARELIMAN</h1>
-                        <p>Jl. Raya Utama No. 123, Kota PADANG</p>
-                        <p>Tlp: (021) 1234567 • Email: info@dareliman.org</p>
+                        <img src="/logo.png" alt="Logo" class="logo" onerror="this.style.display='none'" />
+                        <div class="header-text">
+                            <h1>YAYASAN DAR EL-IMAN</h1>
+                            <p>Jl. Gajah Mada Gang BPKP II No.Dalam, Kp. Olo, Kec. Nanggalo, Kota Padang, Sumatera Barat 25173</p>
+                            <p>Tlp: (0751) 447950 &bull; Email: sekreydi@gmail.com</p>
+                        </div>
                     </div>
 
                     <div class="info">
-                        <h2 style="text-align: center; text-decoration: underline;">SURAT PERMINTAAN DANA (${req.source || 'YAYASAN'})</h2>
-                        <p style="text-align: center;">Nomor: ${req.id}</p>
+                        <h2 style="text-align: center; text-decoration: underline; margin-bottom: 5px;">SURAT PERMINTAAN DANA (${req.source || 'YAYASAN'})</h2>
+                        <p style="text-align: center; margin-top: 0;">Nomor: ${req.id}</p>
                         
                         <table style="margin-top: 20px;">
                             <tr>
                                 <td width="150">Tanggal</td>
-                                <td>: ${req.date}</td>
+                                <td>: ${formattedDate}</td>
                             </tr>
                             <tr>
                                 <td>Unit / Bidang</td>
@@ -431,28 +459,33 @@ export default function MonthlyRequest() {
 
                     <div class="content">
                         <p>Dengan hormat,</p>
-                        <p>Bersama ini kami mengajukan permintaan dana untuk keperluan rencana belanja periode <b>${yearMonths.find(m => m.id === req.month)?.label || '-'}</b> yang telah disetujui (ACC) sebagai berikut:</p>
+                        <p>Bersama ini kami mengajukan permintaan dana untuk keperluan rencana belanja periode <b>${periodLabel}</b> yang telah disetujui (ACC) sebagai berikut:</p>
                         
                         <table>
                             <thead>
                                 <tr>
                                     <th width="30">No</th>
+                                    <th>Mata Anggaran</th>
                                     <th>Deskripsi Keperluan</th>
                                     <th style="text-align: right;">Total Dana</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${req.items.map((item, idx) => `
+                                ${req.items.map((item, idx) => {
+                                    const maName = state.expenseItems?.find(e => e.id === item.expenseItemId)?.name || '-';
+                                    return \`
                                     <tr>
-                                        <td>${idx + 1}</td>
-                                        <td>${item.name}</td>
-                                        <td style="text-align: right;">${formatRupiah(item.amount)}</td>
+                                        <td>\${idx + 1}</td>
+                                        <td>\${maName}</td>
+                                        <td>\${item.name}</td>
+                                        <td style="text-align: right;">\${formatRupiah(item.amount)}</td>
                                     </tr>
-                                `).join('')}
+                                    \`;
+                                }).join('')}
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <th colspan="2" style="text-align: right;">TOTAL PENGAJUAN</th>
+                                    <th colspan="3" style="text-align: right;">TOTAL PENGAJUAN</th>
                                     <th style="text-align: right;">${formatRupiah(req.totalAmount)}</th>
                                 </tr>
                             </tfoot>
