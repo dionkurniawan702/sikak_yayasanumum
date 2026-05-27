@@ -319,14 +319,58 @@ export default function StudentDatabase() {
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const wsname = wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
-                const data = XLSX.utils.sheet_to_json(ws);
+                const rawData = XLSX.utils.sheet_to_json(ws);
                 
-                if (data.length === 0) {
+                if (rawData.length === 0) {
                     window.alert('File kosong atau format tidak sesuai.');
                     return;
                 }
                 
-                setImportData(data);
+                const currentYear = state.academicYears?.find(y => y.isCurrent) || state.academicYears?.find(y => y.isActive);
+                const analyzedData = rawData.map(item => {
+                    const studentName = item.Nama?.toString().trim();
+                    const studentNis = item.NIS?.toString().trim() || '';
+                    if (!studentName) return { ...item, _importStatus: 'INVALID' };
+
+                    let unitId = isUnitAdmin ? currentUser.unitId : null;
+                    if (!isUnitAdmin) {
+                        const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toString().toLowerCase());
+                        unitId = unit?.id || units[0]?.id;
+                    }
+
+                    let existing = null;
+                    if (studentNis) existing = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
+                    if (!existing) existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && s.unitId === unitId && !s.isDeleted);
+
+                    if (existing) {
+                        const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
+                        const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
+                        const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
+                        const newGender = item['Jenis Kelamin']?.toString() || '';
+
+                        const incomeDetails = incomeItems.map(ii => ({
+                            incomeItemId: ii.id,
+                            amount: parseFloat(item[ii.name]) || 0
+                        })).filter(id => id.amount > 0);
+
+                        const sortedCurrentIncome = [...(existing.incomeDetails || [])].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
+                        const sortedNewIncome = [...incomeDetails].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
+
+                        const isDataChanged = 
+                            existing.name !== studentName ||
+                            existing.nis !== studentNis ||
+                            existing.classId !== (studentClass?.id || existing.classId) ||
+                            existing.statusId !== (status?.id || existing.statusId) ||
+                            existing.parentStatusId !== (parentStatus?.id || existing.parentStatusId) ||
+                            existing.gender !== (newGender || existing.gender) ||
+                            JSON.stringify(sortedCurrentIncome) !== JSON.stringify(sortedNewIncome);
+
+                        return { ...item, _importStatus: isDataChanged ? 'UPDATE' : 'DUPLICATE' };
+                    }
+                    return { ...item, _importStatus: 'NEW' };
+                });
+                
+                setImportData(analyzedData);
             } catch (err) {
                 window.alert('Terjadi kesalahan saat membaca file: ' + err.message);
             }
@@ -349,6 +393,10 @@ export default function StudentDatabase() {
             let failedStudents = [];
 
             for (const item of importData) {
+                if (item._importStatus === 'DUPLICATE' || item._importStatus === 'INVALID') {
+                    if (item._importStatus === 'DUPLICATE') skippedCount++;
+                    continue;
+                }
                 try {
                     const studentName = item.Nama?.toString().trim();
                     const studentNis = item.NIS?.toString().trim() || '';
@@ -1117,25 +1165,33 @@ export default function StudentDatabase() {
                                             <table className="w-full text-left border-collapse">
                                                 <thead className="sticky top-0 bg-white shadow-sm z-10">
                                                     <tr>
+                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 w-32">Status Import</th>
                                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Nama</th>
                                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">NIS</th>
                                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Unit</th>
                                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Kelas</th>
-                                                        <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Status</th>
                                                         <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">T. Ajaran</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {importData.map((item, idx) => (
-                                                        <tr key={idx} className="hover:bg-blue-50/50 transition-colors">
-                                                            <td className="px-6 py-4 text-xs font-bold text-slate-700 border-b border-slate-50">{item.Nama || '-'}</td>
-                                                            <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item.NIS || '-'}</td>
-                                                            <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-slate-50">{item.Unit || '-'}</td>
-                                                            <td className="px-6 py-4 text-xs font-bold text-slate-600 border-b border-slate-50">{item.Kelas || '-'}</td>
-                                                            <td className="px-6 py-4 text-xs font-bold text-slate-600 border-b border-slate-50">{item.Status || '-'}</td>
-                                                            <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item['Tahun Ajaran'] || '-'}</td>
-                                                        </tr>
-                                                    ))}
+                                                    {importData.map((item, idx) => {
+                                                        const isDup = item._importStatus === 'DUPLICATE';
+                                                        return (
+                                                            <tr key={idx} className={`transition-colors ${isDup ? 'opacity-50 bg-slate-100' : 'hover:bg-blue-50/50'}`}>
+                                                                <td className="px-6 py-4 border-b border-slate-50">
+                                                                    {item._importStatus === 'NEW' && <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase rounded-md">Siswa Baru</span>}
+                                                                    {item._importStatus === 'UPDATE' && <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-md">Update Data</span>}
+                                                                    {item._importStatus === 'DUPLICATE' && <span className="px-2 py-1 bg-slate-200 text-slate-500 text-[9px] font-black uppercase rounded-md">Dilewati</span>}
+                                                                    {item._importStatus === 'INVALID' && <span className="px-2 py-1 bg-rose-100 text-rose-700 text-[9px] font-black uppercase rounded-md">Invalid</span>}
+                                                                </td>
+                                                                <td className="px-6 py-4 text-xs font-bold text-slate-700 border-b border-slate-50">{item.Nama || '-'}</td>
+                                                                <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item.NIS || '-'}</td>
+                                                                <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-slate-50">{item.Unit || '-'}</td>
+                                                                <td className="px-6 py-4 text-xs font-bold text-slate-600 border-b border-slate-50">{item.Kelas || '-'}</td>
+                                                                <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item['Tahun Ajaran'] || '-'}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
                                                 </tbody>
                                             </table>
                                         </div>
@@ -1158,7 +1214,7 @@ export default function StudentDatabase() {
                                             className="btn btn-primary flex-1 shadow-blue-500/20"
                                         >
                                             <Check size={18} />
-                                            <span>Proses Import ({importData.length} Siswa)</span>
+                                            <span>Proses Import ({importData.filter(i => i._importStatus === 'NEW' || i._importStatus === 'UPDATE').length} Siswa)</span>
                                         </button>
                                     </div>
                                 </>
