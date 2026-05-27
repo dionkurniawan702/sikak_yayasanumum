@@ -259,7 +259,22 @@ router.post('/students', async (req, res) => {
             incomeDetails
         } = req.body;
 
-        const student = await getPrisma(req).student.create({
+        const prisma = getPrisma(req);
+
+        // --- DUPLICATE CHECK ---
+        const existing = await prisma.student.findFirst({
+            where: {
+                name: name,
+                unitId: unitId,
+                isDeleted: false
+            }
+        });
+        
+        if (existing) {
+            return res.status(400).json({ error: `Gagal: Siswa dengan nama "${name}" sudah terdaftar di unit ini.` });
+        }
+
+        const student = await prisma.student.create({
             data: {
                 id, name, nis, unitId,
                 classId: classId || null,
@@ -289,8 +304,24 @@ router.put('/students/:id', async (req, res) => {
             incomeDetails
         } = req.body;
 
+        const prisma = getPrisma(req);
+
+        // --- DUPLICATE CHECK ---
+        const existing = await prisma.student.findFirst({
+            where: {
+                name: name,
+                unitId: unitId,
+                id: { not: req.params.id },
+                isDeleted: false
+            }
+        });
+
+        if (existing) {
+            return res.status(400).json({ error: `Gagal: Nama "${name}" sudah digunakan oleh siswa lain di unit ini.` });
+        }
+
         // Transaction to update student and details
-        const student = await getPrisma(req).$transaction(async (tx) => {
+        const student = await prisma.$transaction(async (tx) => {
             if (incomeDetails) {
                 await tx.studentIncomeDetail.deleteMany({ where: { studentId: req.params.id } });
             }
