@@ -327,6 +327,8 @@ export default function StudentDatabase() {
                 }
                 
                 const currentYear = state.academicYears?.find(y => y.isCurrent) || state.academicYears?.find(y => y.isActive);
+                const seenInFile = new Set();
+
                 const analyzedData = rawData.map(item => {
                     const studentName = item.Nama?.toString().trim();
                     const studentNis = item.NIS?.toString().trim() || '';
@@ -338,6 +340,14 @@ export default function StudentDatabase() {
                         unitId = unit?.id || units[0]?.id;
                     }
 
+                    // 1. Check for duplicates WITHIN the Excel file itself
+                    const fileKey = `${studentName.toLowerCase()}_${unitId}`;
+                    if (seenInFile.has(fileKey)) {
+                        return { ...item, _importStatus: 'DUPLICATE_FILE' };
+                    }
+                    seenInFile.add(fileKey);
+
+                    // 2. Check for duplicates in the Database
                     let existing = null;
                     if (studentNis) existing = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
                     if (!existing) existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && s.unitId === unitId && !s.isDeleted);
@@ -393,8 +403,8 @@ export default function StudentDatabase() {
             let failedStudents = [];
 
             for (const item of importData) {
-                if (item._importStatus === 'DUPLICATE' || item._importStatus === 'INVALID') {
-                    if (item._importStatus === 'DUPLICATE') skippedCount++;
+                if (item._importStatus === 'DUPLICATE' || item._importStatus === 'DUPLICATE_FILE' || item._importStatus === 'INVALID') {
+                    if (item._importStatus === 'DUPLICATE' || item._importStatus === 'DUPLICATE_FILE') skippedCount++;
                     continue;
                 }
                 try {
@@ -1175,13 +1185,14 @@ export default function StudentDatabase() {
                                                 </thead>
                                                 <tbody>
                                                     {importData.map((item, idx) => {
-                                                        const isDup = item._importStatus === 'DUPLICATE';
+                                                        const isDup = item._importStatus === 'DUPLICATE' || item._importStatus === 'DUPLICATE_FILE';
                                                         return (
                                                             <tr key={idx} className={`transition-colors ${isDup ? 'opacity-50 bg-slate-100' : 'hover:bg-blue-50/50'}`}>
                                                                 <td className="px-6 py-4 border-b border-slate-50">
                                                                     {item._importStatus === 'NEW' && <span className="px-2 py-1 bg-emerald-100 text-emerald-700 text-[9px] font-black uppercase rounded-md">Siswa Baru</span>}
                                                                     {item._importStatus === 'UPDATE' && <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[9px] font-black uppercase rounded-md">Update Data</span>}
-                                                                    {item._importStatus === 'DUPLICATE' && <span className="px-2 py-1 bg-slate-200 text-slate-500 text-[9px] font-black uppercase rounded-md">Dilewati</span>}
+                                                                    {item._importStatus === 'DUPLICATE' && <span className="px-2 py-1 bg-slate-200 text-slate-500 text-[9px] font-black uppercase rounded-md">Sudah Ada</span>}
+                                                                    {item._importStatus === 'DUPLICATE_FILE' && <span className="px-2 py-1 bg-rose-100 text-rose-700 text-[9px] font-black uppercase rounded-md" title="Nama ini muncul lebih dari 1 kali di dalam file Excel">Ganda Di Excel</span>}
                                                                     {item._importStatus === 'INVALID' && <span className="px-2 py-1 bg-rose-100 text-rose-700 text-[9px] font-black uppercase rounded-md">Invalid</span>}
                                                                 </td>
                                                                 <td className="px-6 py-4 text-xs font-bold text-slate-700 border-b border-slate-50">{item.Nama || '-'}</td>
