@@ -241,7 +241,10 @@ export default function RealizationDashboard() {
         });
 
         // 3. Format for Display
-        const unitsList = units.filter(u => !u.isDeleted && (currentUser.role === 'admin_unit' ? u.id === currentUser.unitId : true))
+        const unitsList = units.filter(u => !u.isDeleted && (
+            currentUser.role === 'admin_unit' ? u.id === currentUser.unitId : 
+            (currentUser.role === 'admin_bidang' ? false : true)
+        ))
             .map(u => {
                 const allItemIds = Array.from(new Set([
                     ...Object.keys(unitRAB[u.id].items),
@@ -281,7 +284,10 @@ export default function RealizationDashboard() {
                 };
             }).filter(u => u.rap > 0 || u.rab > 0);
 
-        const fieldsList = fields.filter(f => !f.isDeleted && (currentUser.role === 'admin_bidang' ? f.id === currentUser.fieldId : true))
+        const fieldsList = fields.filter(f => !f.isDeleted && (
+            currentUser.role === 'admin_bidang' ? f.id === currentUser.fieldId : 
+            (currentUser.role === 'admin_unit' ? false : true)
+        ))
             .map(f => {
                 const allItemIds = Array.from(new Set([
                     ...Object.keys(fieldRAB[f.id].items),
