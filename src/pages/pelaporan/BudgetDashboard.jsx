@@ -564,7 +564,7 @@ export default function BudgetDashboard() {
                     <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Dashboard Anggaran</h2>
                     <div className="flex items-center gap-4">
                         <p className="text-slate-500 font-medium tracking-tight">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
-                        {sourceMode === 'YAYASAN' && (
+                        {sourceMode === 'YAYASAN' && isSuperAdmin && (
                             <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full border border-slate-200">
                                 <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base: {formatCurrency(totalMurni || 0)}</span>
