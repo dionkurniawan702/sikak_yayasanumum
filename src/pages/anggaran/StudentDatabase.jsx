@@ -608,6 +608,23 @@ export default function StudentDatabase() {
                         <Plus size={18} />
                         <span>Tambah Siswa</span>
                     </button>
+                        <button 
+                            onClick={async () => {
+                                if(window.confirm('Bersihkan data ganda?')) {
+                                    try {
+                                        const res = await fetch('http://localhost:5000/api/clean-student-duplicates');
+                                        const data = await res.json();
+                                        alert(data.message);
+                                        window.location.reload();
+                                    } catch(e) {
+                                        alert('Error: ' + e.message);
+                                    }
+                                }
+                            }}
+                            className="flex items-center gap-2 px-5 py-3 rounded-2xl text-sm font-bold bg-amber-500 text-white shadow-md hover:bg-amber-600 transition-all"
+                        >
+                            <span>Bersihkan Ganda</span>
+                        </button>
                 </div>
             </div>
 

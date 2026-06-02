@@ -611,6 +611,50 @@ router.get('/clean-duplicates', async (req, res) => {
     }
 });
 
+router.get('/clean-student-duplicates', async (req, res) => {
+    try {
+        const students = await getPrisma(req).student.findMany({
+            where: { isDeleted: false },
+            orderBy: { createdAt: 'asc' }
+        });
+        
+        const groups = {};
+        for (const s of students) {
+            const key = `${s.name.toLowerCase().trim()}-${s.nis || ''}-${s.classId || ''}-${s.unitId}`;
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(s);
+        }
+
+        const toDeleteIds = [];
+        let dupesFound = 0;
+
+        for (const key in groups) {
+            const items = groups[key];
+            if (items.length > 1) {
+                // Keep the first one (oldest), delete the rest
+                for (let i = 1; i < items.length; i++) {
+                    toDeleteIds.push(items[i].id);
+                    dupesFound++;
+                }
+            }
+        }
+
+        if (toDeleteIds.length > 0) {
+            await getPrisma(req).studentIncomeDetail.deleteMany({
+                where: { studentId: { in: toDeleteIds } }
+            });
+            await getPrisma(req).student.deleteMany({
+                where: { id: { in: toDeleteIds } }
+            });
+            res.json({ message: `Berhasil menghapus ${dupesFound} data siswa duplikat!`, deletedIds: toDeleteIds });
+        } else {
+            res.json({ message: "Tidak ada duplikasi siswa yang ditemukan. Data sudah bersih." });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 router.get('/budget-requests', async (req, res) => {
     try {
         const requests = await getPrisma(req).budgetRequest.findMany({
