@@ -349,8 +349,13 @@ export default function StudentDatabase() {
 
                     // 2. Check for duplicates in the Database
                     let existing = null;
-                    if (studentNis) existing = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
-                    if (!existing) existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && s.unitId === unitId && !s.isDeleted);
+                    if (studentNis) {
+                        existing = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
+                    }
+                    if (!existing) {
+                        const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
+                        existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && (s.nis || '') === studentNis && s.classId === (studentClass?.id || '') && s.unitId === unitId && !s.isDeleted);
+                    }
 
                     if (existing) {
                         const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
@@ -450,6 +455,8 @@ export default function StudentDatabase() {
                     if (!existingStudent) {
                         existingStudent = students.find(s => 
                             s.name.toLowerCase() === studentName.toLowerCase() && 
+                            (s.nis || '') === studentNis &&
+                            s.classId === (studentClass?.id || '') &&
                             s.unitId === unitId && 
                             s.academicYearId === finalAcademicYearId && 
                             !s.isDeleted
