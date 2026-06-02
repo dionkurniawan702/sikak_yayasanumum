@@ -890,9 +890,9 @@ export default function StudentDatabase() {
             {showStudentModal && (
                 <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowStudentModal(false)} />
-                    <div className="bg-white rounded-[32px] w-full max-w-md relative z-10 shadow-2xl animate-in">
-                        <div className="p-8">
-                            <h2 className="text-2xl font-black text-slate-900 mb-6 font-display">
+                    <div className="bg-white rounded-[32px] w-full max-w-md relative z-10 shadow-2xl animate-in max-h-[90vh] flex flex-col">
+                        <div className="p-8 overflow-y-auto custom-scrollbar">
+                            <h2 className="text-2xl font-black text-slate-900 mb-6 font-display shrink-0">
                                 {editingStudent ? 'Edit' : 'Tambah'} Siswa
                             </h2>
                             <form onSubmit={handleStudentSubmit} className="space-y-6">
