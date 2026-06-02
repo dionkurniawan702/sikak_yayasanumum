@@ -129,6 +129,7 @@ function RABContent() {
     const [editingItem, setEditingItem] = useState(null);
     const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
     const [filterProgram, setFilterProgram] = useState(null); // programId
+    const [isAddendumMode, setIsAddendumMode] = useState(false);
 
 
     // States for Journal-style component entry
@@ -606,7 +607,7 @@ function RABContent() {
     const isConsolidation = selectedUnitId === 'FOUNDATION';
     const isField = selectedUnitId.startsWith('FIELD-');
     const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
-    const isLocked = activePlan?.status === 'APPROVED' || activePlan?.status === 'PENDING' || isConsolidation;
+    const isLocked = (activePlan?.status === 'APPROVED' && !isAddendumMode) || activePlan?.status === 'PENDING' || isConsolidation;
 
     const bosItemMap = useMemo(() => {
         const map = {};
@@ -2980,8 +2981,8 @@ function RABContent() {
                             </h4>
                         </div>
                     </div>
-                    {!isLocked && !isConsolidation && (
-                        <div className="relative z-10">
+                    <div className="relative z-10 flex items-center gap-4">
+                        {!isLocked && !isConsolidation && (
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
@@ -2990,8 +2991,26 @@ function RABContent() {
                                 <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
                                 {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
                             </button>
-                        </div>
-                    )}
+                        )}
+                        {activePlan?.status === 'APPROVED' && !isAddendumMode && !isConsolidation && (
+                            <button
+                                onClick={() => setIsAddendumMode(true)}
+                                className="group flex items-center gap-4 bg-amber-500 text-white px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                            >
+                                <Plus size={20} className="group-hover:rotate-180 transition-transform" />
+                                AJUKAN TAMBAHAN (ADDENDUM)
+                            </button>
+                        )}
+                        {isAddendumMode && (
+                            <button
+                                onClick={() => setIsAddendumMode(false)}
+                                className="group flex items-center gap-4 bg-rose-500 text-white px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                            >
+                                <X size={20} className="group-hover:rotate-90 transition-transform" />
+                                BATAL TAMBAHAN
+                            </button>
+                        )}
+                    </div>
                 </div>
             </div>
         );
