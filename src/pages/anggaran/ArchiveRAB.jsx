@@ -5,12 +5,13 @@ import { formatRupiah } from '../../utils/format';
 
 export default function ArchiveRAB() {
     const { state } = useApp();
-    const { currentUser, rabPlans = [], units = [], fields = [], academicYears = [], globalAcademicYearId, expenseItems = [] } = state;
+    const { currentUser, rabPlans = [], units = [], fields = [], academicYears = [], globalAcademicYearId, expenseItems = [], expensePrograms = [] } = state;
 
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
     const [filterMonth, setFilterMonth] = useState('ALL');
     const [filterStatus, setFilterStatus] = useState('ALL');
     const [filterUnit, setFilterUnit] = useState('ALL');
+    const [filterProgram, setFilterProgram] = useState('ALL');
     const [searchTerm, setSearchTerm] = useState('');
 
     const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'yayasan';
@@ -124,6 +125,9 @@ export default function ArchiveRAB() {
                         // Only include if it has status PENDING or APPROVED (Ignore DRAFT/REJECTED)
                         if (compStatus !== 'PENDING' && compStatus !== 'APPROVED') return;
 
+                        // Program filter
+                        if (filterProgram !== 'ALL' && comp.programId !== filterProgram) return;
+
                         // Check month allocation
                         const targetMonthIds = filterMonth === 'ALL' ? yearMonths.map(m => m.id) : [filterMonth];
                         
@@ -132,8 +136,10 @@ export default function ArchiveRAB() {
                             const amount = parseFloat(comp.months?.[mId]?.jumlah) || 0;
                             
                             if (isAllocated && amount > 0) {
+                                const programName = expensePrograms.find(p => p.id === comp.programId)?.name || '-';
+
                                 // Search term filter
-                                const searchStr = `${itemMasterName} ${comp.name || comp.label} ${compStatus} ${unitName} ${fieldName}`.toLowerCase();
+                                const searchStr = `${itemMasterName} ${comp.name || comp.label} ${compStatus} ${unitName} ${fieldName} ${programName}`.toLowerCase();
                                 if (searchTerm && !searchStr.includes(searchTerm.toLowerCase())) return;
 
                                 data.push({
@@ -142,6 +148,7 @@ export default function ArchiveRAB() {
                                     itemId: itemId,
                                     itemMasterName,
                                     componentName: comp.name || comp.label,
+                                    programName,
                                     status: compStatus,
                                     unitName,
                                     fieldName,
@@ -161,7 +168,7 @@ export default function ArchiveRAB() {
             if (a.unitName !== b.unitName) return a.unitName.localeCompare(b.unitName);
             return a.itemMasterName.localeCompare(b.itemMasterName);
         });
-    }, [rabPlans, globalAcademicYearId, sourceMode, isSuperAdmin, filterUnit, myUnitId, myFieldId, filterStatus, filterMonth, searchTerm, yearMonths, units, fields, expenseItems, currentYear]);
+    }, [rabPlans, globalAcademicYearId, sourceMode, isSuperAdmin, filterUnit, myUnitId, myFieldId, filterStatus, filterMonth, filterProgram, searchTerm, yearMonths, units, fields, expenseItems, expensePrograms, currentYear]);
 
     const totalAmount = useMemo(() => {
         return archiveData.reduce((sum, item) => sum + item.amount, 0);
@@ -255,6 +262,18 @@ export default function ArchiveRAB() {
                         </select>
                     )}
 
+                    {/* Program Filter */}
+                    <select
+                        value={filterProgram}
+                        onChange={(e) => setFilterProgram(e.target.value)}
+                        className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
+                    >
+                        <option value="ALL">Semua Program</option>
+                        {expensePrograms.filter(p => !p.isDeleted).map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+
                     {/* Month Filter */}
                     <select
                         value={filterMonth}
@@ -290,6 +309,7 @@ export default function ArchiveRAB() {
                                 {isSuperAdmin && (
                                     <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Unit / Bidang</th>
                                 )}
+                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Program Belanja</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Kategori (Item)</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Rincian Pengeluaran</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-center">Bulan</th>
@@ -300,7 +320,7 @@ export default function ArchiveRAB() {
                         <tbody>
                             {archiveData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-16 text-center">
+                                    <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center justify-center">
                                             <Archive size={48} className="text-slate-200 mb-4" />
                                             <p className="text-sm font-bold text-slate-400 italic">Tidak ada data RAB yang sesuai dengan filter.</p>
@@ -322,6 +342,14 @@ export default function ArchiveRAB() {
                                                 </div>
                                             </td>
                                         )}
+                                        
+                                        <td className="px-6 py-4">
+                                            {item.programName !== '-' ? (
+                                                <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md line-clamp-2">{item.programName}</span>
+                                            ) : (
+                                                <span className="text-[10px] font-bold text-slate-400">-</span>
+                                            )}
+                                        </td>
                                         
                                         <td className="px-6 py-4">
                                             <span className="text-xs font-bold text-slate-700">{item.itemMasterName}</span>
@@ -363,7 +391,7 @@ export default function ArchiveRAB() {
                             {/* Total Row */}
                             {archiveData.length > 0 && (
                                 <tr className="bg-slate-50">
-                                    <td colSpan={isSuperAdmin ? 6 : 5} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
+                                    <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
                                         Total Keseluruhan Filtered
                                     </td>
                                     <td className="px-6 py-4 text-right border-t-2 border-slate-200 border-l border-l-slate-200">
