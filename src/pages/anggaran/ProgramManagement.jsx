@@ -180,7 +180,11 @@ export default function ProgramManagement() {
             try {
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
-                const wsname = wb.SheetNames[0];
+                // Cari sheet data yang benar — template punya sheet tersembunyi 'DataLookup' di urutan pertama
+                const DATA_SHEET_NAME = 'Template Import Program';
+                const wsname = wb.SheetNames.includes(DATA_SHEET_NAME) 
+                    ? DATA_SHEET_NAME 
+                    : wb.SheetNames.find(n => n !== 'DataLookup') || wb.SheetNames[0];
                 const ws = wb.Sheets[wsname];
                 const data = XLSX.utils.sheet_to_json(ws);
 
