@@ -195,6 +195,20 @@ export default function ProgramManagement() {
                 let errorCount = 0;
                 let failedItems = [];
 
+                // Deteksi nama kolom aktual dari baris pertama untuk diagnosa
+                const firstItem = data[0] || {};
+                const availableColumns = Object.keys(firstItem).join(', ');
+                const hasNamaProgram = data.some(item => item['Nama Program'] !== undefined);
+
+                if (!hasNamaProgram) {
+                    window.alert(
+                        `❌ Kolom "Nama Program" tidak ditemukan di file Excel!\n\n` +
+                        `Kolom yang terbaca: ${availableColumns || '(tidak ada)'}\n\n` +
+                        `Pastikan Anda menggunakan template resmi dengan menekan tombol "Unduh Template Excel".`
+                    );
+                    return;
+                }
+
                 for (const item of data) {
                     try {
                         let unitId = currentUser?.role === 'admin_unit' ? currentUser.unitId : '';
@@ -211,17 +225,22 @@ export default function ProgramManagement() {
                             }
                         }
 
-                        if (!item['Nama Program']) continue;
+                        // Baris kosong (tidak ada nama program) — hitung sebagai gagal
+                        if (!item['Nama Program'] || item['Nama Program'].toString().trim() === '') {
+                            errorCount++;
+                            failedItems.push(`(Baris kosong / Nama Program tidak diisi)`);
+                            continue;
+                        }
 
                         const programName = item['Nama Program'].toString().trim();
                         
                         // Reject if already exists in local state (case-insensitive)
-                        const isDuplicate = expensePrograms.some(p => 
+                        const duplicateProgram = expensePrograms.find(p => 
                             !p.isDeleted && 
                             p.name.toLowerCase() === programName.toLowerCase()
                         );
 
-                        if (isDuplicate) {
+                        if (duplicateProgram) {
                             errorCount++;
                             failedItems.push(`${programName} (Sudah ada di database)`);
                             continue;
