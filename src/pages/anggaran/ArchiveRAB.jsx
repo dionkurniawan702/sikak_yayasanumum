@@ -13,6 +13,13 @@ export default function ArchiveRAB() {
     const [filterUnit, setFilterUnit] = useState('ALL');
     const [filterProgram, setFilterProgram] = useState('ALL');
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 50;
+
+    // Reset page on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [sourceMode, filterMonth, filterStatus, filterUnit, filterProgram, searchTerm]);
 
     const isSuperAdmin = currentUser?.role === 'superadmin' || currentUser?.role === 'yayasan';
     const myUnitId = currentUser?.unitId;
@@ -174,6 +181,14 @@ export default function ArchiveRAB() {
         return archiveData.reduce((sum, item) => sum + item.amount, 0);
     }, [archiveData]);
 
+    const totalPages = Math.ceil(archiveData.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+
+    const paginatedData = useMemo(() => {
+        return archiveData.slice(startIndex, endIndex);
+    }, [archiveData, startIndex, endIndex]);
+
     return (
         <div className="p-4 md:p-8 animate-in text-slate-900 pb-20">
             {/* Header Section */}
@@ -328,9 +343,9 @@ export default function ArchiveRAB() {
                                     </td>
                                 </tr>
                             ) : (
-                                archiveData.map((item, index) => (
+                                paginatedData.map((item, index) => (
                                     <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors group">
-                                        <td className="px-6 py-4 text-xs font-bold text-slate-400 text-center">{index + 1}</td>
+                                        <td className="px-6 py-4 text-xs font-bold text-slate-400 text-center">{startIndex + index + 1}</td>
                                         
                                         {isSuperAdmin && (
                                             <td className="px-6 py-4">
@@ -404,6 +419,58 @@ export default function ArchiveRAB() {
                         </tbody>
                     </table>
                 </div>
+
+                {/* Pagination Controls */}
+                {totalPages > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+                        <div className="text-xs font-bold text-slate-400">
+                            Menampilkan <span className="text-slate-700 font-black">{startIndex + 1}</span> - <span className="text-slate-700 font-black">{Math.min(endIndex, archiveData.length)}</span> dari <span className="text-slate-700 font-black">{archiveData.length}</span> rincian
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Sebelumnya
+                            </button>
+                            <div className="flex items-center gap-1">
+                                {[...Array(totalPages)].map((_, i) => {
+                                    const pageNum = i + 1;
+                                    if (
+                                        pageNum === 1 || 
+                                        pageNum === totalPages || 
+                                        Math.abs(pageNum - currentPage) <= 1
+                                    ) {
+                                        return (
+                                            <button
+                                                key={pageNum}
+                                                onClick={() => setCurrentPage(pageNum)}
+                                                className={`w-8 h-8 rounded-xl text-xs font-black transition-all ${currentPage === pageNum ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                                            >
+                                                {pageNum}
+                                            </button>
+                                        );
+                                    }
+                                    if (
+                                        (pageNum === 2 && currentPage > 3) || 
+                                        (pageNum === totalPages - 1 && currentPage < totalPages - 2)
+                                    ) {
+                                        return <span key={pageNum} className="text-slate-400 text-xs px-1">...</span>;
+                                    }
+                                    return null;
+                                })}
+                            </div>
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                                disabled={currentPage === totalPages}
+                                className="px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest bg-white border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                Selanjutnya
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );
