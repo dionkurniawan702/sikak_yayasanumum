@@ -2216,6 +2216,7 @@ function RABContent() {
                             // Check if we should add to existing plan or create new
                             if (comp.label || comp.total > 0 || comp.programId) {
                                 if (!comp.label) comp.label = 'Imported Component';
+                                const isBos = fundSourceFilter === 'BOS';
                                 newExpense[item.id].push({
                                     id: `P-${Date.now()}-${idx}`,
                                     itemId: item.id,
@@ -2224,7 +2225,9 @@ function RABContent() {
                                     months: comp.months,
                                     programId: comp.programId,
                                     semester: comp.semester,
-                                    description: comp.label
+                                    description: comp.label,
+                                    useBos: isBos,
+                                    bosAmount: isBos ? comp.total : 0
                                 });
                             }
                         }
@@ -2394,11 +2397,15 @@ function RABContent() {
                         });
                     });
 
+                    const isBos = fundSourceFilter === 'BOS';
+                    const newTotal = allComps.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
                     const updatedPlan = {
                         ...basePlan,
                         components: allComps,
-                        total: allComps.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0),
-                        months: aggregateMonths
+                        total: newTotal,
+                        months: aggregateMonths,
+                        useBos: isBos,
+                        bosAmount: isBos ? newTotal : 0
                     };
 
                     const nextPlan = {
