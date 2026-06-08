@@ -143,7 +143,7 @@ export default function ArchiveRAB() {
                                 if (searchTerm && !searchStr.includes(searchTerm.toLowerCase())) return;
 
                                 data.push({
-                                    id: comp.id || `${plan.id}-${itemId}-${pIdx}-${cIdx}-${mId}`,
+                                    id: `${comp.id || `${plan.id}-${itemId}-${pIdx}-${cIdx}`}-${mId}`,
                                     planId: plan.id,
                                     itemId: itemId,
                                     itemMasterName,
