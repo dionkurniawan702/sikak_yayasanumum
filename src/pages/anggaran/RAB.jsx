@@ -4138,7 +4138,7 @@ function RABContent() {
                         </div>
 
                         <div className="flex items-center gap-3">
-                            {isSuperAdmin || isAdminBidang ? (
+                            {isSuperAdmin ? (
                                 <>
                                     <button
                                         onClick={() => handleBulkComponentAction('APPROVE')}
