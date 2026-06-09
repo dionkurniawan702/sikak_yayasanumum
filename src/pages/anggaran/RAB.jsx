@@ -1976,9 +1976,44 @@ function RABContent() {
         const reason = window.prompt('Masukkan alasan pembatalan persetujuan (agar unit tahu apa yang harus diperbaiki):', 'Pembatalan persetujuan untuk perbaikan/penambahan data.');
         if (reason === null) return; // User cancelled prompt
 
+        // Cascade the rejection status to all components
+        const updatedExpense = { ...plan.expense };
+        Object.keys(updatedExpense).forEach(itemId => {
+            const rawPlans = updatedExpense[itemId];
+            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+            
+            updatedExpense[itemId] = plansArr.map(p => {
+                const comps = p.components || [];
+                const updatedComps = comps.map(c => ({
+                    ...c,
+                    status: 'REJECTED',
+                    isApproved: false
+                }));
+                return { ...p, components: updatedComps };
+            });
+        });
+
+        const updatedIncome = { ...plan.income };
+        Object.keys(updatedIncome).forEach(itemId => {
+            const rawPlans = updatedIncome[itemId];
+            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
+            
+            updatedIncome[itemId] = plansArr.map(p => {
+                const comps = p.components || [];
+                const updatedComps = comps.map(c => ({
+                    ...c,
+                    status: 'REJECTED',
+                    isApproved: false
+                }));
+                return { ...p, components: updatedComps };
+            });
+        });
+
         const updatedPlan = {
             ...plan,
             status: 'REJECTED',
+            expense: updatedExpense,
+            income: updatedIncome,
             rejectionReason: reason,
             notified: false,
             approvedAt: null,
