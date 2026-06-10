@@ -300,6 +300,9 @@ export default function MonthlyRequest() {
                 componentId: c.id,
                 name: c.label || c.name,
                 amount: c.total,
+                volume: parseFloat(c.volume) || 1,
+                satuan: c.satuan || c.unit || '-',
+                harga: parseFloat(c.harga || c.price) || 0,
                 planId: c.planId,
                 expenseItemId: c.expenseItemId
             }))
@@ -378,6 +381,84 @@ export default function MonthlyRequest() {
         } finally {
             setProcessingId(null);
         }
+    };
+
+    const resolveItemDetails = (item) => {
+        // 1. If direct properties exist, use them
+        if (item.volume !== undefined && item.satuan !== undefined && item.harga !== undefined) {
+            return {
+                volume: parseFloat(item.volume) || 0,
+                satuan: item.satuan || '-',
+                harga: parseFloat(item.harga) || 0
+            };
+        }
+
+        // 2. Otherwise search in rabPlans
+        if (rabPlans && Array.isArray(rabPlans)) {
+            // Find plan first using item.planId
+            const plan = rabPlans.find(p => p.id === item.planId);
+            if (plan && plan.expense && typeof plan.expense === 'object') {
+                for (const [itemId, rawItemPlans] of Object.entries(plan.expense)) {
+                    const itemPlans = Array.isArray(rawItemPlans) 
+                        ? rawItemPlans 
+                        : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 
+                            ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] 
+                            : []);
+                    for (let pIdx = 0; pIdx < itemPlans.length; pIdx++) {
+                        const p = itemPlans[pIdx];
+                        if (p.components && Array.isArray(p.components)) {
+                            for (let cIdx = 0; cIdx < p.components.length; cIdx++) {
+                                const comp = p.components[cIdx];
+                                const compId = comp.id || `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
+                                if (compId === item.componentId || comp.label === item.name || comp.name === item.name) {
+                                    return {
+                                        volume: comp.volume !== undefined ? parseFloat(comp.volume) : 1,
+                                        satuan: comp.satuan || comp.unit || '-',
+                                        harga: comp.harga !== undefined ? parseFloat(comp.harga) : 0
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fallback: search all plans if planId mismatch or missing
+            for (const p of rabPlans) {
+                if (p.expense && typeof p.expense === 'object') {
+                    for (const [itemId, rawItemPlans] of Object.entries(p.expense)) {
+                        const itemPlans = Array.isArray(rawItemPlans) 
+                            ? rawItemPlans 
+                            : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 
+                                ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] 
+                                : []);
+                        for (let pIdx = 0; pIdx < itemPlans.length; pIdx++) {
+                            const itemPlan = itemPlans[pIdx];
+                            if (itemPlan.components && Array.isArray(itemPlan.components)) {
+                                for (let cIdx = 0; cIdx < itemPlan.components.length; cIdx++) {
+                                    const comp = itemPlan.components[cIdx];
+                                    const compId = comp.id || `COMP-${p.id}-${itemId}-${pIdx}-${cIdx}`;
+                                    if (compId === item.componentId || comp.label === item.name || comp.name === item.name) {
+                                        return {
+                                            volume: comp.volume !== undefined ? parseFloat(comp.volume) : 1,
+                                            satuan: comp.satuan || comp.unit || '-',
+                                            harga: comp.harga !== undefined ? parseFloat(comp.harga) : 0
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Default if not found
+        return {
+            volume: 1,
+            satuan: '-',
+            harga: parseFloat(item.amount) || 0
+        };
     };
 
     const handlePrint = (req) => {
@@ -472,23 +553,30 @@ export default function MonthlyRequest() {
                                     <th width="30">No</th>
                                     <th>Item Pengeluaran</th>
                                     <th>Rincian Pengeluaran</th>
-                                    <th style="text-align: right;">Total Dana</th>
+                                    <th style="text-align: center; width: 60px;">Jumlah</th>
+                                    <th style="text-align: center; width: 80px;">Satuan</th>
+                                    <th style="text-align: right; width: 120px;">Harga Satuan</th>
+                                    <th style="text-align: right; width: 130px;">Total Dana</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${req.items.map((item, idx) => {
                                     const maName = state.expenseItems?.find(e => e.id === item.expenseItemId)?.name || '-';
+                                    const details = resolveItemDetails(item);
                                     return `
                                     <tr>
-                                        <td>${idx + 1}</td>
+                                        <td style="text-align: center;">${idx + 1}</td>
                                         <td>${maName}</td>
                                         <td>${item.name}</td>
+                                        <td style="text-align: center;">${details.volume}</td>
+                                        <td style="text-align: center;">${details.satuan}</td>
+                                        <td style="text-align: right;">${formatRupiah(details.harga)}</td>
                                         <td style="text-align: right;">${formatRupiah(item.amount)}</td>
                                     </tr>
                                     `;
                                 }).join('')}
                                 <tr>
-                                    <th colspan="3" style="text-align: right;">TOTAL PENGAJUAN</th>
+                                    <th colspan="6" style="text-align: right;">TOTAL PENGAJUAN</th>
                                     <th style="text-align: right;">${formatRupiah(req.totalAmount)}</th>
                                 </tr>
                             </tbody>

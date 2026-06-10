@@ -5,7 +5,7 @@ import { formatRupiah } from '../../utils/format';
 
 export default function ArchiveRequests() {
     const { state } = useApp();
-    const { currentUser, budgetRequests, units, fields, academicYears, globalAcademicYearId } = state;
+    const { currentUser, budgetRequests, units, fields, academicYears, globalAcademicYearId, rabPlans, expenseItems } = state;
 
     const [searchTerm, setSearchTerm] = useState('');
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
@@ -100,6 +100,84 @@ export default function ArchiveRequests() {
         return filteredArchives.reduce((sum, req) => sum + (parseFloat(req.totalAmount) || 0), 0);
     }, [filteredArchives]);
 
+    const resolveItemDetails = (item) => {
+        // 1. If direct properties exist, use them
+        if (item.volume !== undefined && item.satuan !== undefined && item.harga !== undefined) {
+            return {
+                volume: parseFloat(item.volume) || 0,
+                satuan: item.satuan || '-',
+                harga: parseFloat(item.harga) || 0
+            };
+        }
+
+        // 2. Otherwise search in rabPlans
+        if (rabPlans && Array.isArray(rabPlans)) {
+            // Find plan first using item.planId
+            const plan = rabPlans.find(p => p.id === item.planId);
+            if (plan && plan.expense && typeof plan.expense === 'object') {
+                for (const [itemId, rawItemPlans] of Object.entries(plan.expense)) {
+                    const itemPlans = Array.isArray(rawItemPlans) 
+                        ? rawItemPlans 
+                        : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 
+                            ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] 
+                            : []);
+                    for (let pIdx = 0; pIdx < itemPlans.length; pIdx++) {
+                        const p = itemPlans[pIdx];
+                        if (p.components && Array.isArray(p.components)) {
+                            for (let cIdx = 0; cIdx < p.components.length; cIdx++) {
+                                const comp = p.components[cIdx];
+                                const compId = comp.id || `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
+                                if (compId === item.componentId || comp.label === item.name || comp.name === item.name) {
+                                    return {
+                                        volume: comp.volume !== undefined ? parseFloat(comp.volume) : 1,
+                                        satuan: comp.satuan || comp.unit || '-',
+                                        harga: comp.harga !== undefined ? parseFloat(comp.harga) : 0
+                                    };
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Fallback: search all plans if planId mismatch or missing
+            for (const p of rabPlans) {
+                if (p.expense && typeof p.expense === 'object') {
+                    for (const [itemId, rawItemPlans] of Object.entries(p.expense)) {
+                        const itemPlans = Array.isArray(rawItemPlans) 
+                            ? rawItemPlans 
+                            : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 
+                                ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] 
+                                : []);
+                        for (let pIdx = 0; pIdx < itemPlans.length; pIdx++) {
+                            const itemPlan = itemPlans[pIdx];
+                            if (itemPlan.components && Array.isArray(itemPlan.components)) {
+                                for (let cIdx = 0; cIdx < itemPlan.components.length; cIdx++) {
+                                    const comp = itemPlan.components[cIdx];
+                                    const compId = comp.id || `COMP-${p.id}-${itemId}-${pIdx}-${cIdx}`;
+                                    if (compId === item.componentId || comp.label === item.name || comp.name === item.name) {
+                                        return {
+                                            volume: comp.volume !== undefined ? parseFloat(comp.volume) : 1,
+                                            satuan: comp.satuan || comp.unit || '-',
+                                            harga: comp.harga !== undefined ? parseFloat(comp.harga) : 0
+                                        };
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Default if not found
+        return {
+            volume: 1,
+            satuan: '-',
+            harga: parseFloat(item.amount) || 0
+        };
+    };
+
     const handlePrint = (req) => {
         const printWindow = window.open('', '_blank');
         const unitName = units.find(u => u.id === req.unitId)?.name || fields.find(f => f.id === req.fieldId)?.name || 'Unit/Bidang';
@@ -117,9 +195,9 @@ export default function ArchiveRequests() {
                         .info table { width: 100%; }
                         .info td { vertical-align: top; }
                         .content { margin-bottom: 40px; }
-                        .content table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                        .content th, .content td { border: 1px solid #000; padding: 10px; text-align: left; }
-                        .content th { background: #f2f2f2; }
+                        .content table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 14px; }
+                        .content th, .content td { border: 1px solid #000; padding: 6px 10px; text-align: left; }
+                        .content th { background: #f2f2f2; text-align: center; }
                         .footer { margin-top: 50px; display: flex; justify-content: space-between; }
                         .signature { text-align: center; width: 200px; }
                         .signature .space { height: 80px; }
@@ -160,22 +238,34 @@ export default function ArchiveRequests() {
                             <thead>
                                 <tr>
                                     <th width="30">No</th>
+                                    <th>Item Pengeluaran</th>
                                     <th>Deskripsi Keperluan</th>
-                                    <th style="text-align: right;">Total Dana ACC</th>
+                                    <th style="text-align: center; width: 60px;">Jumlah</th>
+                                    <th style="text-align: center; width: 80px;">Satuan</th>
+                                    <th style="text-align: right; width: 120px;">Harga Satuan</th>
+                                    <th style="text-align: right; width: 130px;">Total Dana ACC</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                ${req.items.map((item, idx) => `
+                                ${req.items.map((item, idx) => {
+                                    const maName = expenseItems?.find(e => e.id === item.expenseItemId)?.name || '-';
+                                    const details = resolveItemDetails(item);
+                                    return `
                                     <tr>
-                                        <td>${idx + 1}</td>
+                                        <td style="text-align: center;">${idx + 1}</td>
+                                        <td>${maName}</td>
                                         <td>${item.name}</td>
+                                        <td style="text-align: center;">${details.volume}</td>
+                                        <td style="text-align: center;">${details.satuan}</td>
+                                        <td style="text-align: right;">${formatRupiah(details.harga)}</td>
                                         <td style="text-align: right;">${formatRupiah(item.amount)}</td>
                                     </tr>
-                                `).join('')}
+                                    `;
+                                }).join('')}
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <th colspan="2" style="text-align: right;">TOTAL DANA DISETUJUI</th>
+                                    <th colspan="6" style="text-align: right;">TOTAL DANA DISETUJUI</th>
                                     <th style="text-align: right;">${formatRupiah(req.totalAmount)}</th>
                                 </tr>
                             </tfoot>
