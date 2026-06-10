@@ -1208,6 +1208,61 @@ function RABContent() {
         setTimeout(() => setMessage(null), 4000);
     };
 
+    const handleSuperAdminCancelComponent = async (compIdx) => {
+        if (!editingItem) return;
+        const mId = editingItem.itemId || editingItem.id;
+        const plans = currentPlan.expense[mId] || [];
+        const planIndex = plans.findIndex(p => p.id === editingItem.planId) !== -1
+            ? plans.findIndex(p => p.id === editingItem.planId)
+            : 0;
+        const plan = plans[planIndex];
+        if (!plan) return;
+
+        const reason = window.prompt('Masukkan alasan pembatalan/penolakan rincian ini:', 'Pembatalan persetujuan rincian.');
+        if (reason === null) return; // User cancelled prompt
+
+        const newComps = [...(plan.components || [])];
+        if (newComps[compIdx]) {
+            newComps[compIdx] = { 
+                ...newComps[compIdx], 
+                status: 'REJECTED', 
+                isApproved: false 
+            };
+        }
+
+        const updatedPlan = { ...plan, components: newComps };
+        const newPlans = [...plans];
+        newPlans[planIndex] = updatedPlan;
+
+        const nextPlan = {
+            ...currentPlan,
+            expense: { ...currentPlan.expense, [mId]: newPlans },
+            status: 'REJECTED',
+            rejectionReason: reason,
+            updatedAt: new Date().toISOString(),
+            updatedBy: currentUser?.username
+        };
+        setCurrentPlan(nextPlan);
+
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const dbPlan = {
+            id: planId,
+            academicYearId: selectedYearId,
+            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+            income: nextPlan.income,
+            expense: nextPlan.expense,
+            status: 'REJECTED',
+            rejectionReason: reason,
+            updatedAt: nextPlan.updatedAt,
+            updatedBy: nextPlan.updatedBy
+        };
+        await persistPlanToServer(dbPlan);
+        setMessage({ type: 'success', text: 'Persetujuan rincian berhasil dibatalkan.' });
+        setTimeout(() => setMessage(null), 4000);
+    };
+
     const handleResetBudget = (itemId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         if (!window.confirm('Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)')) return;
@@ -3834,6 +3889,15 @@ function RABContent() {
                                                                                                         onClick={() => handleBatalkanRincian(idx)}
                                                                                                         className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm"
                                                                                                         title="Batalkan Pengajuan Rincian Ini"
+                                                                                                    >
+                                                                                                        <XCircle size={15} />
+                                                                                                    </button>
+                                                                                                )}
+                                                                                                {isSuperAdmin && (isApproved || isPending) && (
+                                                                                                    <button
+                                                                                                        onClick={() => handleSuperAdminCancelComponent(idx)}
+                                                                                                        className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm active:scale-95"
+                                                                                                        title="Batalkan Persetujuan/Pengajuan Rincian Ini"
                                                                                                     >
                                                                                                         <XCircle size={15} />
                                                                                                     </button>
