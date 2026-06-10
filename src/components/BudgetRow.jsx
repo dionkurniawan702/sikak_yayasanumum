@@ -35,6 +35,7 @@ export default function BudgetRow({
     // Granular selection props
     selectable = false,
     isReviewMode = false,
+    isSuperAdmin = false,
     selectedComponents = new Set(),
     onComponentToggle,
     nameColSpan = 1
@@ -135,7 +136,14 @@ export default function BudgetRow({
                                 <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white ${isSelected ? '!bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
                                     <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '80px' }} colSpan={nameColSpan}>
                                         <div className="flex items-center gap-3 py-1.5">
-                                            {selectable && (isReviewMode ? comp.status === 'PENDING' : (comp.status === 'DRAFT' || comp.status === 'REJECTED')) && (
+                                            {selectable && (
+                                                isReviewMode 
+                                                    ? comp.status === 'PENDING' 
+                                                    : (isSuperAdmin 
+                                                        ? (comp.status === 'APPROVED' || comp.status === 'PENDING' || comp.status === 'DRAFT' || comp.status === 'REJECTED')
+                                                        : (comp.status === 'DRAFT' || comp.status === 'REJECTED')
+                                                      )
+                                            ) && (
                                                 <input
                                                     type="checkbox"
                                                     checked={isSelected}

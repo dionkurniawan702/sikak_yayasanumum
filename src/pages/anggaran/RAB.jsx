@@ -184,7 +184,12 @@ function RABContent() {
                     if (!compStatus) compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
                     
                     const isReviewMode = activeTab === 'REVIEW';
-                    const canSelect = isReviewMode ? compStatus === 'PENDING' : (compStatus === 'DRAFT' || compStatus === 'REJECTED');
+                    const canSelect = isReviewMode 
+                        ? compStatus === 'PENDING' 
+                        : (isSuperAdmin 
+                            ? (compStatus === 'APPROVED' || compStatus === 'PENDING' || compStatus === 'DRAFT' || compStatus === 'REJECTED')
+                            : (compStatus === 'DRAFT' || compStatus === 'REJECTED')
+                          );
                     
                     if (canSelect) {
                         const pIdx = 0; // Because we forced consolidated to 1 plan
@@ -200,7 +205,12 @@ function RABContent() {
                         if (!compStatus) compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
                         
                         const isReviewMode = activeTab === 'REVIEW';
-                        const canSelect = isReviewMode ? compStatus === 'PENDING' : (compStatus === 'DRAFT' || compStatus === 'REJECTED');
+                        const canSelect = isReviewMode 
+                            ? compStatus === 'PENDING' 
+                            : (isSuperAdmin 
+                                ? (compStatus === 'APPROVED' || compStatus === 'PENDING' || compStatus === 'DRAFT' || compStatus === 'REJECTED')
+                                : (compStatus === 'DRAFT' || compStatus === 'REJECTED')
+                              );
                         
                         if (canSelect) {
                             const compId = `${plan.id}|COMP-${plan.id}|${pIdx}|${cIdx}`;
@@ -215,7 +225,7 @@ function RABContent() {
         if (addedCount === 0) {
             // If already all selected or none to select, maybe clear?
             if (selectedComponents.size > 0) setSelectedComponents(new Set());
-            else alert("Tidak ada rincian yang bisa dipilih (semua sudah diajukan/disetujui).");
+            else alert(isSuperAdmin ? "Tidak ada rincian yang bisa dipilih." : "Tidak ada rincian yang bisa dipilih (semua sudah diajukan/disetujui).");
         } else {
             setSelectedComponents(newSelected);
         }
@@ -2708,6 +2718,7 @@ function RABContent() {
                                                 isField={!!plan.fieldId}
                                                 selectable={true}
                                                 isReviewMode={true}
+                                                isSuperAdmin={isSuperAdmin}
                                                 selectedComponents={selectedComponents}
                                                 onComponentToggle={toggleComponentSelection}
                                                 actions={
@@ -2960,7 +2971,8 @@ function RABContent() {
                                                 expandedDetailItems={{ [`${plan.id}|COMP-${plan.id}`]: true }}
                                                 onToggleDetailItem={toggleDetailItem}
                                                 isBos={plan.useBos}
-                                                selectable={!isSuperAdmin && !isConsolidation}
+                                                selectable={!isConsolidation}
+                                                isSuperAdmin={isSuperAdmin}
                                                 selectedComponents={selectedComponents}
                                                 onComponentToggle={toggleComponentSelection}
                                                 nameColSpan={3}
