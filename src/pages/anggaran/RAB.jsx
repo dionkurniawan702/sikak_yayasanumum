@@ -226,10 +226,24 @@ function RABContent() {
 
     // Mapped data for the Review and Consolidated views (Extracted Hooks)
     const incomePrograms = useMemo(() => programs.filter(p => !p.isDeleted && p.type === 'INCOME'), [programs]);
-    const pendingPlans = useMemo(() =>
-        rabPlans.filter(p => p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS'))),
-        [rabPlans, selectedYearId, fundSourceFilter]
-    );
+    const pendingPlans = useMemo(() => {
+        return rabPlans.filter(p => {
+            const matchStatus = p.status === 'PENDING';
+            const matchYear = p.academicYearId === selectedYearId;
+            const matchSource = fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS');
+            
+            let matchUnit = true;
+            if (selectedUnitId && selectedUnitId !== 'FOUNDATION') {
+                if (selectedUnitId.startsWith('FIELD-')) {
+                    matchUnit = p.fieldId === selectedUnitId.replace('FIELD-', '');
+                } else {
+                    matchUnit = p.unitId === selectedUnitId;
+                }
+            }
+            
+            return matchStatus && matchYear && matchSource && matchUnit;
+        });
+    }, [rabPlans, selectedYearId, fundSourceFilter, selectedUnitId]);
     const filteredReviewPlans = useMemo(() =>
         pendingPlans.filter(p => p.academicYearId === selectedYearId),
         [pendingPlans, selectedYearId]);
@@ -2024,6 +2038,13 @@ function RABContent() {
 
         setIsSaving(true);
         try {
+            setCurrentPlan({
+                income: updatedIncome,
+                expense: updatedExpense,
+                status: 'REJECTED',
+                rejectionReason: reason,
+                notified: false
+            });
             dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
             await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
             setMessage({ type: 'success', text: 'Persetujuan dibatalkan. RAB kini terbuka kembali untuk diperbaiki oleh Unit/Bidang.' });
