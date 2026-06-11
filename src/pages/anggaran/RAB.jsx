@@ -870,6 +870,15 @@ function RABContent() {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 0) * (parseFloat(entryForm.harga) || 0);
         
+        const monthsData = entryForm.months || {};
+        const activeMonthIds = Object.keys(monthsData).filter(mId => monthsData[mId]?.m);
+        const monthlyTotal = Object.values(monthsData).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+        
+        if (activeMonthIds.length > 0 && Math.abs(monthlyTotal - total) > 1) {
+            setMessage({ type: 'error', text: `Total alokasi bulanan (${formatRupiah(monthlyTotal)}) tidak sama dengan subtotal rincian (${formatRupiah(total)}). Silakan klik 'Sync'!` });
+            return;
+        }
+        
         let newStatus = entryForm.status;
         if (newStatus === 'REJECTED' || !newStatus) newStatus = 'DRAFT';
 

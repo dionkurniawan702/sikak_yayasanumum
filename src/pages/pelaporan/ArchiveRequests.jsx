@@ -103,10 +103,13 @@ export default function ArchiveRequests() {
     const resolveItemDetails = (item) => {
         // 1. If direct properties exist, use them
         if (item.volume !== undefined && item.satuan !== undefined && item.harga !== undefined) {
+            const harga = parseFloat(item.harga) || 0;
+            const amount = parseFloat(item.amount) || 0;
+            const vol = harga > 0 ? (amount / harga) : (parseFloat(item.volume) || 0);
             return {
-                volume: parseFloat(item.volume) || 0,
+                volume: vol,
                 satuan: item.satuan || '-',
-                harga: parseFloat(item.harga) || 0
+                harga: harga
             };
         }
 

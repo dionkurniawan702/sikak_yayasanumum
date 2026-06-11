@@ -300,7 +300,7 @@ export default function MonthlyRequest() {
                 componentId: c.id,
                 name: c.label || c.name,
                 amount: c.total,
-                volume: parseFloat(c.volume) || 1,
+                volume: (parseFloat(c.harga || c.price) > 0) ? (parseFloat(c.total) / parseFloat(c.harga || c.price)) : (parseFloat(c.volume) || 1),
                 satuan: c.satuan || c.unit || '-',
                 harga: parseFloat(c.harga || c.price) || 0,
                 planId: c.planId,
@@ -386,10 +386,13 @@ export default function MonthlyRequest() {
     const resolveItemDetails = (item) => {
         // 1. If direct properties exist, use them
         if (item.volume !== undefined && item.satuan !== undefined && item.harga !== undefined) {
+            const harga = parseFloat(item.harga) || 0;
+            const amount = parseFloat(item.amount) || 0;
+            const vol = harga > 0 ? (amount / harga) : (parseFloat(item.volume) || 0);
             return {
-                volume: parseFloat(item.volume) || 0,
+                volume: vol,
                 satuan: item.satuan || '-',
-                harga: parseFloat(item.harga) || 0
+                harga: harga
             };
         }
 
