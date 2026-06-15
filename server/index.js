@@ -187,12 +187,14 @@ const getPrisma = () => {
                         where: { academicYearId: null }
                     });
                     if (unmigratedCount > 0) {
-                        console.log(`[Migration] Found ${unmigratedCount} unassociated distribution settings. Associating with AY-2026-2027...`);
+                        console.log(`[Migration] Found ${unmigratedCount} unassociated distribution settings. Associating with 2026-2027...`);
                         
-                        // Ensure the academic year exists first
-                        let year2026 = await prisma.academicYear.findUnique({
-                            where: { id: 'AY-2026-2027' }
+                        // Find the year by name first
+                        let year2026 = await prisma.academicYear.findFirst({
+                            where: { name: '2026-2027', isDeleted: false }
                         });
+                        
+                        // If it doesn't exist, create it with a new ID
                         if (!year2026) {
                             year2026 = await prisma.academicYear.create({
                                 data: {
@@ -206,11 +208,13 @@ const getPrisma = () => {
                             });
                         }
 
+                        const targetYearId = year2026.id;
+
                         const result = await prisma.distributionSetting.updateMany({
                             where: { academicYearId: null },
-                            data: { academicYearId: 'AY-2026-2027' }
+                            data: { academicYearId: targetYearId }
                         });
-                        console.log(`[Migration] Successfully migrated ${result.count} distribution settings to AY-2026-2027.`);
+                        console.log(`[Migration] Successfully migrated ${result.count} distribution settings to Year ID: ${targetYearId} (${year2026.name}).`);
                     }
                 } catch (migrationErr) {
                     console.error('[Migration Error] Failed to migrate distribution settings:', migrationErr.message);
@@ -341,6 +345,40 @@ app.post('/api/login', async (req, res) => {
 app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
 app.use('/api/trash', trashRouter);
+
+app.get('/api/run-db-push', async (req, res) => {
+    try {
+        const { execSync } = await import('child_process');
+        console.log('[API Admin] Running prisma db push...');
+        const output = execSync('npx prisma db push --accept-data-loss').toString();
+        
+        const prismaClient = getPrisma();
+        
+        let year2026 = await prismaClient.academicYear.findFirst({
+            where: { name: '2026-2027', isDeleted: false }
+        });
+        
+        let yearId = year2026 ? year2026.id : 'AY-ID-MO8GWIG3-JDK';
+        
+        const unmigratedCount = await prismaClient.distributionSetting.count({
+            where: { academicYearId: null }
+        });
+        
+        let migrationMessage = 'No settings to migrate';
+        if (unmigratedCount > 0) {
+            const result = await prismaClient.distributionSetting.updateMany({
+                where: { academicYearId: null },
+                data: { academicYearId: yearId }
+            });
+            migrationMessage = `Successfully migrated ${result.count} settings to Year ID: ${yearId} (${year2026?.name || '2026-2027'})`;
+        }
+
+        res.json({ status: 'ok', output, migrationMessage });
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
 
 
 // Global for debugging sync
