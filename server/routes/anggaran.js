@@ -27,6 +27,22 @@ const requireSuperAdmin = (req, res, next) => {
     }
 };
 
+// Middleware: Memeriksa JWT token untuk user yang telah login
+const requireAuth = (req, res, next) => {
+    try {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Akses ditolak: Token tidak ditemukan.' });
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
+    }
+};
+
+
 // --- FIELD & UNIT ---
 router.get('/fields', async (req, res) => {
     try {
@@ -764,14 +780,41 @@ router.put('/budget-requests/:id', async (req, res) => {
     }
 });
 
-router.delete('/budget-requests/:id', requireSuperAdmin, async (req, res) => {
+router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
     try {
+        const prisma = getPrisma(req);
+        const reqId = req.params.id;
+
+        // Ambil data pengajuan terlebih dahulu untuk divalidasi
+        const budgetReq = await prisma.budgetRequest.findUnique({
+            where: { id: reqId }
+        });
+
+        if (!budgetReq) {
+            return res.status(404).json({ error: 'Pengajuan dana tidak ditemukan.' });
+        }
+
+        // Cek wewenang jika bukan superadmin
+        if (req.user.role !== 'superadmin') {
+            const isOwner = (req.user.unitId && budgetReq.unitId === req.user.unitId) ||
+                            (req.user.fieldId && budgetReq.fieldId === req.user.fieldId);
+
+            if (!isOwner) {
+                return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang untuk membatalkan pengajuan ini.' });
+            }
+
+            // Hanya pengajuan berstatus PENDING atau DRAFT yang boleh dibatalkan oleh unit/bidang
+            if (budgetReq.status !== 'PENDING' && budgetReq.status !== 'DRAFT') {
+                return res.status(400).json({ error: 'Gagal membatalkan: Pengajuan sudah disetujui atau ditolak.' });
+            }
+        }
+
         const isPermanent = req.query.permanent === 'true';
         if (isPermanent) {
-            await getPrisma(req).budgetRequest.delete({ where: { id: req.params.id } });
+            await prisma.budgetRequest.delete({ where: { id: reqId } });
         } else {
-            await getPrisma(req).budgetRequest.update({
-                where: { id: req.params.id },
+            await prisma.budgetRequest.update({
+                where: { id: reqId },
                 data: { isDeleted: true }
             });
         }

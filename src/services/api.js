@@ -245,6 +245,9 @@ export const api = {
                     await syncItem('budget-requests', payload.id, cleanPayload);
                     break;
                 }
+                case 'DELETE_BUDGET_REQUEST':
+                    await syncItem('budget-requests', payload, null, 'DELETE');
+                    break;
                 case 'ADD_BUDGET_REPORT':
                     await syncItem('budget-reports', null, payload, 'POST');
                     break;

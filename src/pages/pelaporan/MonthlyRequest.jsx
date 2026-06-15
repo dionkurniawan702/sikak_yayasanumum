@@ -888,6 +888,33 @@ export default function MonthlyRequest() {
                                                 BATAL
                                             </button>
                                         )}
+                                        {req.status === 'PENDING' && (
+                                            <button
+                                                onClick={async () => {
+                                                    const confirmed = window.confirm('Apakah Anda yakin ingin membatalkan pengajuan dana ini? Seluruh rincian item di dalamnya akan dikembalikan ke status belum diajukan.');
+                                                    if (confirmed) {
+                                                        setProcessingId(req.id);
+                                                        try {
+                                                            dispatch({ type: 'DELETE_BUDGET_REQUEST', payload: req.id });
+                                                            await api.pushAction({ type: 'DELETE_BUDGET_REQUEST', payload: req.id }, state);
+                                                            showToast('Pengajuan dana berhasil dibatalkan.');
+                                                        } catch (err) {
+                                                            console.error('[BATAL_REQ Error]', err);
+                                                            showToast('Gagal membatalkan pengajuan.', 'error');
+                                                            const freshData = await api.fetchAllData();
+                                                            if (freshData) dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+                                                        } finally {
+                                                            setProcessingId(null);
+                                                        }
+                                                    }
+                                                }}
+                                                disabled={processingId === req.id}
+                                                className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all font-black text-[10px] border border-transparent hover:border-rose-100 flex items-center gap-2 uppercase tracking-widest disabled:opacity-50"
+                                            >
+                                                {processingId === req.id ? <Loader2 size={16} className="animate-spin" /> : <XCircle size={16} />}
+                                                Batalkan
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => handlePrint(req)}
                                             className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-indigo-50 hover:text-indigo-600 transition-all italic font-black text-[10px] border border-transparent hover:border-indigo-100 flex items-center gap-2 uppercase tracking-widest"
