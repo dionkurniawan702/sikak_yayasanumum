@@ -1411,55 +1411,55 @@ export default function MonthlyReport() {
 
             {/* Printable Area (Hidden on screen, visible on print) */}
             <div className="hidden print:block text-black bg-white w-full">
-                <div className="text-center mb-6">
-                    <h2 className="text-xl font-black uppercase">LAPORAN PENGELUARAN YAYASAN</h2>
-                    <p className="text-sm font-bold mt-1">
+                <div className="text-center mb-3">
+                    <h2 className="text-base font-black uppercase">LAPORAN PENGELUARAN YAYASAN</h2>
+                    <p className="text-xs font-bold mt-0.5">
                         {myUnitId ? (units.find(u => u.id === myUnitId)?.name || '') : 'Semua Unit'} 
                         {filterDateFrom && filterDateTo ? ` (${filterDateFrom} s.d ${filterDateTo})` : ''}
                     </p>
                 </div>
                 
-                <table className="w-full text-left border-collapse border border-slate-800 text-[10px]">
+                <table className="w-full text-left border-collapse border border-slate-800 text-[9px]">
                     <thead>
                         <tr className="bg-slate-100">
-                            <th className="p-2 border border-slate-800 text-center font-bold">No</th>
-                            <th className="p-2 border border-slate-800 font-bold">Tanggal</th>
-                            <th className="p-2 border border-slate-800 font-bold">No. Nota</th>
-                            <th className="p-2 border border-slate-800 font-bold">Keterangan</th>
-                            <th className="p-2 border border-slate-800 font-bold">Jenis Belanja</th>
-                            <th className="p-2 border border-slate-800 font-bold">Bukti Transaksi</th>
-                            <th className="p-2 border border-slate-800 text-center font-bold">Volume</th>
-                            <th className="p-2 border border-slate-800 text-right font-bold">Harga</th>
-                            <th className="p-2 border border-slate-800 text-right font-bold">Jumlah</th>
-                            <th className="p-2 border border-slate-800 text-center font-bold">Kategori</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">No</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Tanggal</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">No. Nota</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Keterangan</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Jenis Belanja</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Bukti Transaksi</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">Volume</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-right font-bold">Harga</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-right font-bold">Jumlah</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">Kategori</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredReports.map((report, idx) => (
                             <tr key={report.id}>
-                                <td className="p-2 border border-slate-800 text-center">{idx + 1}</td>
-                                <td className="p-2 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
-                                <td className="p-2 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
-                                <td className="p-2 border border-slate-800">{report.category || report.description || 'Pengeluaran'}</td>
-                                <td className="p-2 border border-slate-800 whitespace-nowrap">{report.category || '—'}</td>
-                                <td className="p-2 border border-slate-800">{report.buktiTeks || '—'}</td>
-                                <td className="p-2 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
-                                <td className="p-2 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
-                                <td className="p-2 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
-                                <td className="p-2 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center">{idx + 1}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800">{report.category || report.description || 'Pengeluaran'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.category || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800">{report.buktiTeks || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
                             </tr>
                         ))}
                         {filteredReports.length === 0 && (
                             <tr>
-                                <td colSpan="10" className="p-4 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
+                                <td colSpan="10" className="p-2 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
                             </tr>
                         )}
                     </tbody>
                     {filteredReports.length > 0 && (
                         <tfoot>
                             <tr className="bg-slate-100">
-                                <td colSpan="8" className="p-2 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
-                                <td className="p-2 border border-slate-800 text-right font-black">{formatRupiah(totalNilai)}</td>
+                                <td colSpan="8" className="px-1 py-0.5 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-right font-black">{formatRupiah(totalNilai)}</td>
                                 <td className="border border-slate-800"></td>
                             </tr>
                         </tfoot>
