@@ -28,8 +28,7 @@ const requireSuperAdmin = (req, res, next) => {
 };
 
 // Middleware: Memeriksa JWT token untuk user yang telah login
-// Always loads unitId/fieldId from DB to handle old tokens that lack these fields
-const requireAuth = async (req, res, next) => {
+const requireAuth = (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
@@ -37,20 +36,6 @@ const requireAuth = async (req, res, next) => {
 
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
-
-        // If unitId/fieldId not in token payload (old token), load from DB
-        if (decoded.unitId === undefined || decoded.fieldId === undefined) {
-            try {
-                const prisma = getPrisma(req);
-                const dbUser = await prisma.user.findUnique({ where: { id: decoded.id } });
-                if (dbUser) {
-                    req.user = { ...decoded, unitId: dbUser.unitId || null, fieldId: dbUser.fieldId || null };
-                }
-            } catch (dbErr) {
-                console.warn('[requireAuth] DB lookup failed, using JWT payload only:', dbErr.message);
-            }
-        }
-
         next();
     } catch (err) {
         return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
@@ -814,16 +799,21 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
             let userUnitId = req.user.unitId;
             let userFieldId = req.user.fieldId;
 
-            // Fallback: If JWT payload has old structure, load from DB
-            if (userUnitId === undefined || userFieldId === undefined) {
+            // Always load from DB to get fresh unitId/fieldId (handles old tokens with null/undefined)
+            // This ensures correctness regardless of token age/format
+            try {
                 const dbUser = await prisma.user.findUnique({
                     where: { id: req.user.id }
                 });
                 if (dbUser) {
-                    userUnitId = dbUser.unitId;
-                    userFieldId = dbUser.fieldId;
+                    userUnitId = dbUser.unitId || userUnitId;
+                    userFieldId = dbUser.fieldId || userFieldId;
                 }
+            } catch (dbErr) {
+                console.warn('[DELETE /budget-requests] DB user lookup failed, using JWT values:', dbErr.message);
             }
+
+            console.log(`[DELETE /budget-requests/${reqId}] user.id=${req.user.id}, userUnitId=${userUnitId}, userFieldId=${userFieldId}, budgetReq.unitId=${budgetReq.unitId}, budgetReq.fieldId=${budgetReq.fieldId}`);
 
             const isOwner = (userUnitId && budgetReq.unitId === userUnitId) ||
                             (userFieldId && budgetReq.fieldId === userFieldId);
