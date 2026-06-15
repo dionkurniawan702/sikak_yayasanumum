@@ -796,8 +796,22 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
 
         // Cek wewenang jika bukan superadmin
         if (req.user.role !== 'superadmin') {
-            const isOwner = (req.user.unitId && budgetReq.unitId === req.user.unitId) ||
-                            (req.user.fieldId && budgetReq.fieldId === req.user.fieldId);
+            let userUnitId = req.user.unitId;
+            let userFieldId = req.user.fieldId;
+
+            // Fallback: If JWT payload has old structure, load from DB
+            if (userUnitId === undefined || userFieldId === undefined) {
+                const dbUser = await prisma.user.findUnique({
+                    where: { id: req.user.id }
+                });
+                if (dbUser) {
+                    userUnitId = dbUser.unitId;
+                    userFieldId = dbUser.fieldId;
+                }
+            }
+
+            const isOwner = (userUnitId && budgetReq.unitId === userUnitId) ||
+                            (userFieldId && budgetReq.fieldId === userFieldId);
 
             if (!isOwner) {
                 return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang untuk membatalkan pengajuan ini.' });
