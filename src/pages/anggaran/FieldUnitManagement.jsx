@@ -931,6 +931,7 @@ export default function FieldUnitManagement() {
                         </div>
                     </div>
                 </div>
+            )}
             {/* Duplicate Configuration Modal */}
             {showDuplicateModal && (
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 animate-in fade-in duration-200">
