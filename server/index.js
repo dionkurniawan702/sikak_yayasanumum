@@ -380,6 +380,17 @@ app.get('/api/run-db-push', async (req, res) => {
     }
 });
 
+app.get('/api/inspect-users', async (req, res) => {
+    try {
+        const client = getPrisma();
+        const users = await client.user.findMany({ where: { isDeleted: false } });
+        const units = await client.unit.findMany({ where: { isDeleted: false } });
+        res.json({ users, units });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 
 // Global for debugging sync
 let lastSyncStats = null;
