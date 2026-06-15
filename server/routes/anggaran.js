@@ -28,7 +28,8 @@ const requireSuperAdmin = (req, res, next) => {
 };
 
 // Middleware: Memeriksa JWT token untuk user yang telah login
-const requireAuth = (req, res, next) => {
+// Always loads unitId/fieldId from DB to handle old tokens that lack these fields
+const requireAuth = async (req, res, next) => {
     try {
         const authHeader = req.headers['authorization'];
         const token = authHeader && authHeader.split(' ')[1];
@@ -36,6 +37,20 @@ const requireAuth = (req, res, next) => {
 
         const decoded = jwt.verify(token, JWT_SECRET);
         req.user = decoded;
+
+        // If unitId/fieldId not in token payload (old token), load from DB
+        if (decoded.unitId === undefined || decoded.fieldId === undefined) {
+            try {
+                const prisma = getPrisma(req);
+                const dbUser = await prisma.user.findUnique({ where: { id: decoded.id } });
+                if (dbUser) {
+                    req.user = { ...decoded, unitId: dbUser.unitId || null, fieldId: dbUser.fieldId || null };
+                }
+            } catch (dbErr) {
+                console.warn('[requireAuth] DB lookup failed, using JWT payload only:', dbErr.message);
+            }
+        }
+
         next();
     } catch (err) {
         return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
