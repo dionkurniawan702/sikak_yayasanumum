@@ -69,7 +69,9 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
                  // Find distribution rules for this income item from this unit
                  // Again, match by ID or Name for robustness
                  const rules = distributionSettings.filter(
-                     s => s.unitId == student.unitId && (s.incomeItemId == detail.incomeItemId || s.incomeItemId == incomeId)
+                     s => s.unitId == student.unitId && 
+                          (s.incomeItemId == detail.incomeItemId || s.incomeItemId == incomeId) &&
+                          (!s.academicYearId || s.academicYearId == yearId)
                  );
 
                 if (rules.length === 0) {

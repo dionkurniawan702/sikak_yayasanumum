@@ -229,9 +229,10 @@ model AcademicYear {
   isActive  Boolean  @default(true)
   isDeleted Boolean  @default(false)
 
-  students       Student[]
-  bosStages      BosStage[]
-  bosAllocations BosAllocation[]
+  students             Student[]
+  bosStages            BosStage[]
+  bosAllocations       BosAllocation[]
+  distributionSettings DistributionSetting[]
 
   @@map("AcademicYear")
 }
@@ -309,17 +310,19 @@ model StudentIncomeDetail {
 
 
 model DistributionSetting {
-  id             String      @id @default(uuid())
-  unitId         String      // The unit receiving the income
+  id             String        @id @default(uuid())
+  unitId         String        // The unit receiving the income
+  academicYearId String?       // Associated academic year
+  academicYear   AcademicYear? @relation(fields: [academicYearId], references: [id])
   incomeItemId   String
-  incomeItem     IncomeItem  @relation(fields: [incomeItemId], references: [id])
+  incomeItem     IncomeItem    @relation(fields: [incomeItemId], references: [id])
   expenseItemId  String
-  expenseItem    ExpenseItem @relation(fields: [expenseItemId], references: [id])
-  percentage     Decimal     @db.Decimal(5, 2)
-  destType       String?     @default("unit")
+  expenseItem    ExpenseItem   @relation(fields: [expenseItemId], references: [id])
+  percentage     Decimal       @db.Decimal(5, 2)
+  destType       String?       @default("unit")
   destId         String?
   destName       String?
-  isDeleted      Boolean     @default(false)
+  isDeleted      Boolean       @default(false)
 
   @@map("distribution_settings")
 }

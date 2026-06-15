@@ -428,6 +428,11 @@ export const api = {
         }
     },
 
+    async duplicateDistributionSettings(sourceYearId, targetYearId) {
+        if (!isRemote) return null;
+        return await this.post('/distribution-settings/duplicate', { sourceYearId, targetYearId });
+    },
+
     async syncWholeState(state) {
         if (!isRemote) return { status: 'disabled' };
         try {

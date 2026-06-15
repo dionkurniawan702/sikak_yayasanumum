@@ -26,7 +26,45 @@ export default function FieldUnitManagement() {
     const [error, setError] = useState(null);
     const [expandedIncomeItem, setExpandedIncomeItem] = useState(null);
     const [selectedUnitForFinance, setSelectedUnitForFinance] = useState(''); // When editing a field, which unit's finance to manage
+    
+    // Academic Year & Duplication states
+    const [selectedYearId, setSelectedYearId] = useState(state.globalAcademicYearId || '');
+    const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [duplicateSourceYear, setDuplicateSourceYear] = useState('');
+    const [duplicateTargetYear, setDuplicateTargetYear] = useState('');
 
+    useEffect(() => {
+        if (!selectedYearId && state.academicYears?.length > 0) {
+            const currentYear = state.academicYears.find(y => y.isCurrent && !y.isDeleted)?.id || state.academicYears.filter(y => !y.isDeleted)[0]?.id;
+            setSelectedYearId(currentYear);
+        }
+    }, [state.academicYears, selectedYearId]);
+
+    const handleExecuteDuplicate = async () => {
+        if (!duplicateSourceYear || !duplicateTargetYear) return;
+        if (!window.confirm('Apakah Anda yakin ingin menduplikasi seluruh konfigurasi dana ini? Semua konfigurasi dana yang ada di Tahun Ajaran Tujuan akan dihapus dan digantikan dengan data baru.')) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await api.duplicateDistributionSettings(duplicateSourceYear, duplicateTargetYear);
+            
+            // Force refresh data
+            const freshData = await api.fetchAllData();
+            if (freshData) {
+                dispatch({ type: 'SET_ALL_DATA', payload: freshData });
+            }
+            window.alert(`Berhasil menduplikasi ${res.count || 0} konfigurasi dana ke tahun ajaran tujuan.`);
+            setShowDuplicateModal(false);
+            setDuplicateSourceYear('');
+            setDuplicateTargetYear('');
+        } catch (err) {
+            console.error('Duplication failed:', err.message);
+            window.alert(`Gagal menduplikasi: ${err.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleOpenModal = (item = null) => {
         if (item) {
@@ -34,8 +72,8 @@ export default function FieldUnitManagement() {
             setFormData({ name: item.name, fieldId: item.fieldId || '' });
             
             if (activeTab === 'units') {
-                // Load existing distribution settings for this unit
-                const unitSettings = distributionSettings.filter(s => s.unitId === item.id);
+                // Load existing distribution settings for this unit in the selected academic year
+                const unitSettings = distributionSettings.filter(s => s.unitId === item.id && s.academicYearId === selectedYearId);
                 const uniqueIncomeItemIds = [...new Set(unitSettings.map(s => s.incomeItemId))];
                 setSelectedIncomeItems(uniqueIncomeItemIds);
                 
@@ -182,6 +220,7 @@ export default function FieldUnitManagement() {
                         return {
                             ...rule,
                             unitId: targetUnitIdForFinance,
+                            academicYearId: selectedYearId,
                             incomeItemId: incomeId,
                             destId: ruleDestId,
                             destName: destName,
@@ -198,16 +237,18 @@ export default function FieldUnitManagement() {
                     payload: { 
                         unitId: targetUnitIdForFinance, 
                         settings: allSettingsToPush,
+                        academicYearId: selectedYearId,
                         batch: true // Tell backend to clear all old settings for this unit first
                     }
                 }, state);
 
-                // Dispatch locally first (batch=true clears ALL old settings for this unit)
+                // Dispatch locally first (batch=true clears ALL old settings for this unit in the target year)
                 dispatch({
                     type: 'UPDATE_DISTRIBUTION_SETTINGS',
                     payload: {
                         unitId: targetUnitIdForFinance,
                         settings: allSettingsToPush,
+                        academicYearId: selectedYearId,
                         batch: true
                     }
                 });
@@ -413,6 +454,37 @@ export default function FieldUnitManagement() {
                 </button>
             </div>
 
+            {/* Year filter & Duplication controls */}
+            {activeTab === 'units' && (
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 p-6 bg-slate-50 border border-slate-200/60 rounded-[24px]">
+                    <div className="flex items-center gap-3">
+                        <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Tahun Ajaran Konfigurasi:</label>
+                        <select
+                            value={selectedYearId}
+                            onChange={(e) => setSelectedYearId(e.target.value)}
+                            className="bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 font-black text-xs text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
+                        >
+                            {(state.academicYears || []).filter(y => !y.isDeleted).map(y => (
+                                <option key={y.id} value={y.id}>T.A. {y.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <button
+                        onClick={() => {
+                            setDuplicateSourceYear(selectedYearId);
+                            // Auto select target as another year if exists
+                            const nextYear = (state.academicYears || []).find(y => !y.isDeleted && y.id !== selectedYearId)?.id || '';
+                            setDuplicateTargetYear(nextYear);
+                            setShowDuplicateModal(true);
+                        }}
+                        className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100 hover:bg-emerald-100 font-black text-xs uppercase tracking-wider transition-all"
+                    >
+                        <Share2 size={16} />
+                        <span>Duplikat Konfigurasi ke Tahun Lain</span>
+                    </button>
+                </div>
+            )}
+
             {/* Content Table */}
             <div className="card shadow-xl overflow-hidden border-none rounded-[32px]">
                 <table className="w-full text-left border-collapse">
@@ -452,7 +524,7 @@ export default function FieldUnitManagement() {
                             )
                         ) : (
                             units.filter(u => !u.isDeleted).length > 0 ? units.filter(u => !u.isDeleted).map(unit => {
-                                const unitSettings = distributionSettings.filter(s => s.unitId === unit.id);
+                                const unitSettings = distributionSettings.filter(s => s.unitId === unit.id && s.academicYearId === selectedYearId);
                                 const uniqueIncomeItems = [...new Set(unitSettings.map(s => s.incomeItemId))];
                                 const configuredItems = uniqueIncomeItems.length;
 
@@ -630,7 +702,7 @@ export default function FieldUnitManagement() {
                                                             const unitId = e.target.value;
                                                             setSelectedUnitForFinance(unitId);
                                                             if (unitId) {
-                                                                const unitSettings = distributionSettings.filter(s => s.unitId === unitId);
+                                                                const unitSettings = distributionSettings.filter(s => s.unitId === unitId && s.academicYearId === selectedYearId);
                                                                 const uniqueIncomeItemIds = [...new Set(unitSettings.map(s => s.incomeItemId))];
                                                                 setSelectedIncomeItems(uniqueIncomeItemIds);
                                                                 const distMap = {};
@@ -856,6 +928,71 @@ export default function FieldUnitManagement() {
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            {/* Duplicate Configuration Modal */}
+            {showDuplicateModal && (
+                <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md animate-in fade-in duration-200" onClick={() => setShowDuplicateModal(false)} />
+                    <div className="bg-white rounded-[40px] w-full max-w-md overflow-hidden relative z-10 shadow-2xl animate-in scale-in duration-300 p-10 border border-slate-100">
+                        <h3 className="text-2xl font-black text-slate-900 mb-4 tracking-tight flex items-center gap-3">
+                            <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center">
+                                <Share2 size={20} />
+                            </div>
+                            <span>Duplikat Konfigurasi</span>
+                        </h3>
+                        <p className="text-xs font-bold text-slate-500 mb-8 leading-relaxed">
+                            Pilih Tahun Ajaran Asal (sumber data) dan Tahun Ajaran Tujuan. Seluruh aturan distribusi dana pada tahun ajaran tujuan akan ditimpa dengan aturan dari tahun ajaran asal.
+                        </p>
+                        
+                        <div className="space-y-6">
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 pl-1">Tahun Ajaran Asal (Sumber):</label>
+                                <select 
+                                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer text-sm"
+                                    value={duplicateSourceYear}
+                                    onChange={e => setDuplicateSourceYear(e.target.value)}
+                                >
+                                    <option value="">Pilih...</option>
+                                    {(state.academicYears || []).filter(y => !y.isDeleted).map(y => (
+                                        <option key={y.id} value={y.id}>T.A. {y.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 pl-1">Tahun Ajaran Tujuan:</label>
+                                <select 
+                                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-black text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500 transition-all cursor-pointer text-sm"
+                                    value={duplicateTargetYear}
+                                    onChange={e => setDuplicateTargetYear(e.target.value)}
+                                >
+                                    <option value="">Pilih...</option>
+                                    {(state.academicYears || []).filter(y => !y.isDeleted && y.id !== duplicateSourceYear).map(y => (
+                                        <option key={y.id} value={y.id}>T.A. {y.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-4 mt-10">
+                            <button 
+                                type="button" 
+                                onClick={() => setShowDuplicateModal(false)} 
+                                className="btn btn-secondary !rounded-[20px] flex-1 py-4 font-black uppercase text-[10px] tracking-widest"
+                                disabled={loading}
+                            >
+                                Batal
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={handleExecuteDuplicate}
+                                disabled={loading || !duplicateSourceYear || !duplicateTargetYear}
+                                className="btn !rounded-[20px] flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/25 disabled:opacity-50"
+                            >
+                                {loading ? 'Memproses...' : 'Duplikat'}
+                            </button>
                         </div>
                     </div>
                 </div>

@@ -539,12 +539,13 @@ function appReducer(state, action) {
             newState = { ...state, users: state.users.map(u => u.id === action.payload ? { ...u, isDeleted: true, deletedAt: new Date().toISOString() } : u) };
             break;
         case 'UPDATE_DISTRIBUTION_SETTINGS': {
-            const { unitId, incomeItemId, settings, batch } = action.payload;
-            // batch=true: remove ALL settings for this unitId (used when saving from Edit Unit modal)
-            // batch=false/undefined: remove only for the specific incomeItemId
+            const { unitId, incomeItemId, settings, batch, academicYearId } = action.payload;
+            const yearId = academicYearId || (settings && settings[0]?.academicYearId) || null;
+            // batch=true: remove ALL settings for this unitId in the target year
+            // batch=false/undefined: remove only for the specific incomeItemId in the target year
             const otherSettings = batch
-                ? state.distributionSettings.filter(s => s.unitId !== unitId)
-                : state.distributionSettings.filter(s => !(s.unitId === unitId && s.incomeItemId === incomeItemId));
+                ? state.distributionSettings.filter(s => s.unitId !== unitId || s.academicYearId !== yearId)
+                : state.distributionSettings.filter(s => !(s.unitId === unitId && s.incomeItemId === incomeItemId && s.academicYearId === yearId));
             newState = { ...state, distributionSettings: [...otherSettings, ...settings] };
             break;
         }

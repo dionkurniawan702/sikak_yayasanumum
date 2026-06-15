@@ -180,6 +180,41 @@ const getPrisma = () => {
                 if (deletedCount > 0 || ghostCount > 0) {
                     console.log(`[Cleanup] Finished. Deleted ${deletedCount} records (duplicates/empty) and ${ghostCount} ghost records.`);
                 }
+
+                // --- AUTO MIGRATION FOR DISTRIBUTION SETTINGS ---
+                try {
+                    const unmigratedCount = await prisma.distributionSetting.count({
+                        where: { academicYearId: null }
+                    });
+                    if (unmigratedCount > 0) {
+                        console.log(`[Migration] Found ${unmigratedCount} unassociated distribution settings. Associating with AY-2026-2027...`);
+                        
+                        // Ensure the academic year exists first
+                        let year2026 = await prisma.academicYear.findUnique({
+                            where: { id: 'AY-2026-2027' }
+                        });
+                        if (!year2026) {
+                            year2026 = await prisma.academicYear.create({
+                                data: {
+                                    id: 'AY-2026-2027',
+                                    name: '2026-2027',
+                                    startDate: new Date('2026-07-01'),
+                                    endDate: new Date('2027-06-30'),
+                                    isCurrent: false,
+                                    isActive: true
+                                }
+                            });
+                        }
+
+                        const result = await prisma.distributionSetting.updateMany({
+                            where: { academicYearId: null },
+                            data: { academicYearId: 'AY-2026-2027' }
+                        });
+                        console.log(`[Migration] Successfully migrated ${result.count} distribution settings to AY-2026-2027.`);
+                    }
+                } catch (migrationErr) {
+                    console.error('[Migration Error] Failed to migrate distribution settings:', migrationErr.message);
+                }
             } catch (err) {
                 console.error('[Cleanup Error]', err.message);
             }

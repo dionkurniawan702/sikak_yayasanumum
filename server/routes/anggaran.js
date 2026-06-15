@@ -529,8 +529,7 @@ router.get('/fix-dist-dupes', async (req, res) => {
 
 router.post('/distribution-settings', async (req, res) => {
     try {
-        const { unitId, incomeItemId, settings, batch = false } = req.body;
-        console.log(`[Sync] Updating distributions for Unit ${unitId}. Batch: ${batch}. Rules: ${settings?.length}`);
+        const { unitId, incomeItemId, settings, batch = false, academicYearId } = req.body;
         
         // Anti-Duplicate Guard: Filter out exact identical rules before saving
         const uniqueSettings = [];
@@ -547,16 +546,22 @@ router.post('/distribution-settings', async (req, res) => {
             }
         }
 
+        const yearId = academicYearId || (settings && settings[0]?.academicYearId) || null;
+        console.log(`[Sync] Updating distributions for Unit ${unitId}, Year: ${yearId}. Batch: ${batch}. Rules: ${settings?.length}`);
+
         await getPrisma(req).$transaction([
-            // Forcefully delete all existing rules for the given unit and income item
+            // Forcefully delete all existing rules for the given unit, income item, and year
             getPrisma(req).distributionSetting.deleteMany({
-                where: batch ? { unitId } : { unitId, incomeItemId }
+                where: batch 
+                    ? { unitId, academicYearId: yearId } 
+                    : { unitId, incomeItemId, academicYearId: yearId }
             }),
             // Insert the fresh ones (preserving existing UUIDs to maintain stability and prevent unnecessary re-generation)
             getPrisma(req).distributionSetting.createMany({
                 data: uniqueSettings.map(s => ({
                     id: s.id || crypto.randomUUID(),
                     unitId: s.unitId,
+                    academicYearId: yearId,
                     incomeItemId: s.incomeItemId,
                     expenseItemId: s.expenseItemId,
                     destId: s.destId,
@@ -568,6 +573,54 @@ router.post('/distribution-settings', async (req, res) => {
         ]);
         res.json({ message: 'Success' });
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/distribution-settings/duplicate', async (req, res) => {
+    try {
+        const { sourceYearId, targetYearId } = req.body;
+        if (!sourceYearId || !targetYearId) {
+            return res.status(400).json({ error: 'Source and Target Academic Year IDs are required' });
+        }
+
+        const prisma = getPrisma(req);
+        console.log(`[Duplication] Copying distribution settings from ${sourceYearId} to ${targetYearId}`);
+
+        // Fetch all distribution settings from source year
+        const sourceSettings = await prisma.distributionSetting.findMany({
+            where: { academicYearId: sourceYearId, isDeleted: false }
+        });
+
+        if (sourceSettings.length === 0) {
+            return res.json({ message: 'No configurations found for the source year', count: 0 });
+        }
+
+        // Clean existing settings in target year to avoid duplicates
+        await prisma.distributionSetting.deleteMany({
+            where: { academicYearId: targetYearId }
+        });
+
+        // Duplicate them to the target year
+        const newSettings = sourceSettings.map(s => ({
+            id: crypto.randomUUID(),
+            unitId: s.unitId,
+            academicYearId: targetYearId,
+            incomeItemId: s.incomeItemId,
+            expenseItemId: s.expenseItemId,
+            destId: s.destId,
+            destType: s.destType,
+            destName: s.destName,
+            percentage: s.percentage
+        }));
+
+        await prisma.distributionSetting.createMany({
+            data: newSettings
+        });
+
+        res.json({ message: 'Duplication successful', count: newSettings.length });
+    } catch (error) {
+        console.error(`[Duplication Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
