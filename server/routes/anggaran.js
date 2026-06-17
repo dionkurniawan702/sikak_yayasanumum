@@ -998,33 +998,59 @@ router.put('/budget-reports/:id', async (req, res) => {
     }
 });
 
-router.delete('/budget-reports/:id', requireSuperAdmin, async (req, res) => {
+router.delete('/budget-reports/:id', requireAuth, async (req, res) => {
     try {
-        const isPermanent = req.query.permanent === 'true';
         const prisma = getPrisma(req);
-        
-        await prisma.$transaction(async (tx) => {
-            const report = await tx.budgetReport.findUnique({ where: { id: req.params.id } });
-            
-            if (isPermanent) {
-                if (report?.journalId) {
-                    await tx.journal.delete({ where: { id: report.journalId } }).catch(() => {});
-                }
-                await tx.budgetReport.delete({ where: { id: req.params.id } });
-            } else {
-                if (report?.journalId) {
-                    await tx.journal.update({
-                        where: { id: report.journalId },
-                        data: { isDeleted: true }
-                    }).catch(() => {});
-                }
-                await tx.budgetReport.update({
-                    where: { id: req.params.id },
-                    data: { isDeleted: true }
-                });
-            }
+        const reportId = req.params.id;
+
+        // Ambil data laporan realisasi terlebih dahulu
+        const report = await prisma.budgetReport.findUnique({
+            where: { id: reportId }
         });
-        
+
+        if (!report) {
+            return res.status(404).json({ error: 'Laporan realisasi tidak ditemukan.' });
+        }
+
+        // Cek wewenang jika bukan superadmin
+        if (req.user.role !== 'superadmin') {
+            let userUnitId = req.user.unitId;
+            let userFieldId = req.user.fieldId;
+
+            // Load fresh unitId/fieldId dari DB untuk keandalan data
+            try {
+                const dbUser = await prisma.user.findUnique({
+                    where: { id: req.user.id }
+                });
+                if (dbUser) {
+                    userUnitId = dbUser.unitId || userUnitId;
+                    userFieldId = dbUser.fieldId || userFieldId;
+                }
+            } catch (dbErr) {
+                console.warn('[DELETE /budget-reports] DB user lookup failed, using JWT values:', dbErr.message);
+            }
+
+            const isOwner = (userUnitId && report.unitId === userUnitId) ||
+                            (userFieldId && report.fieldId === userFieldId);
+
+            if (!isOwner) {
+                return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang untuk menghapus laporan ini.' });
+            }
+
+            // Hanya laporan berstatus DRAFT yang boleh dihapus oleh unit/bidang
+            if (report.status !== 'DRAFT') {
+                return res.status(400).json({ error: 'Gagal menghapus: Laporan sudah diajukan atau diproses.' });
+            }
+        }
+
+        await prisma.$transaction(async (tx) => {
+            // Nota draft dan budget-reports selalu dihapus secara permanen (tanpa masuk ke trash)
+            if (report.journalId) {
+                await tx.journal.delete({ where: { id: report.journalId } }).catch(() => {});
+            }
+            await tx.budgetReport.delete({ where: { id: reportId } });
+        });
+
         res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
