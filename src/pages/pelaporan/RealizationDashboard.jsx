@@ -157,6 +157,7 @@ export default function RealizationDashboard() {
             r.status !== 'REJECTED' && 
             r.academicYearId === selectedAcademicYearId && 
             !r.isDeleted &&
+            r.kategoriAset !== 'PENGEMBALIAN' &&
             (isBOS ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
         ).forEach(report => {
             const amount = parseFloat(report.amount) || 0;
