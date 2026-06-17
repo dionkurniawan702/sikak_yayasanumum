@@ -305,6 +305,37 @@ export default function MonthlyReport() {
     const pendingItems = useMemo(() => {
         const items = [];
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
+            const reqUnitId = req.unitId;
+            const reqFieldId = req.fieldId;
+
+            // Check if this unit/field has any remaining balance. If balance is 0 or less, skip.
+            const unitRequests = (budgetRequests || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' 
+                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
+                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
+            );
+            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+
+            const unitReports = (budgetReports || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                !r.isDeleted &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
+            );
+            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+            const activeBalance = unitCair - unitUsed - unitReturned;
+
+            if (activeBalance <= 0) {
+                // If this unit/field has no remaining cash balance, skip all its pending items!
+                return;
+            }
+
             // If the old system fully reported the request without component tracking, hide all items
             const reportedReq = reportedAmounts.byRequest[req.id] || 0;
             if (reportedReq >= parseFloat(req.totalAmount || 0) && Object.keys(reportedAmounts.byComponent).length === 0) {
@@ -346,7 +377,7 @@ export default function MonthlyReport() {
             }
         });
         return items;
-    }, [requestsForYear, reportedAmounts]);
+    }, [requestsForYear, reportedAmounts, budgetRequests, budgetReports, globalAcademicYearId, sourceMode, draftReports]);
 
     // Map of unit/field id → count of pending items (for superadmin badges)
     const pendingCountByUnit = useMemo(() => {
@@ -360,9 +391,38 @@ export default function MonthlyReport() {
             if (sourceMode === 'YAYASAN' && isBosRequest) return false;
             return true;
         }).forEach(req => {
-            const unitKey = req.unitId || req.fieldId || 'UNKNOWN';
+            const reqUnitId = req.unitId;
+            const reqFieldId = req.fieldId;
+
+            // Check active balance
+            const unitRequests = (budgetRequests || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' 
+                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
+                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
+            );
+            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+
+            const unitReports = (budgetReports || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                !r.isDeleted &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
+            );
+            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+            const activeBalance = unitCair - unitUsed - unitReturned;
+
+            if (activeBalance <= 0) return;
+
+            const unitKey = reqUnitId || reqFieldId || 'UNKNOWN';
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
+                    if (item.isClosed) return; // Skip closed
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
                     if (reportedComp < parseFloat(item.amount || 0)) {
                         map[unitKey] = (map[unitKey] || 0) + 1;
@@ -376,7 +436,7 @@ export default function MonthlyReport() {
             }
         });
         return map;
-    }, [budgetRequests, reportedAmounts, globalAcademicYearId, sourceMode]);
+    }, [budgetRequests, budgetReports, reportedAmounts, globalAcademicYearId, sourceMode]);
 
     // Filtered pending items for superadmin based on selected unit
     const filteredPendingItems = useMemo(() => {
@@ -939,12 +999,6 @@ export default function MonthlyReport() {
                                             >
                                                 <FileCheck size={16} />
                                                 <span>Buat Laporan</span>
-                                            </button>
-                                            <button
-                                                onClick={() => handleCloseItem(item)}
-                                                className="px-4 py-2 text-xs font-black text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-xl transition-all w-full flex items-center justify-center gap-1.5"
-                                            >
-                                                <span>Kembalikan Sisa</span>
                                             </button>
                                         </div>
                                     )}
