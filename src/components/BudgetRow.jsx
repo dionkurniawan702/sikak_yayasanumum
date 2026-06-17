@@ -153,9 +153,19 @@ export default function BudgetRow({
                                                 />
                                             )}
                                             <div className="flex flex-col">
-                                                <span className="text-[11px] font-bold text-slate-700 leading-snug">
-                                                    {comp.label}
-                                                </span>
+                                                 <span className="text-[11px] font-bold text-slate-700 leading-snug">
+                                                     {comp.label}
+                                                 </span>
+                                                 {comp.spent > 0 && (
+                                                     <div className="flex items-center gap-1.5 mt-0.5">
+                                                         <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 whitespace-nowrap">
+                                                             Terpakai: {formatCurrency(comp.spent)}
+                                                         </span>
+                                                         <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap">
+                                                             Sisa: {formatCurrency(comp.remaining)}
+                                                         </span>
+                                                     </div>
+                                                 )}
                                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                                                     {/* Volume / satuan / kali dalam 1 pill */}
                                                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">

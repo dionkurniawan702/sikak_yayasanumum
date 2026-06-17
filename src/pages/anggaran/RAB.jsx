@@ -104,7 +104,8 @@ function RABContent() {
         bosStages = [],
         bosPosList = [],
         bosAllocations = [],
-        currentUser
+        currentUser,
+        budgetReports = []
     } = state;
 
     // Role helpers
@@ -152,6 +153,93 @@ function RABContent() {
     const [selectedComponents, setSelectedComponents] = useState(new Set());
     const [programSearchQuery, setProgramSearchQuery] = useState('');
     const [showProgramDropdown, setShowProgramDropdown] = useState(false);
+
+    const componentSpending = useMemo(() => {
+        const map = {};
+        (budgetReports || []).filter(r => r.status === 'APPROVED' && !r.isDeleted && r.kategoriAset !== 'PENGEMBALIAN').forEach(report => {
+            if (report.componentId) {
+                map[report.componentId] = (map[report.componentId] || 0) + (parseFloat(report.amount) || 0);
+            }
+        });
+        return map;
+    }, [budgetReports]);
+
+    const validatePlan = (plan) => {
+        // 1. Gather all component IDs present in the new plan
+        const presentComponents = new Map(); // c.id -> c
+        Object.keys(plan.expense || {}).forEach(itemId => {
+            const plans = plan.expense[itemId];
+            const plansArr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
+            plansArr.forEach(p => {
+                const comps = p.components || [];
+                comps.forEach(c => {
+                    if (c.id) {
+                        presentComponents.set(c.id, c);
+                    }
+                });
+            });
+        });
+
+        // 2. Check all components currently present in the plan
+        let overspentComponent = null;
+        for (const [compId, c] of presentComponents.entries()) {
+            const spent = componentSpending[compId] || 0;
+            const budget = parseFloat(c.total) || 0;
+            if (budget < spent) {
+                overspentComponent = { name: c.label, budget, spent };
+                return overspentComponent;
+            }
+        }
+
+        // 3. Check for any components that have actual transactions (spent > 0) in the database/reports 
+        // for this unit/field, academic year, and source, but were completely deleted from the plan!
+        const targetSourceBOS = fundSourceFilter === 'BOS';
+        const targetUnitId = plan.unitId;
+        const targetFieldId = plan.fieldId;
+        const targetYearId = plan.academicYearId;
+
+        // Group budget reports by componentId to compute spent for deleted items
+        const spentMapForContext = {};
+        const compLabelMap = {};
+
+        (budgetReports || []).forEach(r => {
+            if (r.status !== 'APPROVED' || r.isDeleted || r.kategoriAset === 'PENGEMBALIAN') return;
+            if (r.academicYearId !== targetYearId) return;
+            
+            // Match Unit/Field
+            if (targetFieldId) {
+                if (r.fieldId !== targetFieldId) return;
+            } else {
+                if (r.unitId !== targetUnitId) return;
+            }
+
+            // Match Source
+            const isBOSReport = r.source === 'BOS';
+            if (targetSourceBOS !== isBOSReport) return;
+
+            if (r.componentId) {
+                spentMapForContext[r.componentId] = (spentMapForContext[r.componentId] || 0) + (parseFloat(r.amount) || 0);
+                if (r.description && !compLabelMap[r.componentId]) {
+                    compLabelMap[r.componentId] = r.description;
+                }
+            }
+        });
+
+        // Now, for every component that has spent > 0 in this context, verify it exists in the plan
+        for (const compId of Object.keys(spentMapForContext)) {
+            const spent = spentMapForContext[compId] || 0;
+            if (spent <= 0) continue;
+
+            if (!presentComponents.has(compId)) {
+                // Component is deleted but has transactions!
+                const compName = compLabelMap[compId] || "Komponen yang dihapus";
+                overspentComponent = { name: compName, budget: 0, spent };
+                return overspentComponent;
+            }
+        }
+
+        return null;
+    };
 
     const toggleComponentSelection = (id) => {
         setSelectedComponents(prev => {
@@ -1175,7 +1263,12 @@ function RABContent() {
             updatedBy: nextPlan.updatedBy
         };
 
-        await persistPlanToServer(dbPlan);
+        const overspent = validatePlan(dbPlan);
+                                                        if (overspent) {
+                                                            alert(`DILARANG: Anggaran untuk "${overspent.name}" (${formatRupiah(overspent.budget)}) tidak boleh kurang dari realisasi saat ini (${formatRupiah(overspent.spent)}).`);
+                                                            return;
+                                                        }
+                                                        await persistPlanToServer(dbPlan);
         setMessage({ type: 'success', text: `RAB berhasil diajukan ke Yayasan untuk direview!` });
         setTimeout(() => setMessage(null), 5000);
     };
@@ -1547,6 +1640,18 @@ function RABContent() {
             updatedBy: currentUser?.username
         };
 
+
+        // 4. Strict Validation: Realization/Spending Limit
+        const overspentComponent = validatePlan(newPlan);
+        if (overspentComponent) {
+            setMessage({
+                type: 'error',
+                text: `DILARANG: Anggaran untuk "${overspentComponent.name}" (${formatRupiah(overspentComponent.budget)}) tidak boleh kurang dari realisasi saat ini (${formatRupiah(overspentComponent.spent)}).`
+            });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 7000);
+            return;
+        }
 
         // 1. Strict Validation: BOS Limit
         if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
@@ -2698,7 +2803,9 @@ function RABContent() {
                                                             ...c,
                                                             _pIdx: pIdx,
                                                             _cIdx: cIdx,
-                                                            status: compStatus
+                                                            status: compStatus,
+                                                            spent: componentSpending[c.id] || 0,
+                                                            remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || 0)
                                                         };
                                                     }));
 
@@ -2964,7 +3071,9 @@ function RABContent() {
                                                         ...c,
                                                         _pIdx: pIdx,
                                                         _cIdx: cIdx,
-                                                        status: compStatus
+                                                        status: compStatus,
+                                                        spent: componentSpending[c.id] || 0,
+                                                        remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || 0)
                                                     };
                                                 })
                                             }],
