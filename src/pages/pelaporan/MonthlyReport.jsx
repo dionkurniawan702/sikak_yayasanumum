@@ -945,7 +945,7 @@ export default function MonthlyReport() {
                                                 className="px-4 py-2 text-xs font-black text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-xl transition-all w-full flex items-center justify-center gap-1.5"
                                             >
                                                 <X size={14} strokeWidth={3} />
-                                                <span>Nihilkan Sisa</span>
+                                                <span>Kembalikan Sisa</span>
                                             </button>
                                         </div>
                                     )}
