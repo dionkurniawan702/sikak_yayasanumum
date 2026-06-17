@@ -329,6 +329,47 @@ export default function FundAvailability() {
         return { approved: activeApproved, used: activeUsed, balance: activeBalance };
     }, [activeUnits, activeFields, yearRequests, yearReports]);
 
+    // ── Aggregation of categories for normal users
+    const categoryList = useMemo(() => {
+        const positions = {};
+        myRequests.filter(r => r.status === 'APPROVED').forEach(req => {
+            (req.items || []).forEach(item => {
+                const cat = item.name || 'General';
+                if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
+                positions[cat].totalApproved += (parseFloat(item.amount) || 0);
+            });
+        });
+        myReports.forEach(rel => {
+            if (rel.kategoriAset === 'PENGEMBALIAN') return; // Skip returns from category breakdown
+            const cat = rel.category || 'General';
+            if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
+            positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
+        });
+        const list = Object.values(positions).filter(p => p.totalApproved > 0 || p.totalUsed > 0);
+        const totalApprovedReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        let remainingReturned = totalApprovedReturned;
+        list.forEach(p => {
+            const initialSisa = p.totalApproved - p.totalUsed;
+            if (initialSisa > 0) {
+                const allocatedReturn = Math.min(remainingReturned, initialSisa);
+                p.totalReturned = allocatedReturn;
+                remainingReturned -= allocatedReturn;
+            } else {
+                p.totalReturned = 0;
+            }
+        });
+        return list;
+    }, [myRequests, myReports]);
+
+    const categoryTotals = useMemo(() => {
+        const totalApproved = categoryList.reduce((sum, item) => sum + item.totalApproved, 0);
+        const totalUsed = categoryList.reduce((sum, item) => sum + item.totalUsed, 0);
+        const totalReturned = categoryList.reduce((sum, item) => sum + (item.totalReturned || 0), 0);
+        const totalAvailable = totalApproved - totalUsed - totalReturned;
+        const totalPct = totalApproved > 0 ? (totalUsed / totalApproved) * 100 : 0;
+        return { totalApproved, totalUsed, totalReturned, totalAvailable, totalPct };
+    }, [categoryList]);
+
     // Stat cards
     const statApproved = isSuperAdmin 
         ? superadminActiveStats.approved 
@@ -410,16 +451,16 @@ export default function FundAvailability() {
                         </h3>
                         <span className="text-[10px] text-slate-400 font-bold italic">Klik baris untuk lihat rincian kategori</span>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-100">
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit / Bidang</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana ACC</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
-                                    <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Detail</th>
+                    <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="sticky top-0 bg-slate-50 px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit / Bidang</th>
+                                    <th className="sticky top-0 bg-slate-50 px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana ACC</th>
+                                    <th className="sticky top-0 bg-slate-50 px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
+                                    <th className="sticky top-0 bg-slate-50 px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
+                                    <th className="sticky top-0 bg-slate-50 px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
+                                    <th className="sticky top-0 bg-slate-50 px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Detail</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -451,6 +492,28 @@ export default function FundAvailability() {
                                     </tr>
                                 )}
                             </tbody>
+                            <tfoot className="sticky bottom-0 z-20 bg-slate-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+                                <tr className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-800">
+                                    <td className="px-6 py-5">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-800 text-white font-black">
+                                                Σ
+                                            </div>
+                                            <div>
+                                                <div className="font-black text-slate-800 text-sm">TOTAL KESELURUHAN</div>
+                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Semua Unit & Bidang</div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5 font-black text-emerald-700 text-sm">{formatRupiah(totalApproved)}</td>
+                                    <td className="px-6 py-5 font-black text-rose-600 text-sm">{formatRupiah(totalUsed)}</td>
+                                    <td className="px-6 py-5 font-black text-indigo-600 text-base">{formatRupiah(totalBalance)}</td>
+                                    <td className="px-6 py-5 font-black text-indigo-600 text-sm">{formatRupiah(totalReturned)}</td>
+                                    <td className="px-6 py-5 text-center">
+                                        <span className="text-[10px] text-slate-300 italic">—</span>
+                                    </td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -462,54 +525,27 @@ export default function FundAvailability() {
                             <Layers className="text-indigo-400" size={16} /> Rincian Saldo per Kategori
                         </h3>
                     </div>
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead>
-                                <tr className="bg-slate-50 border-b border-slate-100">
-                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Pengeluaran</th>
-                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Cair (ACC)</th>
-                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
-                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
-                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
-                                    <th className="px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Penyerapan</th>
+                    <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Pengeluaran</th>
+                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Cair (ACC)</th>
+                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
+                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
+                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
+                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Penyerapan</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {(() => {
-                                    const positions = {};
-                                    myRequests.filter(r => r.status === 'APPROVED').forEach(req => {
-                                        (req.items || []).forEach(item => {
-                                            const cat = item.name || 'General';
-                                            if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
-                                            positions[cat].totalApproved += (parseFloat(item.amount) || 0);
-                                        });
-                                    });
-                                    myReports.forEach(rel => {
-                                        if (rel.kategoriAset === 'PENGEMBALIAN') return; // Skip returns from category breakdown
-                                        const cat = rel.category || 'General';
-                                        if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
-                                        positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
-                                    });
-                                    const list = Object.values(positions).filter(p => p.totalApproved > 0 || p.totalUsed > 0);
-                                    const totalApprovedReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-                                    let remainingReturned = totalApprovedReturned;
-                                    list.forEach(p => {
-                                        const initialSisa = p.totalApproved - p.totalUsed;
-                                        if (initialSisa > 0) {
-                                            const allocatedReturn = Math.min(remainingReturned, initialSisa);
-                                            p.totalReturned = allocatedReturn;
-                                            remainingReturned -= allocatedReturn;
-                                        } else {
-                                            p.totalReturned = 0;
-                                        }
-                                    });
-
-                                    if (list.length === 0) return (
-                                        <tr><td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
+                                {categoryList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
                                             Belum ada data saldo kas. Lakukan pengajuan dana terlebih dahulu.
-                                        </td></tr>
-                                    );
-                                    return list.map((item, idx) => {
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    categoryList.map((item, idx) => {
                                         const available = item.totalApproved - item.totalUsed - (item.totalReturned || 0);
                                         const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
                                         return (
@@ -540,9 +576,41 @@ export default function FundAvailability() {
                                                 </td>
                                             </tr>
                                         );
-                                    });
-                                })()}
+                                    })
+                                )}
                             </tbody>
+                            {categoryList.length > 0 && (
+                                <tfoot className="sticky bottom-0 z-20 bg-slate-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+                                    <tr className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-800">
+                                        <td className="px-8 py-6">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-2 h-10 rounded-full bg-slate-800" />
+                                                <span className="font-black text-slate-800">TOTAL</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6 font-black text-slate-800">{formatRupiah(categoryTotals.totalApproved)}</td>
+                                        <td className="px-8 py-6 font-black text-rose-600">{formatRupiah(categoryTotals.totalUsed)}</td>
+                                        <td className="px-8 py-6">
+                                            <span className={`text-lg font-black ${categoryTotals.totalAvailable < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
+                                                {formatRupiah(categoryTotals.totalAvailable)}
+                                            </span>
+                                        </td>
+                                        <td className="px-8 py-6 text-center text-slate-800 font-black">
+                                            {categoryTotals.totalReturned > 0 ? formatRupiah(categoryTotals.totalReturned) : '—'}
+                                        </td>
+                                        <td className="px-8 py-6 text-right w-64">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                    <span>Total Terpakai</span><span>{categoryTotals.totalPct.toFixed(1)}%</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden border border-slate-300">
+                                                    <div className="h-full bg-indigo-700 shadow-sm" style={{ width: `${Math.min(100, categoryTotals.totalPct)}%` }} />
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            )}
                         </table>
                     </div>
                 </div>
