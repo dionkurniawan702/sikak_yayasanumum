@@ -180,7 +180,7 @@ export default function BudgetDashboard() {
 
         // 1. Process Consolidated RAB Plans (The Master Budget Source)
         // BUG FIX: Only use this as the single source for RAB to avoid double counting with requests
-        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId).forEach(plan => {
+        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED').forEach(plan => {
             Object.keys(plan.expense || {}).forEach(exId => {
                 const rawItemPlans = plan.expense[exId];
                 const itemPlans = Array.isArray(rawItemPlans)
@@ -345,7 +345,7 @@ export default function BudgetDashboard() {
 
         // RAB BOS (Expenses)
         rabPlans?.forEach(plan => {
-            if (plan.academicYearId === selectedAcademicYearId) {
+            if (plan.academicYearId === selectedAcademicYearId && plan.status === 'APPROVED') {
                 Object.keys(plan.expense || {}).forEach(exId => {
                     const rawItemPlans = plan.expense[exId];
                     const itemPlans = Array.isArray(rawItemPlans)
@@ -393,7 +393,7 @@ export default function BudgetDashboard() {
                 a.unitId === u.id && a.academicYearId === selectedAcademicYearId && !a.isDeleted
             );
             const plan = (rabPlans || []).find(p =>
-                p.unitId === u.id && p.academicYearId === selectedAcademicYearId
+                p.unitId === u.id && p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED'
             );
             const breakdown = unitAllocations.map(alloc => {
                 const exItem = expenseItems.find(e => e.id === alloc.expenseItemId);

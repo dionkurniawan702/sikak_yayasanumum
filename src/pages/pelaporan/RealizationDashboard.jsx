@@ -84,7 +84,7 @@ export default function RealizationDashboard() {
         fields.forEach(f => fieldRAB[f.id] = { budget: 0, spent: 0, items: {}, spentItems: {} });
 
         // Process RAB Plans
-        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId).forEach(plan => {
+        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED').forEach(plan => {
             Object.keys(plan.expense || {}).forEach(exId => {
                 const rawItemPlans = plan.expense[exId];
                 const itemPlans = Array.isArray(rawItemPlans)
