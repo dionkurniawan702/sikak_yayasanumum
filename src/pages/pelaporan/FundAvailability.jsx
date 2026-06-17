@@ -298,10 +298,50 @@ export default function FundAvailability() {
     const activeUnits = useMemo(() => (units || []).filter(u => !u.isDeleted), [units]);
     const activeFields = useMemo(() => (fields || []).filter(f => !f.isDeleted), [fields]);
 
+    // Calculate active stats for superadmin: only aggregate units/fields that have an active (positive) balance
+    const superadminActiveStats = useMemo(() => {
+        let activeApproved = 0;
+        let activeUsed = 0;
+        let activeBalance = 0;
+
+        activeUnits.forEach(u => {
+            const reqs = yearRequests.filter(r => r.unitId === u.id);
+            const reps = yearReports.filter(r => r.unitId === u.id);
+            const { approved, used, returned, balance } = calcEntityBalance(reqs, reps);
+            if (balance > 0) {
+                activeApproved += approved;
+                activeUsed += used;
+                activeBalance += balance;
+            }
+        });
+
+        activeFields.forEach(f => {
+            const reqs = yearRequests.filter(r => r.fieldId === f.id && !r.unitId);
+            const reps = yearReports.filter(r => r.fieldId === f.id && !r.unitId);
+            const { approved, used, returned, balance } = calcEntityBalance(reqs, reps);
+            if (balance > 0) {
+                activeApproved += approved;
+                activeUsed += used;
+                activeBalance += balance;
+            }
+        });
+
+        return { approved: activeApproved, used: activeUsed, balance: activeBalance };
+    }, [activeUnits, activeFields, yearRequests, yearReports]);
+
     // Stat cards
-    const statApproved = isSuperAdmin ? totalApproved : myApproved;
-    const statUsed = isSuperAdmin ? totalUsed : myUsed;
-    const statBalance = isSuperAdmin ? totalBalance : myBalance;
+    const statApproved = isSuperAdmin 
+        ? superadminActiveStats.approved 
+        : (myBalance > 0 ? myApproved : 0);
+
+    const statUsed = isSuperAdmin 
+        ? superadminActiveStats.used 
+        : (myBalance > 0 ? myUsed : 0);
+
+    const statBalance = isSuperAdmin 
+        ? superadminActiveStats.balance 
+        : (myBalance > 0 ? myBalance : 0);
+
     const statPending = isSuperAdmin ? totalPending : myPending;
 
     const unitName = units?.find(u => u.id === myUnitId)?.name || fields?.find(f => f.id === myFieldId)?.name || 'Yayasan';
