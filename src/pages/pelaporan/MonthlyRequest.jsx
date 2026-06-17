@@ -4,6 +4,57 @@ import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
 
+// ─── Helper to Check Prior Unreturned Balances ───────────────────────────────
+function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
+    const { budgetRequests, budgetReports } = state;
+    if (!targetMonth) return { hasUnreturned: false, amount: 0 };
+
+    const [targetYear, targetMonthNum] = targetMonth.split('-').map(Number);
+
+    // Find all approved requests in the same academic year for prior months
+    const priorRequests = budgetRequests.filter(r => {
+        if (r.status !== 'APPROVED') return false;
+        if (r.isDeleted) return false;
+        if (unitId && r.unitId !== unitId) return false;
+        if (fieldId && r.fieldId !== fieldId) return false;
+        if (!r.month) return false;
+
+        const [rYear, rMonthNum] = r.month.split('-').map(Number);
+        if (rYear < targetYear) return true;
+        if (rYear === targetYear && rMonthNum < targetMonthNum) return true;
+        return false;
+    });
+
+    if (priorRequests.length === 0) return { hasUnreturned: false, amount: 0 };
+
+    const totalCair = priorRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+    
+    const priorRequestIds = priorRequests.map(r => r.id);
+    const priorReports = budgetReports.filter(r => {
+        if (r.status !== 'APPROVED') return false;
+        if (r.isDeleted) return false;
+        if (r.kategoriAset === 'PENGEMBALIAN') return false;
+        return priorRequestIds.includes(r.budgetRequestId);
+    });
+    const totalUsed = priorReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+    const approvedReturns = budgetReports.filter(r => {
+        if (r.status !== 'APPROVED') return false;
+        if (r.isDeleted) return false;
+        if (r.kategoriAset !== 'PENGEMBALIAN') return false;
+        if (unitId && r.unitId !== unitId) return false;
+        if (fieldId && r.fieldId !== fieldId) return false;
+        return true;
+    });
+    const totalReturned = approvedReturns.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+    const unreturned = totalCair - totalUsed - totalReturned;
+    if (unreturned > 0) {
+        return { hasUnreturned: true, amount: unreturned };
+    }
+    return { hasUnreturned: false, amount: 0 };
+}
+
 export default function MonthlyRequest() {
     const { state, dispatch } = useApp();
     const { currentUser, rabPlans, budgetRequests, units, fields, academicYears, globalAcademicYearId } = state;
@@ -1026,6 +1077,23 @@ export default function MonthlyRequest() {
                             </div>
                         </div>
 
+                        {(() => {
+                            const unreturnedInfo = getUnreturnedBalanceInfo(state, myUnitId || 'FOUNDATION', myFieldId, requestMonth);
+                            if (!unreturnedInfo.hasUnreturned) return null;
+                            return (
+                                <div className="mx-10 mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-start gap-3 text-amber-800">
+                                    <AlertCircle className="shrink-0 text-amber-600 mt-0.5" size={18} />
+                                    <div>
+                                        <h5 className="font-black text-xs uppercase tracking-widest text-amber-900 mb-1">Peringatan: Saldo Belum Dikembalikan</h5>
+                                        <p className="text-xs font-semibold">
+                                            Unit Anda memiliki sisa saldo dari bulan sebelumnya yang belum dikembalikan ke Yayasan sebesar <span className="font-black">{formatRupiah(unreturnedInfo.amount)}</span>. 
+                                            Harap lakukan pengembalian saldo terlebih dahulu di menu Ketersediaan Dana sebelum pengajuan ini disetujui.
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-slate-900">
                             {filteredComps.length === 0 ? (
                                 <div className="p-20 text-center border-2 border-dashed border-slate-200 rounded-[2.5rem]">
@@ -1127,6 +1195,23 @@ export default function MonthlyRequest() {
                             </div>
                         </div>
 
+                        {(() => {
+                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month);
+                            if (!superadminUnreturnedInfo.hasUnreturned) return null;
+                            return (
+                                <div className="mx-10 mt-6 p-5 bg-rose-50 rounded-2xl border border-rose-200 flex items-start gap-3 text-rose-800">
+                                    <AlertCircle className="shrink-0 text-rose-600 mt-0.5" size={20} />
+                                    <div>
+                                        <h5 className="font-black text-xs uppercase tracking-widest text-rose-900 mb-1">Pencairan Ditangguhkan (Blocked)</h5>
+                                        <p className="text-xs font-semibold">
+                                            Unit/Bidang pemohon memiliki sisa saldo bulan sebelumnya yang belum dikembalikan sebesar <span className="font-black">{formatRupiah(superadminUnreturnedInfo.amount)}</span>.
+                                            Pencairan dana ditangguhkan sampai sisa saldo dikembalikan ke Yayasan dan disetujui.
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-slate-900 bg-slate-50/50">
                             <div className="grid grid-cols-1 gap-4">
                                 {(modalSearchTerm ? reviewRequest.req.items.filter(i => i.name.toLowerCase().includes(modalSearchTerm.toLowerCase())) : reviewRequest.req.items).map(item => {
@@ -1181,7 +1266,7 @@ export default function MonthlyRequest() {
                                 <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
                                 <button
                                     onClick={handleSaveReview}
-                                    disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0)}
+                                    disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month).hasUnreturned}
                                     className="btn bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all"
                                 >
                                     {processingId === 'saving-review' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}

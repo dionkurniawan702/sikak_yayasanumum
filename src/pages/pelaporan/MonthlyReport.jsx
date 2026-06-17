@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
@@ -313,6 +313,7 @@ export default function MonthlyReport() {
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
+                    if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
                     const itemDrafts = draftReports.filter(d => d.componentId === item.componentId);
                     if (reportedComp < parseFloat(item.amount || 0) || itemDrafts.length > 0) {
@@ -629,6 +630,35 @@ export default function MonthlyReport() {
         setShowReportForm(true);
     };
 
+    const handleCloseItem = async (item) => {
+        const confirmMsg = `Apakah Anda yakin ingin menutup/menihilkan sisa item "${item.name}"? Sisa dana sebesar ${formatRupiah(item.sisa)} akan dianggap tidak terpakai dan harus dikembalikan ke Yayasan.`;
+        if (window.confirm(confirmMsg)) {
+            try {
+                const req = budgetRequests.find(r => r.id === item.reqId);
+                if (!req) return alert("Data induk pengajuan tidak ditemukan!");
+
+                const updatedItems = req.items.map(reqItem => {
+                    if (reqItem.componentId === item.componentId) {
+                        return { ...reqItem, isClosed: true };
+                    }
+                    return reqItem;
+                });
+
+                const updatedRequest = {
+                    ...req,
+                    items: updatedItems
+                };
+
+                dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updatedRequest });
+                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updatedRequest }, state);
+                
+                alert("Item berhasil ditutup. Sisa dana telah dibekukan dan wajib dikembalikan ke Yayasan.");
+            } catch (err) {
+                alert("Gagal menutup item: " + err.message);
+            }
+        }
+    };
+
     const handleReportSubmit = (e) => {
         e.preventDefault();
         if (formData.kategoriAset === 'ASET' && !formData.umurEkonomis) {
@@ -902,13 +932,22 @@ export default function MonthlyReport() {
                                     <h4 className="text-2xl font-black text-blue-700 mb-1">{formatRupiah(item.sisa)}</h4>
                                     <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                     {!isSuperAdmin && (
-                                        <button
-                                            onClick={() => handleOpenReportForm(item)}
-                                            className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
-                                        >
-                                            <FileCheck size={16} />
-                                            <span>Buat Laporan</span>
-                                        </button>
+                                        <div className="flex flex-col gap-2 mt-2 w-full">
+                                            <button
+                                                onClick={() => handleOpenReportForm(item)}
+                                                className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
+                                            >
+                                                <FileCheck size={16} />
+                                                <span>Buat Laporan</span>
+                                            </button>
+                                            <button
+                                                onClick={() => handleCloseItem(item)}
+                                                className="px-4 py-2 text-xs font-black text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-xl transition-all w-full flex items-center justify-center gap-1.5"
+                                            >
+                                                <X size={14} strokeWidth={3} />
+                                                <span>Nihilkan Sisa</span>
+                                            </button>
+                                        </div>
                                     )}
                                 </div>
                             </div>

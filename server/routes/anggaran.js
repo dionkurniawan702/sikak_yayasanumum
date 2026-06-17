@@ -769,7 +769,73 @@ router.put('/budget-requests/:id', async (req, res) => {
 
         console.log(`[API] Updating BudgetRequest ${req.params.id} → status: ${data.status}`);
 
-        const request = await getPrisma(req).budgetRequest.update({
+        const prisma = getPrisma(req);
+        
+        // Load the existing request first
+        const existing = await prisma.budgetRequest.findUnique({
+            where: { id: req.params.id }
+        });
+        if (!existing) {
+            return res.status(404).json({ error: 'Pengajuan dana tidak ditemukan.' });
+        }
+
+        // Enforce unreturned balance check when status is transitioning to APPROVED
+        if (data.status === 'APPROVED' && existing.status !== 'APPROVED') {
+            const unitId = data.unitId !== undefined ? data.unitId : existing.unitId;
+            const fieldId = data.fieldId !== undefined ? data.fieldId : existing.fieldId;
+            const academicYearId = data.academicYearId !== undefined ? data.academicYearId : existing.academicYearId;
+            const month = data.month !== undefined ? data.month : existing.month;
+
+            if (month) {
+                // Find all approved requests in the same academic year for prior months
+                const priorRequests = await prisma.budgetRequest.findMany({
+                    where: {
+                        unitId: unitId || null,
+                        fieldId: fieldId || null,
+                        academicYearId: academicYearId,
+                        status: 'APPROVED',
+                        isDeleted: false,
+                        month: { lt: month }
+                    }
+                });
+
+                if (priorRequests.length > 0) {
+                    const totalCair = priorRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+                    
+                    const priorRequestIds = priorRequests.map(r => r.id);
+                    const priorReports = await prisma.budgetReport.findMany({
+                        where: {
+                            budgetRequestId: { in: priorRequestIds },
+                            status: 'APPROVED',
+                            isDeleted: false,
+                            kategoriAset: { not: 'PENGEMBALIAN' }
+                        }
+                    });
+                    const totalUsed = priorReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+                    const approvedReturns = await prisma.budgetReport.findMany({
+                        where: {
+                            unitId: unitId || null,
+                            fieldId: fieldId || null,
+                            academicYearId: academicYearId,
+                            kategoriAset: 'PENGEMBALIAN',
+                            status: 'APPROVED',
+                            isDeleted: false
+                        }
+                    });
+                    const totalReturned = approvedReturns.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+                    const unreturned = totalCair - totalUsed - totalReturned;
+                    if (unreturned > 0) {
+                        return res.status(400).json({
+                            error: `Pencairan ditangguhkan: Unit/Bidang memiliki sisa saldo dari bulan sebelumnya yang belum dikembalikan sebesar Rp ${unreturned.toLocaleString('id-ID')}. Harap kembalikan sisa saldo terlebih dahulu.`
+                        });
+                    }
+                }
+            }
+        }
+
+        const request = await prisma.budgetRequest.update({
             where: { id: req.params.id },
             data
         });
