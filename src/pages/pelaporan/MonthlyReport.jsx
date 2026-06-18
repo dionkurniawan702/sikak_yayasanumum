@@ -204,6 +204,8 @@ export default function MonthlyReport() {
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
     const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission
+    const [showReportsList, setShowReportsList] = useState(false);
+    const [selectedItemForReports, setSelectedItemForReports] = useState(null);
 
     // Filter state for history
     const [search, setSearch] = useState('');
@@ -266,6 +268,49 @@ export default function MonthlyReport() {
         });
         return { byComponent: map, byRequest: reqMap };
     }, [budgetReports, budgetRequests]);
+
+    const getReportsCountForItem = (item) => {
+        return (budgetReports || []).filter(r => {
+            if (r.isDeleted || r.status === 'REJECTED') return false;
+            let effectiveComponentId = r.componentId;
+            if (!effectiveComponentId && r.budgetRequestId) {
+                const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                if (req && req.items) {
+                    const match = req.items.find(ri => 
+                        ri.name === r.category || 
+                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
+                        ri.name?.toLowerCase() === r.description?.toLowerCase()
+                    );
+                    if (match) {
+                        effectiveComponentId = match.componentId;
+                    }
+                }
+            }
+            return effectiveComponentId === item.componentId || (!effectiveComponentId && r.budgetRequestId === item.reqId);
+        }).length;
+    };
+
+    const itemReports = useMemo(() => {
+        if (!selectedItemForReports) return [];
+        return (budgetReports || []).filter(r => {
+            if (r.isDeleted) return false;
+            let effectiveComponentId = r.componentId;
+            if (!effectiveComponentId && r.budgetRequestId) {
+                const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                if (req && req.items) {
+                    const match = req.items.find(ri => 
+                        ri.name === r.category || 
+                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
+                        ri.name?.toLowerCase() === r.description?.toLowerCase()
+                    );
+                    if (match) {
+                        effectiveComponentId = match.componentId;
+                    }
+                }
+            }
+            return effectiveComponentId === selectedItemForReports.componentId || (!effectiveComponentId && r.budgetRequestId === selectedItemForReports.reqId);
+        });
+    }, [selectedItemForReports, budgetReports, budgetRequests]);
 
     const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
@@ -991,8 +1036,8 @@ export default function MonthlyReport() {
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Rincian</p>
                                     <h4 className="text-2xl font-black text-blue-700 mb-1">{formatRupiah(item.sisa)}</h4>
                                     <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
-                                    {!isSuperAdmin && (
-                                        <div className="flex flex-col gap-2 mt-2 w-full">
+                                    <div className="flex flex-col gap-2 mt-2 w-full">
+                                        {!isSuperAdmin && (
                                             <button
                                                 onClick={() => handleOpenReportForm(item)}
                                                 className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
@@ -1000,8 +1045,15 @@ export default function MonthlyReport() {
                                                 <FileCheck size={16} />
                                                 <span>Buat Laporan</span>
                                             </button>
-                                        </div>
-                                    )}
+                                        )}
+                                        <button
+                                            onClick={() => { setSelectedItemForReports(item); setShowReportsList(true); }}
+                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <History size={14} />
+                                            <span>Lihat Laporan ({getReportsCountForItem(item)})</span>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         )}) : (
@@ -1323,6 +1375,105 @@ export default function MonthlyReport() {
                     </div>
                 </div>
             ) : null}
+
+            {/* Reports List Modal */}
+            {showReportsList && selectedItemForReports && (
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }} />
+                    <div className="bg-white rounded-[40px] w-full max-w-4xl relative z-10 shadow-2xl overflow-hidden animate-in max-h-[92vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-start flex-shrink-0">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Riwayat Pengeluaran Belanja</h2>
+                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Komponen: {selectedItemForReports.name}</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }}
+                                className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto flex-1 p-8 custom-scrollbar">
+                            {itemReports.length === 0 ? (
+                                <div className="p-12 text-center text-slate-400 italic font-medium">
+                                    Belum ada pengeluaran yang dilaporkan untuk komponen ini.
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-12">No</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {itemReports.map((report, idx) => {
+                                                const reportDate = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                                                return (
+                                                    <tr key={report.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-5 py-4 text-center text-xs font-bold text-slate-400">{idx + 1}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-slate-600">{reportDate}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold font-mono text-indigo-600">{report.nomorNota || '—'}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.description || '—'}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-slate-500 text-center">
+                                                            {report.volume ? `${parseFloat(report.volume)} ${report.satuan || ''}` : '—'}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-xs font-black text-slate-800 text-right">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            {report.status === 'APPROVED' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    ACC
+                                                                </span>
+                                                            ) : report.status === 'REJECTED' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-700 border border-rose-200">
+                                                                    Ditolak
+                                                                </span>
+                                                            ) : report.status === 'PENDING' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                                                                    Pending
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-200">
+                                                                    Draft
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-8 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                            <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Total Realisasi Rincian</span>
+                                <span className="text-lg font-black text-blue-700">
+                                    {formatRupiah(itemReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0))}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }}
+                                className="px-8 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-2xl font-black text-xs uppercase transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Report Form Modal */}
             {showReportForm && (
