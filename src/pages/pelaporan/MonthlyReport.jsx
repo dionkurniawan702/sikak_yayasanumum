@@ -90,13 +90,16 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                     <span className="text-xs font-black text-indigo-600 font-mono">{report.nomorNota || '—'}</span>
                 </td>
                 <td className="px-5 py-4">
-                    <span className="text-xs font-bold text-slate-700 line-clamp-1">{report.category || report.description || 'Pengeluaran'}</span>
+                    <span className="text-xs font-bold text-slate-700 line-clamp-1">{report.category || '—'}</span>
                     {isSuperAdmin && unitName && (
                         <div className="flex items-center gap-1 mt-0.5">
                             <Building2 size={9} className="text-slate-300" />
                             <span className="text-[9px] text-slate-400 font-bold">{unitName}</span>
                         </div>
                     )}
+                </td>
+                <td className="px-5 py-4">
+                    <span className="text-xs font-bold text-slate-600 line-clamp-1" title={report.description}>{report.description || '—'}</span>
                 </td>
                 <td className="px-5 py-4 text-center">
                     {(report.volume && report.satuan) ? (
@@ -143,7 +146,7 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
             {/* Accordion Detail */}
             {open && (
                 <tr className="bg-slate-50/80 border-b border-slate-100">
-                    <td colSpan="10" className="px-8 py-6">
+                    <td colSpan={isSuperAdmin ? 11 : 12} className="px-8 py-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Rincian Pembelian */}
                             <div className="space-y-3">
@@ -1194,6 +1197,7 @@ export default function MonthlyReport() {
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-10">No</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Rincian</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
@@ -1233,7 +1237,7 @@ export default function MonthlyReport() {
                                 {filteredReports.length > 0 && (
                                     <tfoot>
                                         <tr className="bg-slate-900 text-white">
-                                            <td colSpan={isSuperAdmin ? 5 : 6} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
+                                            <td colSpan={isSuperAdmin ? 6 : 7} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
                                             <td className="px-5 py-4 text-right font-black text-emerald-400 text-base">{formatRupiah(totalNilai)}</td>
                                             <td colSpan="4"></td>
                                         </tr>
@@ -1311,6 +1315,7 @@ export default function MonthlyReport() {
                                         </th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Unit / Tgl</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Rincian</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
@@ -1338,6 +1343,7 @@ export default function MonthlyReport() {
                                                     <span className="text-xs font-bold text-slate-400">{report.date}</span>
                                                 </td>
                                                 <td className="px-5 py-4 text-xs font-black text-indigo-600 font-mono">{report.nomorNota || '—'}</td>
+                                                <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.category || '—'}</td>
                                                 <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={report.description}>{report.description}</td>
                                                 <td className="px-5 py-4 text-center text-xs font-bold text-slate-600">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
                                                 <td className="px-5 py-4 text-right text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</td>
@@ -1366,7 +1372,7 @@ export default function MonthlyReport() {
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="8" className="px-8 py-4 bg-indigo-50/20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
+                                                <td colSpan="9" className="px-8 py-4 bg-indigo-50/20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
                                             </tr>
                                         )}
                                 </tbody>
@@ -1683,7 +1689,7 @@ export default function MonthlyReport() {
                                 <td className="px-1 py-0.5 border border-slate-800 text-center">{idx + 1}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
-                                <td className="px-1 py-0.5 border border-slate-800">{report.category || report.description || 'Pengeluaran'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800">{report.description || '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.category || '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800">{report.buktiTeks || '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
