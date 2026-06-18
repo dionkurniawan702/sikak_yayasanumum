@@ -153,20 +153,35 @@ export default function BudgetRow({
                                                 />
                                             )}
                                             <div className="flex flex-col">
-                                                 <span className="text-[11px] font-bold text-slate-700 leading-snug">
+                                                 <span className={`text-[11px] font-bold leading-snug ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
                                                      {comp.label}
                                                  </span>
                                                  {comp.spent > 0 && (
                                                      <div className="flex items-center gap-1.5 mt-0.5">
-                                                         <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 whitespace-nowrap">
-                                                             Terpakai: {formatCurrency(comp.spent)}
-                                                         </span>
-                                                         <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap">
-                                                             Sisa: {formatCurrency(comp.remaining)}
-                                                         </span>
-                                                     </div>
+                                                          <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 whitespace-nowrap">
+                                                              Terpakai: {formatCurrency(comp.spent)}
+                                                          </span>
+                                                          <span className="text-[9px] font-bold text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 whitespace-nowrap">
+                                                              Sisa: {formatCurrency(comp.remaining)}
+                                                          </span>
+                                                      </div>
                                                  )}
                                                 <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                    {comp.diffStatus === 'ADDED' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                                                            + BARU
+                                                        </span>
+                                                    )}
+                                                    {comp.diffStatus === 'MODIFIED' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
+                                                            Δ BERUBAH
+                                                        </span>
+                                                    )}
+                                                    {comp.diffStatus === 'DELETED' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 whitespace-nowrap">
+                                                            ✕ DIHAPUS
+                                                        </span>
+                                                    )}
                                                     {/* Volume / satuan / kali dalam 1 pill */}
                                                     <span className="text-[8px] font-black text-slate-500 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded-full whitespace-nowrap">
                                                         {comp.volume} {comp.satuan} × {comp.kali}×
@@ -230,9 +245,16 @@ export default function BudgetRow({
                                     </td>
                                     <td className="budget-cell budget-cell-number">
                                         <div className="flex items-center justify-end pr-[148px]">
-                                            <span className="text-[11px] font-black text-slate-800 italic">
-                                                {formatCurrency(comp.total)}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                                <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                                    {formatCurrency(comp.total)}
+                                                </span>
+                                                {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
+                                                    <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
+                                                        Lama: {formatCurrency(comp.oldTotal)}
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                 </tr>

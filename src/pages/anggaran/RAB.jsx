@@ -132,6 +132,47 @@ function RABContent() {
     const [filterProgram, setFilterProgram] = useState(null); // programId
     const [isAddendumMode, setIsAddendumMode] = useState(false);
 
+    const revisionPlanId = `${selectedYearId}-${selectedUnitId}-REVISION-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+    const revisionPlan = useMemo(() => (rabPlans || []).find(p => p.id === revisionPlanId), [rabPlans, revisionPlanId]);
+    const hasRevision = !!revisionPlan;
+    const originalPlan = useMemo(() => (rabPlans || []).find(p => p.id === `${selectedYearId}-${selectedUnitId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`), [rabPlans, selectedYearId, selectedUnitId, fundSourceFilter]);
+    
+    const currentPlanId = useMemo(() => {
+        return hasRevision ? revisionPlanId : `${selectedYearId}-${selectedUnitId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+    }, [selectedYearId, selectedUnitId, fundSourceFilter, hasRevision, revisionPlanId]);
+
+    const originalTotal = useMemo(() => {
+        if (!originalPlan) return 0;
+        if (fundSourceFilter === 'BOS') {
+            return Object.values(originalPlan.expense || {}).flat().reduce((sum, val) => {
+                return sum + (val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0);
+            }, 0);
+        } else {
+            return Object.values(originalPlan.expense || {}).flat().reduce((sum, val) => {
+                const itemTotal = val?.total || 0;
+                const bosAmt = val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0;
+                return sum + (itemTotal - bosAmt);
+            }, 0);
+        }
+    }, [originalPlan, fundSourceFilter]);
+
+    const revisionTotal = useMemo(() => {
+        if (!revisionPlan) return 0;
+        if (fundSourceFilter === 'BOS') {
+            return Object.values(revisionPlan.expense || {}).flat().reduce((sum, val) => {
+                return sum + (val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0);
+            }, 0);
+        } else {
+            return Object.values(revisionPlan.expense || {}).flat().reduce((sum, val) => {
+                const itemTotal = val?.total || 0;
+                const bosAmt = val?.useBos ? (parseFloat(val?.bosAmount) || 0) : 0;
+                return sum + (itemTotal - bosAmt);
+            }, 0);
+        }
+    }, [revisionPlan, fundSourceFilter]);
+
+    const revisionDiff = revisionTotal - originalTotal;
+
 
     // States for Journal-style component entry
     const [entryForm, setEntryForm] = useState({
@@ -570,10 +611,11 @@ function RABContent() {
 
         const basePlanId = `${selectedYearId}-${selectedUnitId}`;
         const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
-        const existingPlan = (rabPlans || []).find(p => p.id === planId);
+        const revPlanId = `${selectedYearId}-${selectedUnitId}-REVISION-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const existingPlan = (rabPlans || []).find(p => p.id === revPlanId) || (rabPlans || []).find(p => p.id === planId);
         
         // Track status, notified, and updatedAt changes so the modal can show up even if data loads late or auto-repair runs
-        const planKey = existingPlan ? `${planId}-${existingPlan.status}-${existingPlan.notified}-${existingPlan.updatedAt}` : planId;
+        const planKey = existingPlan ? `${existingPlan.id}-${existingPlan.status}-${existingPlan.notified}-${existingPlan.updatedAt}` : planId;
 
         if (lastPlanIdRef.current !== planKey) {
             if (existingPlan) {
@@ -1247,8 +1289,7 @@ function RABContent() {
         };
         setCurrentPlan(nextPlan);
 
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const dbPlan = {
             id: planId,
             academicYearId: selectedYearId,
@@ -1301,8 +1342,7 @@ function RABContent() {
         };
         setCurrentPlan(nextPlan);
 
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const dbPlan = {
             id: planId,
             academicYearId: selectedYearId,
@@ -1356,8 +1396,7 @@ function RABContent() {
         };
         setCurrentPlan(nextPlan);
 
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const dbPlan = {
             id: planId,
             academicYearId: selectedYearId,
@@ -1620,12 +1659,51 @@ function RABContent() {
 
 
 
+    const handleCreateRevision = async () => {
+        if (!activePlan) return;
+        if (window.confirm("Apakah Anda yakin ingin mengajukan usulan revisi/pergeseran anggaran untuk unit ini?")) {
+            setIsSaving(true);
+            try {
+                const newRevisionPlan = {
+                    ...activePlan,
+                    id: revisionPlanId,
+                    status: 'DRAFT',
+                    rejectionReason: null,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser?.username
+                };
+                
+                await persistPlanToServer(newRevisionPlan);
+                setMessage({ type: 'success', text: 'Draf usulan revisi anggaran berhasil dibuat. Anda sekarang dapat melakukan penyesuaian.' });
+            } catch (err) {
+                alert("Gagal membuat draf revisi: " + err.message);
+            } finally {
+                setIsSaving(false);
+            }
+        }
+    };
+
+    const handleDeleteRevision = async () => {
+        if (!revisionPlan) return;
+        if (window.confirm("Apakah Anda yakin ingin menghapus draf revisi anggaran ini? Tindakan ini akan membatalkan semua perubahan yang belum disetujui.")) {
+            setIsSaving(true);
+            try {
+                dispatch({ type: 'DELETE_RAB_PLAN', payload: revisionPlanId });
+                await api.pushAction({ type: 'DELETE_RAB_PLAN', payload: revisionPlanId }, state);
+                
+                setMessage({ type: 'success', text: 'Draf usulan revisi berhasil dihapus.' });
+            } catch (err) {
+                alert("Gagal menghapus draf revisi: " + err.message);
+            } finally {
+                setIsSaving(false);
+            }
+        }
+    };
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
 
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const newPlan = {
             id: planId,
             academicYearId: selectedYearId,
@@ -1716,8 +1794,7 @@ function RABContent() {
 
     const handleSubmitReview = async () => {
         setIsSaving(true);
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
 
         // Automatically sweep and update all DRAFT/REJECTED components in both income and expense to PENDING
         const updatedExpense = { ...currentPlan.expense };
@@ -1844,8 +1921,7 @@ function RABContent() {
 
     const handleCancelSubmission = async () => {
         if (!selectedYearId || !selectedUnitId) return;
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const plan = rabPlans.find(p => p.id === planId);
         if (!plan || plan.status !== 'PENDING') return;
 
@@ -1944,6 +2020,68 @@ function RABContent() {
             });
         });
 
+        if (planId.includes('-REVISION-')) {
+            if (status === 'APPROVED') {
+                const originalId = planId.replace('-REVISION-', '-');
+                const origPlan = rabPlans.find(p => p.id === originalId);
+                const mergedPlan = {
+                    ...(origPlan || {}),
+                    id: originalId,
+                    academicYearId: plan.academicYearId,
+                    unitId: plan.unitId,
+                    fieldId: plan.fieldId,
+                    status: 'APPROVED',
+                    expense: updatedExpense,
+                    income: updatedIncome,
+                    rejectionReason: null,
+                    notified: false,
+                    approvedAt: new Date().toISOString(),
+                    approvedBy: currentUser.username,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser.username
+                };
+
+                try {
+                    // Update original plan
+                    dispatch({ type: 'SET_RAB_PLAN', payload: mergedPlan });
+                    await api.pushAction({ type: 'SET_RAB_PLAN', payload: mergedPlan }, state);
+
+                    // Delete revision plan
+                    dispatch({ type: 'DELETE_RAB_PLAN', payload: planId });
+                    await api.pushAction({ type: 'DELETE_RAB_PLAN', payload: planId }, state);
+
+                    setMessage({ type: 'success', text: `Usulan revisi berhasil disetujui dan digabungkan ke Anggaran Utama.` });
+                    setShowRejectionInput(null);
+                    setRejectionReason('');
+                } catch (error) {
+                    setMessage({ type: 'error', text: 'Gagal memproses persetujuan revisi: ' + error.message });
+                }
+                return;
+            } else {
+                // If rejected, write rejection reason to the REVISION plan and keep status REJECTED
+                const updatedPlan = {
+                    ...plan,
+                    status: 'REJECTED',
+                    expense: updatedExpense,
+                    income: updatedIncome,
+                    rejectionReason: reason,
+                    notified: false,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser?.username
+                };
+                try {
+                    dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
+                    await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+                    setMessage({ type: 'success', text: `Usulan revisi berhasil ditolak.` });
+                    setShowRejectionInput(null);
+                    setRejectionReason('');
+                } catch (error) {
+                    setMessage({ type: 'error', text: 'Gagal menolak usulan revisi: ' + error.message });
+                }
+                return;
+            }
+        }
+
         const updatedPlan = {
             ...plan,
             status: status,
@@ -1979,8 +2117,6 @@ function RABContent() {
         });
 
         try {
-            const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-            const currentPlanId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
             let currentPlanUpdated = null;
             
             const modifiedPlans = new Map();
@@ -2161,8 +2297,7 @@ function RABContent() {
 
     const handleCancelApproval = async () => {
         if (!selectedYearId || !selectedUnitId) return;
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const plan = rabPlans.find(p => p.id === planId);
         if (!plan || plan.status !== 'APPROVED') return;
 
@@ -2236,8 +2371,7 @@ function RABContent() {
     };
 
     const handleAcknowledgeStatus = () => {
-        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const planId = currentPlanId;
         const plan = rabPlans.find(p => p.id === planId);
         if (plan) {
             const updatedPlan = { ...plan, notified: true };
@@ -2651,7 +2785,7 @@ function RABContent() {
                     setCurrentPlan(nextPlan);
                     
                     // Auto-save to DB immediately after import
-                    const planId = `${selectedYearId}-${selectedUnitId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+                    const planId = currentPlanId;
                     const dbPlan = {
                         id: planId,
                         academicYearId: selectedYearId,
@@ -2779,35 +2913,83 @@ function RABContent() {
                                             itemAllocations = planRAP.itemAllocations;
                                         }
 
+                                        const originalPlanId = plan.id.replace('-REVISION-', '-');
+                                        const originalPlan = rabPlans.find(p => p.id === originalPlanId);
+                                        const isRevision = plan.id.includes('-REVISION-');
+                                        const typeLabelSuffix = isRevision ? ' (REVISI)' : '';
+
+                                        const allItemIds = new Set([
+                                            ...Object.keys(plan.expense || {}),
+                                            ...(isRevision && originalPlan ? Object.keys(originalPlan.expense || {}) : [])
+                                        ]);
+
                                         const rowData = {
                                             id: plan.id,
                                             name: unit?.name || 'Unknown',
-                                            typeLabel: isBOSPlan ? 'BOS' : 'YAYASAN',
+                                            typeLabel: (isBOSPlan ? 'BOS' : 'YAYASAN') + typeLabelSuffix,
                                             status: plan.status,
                                             rap: rapLimit,
                                             rab: total,
                                             sisa: rapLimit - total,
-                                            breakdown: Object.entries(plan.expense || {})
-                                                .map(([id, plans]) => {
+                                            breakdown: Array.from(allItemIds)
+                                                .map(id => {
+                                                    const plans = plan.expense?.[id] || [];
                                                     const planArray = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
                                                     const aggregatedTotal = planArray.reduce((s, p) => s + (parseFloat(p.total) || 0), 0);
                                                     const aggregatedRap = itemAllocations[id] || 0;
-                                                    // Collect all components from all plans for this item
-                                                    const allComponents = planArray.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => {
+
+                                                    const origPlans = (isRevision && originalPlan) ? (originalPlan.expense?.[id] || []) : [];
+                                                    const origPlanArray = Array.isArray(origPlans) ? origPlans : (origPlans && typeof origPlans === 'object' && Object.keys(origPlans).length > 0 ? [origPlans] : []);
+                                                    const origComps = origPlanArray.flatMap(p => p.components || []);
+
+                                                    // Collect and diff revision components
+                                                    const revComps = planArray.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => {
                                                         let compStatus = c.status;
                                                         if (!compStatus) {
                                                             if (c.isApproved === true) compStatus = 'APPROVED';
                                                             else compStatus = plan.status === 'APPROVED' ? 'APPROVED' : (plan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
                                                         }
+                                                        
+                                                        let diffStatus = undefined;
+                                                        let oldTotal = undefined;
+
+                                                        if (isRevision && originalPlan) {
+                                                            const origC = origComps.find(oc => oc.id === c.id);
+                                                            if (!origC) {
+                                                                diffStatus = 'ADDED';
+                                                            } else if (origC.total !== c.total) {
+                                                                diffStatus = 'MODIFIED';
+                                                                oldTotal = origC.total;
+                                                            }
+                                                        }
+
                                                         return {
                                                             ...c,
                                                             _pIdx: pIdx,
                                                             _cIdx: cIdx,
                                                             status: compStatus,
+                                                            diffStatus,
+                                                            oldTotal,
                                                             spent: componentSpending[c.id] || 0,
                                                             remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || 0)
                                                         };
                                                     }));
+
+                                                    // Find and append deleted components as placeholders
+                                                    if (isRevision && originalPlan) {
+                                                        const deletedComps = origComps.filter(oc => !revComps.some(rc => rc.id === oc.id));
+                                                        deletedComps.forEach((dc, idx) => {
+                                                            revComps.push({
+                                                                ...dc,
+                                                                _pIdx: 0,
+                                                                _cIdx: 9999 + idx,
+                                                                status: 'APPROVED',
+                                                                diffStatus: 'DELETED',
+                                                                spent: componentSpending[dc.id] || 0,
+                                                                remaining: (parseFloat(dc.total) || 0) - (componentSpending[dc.id] || 0)
+                                                            });
+                                                        });
+                                                    }
 
                                                     return {
                                                         id,
@@ -2815,7 +2997,7 @@ function RABContent() {
                                                         rab: aggregatedTotal,
                                                         rap: aggregatedRap,
                                                         sisa: aggregatedRap - aggregatedTotal,
-                                                        components: allComponents
+                                                        components: revComps
                                                     };
                                                 })
                                                 .sort((a, b) => b.rab - a.rab)
@@ -2912,6 +3094,60 @@ function RABContent() {
 
         return (
             <div className="space-y-6">
+                {hasRevision && (
+                    <div className="p-8 bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-[2.5rem] border border-blue-100 shadow-xl shadow-blue-100/20 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 animate-in slide-in-from-top-4 duration-500">
+                        <div className="flex items-start gap-4">
+                            <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
+                                <Info size={22} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <h4 className="font-black text-slate-900 uppercase tracking-tight italic text-lg">
+                                        Draf Usulan Revisi Anggaran
+                                    </h4>
+                                    {revisionDiff === 0 ? (
+                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-black text-[9px] uppercase tracking-wider">
+                                            Pergeseran Anggaran (Zero-Sum)
+                                        </span>
+                                    ) : (
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-black text-[9px] uppercase tracking-wider">
+                                            Perubahan Pagu Total
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-slate-500 text-xs font-medium mt-1">
+                                    Anda sedang melakukan perubahan pada anggaran aktif. Data realisasi/belanja riil tidak akan terpengaruh sebelum usulan ini disetujui Yayasan.
+                                </p>
+                                <div className="flex items-center gap-6 mt-4 flex-wrap">
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">PAGU LAMA</span>
+                                        <span className="font-bold text-slate-700 text-sm">{formatCurrency(originalTotal)}</span>
+                                    </div>
+                                    <div className="h-8 w-px bg-slate-200" />
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">PAGU BARU</span>
+                                        <span className="font-bold text-slate-900 text-sm">{formatCurrency(revisionTotal)}</span>
+                                    </div>
+                                    <div className="h-8 w-px bg-slate-200" />
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">SELISIH PAGU</span>
+                                        <span className={`font-black text-sm ${revisionDiff > 0 ? 'text-blue-600' : revisionDiff < 0 ? 'text-rose-600' : 'text-slate-600'}`}>
+                                            {revisionDiff > 0 ? '+' : ''}{formatCurrency(revisionDiff)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleDeleteRevision}
+                            disabled={isSaving}
+                            className="self-start md:self-center px-6 py-3.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                        >
+                            <Trash2 size={14} />
+                            Hapus Draf Revisi
+                        </button>
+                    </div>
+                )}
                 {/* Advanced Filter Bar */}
                 <div className="p-5 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-2xl shadow-slate-200/50 flex flex-wrap items-center gap-6">
                     <div className="flex items-center gap-4">
@@ -3140,8 +3376,7 @@ function RABContent() {
                                                                                 }
                                                                             };
                                                                             setCurrentPlan(nextPlan);
-                                                                            const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-                                                                            const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+                                                                            const planId = currentPlanId;
                                                                             const dbPlan = {
                                                                                 id: planId,
                                                                                 academicYearId: selectedYearId,
@@ -3240,13 +3475,13 @@ function RABContent() {
                                 {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
                             </button>
                         )}
-                        {activePlan?.status === 'APPROVED' && !isAddendumMode && !isConsolidation && (
+                        {activePlan?.status === 'APPROVED' && !hasRevision && !isConsolidation && (
                             <button
-                                onClick={() => setIsAddendumMode(true)}
-                                className="group flex items-center gap-4 bg-amber-500 text-white px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                                onClick={handleCreateRevision}
+                                className="group flex items-center gap-4 bg-amber-600 hover:bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
                             >
                                 <Plus size={20} className="group-hover:rotate-180 transition-transform" />
-                                AJUKAN TAMBAHAN (ADDENDUM)
+                                AJUKAN REVISI / PERGESERAN ANGGARAN
                             </button>
                         )}
                         {isAddendumMode && (
@@ -4090,8 +4325,7 @@ function RABContent() {
                                                         setEditingItem(null);
 
                                                         // Auto-save to DB immediately
-                                                        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
-                                                        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+                                                        const planId = currentPlanId;
                                                         const dbPlan = {
                                                             id: planId,
                                                             academicYearId: selectedYearId,

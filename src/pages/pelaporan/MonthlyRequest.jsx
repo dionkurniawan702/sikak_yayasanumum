@@ -223,6 +223,7 @@ export default function MonthlyRequest() {
             if (myFieldId) return p.fieldId === myFieldId;
             return false;
         }).filter(p => {
+            if (p.id?.includes('-REVISION-')) return false;
             const isBosPlan = p.id?.endsWith('-BOS');
             if (sourceMode === 'BOS' && !isBosPlan) return false;
             if (sourceMode === 'YAYASAN' && isBosPlan) return false;
@@ -275,6 +276,7 @@ export default function MonthlyRequest() {
             if (myFieldId) return p.fieldId === myFieldId;
             return false;
         }).filter(p => {
+            if (p.id?.includes('-REVISION-')) return false;
             const isBosPlan = p.id?.endsWith('-BOS');
             if (sourceMode === 'BOS' && !isBosPlan) return false;
             if (sourceMode === 'YAYASAN' && isBosPlan) return false;

@@ -1485,6 +1485,20 @@ router.put('/rab-plans/:id', async (req, res) => {
     }
 });
 
+router.delete('/rab-plans/:id', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const id = req.params.id;
+        await prisma.rabPlan.delete({ where: { id } });
+        console.log(`[RAB Plan DELETE SUCCESS] ID: ${id}`);
+        res.json({ message: 'Success' });
+    } catch (error) {
+        console.error('[RAB Plans DELETE Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 // Classes (with Unit include)
 router.get('/classes', async (req, res) => {
     try {

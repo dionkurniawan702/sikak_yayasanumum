@@ -88,6 +88,7 @@ export default function ArchiveRAB() {
 
         // 1. Filter relevant plans based on access right and academic year
         const accessiblePlans = rabPlans.filter(p => {
+            if (p.id?.includes('-REVISION-')) return false;
             if (p.academicYearId !== globalAcademicYearId) return false;
             
             // Source mode filter

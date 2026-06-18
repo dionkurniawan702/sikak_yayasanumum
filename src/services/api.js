@@ -320,6 +320,10 @@ export const api = {
                     }
                     await this.post('/rab-plans', payload);
                     break;
+                case 'DELETE_RAB_PLAN':
+                    console.log('[API] Deleting RAB Plan:', payload);
+                    await this.delete('/rab-plans/' + payload);
+                    break;
                 case 'ADD_BOS_STAGE':
                     await syncItem('bos-stages', null, payload, 'POST');
                     break;

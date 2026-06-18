@@ -84,7 +84,7 @@ export default function RealizationDashboard() {
         fields.forEach(f => fieldRAB[f.id] = { budget: 0, spent: 0, items: {}, spentItems: {} });
 
         // Process RAB Plans
-        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED').forEach(plan => {
+        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED' && !p.id.includes('-REVISION-')).forEach(plan => {
             Object.keys(plan.expense || {}).forEach(exId => {
                 const rawItemPlans = plan.expense[exId];
                 const itemPlans = Array.isArray(rawItemPlans)
@@ -165,6 +165,7 @@ export default function RealizationDashboard() {
             
             if (!exId && report.componentId) {
                 for (const plan of rabPlans) {
+                    if (plan.id.includes('-REVISION-')) continue;
                     if (plan.expense) {
                         for (const [itemId, plans] of Object.entries(plan.expense)) {
                             const itemPlans = Array.isArray(plans) ? plans : [plans];
@@ -184,6 +185,7 @@ export default function RealizationDashboard() {
             // Exhaustive search across all plans if componentId exists but planId didn't match
             if (!exId && report.componentId) {
                 for (const plan of rabPlans) {
+                    if (plan.id.includes('-REVISION-')) continue;
                     if (plan.expense) {
                         for (const [itemId, plans] of Object.entries(plan.expense)) {
                             const itemPlans = Array.isArray(plans) ? plans : [plans];
