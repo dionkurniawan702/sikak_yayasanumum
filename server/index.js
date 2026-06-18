@@ -490,6 +490,12 @@ app.post('/api/sync', async (req, res) => {
                         if (cleanItem.budgetRequest) delete cleanItem.budgetRequest;
                     }
 
+                    // Prevent stale client sync payload from overwriting deleted/cancelled records
+                    const existingRecord = await tx[model].findUnique({ where: { id: item.id } });
+                    if ((model === 'budgetRequest' || model === 'budgetReport') && existingRecord && existingRecord.isDeleted) {
+                        cleanItem.isDeleted = true;
+                    }
+
                     await tx[model].upsert({
                         where: { id: item.id },
                         update: { ...cleanItem, id: undefined },
