@@ -394,44 +394,53 @@ export default function MonthlyReport() {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    const itemDrafts = draftReports.filter(d => d.componentId === item.componentId);
-                    if (reportedComp < parseFloat(item.amount || 0) || itemDrafts.length > 0) {
-                        items.push({
-                            ...item,
-                            reqId: req.id,
-                            reqDate: req.date,
-                            reqDescription: req.description,
-                            reqUnitId: req.unitId,
-                            expenseItemId: item.expenseItemId || req.expenseItemId,
-                            sisa: parseFloat(item.amount || 0) - reportedComp
-                        });
-                    }
-                });
-            } else {
-                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
-                const reqDrafts = draftReports.filter(d => d.budgetRequestId === req.id);
-                if (reportedReq < parseFloat(req.totalAmount || 0) || reqDrafts.length > 0) {
                     items.push({
+                        ...item,
                         reqId: req.id,
                         reqDate: req.date,
                         reqDescription: req.description,
                         reqUnitId: req.unitId,
-                        expenseItemId: req.expenseItemId,
-                        name: 'General (Legacy)',
-                        amount: req.totalAmount,
-                        sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                        expenseItemId: item.expenseItemId || req.expenseItemId,
+                        sisa: parseFloat(item.amount || 0) - reportedComp
                     });
-                }
+                });
+            } else {
+                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                items.push({
+                    reqId: req.id,
+                    reqDate: req.date,
+                    reqDescription: req.description,
+                    reqUnitId: req.unitId,
+                    expenseItemId: req.expenseItemId,
+                    name: 'General (Legacy)',
+                    amount: req.totalAmount,
+                    sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                });
             }
         });
         
-        // Urutkan: rincian yang belum memiliki draf ditaruh di atas, yang sudah memiliki draf ditaruh di bawah
+        // Urutkan rincian:
+        // Priority 0: Aktif/Baru (sisa > 0, belum ada draf, belum ada pending)
+        // Priority 1: Memiliki draf
+        // Priority 2: Memiliki pengajuan pending verifikasi
+        // Priority 3: Selesai/Nihil (sisa <= 0)
         items.sort((a, b) => {
-            const hasDraftA = draftReports.some(d => a.componentId ? d.componentId === a.componentId : d.budgetRequestId === a.reqId);
-            const hasDraftB = draftReports.some(d => b.componentId ? d.componentId === b.componentId : d.budgetRequestId === b.reqId);
-            if (hasDraftA && !hasDraftB) return 1;
-            if (!hasDraftA && hasDraftB) return -1;
-            return 0;
+            const getPriority = (x) => {
+                const hasDraft = draftReports.some(d => x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId);
+                const hasPending = (budgetReports || []).some(r => 
+                    r.status === 'PENDING' && 
+                    !r.isDeleted && 
+                    (x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId)
+                );
+                const isCompleted = x.sisa <= 0;
+
+                if (isCompleted) return 3;
+                if (hasPending) return 2;
+                if (hasDraft) return 1;
+                return 0;
+            };
+
+            return getPriority(a) - getPriority(b);
         });
 
         return items;
