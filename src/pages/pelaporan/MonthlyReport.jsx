@@ -774,10 +774,22 @@ export default function MonthlyReport() {
         }
 
         const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
-        const sisaDana = selectedRequest.sisa + currentDraftAmount;
         
-        if (parseFloat(formData.amount) > sisaDana) {
-            return alert(`Jumlah realisasi tidak boleh melebihi sisa dana (${formatRupiah(sisaDana)}).`);
+        // Cek sisa dana keseluruhan dari Pengajuan Dana (Budget Request) induknya
+        const parentReq = budgetRequests.find(r => r.id === selectedRequest.reqId);
+        if (!parentReq) {
+            return alert('Data induk pengajuan tidak ditemukan.');
+        }
+
+        const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
+        const totalReportedForReq = (budgetReports || [])
+            .filter(r => r.budgetRequestId === selectedRequest.reqId && r.status !== 'REJECTED' && !r.isDeleted)
+            .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+        const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
+        
+        if (parseFloat(formData.amount) > sisaDanaPengajuan) {
+            return alert(`Jumlah realisasi tidak boleh melebihi sisa total pengajuan dana (${formatRupiah(sisaDanaPengajuan)}).`);
         }
 
         const reportData = {
@@ -980,10 +992,13 @@ export default function MonthlyReport() {
                                     {/* Progress bar terpakai */}
                                     <div className="mt-4">
                                         <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                            <span>Terpakai {terpakaiPct}%</span><span>Sisa {sisaPct}%</span>
+                                            <span>Terpakai {terpakaiPct}%</span>
+                                            <span className={item.sisa < 0 ? 'text-rose-500 font-bold' : ''}>
+                                                Sisa {sisaPct}%
+                                            </span>
                                         </div>
                                         <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${terpakaiPct}%` }} />
+                                            <div className={`h-full ${terpakaiPct > 100 ? 'bg-rose-500' : 'bg-blue-500'} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(terpakaiPct, 0), 100)}%` }} />
                                         </div>
                                     </div>
                                     
@@ -1037,7 +1052,7 @@ export default function MonthlyReport() {
 
                                 <div className="text-right shrink-0">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Rincian</p>
-                                    <h4 className="text-2xl font-black text-blue-700 mb-1">{formatRupiah(item.sisa)}</h4>
+                                    <h4 className={`text-2xl font-black mb-1 ${item.sisa < 0 ? 'text-rose-600' : 'text-blue-700'}`}>{formatRupiah(item.sisa)}</h4>
                                     <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                     <div className="flex flex-col gap-2 mt-2 w-full">
                                         {!isSuperAdmin && (
@@ -1493,9 +1508,19 @@ export default function MonthlyReport() {
                                 <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ref: {selectedRequest?.description}</p>
                             </div>
                             <div className="text-right">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor (Sisa)</p>
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor (Sisa Pengajuan)</p>
                                 <span className="text-lg font-black text-blue-700">
-                                    {formatRupiah(parseFloat(selectedRequest?.totalAmount || selectedRequest?.amount || 0) - (reportedAmounts[selectedRequest?.id] || 0) + (editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0))}
+                                    {(() => {
+                                        const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
+                                        if (!parentReq) return 'Rp 0';
+                                        const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
+                                        const totalReportedForReq = (budgetReports || [])
+                                            .filter(r => r.budgetRequestId === selectedRequest?.reqId && r.status !== 'REJECTED' && !r.isDeleted)
+                                            .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                                        const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
+                                        const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
+                                        return formatRupiah(sisaDanaPengajuan);
+                                    })()}
                                 </span>
                             </div>
                         </div>
