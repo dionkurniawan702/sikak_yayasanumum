@@ -949,10 +949,13 @@ export default function MonthlyReport() {
                 {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">
+                    <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3 tracking-tight mb-1 font-display">
+                        <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                            <Building2 size={20} className="text-white" />
+                        </div>
                         Laporan Pengeluaran {sourceMode === 'BOS' ? 'BOS' : 'Yayasan'}
                     </h1>
-                    <p className="text-slate-500 font-medium italic mb-6">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
+                    <p className="text-slate-500 font-medium italic mb-6 ml-[52px]">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
                     
                     {sourceMode === 'BOS' && (
                         <div className="mb-6">

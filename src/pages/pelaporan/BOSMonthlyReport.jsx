@@ -1,14 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { 
-    FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, 
-    History, Search, ChevronDown, ChevronRight, Download, Package, 
-    Layers, Filter, Calendar, Tag, Building2, Loader2, Landmark, X
-} from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
 
-// ─── Badge Kategori Aset (BOS Specialized) ──────────────────────────────────
+// ─── Badge Kategori Aset ─────────────────────────────────────────────────────
 function AsetBadge({ kategori, umurEkonomis }) {
     if (kategori === 'ASET') {
         return (
@@ -17,18 +14,54 @@ function AsetBadge({ kategori, umurEkonomis }) {
             </span>
         );
     }
+    if (kategori === 'PENGEMBALIAN') {
+        return (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <FileCheck size={10} /> Pengembalian
+            </span>
+        );
+    }
     return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-500 border border-slate-200">
-            <Layers size={10} /> Operasional
+            <Layers size={10} /> Non Aset
         </span>
     );
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, isSuperAdmin, idx }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+    
+    let exId = report.expenseItemId;
+    if (!exId && report.planId && report.componentId) {
+        const plan = rabPlans?.find(p => p.id === report.planId);
+        if (plan && plan.expense) {
+            for (const [itemId, plans] of Object.entries(plan.expense)) {
+                const itemPlans = Array.isArray(plans) ? plans : [plans];
+                for (const p of itemPlans) {
+                    if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
+                        exId = itemId;
+                        break;
+                    }
+                }
+                if (exId) break;
+            }
+        }
+    }
+    if (!exId && report.budgetRequestId) {
+        const req = budgetRequests?.find(r => r.id === report.budgetRequestId);
+        if (req) {
+            if (report.componentId && req.items) {
+                const reqItem = req.items.find(i => i.componentId === report.componentId);
+                if (reqItem && reqItem.expenseItemId) exId = reqItem.expenseItemId;
+            }
+            if (!exId && req.expenseItemId) exId = req.expenseItemId;
+        }
+    }
+    
+    const expenseItemName = expenseItems?.find(e => e.id === exId)?.name || '—';
 
     return (
         <>
@@ -36,17 +69,29 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
                 className={`border-b border-slate-100 cursor-pointer transition-colors ${open ? 'bg-emerald-50/40' : 'hover:bg-slate-50/80'}`}
                 onClick={() => setOpen(o => !o)}
             >
+                {!isSuperAdmin && (
+                    <td className="px-5 py-4 text-center" onClick={e => e.stopPropagation()}>
+                        {selectable && (
+                            <input 
+                                type="checkbox" 
+                                checked={isSelected} 
+                                onChange={() => onToggleSelect(report.id)}
+                                className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shadow-sm"
+                            />
+                        )}
+                    </td>
+                )}
                 <td className="px-5 py-4 text-center">
                     <span className="text-[10px] font-black text-slate-400">{idx + 1}</span>
                 </td>
                 <td className="px-5 py-4">
                     <span className="text-xs font-bold text-slate-500">{dateStr}</span>
                 </td>
-                <td className="px-5 py-4 font-mono">
-                    <span className="text-xs font-black text-emerald-600">{report.nomorNota || '—'}</span>
+                <td className="px-5 py-4">
+                    <span className="text-xs font-black text-emerald-600 font-mono">{report.nomorNota || '—'}</span>
                 </td>
                 <td className="px-5 py-4">
-                    <span className="text-xs font-bold text-slate-700 line-clamp-1">{report.category || report.description || 'Realisasi BOS'}</span>
+                    <span className="text-xs font-bold text-slate-700 line-clamp-1">{report.category || '—'}</span>
                     {isSuperAdmin && unitName && (
                         <div className="flex items-center gap-1 mt-0.5">
                             <Building2 size={9} className="text-slate-300" />
@@ -54,16 +99,33 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
                         </div>
                     )}
                 </td>
-                <td className="px-5 py-4 text-right font-black text-slate-800">
-                    {formatRupiah(parseFloat(report.amount || 0))}
+                <td className="px-5 py-4">
+                    <span className="text-xs font-bold text-slate-600 line-clamp-1" title={report.description}>{report.description || '—'}</span>
                 </td>
                 <td className="px-5 py-4 text-center">
-                    <AsetBadge kategori={report.kategoriAset} />
+                    {(report.volume && report.satuan) ? (
+                        <span className="text-xs font-bold text-slate-600">
+                            {parseFloat(report.volume).toLocaleString('id-ID')} {report.satuan}
+                        </span>
+                    ) : <span className="text-slate-300">—</span>}
+                </td>
+                <td className="px-5 py-4 text-right">
+                    <span className="text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</span>
+                </td>
+                <td className="px-5 py-4 text-center">
+                    <span className="inline-flex items-center px-2 py-1 bg-slate-100 text-slate-600 rounded text-[10px] font-black uppercase tracking-widest">{expenseItemName}</span>
+                </td>
+                <td className="px-5 py-4 text-center">
+                    <AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} />
                 </td>
                 <td className="px-5 py-4 text-center">
                     {report.status === 'PENDING' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-amber-50 text-amber-600 border border-amber-200">
                             Menunggu
+                        </span>
+                    ) : report.status === 'DRAFT' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-600 border border-slate-300">
+                            Draft
                         </span>
                     ) : report.status === 'REJECTED' ? (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-200">
@@ -76,40 +138,59 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
                     )}
                 </td>
                 <td className="px-5 py-4 text-center">
-                    {open ? <ChevronDown size={14} className="text-emerald-400 mx-auto" /> : <ChevronRight size={14} className="text-slate-300 mx-auto" />}
+                    {open
+                        ? <ChevronDown size={14} className="text-emerald-400 mx-auto" />
+                        : <ChevronRight size={14} className="text-slate-300 mx-auto" />}
                 </td>
             </tr>
 
+            {/* Accordion Detail */}
             {open && (
-                <tr className="bg-emerald-50/10 border-b border-slate-100">
-                    <td colSpan="8" className="px-10 py-6">
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <td colSpan={isSuperAdmin ? 11 : 12} className="px-8 py-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Rincian Pembelian */}
                             <div className="space-y-3">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2 italic">Rincian Transaksi</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2">Rincian Pembelian</p>
                                 <div className="space-y-2 text-xs">
-                                    <div className="flex justify-between"><span className="text-slate-400 font-bold">Volume</span><span className="font-black">{parseFloat(report.volume || 0).toLocaleString('id-ID')} {report.satuan}</span></div>
-                                    <div className="flex justify-between"><span className="text-slate-400 font-bold">Harga Satuan</span><span className="font-black">{formatRupiah(parseFloat(report.harga || 0))}</span></div>
-                                    <div className="flex justify-between border-t border-slate-200 pt-2"><span className="text-slate-400 font-bold">Total</span><span className="font-black text-emerald-600 underline underline-offset-4">{formatRupiah(parseFloat(report.amount || 0))}</span></div>
+                                    {report.volume && <div className="flex justify-between"><span className="text-slate-400 font-bold">Volume</span><span className="font-black">{parseFloat(report.volume).toLocaleString('id-ID')} {report.satuan}</span></div>}
+                                    {report.harga && <div className="flex justify-between"><span className="text-slate-400 font-bold">Harga Satuan</span><span className="font-black">{formatRupiah(parseFloat(report.harga))}</span></div>}
+                                    <div className="flex justify-between border-t border-slate-200 pt-2"><span className="text-slate-400 font-bold">Total</span><span className="font-black text-emerald-600">{formatRupiah(parseFloat(report.amount || 0))}</span></div>
                                 </div>
                             </div>
+                            {/* Keterangan & Bukti */}
                             <div className="space-y-3">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2 italic">Bukti & Keterangan</p>
-                                <p className="text-xs text-slate-600 font-medium leading-relaxed italic">"{report.description || 'Tidak ada keterangan'}"</p>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2">Keterangan & Bukti</p>
+                                <p className="text-xs text-slate-600 font-medium leading-relaxed">{report.description || '—'}</p>
                                 {report.buktiTeks && (
-                                    <div className="p-3 bg-white rounded-xl border border-emerald-100 shadow-sm">
-                                        <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Referensi Bukti</p>
+                                    <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
+                                        <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">Bukti Transaksi</p>
                                         <p className="text-xs text-slate-700 font-medium">{report.buktiTeks}</p>
                                     </div>
                                 )}
                             </div>
+                            {/* Info Aset */}
                             <div className="space-y-3">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2 italic">Informasi Sistem</p>
-                                <div className="space-y-1">
-                                    <div className="text-[10px] font-black text-slate-500">ID PELAPORAN:</div>
-                                    <div className="text-[10px] font-mono text-slate-400 break-all bg-slate-100 p-2 rounded-lg">{report.id}</div>
-                                </div>
-                                <div className="text-[9px] text-slate-400 font-bold mt-2 italic">Status Sinkronisasi: ✓ Tersimpan di Server</div>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200 pb-2">Info Kategori</p>
+                                <AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} />
+                                {report.kategoriAset === 'ASET' && report.umurEkonomis && (
+                                    <p className="text-xs text-emerald-700 font-bold">✓ Dicatat sebagai Aset Tetap<br /><span className="text-slate-500 font-medium">Umur Ekonomis: {report.umurEkonomis} Tahun</span></p>
+                                )}
+                                <div className="text-[9px] text-slate-400 font-bold font-mono mt-2">ID: {report.id?.slice(0, 16)}...</div>
                             </div>
+                            {/* Actions for Draft (Unit Only) */}
+                            {!isSuperAdmin && report.status === 'DRAFT' && onEdit && onDelete && (
+                                <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
+                                    <div className="flex gap-3 justify-end">
+                                        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-emerald-600 hover:!bg-emerald-50 hover:!border-emerald-200 shadow-sm">
+                                            <Edit2 size={14} className="mr-1 inline-block" /> Edit Draft
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm">
+                                            <Trash2 size={14} className="mr-1 inline-block" /> Hapus Draft
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </td>
                 </tr>
@@ -120,26 +201,46 @@ function ReportRow({ report, units, isSuperAdmin, idx }) {
 
 export default function BOSMonthlyReport() {
     const { state, dispatch } = useApp();
-    const { budgetRequests = [], budgetReports = [], units = [], globalAcademicYearId, currentUser } = state;
-    
+    const [selectedRequest, setSelectedRequest] = useState(null);
+    const [showReportForm, setShowReportForm] = useState(false);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
-    const [searchTerm, setSearchTerm] = useState('');
     const [processingId, setProcessingId] = useState(null);
+    const [sourceMode] = useState('BOS');
+
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
+    const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission
+    const [showReportsList, setShowReportsList] = useState(false);
+    const [selectedItemForReports, setSelectedItemForReports] = useState(null);
+
+    // Filter state for history
+    const [search, setSearch] = useState('');
+    const [filterKategori, setFilterKategori] = useState('ALL');
+    const [filterDateFrom, setFilterDateFrom] = useState('');
+    const [filterDateTo, setFilterDateTo] = useState('');
     const [pendingSearch, setPendingSearch] = useState('');
+
+    const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
+    const myFieldId = currentUser?.fieldId;
 
-    // Filter BOS-related requests and reports
-    const bosRequests = useMemo(() => {
-        return (budgetRequests || []).filter(req => {
-            if (req.academicYearId !== globalAcademicYearId) return false;
-            if (!isSuperAdmin && req.unitId !== myUnitId) return false;
-            // Check if items are from BOS plan
-            return (req.items || []).some(item => item.planId?.endsWith('-BOS'));
-        });
-    }, [budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId]);
+    // Clear notifications for unit admin when they visit
+    React.useEffect(() => {
+        if (!isSuperAdmin && budgetReports?.length > 0) {
+            const unnotified = budgetReports.filter(r => {
+                const isMine = (myUnitId && r.unitId === myUnitId) || (myFieldId && r.fieldId === myFieldId);
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+            });
+            if (unnotified.length > 0) {
+                unnotified.forEach(r => {
+                    const updated = { ...r, notified: true };
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                    api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                });
+            }
+        }
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, dispatch, state]);
 
     const reportedAmounts = useMemo(() => {
         const map = {};
@@ -174,9 +275,119 @@ export default function BOSMonthlyReport() {
         return { byComponent: map, byRequest: reqMap };
     }, [budgetReports, budgetRequests]);
 
-    const pendingBOSReporting = useMemo(() => {
+    const getReportsCountForItem = (item) => {
+        return (budgetReports || []).filter(r => {
+            if (r.isDeleted || r.status === 'REJECTED') return false;
+            let effectiveComponentId = r.componentId;
+            if (!effectiveComponentId && r.budgetRequestId) {
+                const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                if (req && req.items) {
+                    const match = req.items.find(ri => 
+                        ri.name === r.category || 
+                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
+                        ri.name?.toLowerCase() === r.description?.toLowerCase()
+                    );
+                    if (match) {
+                        effectiveComponentId = match.componentId;
+                    }
+                }
+            }
+            return effectiveComponentId === item.componentId || (!effectiveComponentId && r.budgetRequestId === item.reqId);
+        }).length;
+    };
+
+    const itemReports = useMemo(() => {
+        if (!selectedItemForReports) return [];
+        return (budgetReports || []).filter(r => {
+            if (r.isDeleted) return false;
+            let effectiveComponentId = r.componentId;
+            if (!effectiveComponentId && r.budgetRequestId) {
+                const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                if (req && req.items) {
+                    const match = req.items.find(ri => 
+                        ri.name === r.category || 
+                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
+                        ri.name?.toLowerCase() === r.description?.toLowerCase()
+                    );
+                    if (match) {
+                        effectiveComponentId = match.componentId;
+                    }
+                }
+            }
+            return effectiveComponentId === selectedItemForReports.componentId || (!effectiveComponentId && r.budgetRequestId === selectedItemForReports.reqId);
+        });
+    }, [selectedItemForReports, budgetReports, budgetRequests]);
+
+    const requestsForYear = useMemo(() => {
+        return (budgetRequests || []).filter(req => {
+            const isYear = req.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+            
+            // Filter by source
+            const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return false;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
+
+            if (isSuperAdmin) return true;
+            if (myUnitId) return req.unitId === myUnitId;
+            if (myFieldId) return req.fieldId === myFieldId;
+            return false;
+        });
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+
+    const draftReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
+            const effectiveStatus = rel.status || (rel.id?.startsWith('REL-') ? 'DRAFT' : 'APPROVED');
+            if (effectiveStatus !== 'DRAFT') return false;
+            if (rel.academicYearId !== globalAcademicYearId) return false;
+            if (isSuperAdmin) return false; 
+            if (myUnitId && rel.unitId !== myUnitId) return false;
+            if (myFieldId && rel.fieldId !== myFieldId) return false;
+            
+            // Filter by source
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+
+            return true;
+        });
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+
+    const pendingItems = useMemo(() => {
         const items = [];
-        bosRequests.filter(req => req.status === 'APPROVED').forEach(req => {
+        requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
+            const reqUnitId = req.unitId;
+            const reqFieldId = req.fieldId;
+
+            // Check if this unit/field has any remaining balance. If balance is 0 or less, skip.
+            const unitRequests = (budgetRequests || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' 
+                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
+                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
+            );
+            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+
+            const unitReports = (budgetReports || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                !r.isDeleted &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
+            );
+            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+            const activeBalance = unitCair - unitUsed - unitReturned;
+
+            if (activeBalance <= 0) {
+                // If this unit/field has no remaining cash balance, skip all its pending items!
+                return;
+            }
+
+            // If the old system fully reported the request without component tracking, hide all items
             const reportedReq = reportedAmounts.byRequest[req.id] || 0;
             if (reportedReq >= parseFloat(req.totalAmount || 0) && Object.keys(reportedAmounts.byComponent).length === 0) {
                 return;
@@ -184,46 +395,104 @@ export default function BOSMonthlyReport() {
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
+                    if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    if (reportedComp < parseFloat(item.amount || 0)) {
-                        items.push({
-                            ...item,
-                            reqId: req.id,
-                            reqDate: req.date,
-                            reqDescription: req.description,
-                            reqUnitId: req.unitId,
-                            sisa: parseFloat(item.amount || 0) - reportedComp
-                        });
-                    }
-                });
-            } else {
-                if (reportedReq < parseFloat(req.totalAmount || 0)) {
                     items.push({
+                        ...item,
                         reqId: req.id,
                         reqDate: req.date,
                         reqDescription: req.description,
                         reqUnitId: req.unitId,
-                        name: 'General (Legacy)',
-                        sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                        expenseItemId: item.expenseItemId || req.expenseItemId,
+                        sisa: parseFloat(item.amount || 0) - reportedComp
                     });
-                }
+                });
+            } else {
+                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                items.push({
+                    reqId: req.id,
+                    reqDate: req.date,
+                    reqDescription: req.description,
+                    reqUnitId: req.unitId,
+                    expenseItemId: req.expenseItemId,
+                    name: 'General (Legacy)',
+                    amount: req.totalAmount,
+                    sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                });
             }
         });
-        return items;
-    }, [bosRequests, reportedAmounts]);
+        
+        // Urutkan rincian:
+        // Priority 0: Aktif/Baru (sisa > 0, belum ada draf, belum ada pending)
+        // Priority 1: Memiliki draf
+        // Priority 2: Memiliki pengajuan pending verifikasi
+        // Priority 3: Selesai/Nihil (sisa <= 0)
+        items.sort((a, b) => {
+            const getPriority = (x) => {
+                const hasDraft = draftReports.some(d => x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId);
+                const hasPending = (budgetReports || []).some(r => 
+                    r.status === 'PENDING' && 
+                    !r.isDeleted && 
+                    (x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId)
+                );
+                const isCompleted = x.sisa <= 0;
 
-    // Map of unit id → count of pending BOS items (for superadmin badges)
+                if (isCompleted) return 3;
+                if (hasPending) return 2;
+                if (hasDraft) return 1;
+                return 0;
+            };
+
+            return getPriority(a) - getPriority(b);
+        });
+
+        return items;
+    }, [requestsForYear, reportedAmounts, budgetRequests, budgetReports, globalAcademicYearId, sourceMode, draftReports]);
+
+    // Map of unit/field id → count of pending items (for superadmin badges)
     const pendingCountByUnit = useMemo(() => {
         const map = {};
+        const allItems = [];
         (budgetRequests || []).filter(req => {
             const isYear = req.academicYearId === globalAcademicYearId;
             if (!isYear || req.status !== 'APPROVED') return false;
             const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
-            return isBosRequest;
+            if (sourceMode === 'BOS' && !isBosRequest) return false;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
+            return true;
         }).forEach(req => {
-            const unitKey = req.unitId || 'UNKNOWN';
+            const reqUnitId = req.unitId;
+            const reqFieldId = req.fieldId;
+
+            // Check active balance
+            const unitRequests = (budgetRequests || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' 
+                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
+                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
+            );
+            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
+
+            const unitReports = (budgetReports || []).filter(r => 
+                r.academicYearId === globalAcademicYearId && 
+                r.status === 'APPROVED' &&
+                !r.isDeleted &&
+                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
+                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
+            );
+            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+
+            const activeBalance = unitCair - unitUsed - unitReturned;
+
+            if (activeBalance <= 0) return;
+
+            const unitKey = reqUnitId || reqFieldId || 'UNKNOWN';
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
+                    if (item.isClosed) return; // Skip closed
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
                     if (reportedComp < parseFloat(item.amount || 0)) {
                         map[unitKey] = (map[unitKey] || 0) + 1;
@@ -237,18 +506,18 @@ export default function BOSMonthlyReport() {
             }
         });
         return map;
-    }, [budgetRequests, reportedAmounts, globalAcademicYearId]);
+    }, [budgetRequests, budgetReports, reportedAmounts, globalAcademicYearId, sourceMode]);
 
-    // Filtered pending items based on selected unit and search term
-    const filteredPendingBOSReporting = useMemo(() => {
-        let items = pendingBOSReporting;
+    // Filtered pending items for superadmin based on selected unit + search term
+    const filteredPendingItems = useMemo(() => {
+        let items = pendingItems;
         if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
-            items = items.filter(item => item.reqUnitId === selectedUnitFilter);
+            items = items.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
         }
         if (pendingSearch.trim()) {
             const q = pendingSearch.toLowerCase();
             items = items.filter(item => {
-                const unitName = (units.find(u => u.id === item.reqUnitId)?.name || '').toLowerCase();
+                const unitName = (units.find(u => u.id === item.reqUnitId)?.name || fields.find(f => f.id === item.reqUnitId)?.name || '').toLowerCase();
                 const name = (item.name || '').toLowerCase();
                 const desc = (item.reqDescription || '').toLowerCase();
                 const reqId = (item.reqId || '').toLowerCase();
@@ -256,301 +525,1206 @@ export default function BOSMonthlyReport() {
             });
         }
         return items;
-    }, [pendingBOSReporting, isSuperAdmin, selectedUnitFilter, pendingSearch, units]);
+    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, units, fields]);
 
-    const bosReports = useMemo(() => {
-        return (budgetReports || []).filter(r => {
-            if (r.isDeleted || r.status === 'REJECTED') return false;
-            if (r.academicYearId !== globalAcademicYearId) return false;
-            // Link to a BOS request
-            const req = budgetRequests.find(br => br.id === r.budgetRequestId);
-            if (!req?.items?.[0]?.planId?.endsWith('-BOS')) return false;
-
-            if (isSuperAdmin) {
-                if (selectedUnitFilter !== 'ALL') return r.unitId === selectedUnitFilter;
-                return true;
+    const verificationReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
+            if (rel.status !== 'PENDING') return false;
+            if (rel.academicYearId !== globalAcademicYearId) return false;
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+            if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
+                if (rel.unitId !== selectedUnitFilter && rel.fieldId !== selectedUnitFilter) return false;
             }
-            if (myUnitId) return r.unitId === myUnitId;
-            return false;
+            return true;
         });
-    }, [budgetReports, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, selectedUnitFilter]);
+    }, [budgetReports, globalAcademicYearId, sourceMode, isSuperAdmin, selectedUnitFilter]);
 
     const pendingVerificationUnits = useMemo(() => {
         const set = new Set();
-        (budgetReports || []).forEach(r => {
-            if (r.status !== 'PENDING') return;
-            if (r.academicYearId !== globalAcademicYearId) return;
-            // Link to a BOS request
-            const req = budgetRequests.find(br => br.id === r.budgetRequestId);
-            if (!req?.items?.[0]?.planId?.endsWith('-BOS')) return;
-            if (r.unitId) set.add(r.unitId);
+        (budgetReports || []).forEach(rel => {
+            if (rel.status !== 'PENDING') return;
+            if (rel.academicYearId !== globalAcademicYearId) return;
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return;
+            if (sourceMode === 'YAYASAN' && isBosReport) return;
+            if (rel.unitId) set.add(rel.unitId);
+            if (rel.fieldId) set.add(rel.fieldId);
         });
         return set;
-    }, [budgetReports, budgetRequests, globalAcademicYearId]);
+    }, [budgetReports, globalAcademicYearId, sourceMode]);
 
-    const filteredReports = useMemo(() => {
-        return bosReports.filter(r => {
-            const q = searchTerm.toLowerCase();
-            return !q || (r.nomorNota || '').toLowerCase().includes(q) || (r.description || '').toLowerCase().includes(q);
+    const [selectedReportIds, setSelectedReportIds] = useState([]);
+
+    React.useEffect(() => {
+        setSelectedReportIds([]);
+        setSelectedHistoryIds([]);
+    }, [sourceMode, activeTab]);
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedReportIds(verificationReports.map(r => r.id));
+        } else {
+            setSelectedReportIds([]);
+        }
+    };
+
+    const handleSelectRow = (id) => {
+        setSelectedReportIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleBulkApprove = async () => {
+        if (selectedReportIds.length === 0) return;
+        if (window.confirm(`Setujui ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
+            setProcessingId('BULK');
+            try {
+                const updatedReports = selectedReportIds.map(id => {
+                    const r = budgetReports.find(x => x.id === id);
+                    return r ? { ...r, status: 'APPROVED', notified: false } : null;
+                }).filter(Boolean);
+
+                for (const report of updatedReports) {
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                }
+
+                alert(`${selectedReportIds.length} laporan berhasil disetujui`);
+                setSelectedReportIds([]);
+            } catch (err) {
+                alert('Gagal memproses persetujuan masal: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkReject = async () => {
+        if (selectedReportIds.length === 0) return;
+        if (window.confirm(`Tolak ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
+            setProcessingId('BULK');
+            try {
+                const updatedReports = selectedReportIds.map(id => {
+                    const r = budgetReports.find(x => x.id === id);
+                    return r ? { ...r, status: 'REJECTED', notified: false } : null;
+                }).filter(Boolean);
+
+                for (const report of updatedReports) {
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                }
+
+                alert(`${selectedReportIds.length} laporan berhasil ditolak`);
+                setSelectedReportIds([]);
+            } catch (err) {
+                alert('Gagal memproses penolakan masal: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleSelectAllHistory = (e) => {
+        if (e.target.checked) {
+            setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+        } else {
+            setSelectedHistoryIds([]);
+        }
+    };
+
+    const handleToggleSelectHistory = (id) => {
+        setSelectedHistoryIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleBulkSubmitHistory = async () => {
+        if (selectedHistoryIds.length === 0) return;
+        if (window.confirm(`Anda akan mengajukan ${selectedHistoryIds.length} laporan terpilih ke Superadmin. Lanjutkan?`)) {
+            setProcessingId('BULK_HISTORY');
+            try {
+                const updatedReports = selectedHistoryIds.map(id => {
+                    const r = budgetReports.find(x => x.id === id);
+                    return r ? { ...r, status: 'PENDING' } : null;
+                }).filter(Boolean);
+
+                for (const report of updatedReports) {
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
+                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                }
+
+                alert(`${selectedHistoryIds.length} laporan berhasil diajukan!`);
+                setSelectedHistoryIds([]);
+            } catch (err) {
+                alert('Gagal mengajukan laporan: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+    const baseReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
+            const isYear = rel.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+
+            // Filter by source
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+
+            if (isSuperAdmin) {
+                if (selectedUnitFilter !== 'ALL') {
+                    return rel.unitId === selectedUnitFilter || rel.fieldId === selectedUnitFilter;
+                }
+                return true;
+            }
+            if (myUnitId) return rel.unitId === myUnitId;
+            if (myFieldId) return rel.fieldId === myFieldId;
+            return false;
         });
-    }, [bosReports, searchTerm]);
+    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode, selectedUnitFilter]);
 
-    const stats = useMemo(() => {
-        const totalCair = bosRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
-        const totalLapor = bosReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-        return { totalCair, totalLapor, sisa: totalCair - totalLapor };
-    }, [bosRequests, bosReports]);
+    // Apply filters to history
+    const filteredReports = useMemo(() => {
+        return baseReports.filter(r => {
+            const q = search.toLowerCase();
+            const matchSearch = !q || (r.nomorNota || '').toLowerCase().includes(q) ||
+                (r.description || '').toLowerCase().includes(q) ||
+                (r.category || '').toLowerCase().includes(q) ||
+                (r.buktiTeks || '').toLowerCase().includes(q);
+            const matchKategori = filterKategori === 'ALL' || r.kategoriAset === filterKategori;
+            const rDate = r.date ? new Date(r.date) : null;
+            const matchFrom = !filterDateFrom || (rDate && rDate >= new Date(filterDateFrom));
+            const matchTo = !filterDateTo || (rDate && rDate <= new Date(filterDateTo));
+            return matchSearch && matchKategori && matchFrom && matchTo;
+        });
+    }, [baseReports, search, filterKategori, filterDateFrom, filterDateTo]);
 
-    // Handle Verification (Superadmin only)
-    const handleVerify = async (id, status) => {
-        if (!isSuperAdmin) return;
-        const reason = status === 'REJECTED' ? window.prompt('Alasan penolakan:') : null;
-        if (status === 'REJECTED' && reason === null) return;
+    // Summary stats for history
+    const totalNilai = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const totalAset = filteredReports.filter(r => r.kategoriAset === 'ASET').length;
+    const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET').length;
 
-        setProcessingId(id);
-        try {
-            const report = budgetReports.find(r => r.id === id);
-            const updated = { ...report, status, rejectionReason: reason, notified: false };
+    const totalCair = requestsForYear.filter(r => r.status === 'APPROVED').reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
+    const totalLapor = baseReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    const totalSisa = totalCair - totalLapor;
+
+    const [editingDraftId, setEditingDraftId] = useState(null);
+    const [formData, setFormData] = useState({
+        date: new Date().toISOString().split('T')[0],
+        amount: 0,
+        description: '',
+        buktiTeks: '',
+        nomorNota: '',
+        volume: '',
+        satuan: '',
+        harga: '',
+        kategoriAset: 'NON_ASET',
+        umurEkonomis: ''
+    });
+
+    const handleOpenReportForm = (item) => {
+        setEditingDraftId(null);
+        setSelectedRequest(item); // Note: item contains both component info and reqId
+        setFormData({
+            date: new Date().toISOString().split('T')[0],
+            amount: item.sisa > 0 ? item.sisa : 0,
+            description: '',
+            buktiTeks: '',
+            nomorNota: '',
+            volume: '',
+            satuan: '',
+            harga: '',
+            kategoriAset: 'NON_ASET',
+            umurEkonomis: ''
+        });
+        setShowReportForm(true);
+    };
+
+    const handleEditDraft = (draft) => {
+        const req = budgetRequests.find(r => r.id === draft.budgetRequestId);
+        if (!req) return alert("Data induk tidak ditemukan!");
+        
+        let item = { reqId: req.id, sisa: draft.amount, reqDescription: req.description, name: draft.category, reqUnitId: req.unitId, fieldId: req.fieldId };
+        if (draft.componentId) {
+            const reqItem = req.items?.find(i => i.componentId === draft.componentId);
+            if (reqItem) {
+                const reportedComp = (reportedAmounts.byComponent[draft.componentId] || 0) - parseFloat(draft.amount || 0);
+                item = { ...reqItem, ...item, sisa: parseFloat(reqItem.amount || 0) - reportedComp };
+            }
+        }
+        
+        setSelectedRequest(item);
+        setEditingDraftId(draft.id);
+        setFormData({
+            date: draft.date ? draft.date.split('T')[0] : new Date().toISOString().split('T')[0],
+            amount: parseFloat(draft.amount || 0),
+            description: draft.description || '',
+            buktiTeks: draft.buktiTeks || '',
+            nomorNota: draft.nomorNota || '',
+            volume: draft.volume || '',
+            satuan: draft.satuan || '',
+            harga: draft.harga || '',
+            kategoriAset: draft.kategoriAset || 'NON_ASET',
+            umurEkonomis: draft.umurEkonomis || ''
+        });
+        setShowReportForm(true);
+    };
+
+    const handleCloseItem = async (item) => {
+        const confirmMsg = `Apakah Anda yakin ingin menutup/menihilkan sisa item "${item.name}"? Sisa dana sebesar ${formatRupiah(item.sisa)} akan dianggap tidak terpakai dan harus dikembalikan ke Yayasan.`;
+        if (window.confirm(confirmMsg)) {
+            try {
+                const req = budgetRequests.find(r => r.id === item.reqId);
+                if (!req) return alert("Data induk pengajuan tidak ditemukan!");
+
+                const updatedItems = req.items.map(reqItem => {
+                    if (reqItem.componentId === item.componentId) {
+                        return { ...reqItem, isClosed: true };
+                    }
+                    return reqItem;
+                });
+
+                const updatedRequest = {
+                    ...req,
+                    items: updatedItems
+                };
+
+                dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updatedRequest });
+                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updatedRequest }, state);
+                
+                alert("Item berhasil ditutup. Sisa dana telah dibekukan dan wajib dikembalikan ke Yayasan.");
+            } catch (err) {
+                alert("Gagal menutup item: " + err.message);
+            }
+        }
+    };
+
+    const handleReportSubmit = (e) => {
+        e.preventDefault();
+        if (formData.kategoriAset === 'ASET' && !formData.umurEkonomis) {
+            return alert('Pilih umur ekonomis untuk kategori Aset.');
+        }
+
+        const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
+        
+        // Cek sisa dana keseluruhan dari Pengajuan Dana (Budget Request) induknya
+        const parentReq = budgetRequests.find(r => r.id === selectedRequest.reqId);
+        if (!parentReq) {
+            return alert('Data induk pengajuan tidak ditemukan.');
+        }
+
+        const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
+        const totalReportedForReq = (budgetReports || [])
+            .filter(r => r.budgetRequestId === selectedRequest.reqId && r.status !== 'REJECTED' && !r.isDeleted)
+            .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+        const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
+        
+        if (parseFloat(formData.amount) > sisaDanaPengajuan) {
+            return alert(`Jumlah realisasi tidak boleh melebihi sisa total pengajuan dana (${formatRupiah(sisaDanaPengajuan)}).`);
+        }
+
+        const reportData = {
+            id: editingDraftId || `REL-${Date.now()}`,
+            requestId: selectedRequest.reqId,
+            budgetRequestId: selectedRequest.reqId,
+            componentId: selectedRequest.componentId,
+            unitId: selectedRequest.reqUnitId,
+            fieldId: selectedRequest.fieldId,
+            academicYearId: globalAcademicYearId,
+            planId: selectedRequest.planId,
+            source: sourceMode, // Tag as YAYASAN or BOS
+            amount: parseFloat(formData.amount),
+            date: formData.date,
+            description: formData.description,
+            category: selectedRequest.name || 'General',
+            // Field baru
+            buktiTeks: formData.buktiTeks,
+            nomorNota: formData.nomorNota,
+            volume: formData.volume,
+            satuan: formData.satuan,
+            harga: formData.harga,
+            kategoriAset: formData.kategoriAset,
+            umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
+            status: 'DRAFT',
+            expenseItemId: selectedRequest.expenseItemId
+        };
+
+        if (editingDraftId) {
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: reportData });
+            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: reportData }, state);
+        } else {
+            dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
+            api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
+        }
+
+        setShowReportForm(false);
+        setEditingDraftId(null);
+    };
+
+    const handleSubmitDrafts = () => {
+        if (window.confirm(`Anda akan mengajukan ${draftReports.length} laporan ke Superadmin. Lanjutkan?`)) {
+            draftReports.forEach(draft => {
+                const updated = { ...draft, status: 'PENDING' };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            });
+        }
+    };
+
+    const handleDeleteDraft = (id) => {
+        if (window.confirm('Hapus nota (draft) ini? Saldo sisa dana akan kembali seperti semula.')) {
+            dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+            api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+        }
+    };
+
+    const handleApproveReport = async (report) => {
+        if (window.confirm('Setujui laporan ini? Draf Jurnal (Menunggu COA) akan otomatis dibuat.')) {
+            setProcessingId(report.id);
+            
+            // 1. Create Draft Journal
+            const journalId = `JRN-${Date.now()}`;
+            const unitName = state.units.find(u => u.id === report.unitId)?.name || '';
+            const fieldName = state.fields.find(f => f.id === report.fieldId)?.name || '';
+            const expItem = state.expenseItems.find(e => e.id === report.expenseItemId);
+            
+            const expName = expItem?.name || report.description || 'Pengeluaran';
+            const targetName = unitName || fieldName || 'Yayasan';
+            
+            const programId = state.programs.find(p => p.category === report.category)?.id || 'PRG-GEN';
+            
+            const descriptionText = report.description ? ` (${report.description})` : '';
+            const draftJournal = {
+                id: journalId,
+                date: report.date ? new Date(report.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
+                name: targetName,
+                description: `Realisasi: ${expName} - ${targetName}${descriptionText}`,
+                reference: report.nomorNota || report.planId || '',
+                proof: report.buktiTeks || '',
+                programId: programId,
+                entries: [
+                    { accountId: '', accountName: 'MENUNGGU COA (Debit)', debit: Number(report.amount) || 0, credit: 0 },
+                    { accountId: '', accountName: 'MENUNGGU COA (Kredit)', debit: 0, credit: Number(report.amount) || 0 }
+                ],
+                isDeleted: false
+            };
+
+            dispatch({ type: 'ADD_JOURNAL', payload: draftJournal });
+            await api.pushAction({ type: 'ADD_JOURNAL', payload: draftJournal }, state);
+
+            // 2. Update Report Status
+            const updated = { ...report, status: 'APPROVED', notified: false, journalId };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
             await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-            alert(`Laporan berhasil ${status === 'APPROVED' ? 'diverifikasi' : 'ditolak'}`);
-        } catch (err) {
-            alert('Gagal memproses verifikasi: ' + err.message);
-        } finally {
+            
             setProcessingId(null);
+            alert('Laporan berhasil disetujui dan draf jurnal otomatis dibuat!');
+        }
+    };
+
+    const handleRejectReport = async (report) => {
+        if (window.confirm('Tolak laporan ini? Saldo unit akan dikembalikan.')) {
+            setProcessingId(report.id);
+            const updated = { ...report, status: 'REJECTED', notified: false };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            setProcessingId(null);
+            alert('Laporan berhasil ditolak');
         }
     };
 
     return (
-        <div className="p-6 min-h-screen bg-slate-50/50">
-            <div className="print:hidden space-y-6">
-            {/* Header */}
-            <div className="flex items-start justify-between flex-wrap gap-4">
+        <div className="p-8 animate-in text-slate-900 bg-slate-50 min-h-screen">
+            <div className="print:hidden space-y-8">
+                {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3 tracking-tight mb-1 font-display">
                         <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30">
                             <Landmark size={20} className="text-white" />
                         </div>
-                        Laporan Realisasi BOS
+                        Laporan Pengeluaran BOS
                     </h1>
-                    <p className="text-slate-500 text-sm mt-1 ml-[52px] font-medium italic">
-                        Pelaporan penggunaan dana Bantuan Operasional Sekolah yang telah dicairkan
-                    </p>
+                    <p className="text-slate-500 font-medium italic mb-6 ml-[52px]">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
                 </div>
-
-                <div className="flex bg-white p-1 rounded-2xl border border-slate-200 shadow-sm">
-                    <button 
+                <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
+                    <button
                         onClick={() => setActiveTab('pending')}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'pending' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
                     >
-                        Perlu Dilaporkan ({pendingBOSReporting.length})
+                        Perlu Dilaporkan
+                        {pendingItems.length > 0 && (
+                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
+                        )}
                     </button>
-                    <button 
+                    <button
                         onClick={() => setActiveTab('history')}
-                        className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-emerald-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
                     >
-                        Riwayat & Verifikasi
+                        Riwayat Laporan
                     </button>
+                    {isSuperAdmin && (
+                        <button
+                            onClick={() => setActiveTab('verification')}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
+                        >
+                            Verifikasi Laporan
+                            {verificationReports.length > 0 && (
+                                <span className="ml-2 bg-rose-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{verificationReports.length}</span>
+                            )}
+                        </button>
+                    )}
                 </div>
-            </div>
-
-            {/* Stats Overview */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                {[
-                    { label: 'Total Dana BOS Cair', value: formatRupiah(stats.totalCair), icon: <ArrowUpRight className="text-emerald-500" />, color: 'text-emerald-600' },
-                    { label: 'Telah Dilaporkan', value: formatRupiah(stats.totalLapor), icon: <FileCheck className="text-blue-500" />, color: 'text-blue-600' },
-                    { label: 'Sisa Belum Dilaporkan', value: formatRupiah(stats.sisa), icon: <Receipt className="text-rose-500" />, color: 'text-rose-600' },
-                ].map((s, i) => (
-                    <div key={i} className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex items-center justify-between group hover:shadow-md transition-all">
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">{s.label}</p>
-                            <h3 className={`text-2xl font-black ${s.color} italic tracking-tighter`}>{s.value}</h3>
-                        </div>
-                        <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            {s.icon}
-                        </div>
-                    </div>
-                ))}
             </div>
 
             {activeTab === 'pending' ? (
-                <div className="space-y-4">
-                    {pendingBOSReporting.length > 0 && (
-                        /* Search & Filter Pending Items */
-                        <div className="flex flex-col sm:flex-row gap-4 items-center">
-                            <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500">
-                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <Search size={14} className="text-slate-400" />
-                                </div>
-                                <input
-                                    type="text"
-                                    value={pendingSearch}
-                                    onChange={(e) => setPendingSearch(e.target.value)}
-                                    placeholder="Cari rincian pengeluaran (nama, deskripsi, REQ)..."
-                                    className="w-full pl-10 pr-10 py-2.5 bg-transparent border-none outline-none text-xs font-bold text-slate-700 placeholder:text-slate-400"
-                                />
-                                {pendingSearch && (
-                                    <button
-                                        onClick={() => setPendingSearch('')}
-                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
-                                    >
-                                        <X size={14} />
-                                    </button>
-                                )}
+                <div className="space-y-6">
+                    {/* Search & Filter Pending Items */}
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Search size={14} className="text-slate-400" />
                             </div>
+                            <input
+                                type="text"
+                                value={pendingSearch}
+                                onChange={(e) => setPendingSearch(e.target.value)}
+                                placeholder="Cari rincian pengeluaran (nama, deskripsi, REQ)..."
+                                className="w-full pl-10 pr-10 py-2.5 bg-transparent border-none outline-none text-xs font-bold text-slate-700 placeholder:text-slate-400"
+                            />
+                            {pendingSearch && (
+                                <button
+                                    onClick={() => setPendingSearch('')}
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
                         </div>
-                    )}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* List of pending/draft reports */}
+                    <div className="lg:col-span-2 space-y-6">
 
 
-                    {pendingBOSReporting.length === 0 ? (
-                        <div className="bg-white p-20 rounded-[3rem] border border-slate-100 shadow-sm text-center flex flex-col items-center">
-                            <div className="w-20 h-20 bg-emerald-50 text-emerald-500 rounded-[2rem] flex items-center justify-center mb-6 animate-bounce">
-                                <CheckCircle2 size={40} />
-                            </div>
-                            <h3 className="text-2xl font-black text-slate-800 italic">Tertib Administrasi</h3>
-                            <p className="text-slate-400 font-medium max-w-sm mt-2 leading-relaxed">
-                                Semua dana BOS yang telah dicairkan sudah dilaporkan penggunaannya. Terima kasih atas ketertiban Anda.
-                            </p>
+
+                        <div className="flex items-center gap-2 mb-2 px-2">
+                            <AlertCircle size={16} className="text-emerald-500" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian yang Menunggu Laporan</span>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-1 gap-4">
-                            {filteredPendingBOSReporting.map(item => {
-                                const sisaPct = item.amount > 0 ? Math.round((item.sisa / item.amount) * 100) : 0;
-                                const terpakaiPct = item.amount > 0 ? Math.round(((item.amount - item.sisa) / item.amount) * 100) : 0;
-                                return (
-                                <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between hover:shadow-lg transition-all group border-l-8 border-l-emerald-500">
-                                    <div className="space-y-1 flex-1 mr-8">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full uppercase tracking-widest border border-emerald-100">
-                                                DANA BOS • {item.reqDate}
+
+                        {filteredPendingItems.length > 0 ? filteredPendingItems.map(item => {
+                            const unitName = units.find(u => u.id === item.reqUnitId)?.name || fields.find(f => f.id === item.reqUnitId)?.name;
+                            const sisaPct = item.amount > 0 ? Math.round((item.sisa / item.amount) * 100) : 0;
+                            const terpakaiPct = item.amount > 0 ? Math.round(((item.amount - item.sisa) / item.amount) * 100) : 0;
+                            return (
+                            <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-emerald-200 transition-all border-l-8 border-l-emerald-600">
+                                <div className="flex-1">
+                                    <h4 className="font-black text-slate-900 text-xl mb-1">{item.name}</h4>
+                                    <div className="flex flex-wrap items-center gap-3 text-slate-400 text-xs font-bold">
+                                        <span className="flex items-center gap-1"><History size={14} /> {item.reqDate}</span>
+                                        <span className="flex items-center gap-1 font-black text-emerald-600 italic">REQ: {item.reqId.slice(0, 8)}</span>
+                                        {isSuperAdmin && unitName && (
+                                            <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black">
+                                                <Building2 size={10} /> {unitName}
                                             </span>
-                                            <span className="text-[10px] font-bold text-slate-400 italic">REQ: {item.reqId.slice(0, 8)}</span>
-                                        </div>
-                                        <h4 className="text-2xl font-black text-slate-800 italic tracking-tight">{item.name}</h4>
-                                        <div className="flex items-center gap-2 text-slate-400 font-bold text-xs">
-                                            <Building2 size={14} />
-                                            {units.find(u => u.id === item.reqUnitId)?.name}
-                                        </div>
-                                        <p className="mt-2 text-sm text-slate-500">{item.reqDescription}</p>
-
-                                        {/* Progress bar terpakai */}
-                                        <div className="mt-4 max-w-md">
-                                            <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                                                <span>Terpakai {terpakaiPct}%</span><span>Sisa {sisaPct}%</span>
-                                            </div>
-                                            <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${terpakaiPct}%` }} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-10 shrink-0">
-                                        <div className="text-right">
-                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Dana Belum Dilaporkan</p>
-                                            <h4 className="text-3xl font-black text-rose-600 italic tracking-tighter">
-                                                {formatRupiah(item.sisa)}
-                                            </h4>
-                                            <p className="text-[10px] font-bold text-slate-400">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
-                                        </div>
-                                        {!isSuperAdmin && (
-                                            <button 
-                                                onClick={() => window.location.href = '/pelaporan/bulanan?source=BOS'} 
-                                                className="px-8 py-4 bg-emerald-600 text-white rounded-3xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-600/20 hover:scale-105 transition-all flex items-center gap-2"
-                                            >
-                                                <Save size={16} /> Buat Laporan
-                                            </button>
                                         )}
                                     </div>
+                                    {/* Progress bar terpakai */}
+                                    <div className="mt-4">
+                                        <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                                            <span>Terpakai {terpakaiPct}%</span>
+                                            <span className={item.sisa < 0 ? 'text-rose-500 font-bold' : ''}>
+                                                Sisa {sisaPct}%
+                                            </span>
+                                        </div>
+                                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                            <div className={`h-full ${terpakaiPct > 100 ? 'bg-rose-500' : 'bg-emerald-500'} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(terpakaiPct, 0), 100)}%` }} />
+                                        </div>
+                                    </div>
+                                    
+                                    {/* LOCAL DRAFTS SECTION */}
+                                    {(() => {
+                                        const localDrafts = draftReports.filter(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
+                                        if (localDrafts.length === 0) return null;
+                                        return (
+                                            <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200">
+                                                <div className="flex items-center justify-between mb-3 border-b border-amber-200/50 pb-2">
+                                                    <h5 className="font-black text-amber-900 text-xs flex items-center gap-1.5 uppercase tracking-widest">
+                                                        <Package size={14} /> Draft Nota
+                                                    </h5>
+                                                    <button onClick={() => {
+                                                        if (window.confirm(`Ajukan ${localDrafts.length} draft laporan ini ke Superadmin?`)) {
+                                                            localDrafts.forEach(draft => {
+                                                                const updated = { ...draft, status: 'PENDING' };
+                                                                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                                                                api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                                                            });
+                                                        }
+                                                    }} className="px-3 py-1 bg-amber-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-600 transition-colors shadow-sm shadow-amber-500/20">
+                                                        Ajukan Draft
+                                                    </button>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {localDrafts.map(draft => (
+                                                        <div key={draft.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
+                                                            <div>
+                                                                <p className="text-xs font-bold text-slate-800">{draft.description}</p>
+                                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Nota: {draft.nomorNota || '-'} | Vol: {draft.volume} {draft.satuan}</p>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <span className="font-black text-amber-600 text-xs">{formatRupiah(parseFloat(draft.amount || 0))}</span>
+                                                                <div className="flex items-center gap-1">
+                                                                    <button onClick={() => handleEditDraft(draft)} className="text-emerald-500 hover:text-emerald-700 p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors" title="Edit">
+                                                                        <Edit2 size={12} strokeWidth={3} />
+                                                                    </button>
+                                                                    <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors" title="Hapus">
+                                                                        <Trash2 size={12} strokeWidth={3} />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
-                            )})}
-                            {filteredPendingBOSReporting.length === 0 && (
-                                <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 shadow-sm text-center text-slate-400 italic font-medium">
-                                    {pendingSearch ? 'Tidak ada rincian yang cocok dengan kata kunci pencarian.' : 'Tidak ada rincian BOS untuk unit ini.'}
+
+                                <div className="text-right shrink-0">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana Rincian</p>
+                                    <h4 className={`text-2xl font-black mb-1 ${item.sisa < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>{formatRupiah(item.sisa)}</h4>
+                                    <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
+                                    <div className="flex flex-col gap-2 mt-2 w-full">
+                                        {!isSuperAdmin && (
+                                            <button
+                                                onClick={() => handleOpenReportForm(item)}
+                                                className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
+                                            >
+                                                <FileCheck size={16} />
+                                                <span>Buat Laporan</span>
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={() => { setSelectedItemForReports(item); setShowReportsList(true); }}
+                                            className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <History size={14} />
+                                            <span>Lihat Laporan ({getReportsCountForItem(item)})</span>
+                                        </button>
+                                    </div>
                                 </div>
-                            )}
+                            </div>
+                        )}) : (
+                            <div className="card p-20 text-center text-slate-400 italic font-medium">
+                                {pendingSearch ? 'Tidak ada rincian yang cocok dengan kata kunci pencarian.' : (selectedUnitFilter !== 'ALL' ? 'Tidak ada rincian untuk unit ini.' : 'Tidak ada rincian dana yang menunggu laporan.')}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Pending Sidebar summary */}
+                    <div className="lg:col-span-1 space-y-6">
+                        <div className="card p-8 bg-emerald-50 border-emerald-100 text-center">
+                            <div className="w-16 h-16 bg-white text-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-sm">
+                                <CheckCircle2 size={32} />
+                            </div>
+                            <h3 className="text-xl font-black text-slate-900 mb-2">Tertib Administrasi</h3>
+                            <p className="text-sm text-slate-600 font-medium leading-relaxed">Pastikan semua pengeluaran dilaporkan tepat waktu untuk menjaga transparansi keuangan Yayasan.</p>
                         </div>
-                    )}
+
+                        <div className="card p-8">
+                            <h4 className="font-black text-slate-900 uppercase text-[10px] tracking-widest mb-6 border-b border-slate-100 pb-4 flex items-center justify-between">
+                                <span>Statistik Laporan</span>
+                                <ArrowUpRight size={14} />
+                            </h4>
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400">Total Cair</span>
+                                    <span className="text-sm font-black text-slate-700">{formatRupiah(totalCair)}</span>
+                                </div>
+                                <div className="flex justify-between items-center">
+                                    <span className="text-xs font-bold text-slate-400">Total Lapor</span>
+                                    <span className="text-sm font-black text-emerald-600">{formatRupiah(totalLapor)}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-t border-slate-100 pt-4">
+                                    <span className="text-xs font-bold text-slate-400">Total Sisa</span>
+                                    <span className="text-sm font-black text-amber-500">{formatRupiah(totalSisa)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            ) : (
-                <div className="bg-white rounded-[3rem] border border-slate-100 shadow-sm overflow-hidden animate-in fade-in duration-500">
-                    <div className="p-8 border-b border-slate-100 flex items-center justify-between flex-wrap gap-4 bg-gradient-to-r from-white to-slate-50/50">
-                        <div className="flex items-center gap-6 flex-1 min-w-[300px]">
-                            <div className="flex items-center gap-2 bg-emerald-600 text-white px-5 py-2.5 rounded-2xl shadow-lg shadow-emerald-600/20">
-                                <History size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">Data Realisasi BOS</span>
+            </div>
+            ) : activeTab === 'history' ? (
+                <div className="space-y-6">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {[
+                            { label: 'Total Laporan', value: filteredReports.length, unit: 'transaksi', color: 'emerald' },
+                            { label: 'Total Nilai', value: formatRupiah(totalNilai), unit: '', color: 'slate' },
+                            { label: 'Kategori Aset', value: totalAset, unit: 'transaksi', color: 'emerald' },
+                            { label: 'Non Aset', value: totalNonAset, unit: 'transaksi', color: 'amber' },
+                        ].map((s, i) => (
+                            <div key={i} className={`card p-5 border-l-4 ${i === 0 ? 'border-l-emerald-500' : i === 1 ? 'border-l-slate-400' : i === 2 ? 'border-l-emerald-500' : 'border-l-amber-500'}`}>
+                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
+                                <p className="text-xl font-black text-slate-800">{s.value}</p>
+                                {s.unit && <p className="text-[9px] text-slate-400 font-bold">{s.unit}</p>}
                             </div>
-                            {isSuperAdmin && (
-                                <select 
-                                    value={selectedUnitFilter} 
-                                    onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                                    className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-emerald-100 outline-none cursor-pointer shadow-sm w-[200px]"
-                                >
-                                    <option value="ALL">Semua Unit</option>
-                                    {units.map(u => <option key={u.id} value={u.id} className={pendingVerificationUnits.has(u.id) ? 'text-rose-600' : ''}>{u.name} {pendingVerificationUnits.has(u.id) ? '🔴' : ''}</option>)}
-                                </select>
-                            )}
-                            <div className="flex-1 flex items-center gap-3 bg-slate-100 border border-slate-200 rounded-2xl px-5 py-3 focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
-                                <Search size={16} className="text-slate-400" />
-                                <input 
-                                    type="text" 
-                                    placeholder="Cari nomor nota atau keterangan..."
-                                    value={searchTerm}
-                                    onChange={e => setSearchTerm(e.target.value)}
-                                    className="bg-transparent border-none outline-none text-sm font-bold text-slate-600 placeholder-slate-400 w-full"
-                                />
-                            </div>
+                        ))}
+                    </div>
+
+                    {/* Filter Bar */}
+                    <div className="card p-5 flex flex-wrap gap-4 items-center">
+                        <div className="flex items-center gap-2 flex-1 min-w-[180px] bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                            <Search size={14} className="text-slate-400" />
+                            <input
+                                className="bg-transparent text-xs font-bold text-slate-700 placeholder:text-slate-400 outline-none flex-1"
+                                placeholder="Cari nota, keterangan, kategori..."
+                                value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button className="p-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm">
-                                <Filter size={20} />
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                            <Tag size={14} className="text-slate-400" />
+                            <select className="bg-transparent text-xs font-bold text-slate-700 outline-none"
+                                value={filterKategori} onChange={e => setFilterKategori(e.target.value)}>
+                                <option value="ALL">Semua Kategori</option>
+                                <option value="ASET">Aset</option>
+                                <option value="NON_ASET">Non Aset</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                            <Calendar size={14} className="text-slate-400" />
+                            <input type="date" className="bg-transparent text-xs font-bold text-slate-600 outline-none"
+                                value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
+                            <span className="text-slate-300 text-xs">—</span>
+                            <input type="date" className="bg-transparent text-xs font-bold text-slate-600 outline-none"
+                                value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
+                        </div>
+                        {(search || filterKategori !== 'ALL' || filterDateFrom || filterDateTo) && (
+                            <button onClick={() => { setSearch(''); setFilterKategori('ALL'); setFilterDateFrom(''); setFilterDateTo(''); }}
+                                className="text-[10px] font-black text-rose-500 hover:text-rose-700 uppercase tracking-widest">
+                                Reset Filter
                             </button>
-                            <button className="flex items-center gap-2 px-4 py-3 bg-slate-100 text-slate-500 rounded-2xl hover:bg-emerald-50 hover:text-emerald-600 transition-all shadow-sm text-xs font-bold uppercase tracking-widest">
-                                <Download size={16} /> Export
+                        )}
+                        <div className="flex gap-2 ml-auto">
+                            <button
+                                onClick={() => alert('Fitur export Excel akan segera tersedia.')}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
+                                <Download size={14} /> Export Excel
                             </button>
-                            <button onClick={() => window.print()} className="flex items-center gap-2 px-4 py-3 bg-emerald-600 text-white rounded-2xl hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-500/20 text-xs font-bold uppercase tracking-widest">
-                                <FileCheck size={16} /> Cetak
+                            <button
+                                onClick={() => window.print()}
+                                className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
+                                <FileCheck size={14} /> Cetak
                             </button>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead>
-                                <tr className="bg-slate-50/50">
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-16 italic">No</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-left italic">Tanggal</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-left italic">Nomor Nota</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-left italic">Uraian Belanja BOS</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right italic">Jumlah</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center italic">Kategori</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center italic">Status</th>
-                                    <th className="px-5 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-16"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredReports.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="8" className="py-20 text-center">
-                                            <div className="flex flex-col items-center gap-4">
-                                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center">
-                                                    <Search size={30} className="text-slate-200" />
-                                                </div>
-                                                <p className="text-slate-400 font-bold italic">Tidak ada riwayat pelaporan BOS ditemukan</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredReports.map((r, idx) => (
-                                        <ReportRow 
-                                            key={r.id} 
-                                            report={r} 
-                                            units={units} 
-                                            isSuperAdmin={isSuperAdmin} 
-                                            idx={idx} 
-                                        />
-                                    ))
+                    {/* Dense Table */}
+                    <div className="card overflow-hidden rounded-2xl border-0 shadow-xl">
+                        <div className="bg-slate-900 px-6 py-4 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <History size={14} className="text-emerald-400" />
+                                <span className="text-[10px] font-black text-white uppercase tracking-widest">Riwayat Laporan Realisasi</span>
+                            </div>
+                            <div className="flex items-center gap-4">
+                                {!isSuperAdmin && selectedHistoryIds.length > 0 && (
+                                    <button 
+                                        onClick={handleBulkSubmitHistory} 
+                                        disabled={processingId === 'BULK_HISTORY'}
+                                        className="px-3 py-1.5 bg-emerald-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/30">
+                                        {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Terpilih`}
+                                    </button>
                                 )}
-                            </tbody>
-                        </table>
+                                <span className="text-[9px] text-slate-400 font-bold">{filteredReports.length} data ditampilkan</span>
+                            </div>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100">
+                                        {!isSuperAdmin && (
+                                            <th className="px-5 py-3 w-12 text-center">
+                                                <input 
+                                                    type="checkbox" 
+                                                    className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shadow-sm"
+                                                    onChange={handleSelectAllHistory}
+                                                    checked={filteredReports.filter(r => r.status === 'DRAFT').length > 0 && selectedHistoryIds.length === filteredReports.filter(r => r.status === 'DRAFT').length}
+                                                />
+                                            </th>
+                                        )}
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-10">No</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Rincian</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Keterangan</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Mata Anggaran</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Kategori</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                        <th className="px-5 py-3 w-8"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredReports.length > 0
+                                        ? filteredReports.map((report, idx) => (
+                                            <ReportRow 
+                                                key={report.id} 
+                                                report={report} 
+                                                units={units} 
+                                                expenseItems={expenseItems} 
+                                                rabPlans={rabPlans} 
+                                                budgetRequests={budgetRequests} 
+                                                isSuperAdmin={isSuperAdmin} 
+                                                idx={idx} 
+                                                selectable={!isSuperAdmin && report.status === 'DRAFT'}
+                                                isSelected={selectedHistoryIds.includes(report.id)}
+                                                onToggleSelect={handleToggleSelectHistory}
+                                                onEdit={() => handleEditDraft(report)}
+                                                onDelete={() => handleDeleteDraft(report.id)}
+                                            />
+                                        ))
+                                        : (
+                                            <tr>
+                                                <td colSpan="10" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
+                                                    {baseReports.length === 0 ? 'Belum ada laporan yang dibuat.' : 'Tidak ada data yang cocok dengan filter.'}
+                                                </td>
+                                            </tr>
+                                        )}
+                                </tbody>
+                                {filteredReports.length > 0 && (
+                                    <tfoot>
+                                        <tr className="bg-slate-900 text-white">
+                                            <td colSpan={isSuperAdmin ? 6 : 7} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
+                                            <td className="px-5 py-4 text-right font-black text-emerald-400 text-base">{formatRupiah(totalNilai)}</td>
+                                            <td colSpan="4"></td>
+                                        </tr>
+                                    </tfoot>
+                                )}
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ) : activeTab === 'verification' && isSuperAdmin ? (
+                /* VERIFICATION TAB */
+                <div className="space-y-6">
+                    <div className="card p-6 bg-emerald-50 border-emerald-100 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                            <AlertCircle size={24} className="text-emerald-600" />
+                            <div>
+                                <h3 className="font-black text-emerald-900 text-lg">Persetujuan Laporan Realisasi</h3>
+                                <p className="text-xs text-emerald-600 font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
+                            </div>
+                        </div>
+                        <select 
+                            value={selectedUnitFilter} 
+                            onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                            className="bg-white border-0 rounded-xl px-4 py-3 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-emerald-100 outline-none cursor-pointer shadow-sm shrink-0 w-full md:w-auto"
+                        >
+                            <option value="ALL">Semua Unit & Bidang</option>
+                            <optgroup label="Bidang">
+                                {fields.map(f => <option key={f.id} value={f.id} className={pendingVerificationUnits.has(f.id) ? 'text-rose-600' : ''}>{f.name} {pendingVerificationUnits.has(f.id) ? '🔴' : ''}</option>)}
+                            </optgroup>
+                            <optgroup label="Unit Pendidikan">
+                                {units.map(u => <option key={u.id} value={u.id} className={pendingVerificationUnits.has(u.id) ? 'text-rose-600' : ''}>{u.name} {pendingVerificationUnits.has(u.id) ? '🔴' : ''}</option>)}
+                            </optgroup>
+                        </select>
+                    </div>
+
+                    <div className="card overflow-hidden rounded-2xl border-0 shadow-xl animate-in fade-in duration-300">
+                        <div className="bg-slate-900 px-6 py-4 flex items-center gap-3 flex-wrap">
+                            <CheckCircle2 size={14} className="text-emerald-400" />
+                            <span className="text-[10px] font-black text-white uppercase tracking-widest">Daftar Menunggu Persetujuan</span>
+                            <span className="text-[9px] text-slate-400 font-bold bg-slate-800 px-2 py-0.5 rounded-full">{verificationReports.length} laporan</span>
+                            
+                            {selectedReportIds.length > 0 && (
+                                <div className="ml-auto flex items-center gap-2 animate-in slide-in-from-right-5 duration-300">
+                                    <span className="text-[10px] font-black text-amber-400 uppercase tracking-widest mr-2">{selectedReportIds.length} Terpilih</span>
+                                    <button
+                                        onClick={handleBulkApprove}
+                                        disabled={processingId !== null}
+                                        className="px-4 py-2 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center gap-1.5 active:scale-95"
+                                    >
+                                        {processingId === 'BULK' ? <Loader2 size={12} className="animate-spin" /> : <CheckCircle2 size={12} />}
+                                        Setujui Masal
+                                    </button>
+                                    <button
+                                        onClick={handleBulkReject}
+                                        disabled={processingId !== null}
+                                        className="px-4 py-2 bg-rose-500 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-rose-600 transition-all shadow-lg shadow-rose-500/20 disabled:opacity-50 flex items-center gap-1.5 active:scale-95"
+                                    >
+                                        {processingId === 'BULK' ? <Loader2 size={12} className="animate-spin" /> : <AlertCircle size={12} />}
+                                        Tolak Masal
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse">
+                                <thead>
+                                    <tr className="bg-slate-50 border-b border-slate-100">
+                                        <th className="px-5 py-3 w-12 text-center">
+                                            <input 
+                                                type="checkbox"
+                                                className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                checked={verificationReports.length > 0 && selectedReportIds.length === verificationReports.length}
+                                                onChange={handleSelectAll}
+                                            />
+                                        </th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Unit / Tgl</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Rincian</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Keterangan</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Kategori</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {verificationReports.length > 0
+                                        ? verificationReports.map((report) => (
+                                            <tr key={report.id} className={`border-b border-slate-100 hover:bg-slate-50/50 transition-colors ${selectedReportIds.includes(report.id) ? 'bg-emerald-50/30' : ''}`}>
+                                                <td className="px-5 py-4 text-center">
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer"
+                                                        checked={selectedReportIds.includes(report.id)}
+                                                        onChange={() => handleSelectRow(report.id)}
+                                                    />
+                                                </td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center gap-1 mb-1">
+                                                        <Building2 size={10} className="text-slate-400" />
+                                                        <span className="text-[10px] font-black text-slate-600">{units.find(u => u.id === report.unitId)?.name || 'Umum'}</span>
+                                                    </div>
+                                                    <span className="text-xs font-bold text-slate-400">{report.date}</span>
+                                                </td>
+                                                <td className="px-5 py-4 text-xs font-black text-emerald-600 font-mono">{report.nomorNota || '—'}</td>
+                                                <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.category || '—'}</td>
+                                                <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={report.description}>{report.description}</td>
+                                                <td className="px-5 py-4 text-center text-xs font-bold text-slate-600">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                                <td className="px-5 py-4 text-right text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                                <td className="px-5 py-4 text-center"><AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} /></td>
+                                                <td className="px-5 py-4">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        <button 
+                                                            onClick={() => handleApproveReport(report)} 
+                                                            disabled={processingId !== null}
+                                                            className="px-3 py-1.5 bg-emerald-500 text-white text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                                        >
+                                                            {processingId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                                                            Setujui
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => handleRejectReport(report)} 
+                                                            disabled={processingId !== null}
+                                                            className="px-3 py-1.5 bg-rose-550 bg-rose-50 text-rose-600 text-[10px] font-black uppercase tracking-widest rounded-lg hover:bg-rose-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                                                        >
+                                                            {processingId === report.id ? <Loader2 size={12} className="animate-spin" /> : null}
+                                                            Tolak
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                        : (
+                                            <tr>
+                                                <td colSpan="9" className="px-8 py-4 bg-emerald-50/20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
+                                            </tr>
+                                        )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            ) : null}
+
+            {/* Reports List Modal */}
+            {showReportsList && selectedItemForReports && (
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }} />
+                    <div className="bg-white rounded-[40px] w-full max-w-4xl relative z-10 shadow-2xl overflow-hidden animate-in max-h-[92vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-start flex-shrink-0">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Riwayat Pengeluaran Belanja</h2>
+                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Komponen: {selectedItemForReports.name}</p>
+                            </div>
+                            <button
+                                onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }}
+                                className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="overflow-y-auto flex-1 p-8 custom-scrollbar">
+                            {itemReports.length === 0 ? (
+                                <div className="p-12 text-center text-slate-400 italic font-medium">
+                                    Belum ada pengeluaran yang dilaporkan untuk komponen ini.
+                                </div>
+                            ) : (
+                                <div className="overflow-x-auto rounded-2xl border border-slate-100">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100">
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-12">No</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {itemReports.map((report, idx) => {
+                                                const reportDate = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                                                return (
+                                                    <tr key={report.id} className="border-b border-slate-50 hover:bg-slate-50/50 transition-colors">
+                                                        <td className="px-5 py-4 text-center text-xs font-bold text-slate-400">{idx + 1}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-slate-600">{reportDate}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold font-mono text-emerald-600">{report.nomorNota || '—'}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.description || '—'}</td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-slate-500 text-center">
+                                                            {report.volume ? `${parseFloat(report.volume)} ${report.satuan || ''}` : '—'}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-xs font-black text-slate-800 text-right">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            {report.status === 'APPROVED' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                                                    ACC
+                                                                </span>
+                                                            ) : report.status === 'REJECTED' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-rose-50 text-rose-700 border border-rose-200">
+                                                                    Ditolak
+                                                                </span>
+                                                            ) : report.status === 'PENDING' ? (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-700 border border-amber-200">
+                                                                    Pending
+                                                                </span>
+                                                            ) : (
+                                                                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-200">
+                                                                    Draft
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-8 border-t border-slate-100 bg-slate-50 flex items-center justify-between flex-shrink-0">
+                            <div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Total Realisasi Rincian</span>
+                                <span className="text-lg font-black text-emerald-700">
+                                    {formatRupiah(itemReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0))}
+                                </span>
+                            </div>
+                            <button
+                                onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }}
+                                className="px-8 py-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-2xl font-black text-xs uppercase transition-colors"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Report Form Modal */}
+            {showReportForm && (
+                <div className="fixed inset-0 z-[1100] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowReportForm(false)} />
+                    <div className="bg-white rounded-[40px] w-full max-w-3xl relative z-10 shadow-2xl overflow-hidden animate-in max-h-[92vh] flex flex-col">
+                        {/* Modal Header */}
+                        <div className="p-8 border-b border-slate-100 flex justify-between items-start flex-shrink-0">
+                            <div>
+                                <h2 className="text-2xl font-black text-slate-900">Laporan Penggunaan Dana</h2>
+                                <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ref: {selectedRequest?.description}</p>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor (Sisa Pengajuan)</p>
+                                <span className="text-lg font-black text-emerald-700">
+                                    {(() => {
+                                        const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
+                                        if (!parentReq) return 'Rp 0';
+                                        const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
+                                        const totalReportedForReq = (budgetReports || [])
+                                            .filter(r => r.budgetRequestId === selectedRequest?.reqId && r.status !== 'REJECTED' && !r.isDeleted)
+                                            .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                                        const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
+                                        const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
+                                        return formatRupiah(sisaDanaPengajuan);
+                                    })()}
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Scrollable body */}
+                        <div className="overflow-y-auto flex-1 custom-scrollbar">
+                            <form id="report-form" onSubmit={handleReportSubmit} className="p-8 space-y-6">
+
+                                {/* Row 1: Tanggal + Nomor Nota */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <label className="form-label">Tanggal Pelaporan <span className="text-rose-500">*</span></label>
+                                        <input type="date" className="form-input" value={formData.date}
+                                            onChange={e => setFormData({ ...formData, date: e.target.value })} required />
+                                    </div>
+                                    <div>
+                                        <label className="form-label">Nomor Urut Nota <span className="text-rose-500">*</span></label>
+                                        <input type="text" className="form-input" placeholder="Contoh: 001"
+                                            value={formData.nomorNota}
+                                            onChange={e => setFormData({ ...formData, nomorNota: e.target.value })} required />
+                                    </div>
+                                </div>
+
+                                {/* Row 2: Volume + Satuan + Harga → auto Jumlah */}
+                                <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian Pembelian</p>
+                                    <div className="grid grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="form-label">Volume</label>
+                                            <input type="number" min="0" step="any" className="form-input" placeholder="Qty"
+                                                value={formData.volume}
+                                                onChange={e => {
+                                                    const vol = e.target.value;
+                                                    const currentHarga = formData.harga || 0;
+                                                    const total = parseFloat(vol || 0) * parseFloat(currentHarga);
+                                                    setFormData({ ...formData, volume: vol, amount: total || formData.amount });
+                                                }} />
+                                        </div>
+                                        <div>
+                                            <label className="form-label">Satuan</label>
+                                            <input type="text" className="form-input" placeholder="Buah / Rim / Kg"
+                                                value={formData.satuan}
+                                                onChange={e => setFormData({ ...formData, satuan: e.target.value })} />
+                                        </div>
+                                        <div>
+                                            <label className="form-label">Harga Satuan (Rp)</label>
+                                            <input type="number" min="0" className="form-input" placeholder="0"
+                                                value={formData.harga}
+                                                onChange={e => {
+                                                    const hrg = e.target.value;
+                                                    const currentVol = formData.volume || 0;
+                                                    const total = parseFloat(currentVol) * parseFloat(hrg || 0);
+                                                    setFormData({ ...formData, harga: hrg, amount: total || formData.amount });
+                                                }} />
+                                        </div>
+                                    </div>
+                                    {/* Auto total display */}
+                                    <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 rounded-2xl border border-emerald-100">
+                                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Total Otomatis</span>
+                                        <span className="font-black text-emerald-700 text-base">
+                                            {formatRupiah(parseFloat(formData.volume || 0) * parseFloat(formData.harga || 0))}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Row 3: Jumlah Realisasi (editable override) */}
+                                <div>
+                                    <label className="form-label">Jumlah Realisasi (Rp) <span className="text-rose-500">*</span></label>
+                                    <input type="number" className="form-input font-black text-emerald-600" placeholder="0"
+                                        value={formData.amount}
+                                        onChange={e => setFormData({ ...formData, amount: e.target.value })} required />
+                                    <p className="text-[10px] text-slate-400 mt-1 italic">*Otomatis terisi dari volume × harga. Bisa diubah manual.</p>
+                                </div>
+
+                                {/* Row 4: Keterangan Detail */}
+                                <div>
+                                    <label className="form-label">Keterangan Detail <span className="text-rose-500">*</span></label>
+                                    <textarea className="form-input h-[90px] !py-3" placeholder="Jelaskan penggunaan dana secara spesifik..."
+                                        value={formData.description}
+                                        onChange={e => setFormData({ ...formData, description: e.target.value })} required />
+                                </div>
+
+                                {/* Row 5: Bukti Transaksi – teks */}
+                                <div>
+                                    <label className="form-label">Bukti Transaksi (Teks)</label>
+                                    <textarea className="form-input h-[80px] !py-3"
+                                        placeholder="Nomor kwitansi, nama toko, atau keterangan bukti transaksi lainnya..."
+                                        value={formData.buktiTeks}
+                                        onChange={e => setFormData({ ...formData, buktiTeks: e.target.value })} />
+                                </div>
+
+                                {/* Row 6: Kategori Aset */}
+                                <div className="p-5 rounded-3xl border-2 border-slate-100 space-y-4">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Penggunaan</p>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {[{ val: 'NON_ASET', label: 'Non Aset', sub: 'Habis pakai / Jasa' },
+                                        { val: 'ASET', label: 'Aset', sub: 'Barang inventaris / Tetap' }].map(opt => (
+                                            <div
+                                                key={opt.val}
+                                                onClick={() => setFormData({ ...formData, kategoriAset: opt.val, umurEkonomis: '' })}
+                                                className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${formData.kategoriAset === opt.val
+                                                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                    : 'border-slate-100 hover:border-slate-200 text-slate-600'
+                                                    }`}
+                                            >
+                                                <p className="font-black text-sm">{opt.label}</p>
+                                                <p className="text-[10px] font-bold opacity-60 mt-0.5">{opt.sub}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Umur Ekonomis – muncul hanya jika ASET */}
+                                    {formData.kategoriAset === 'ASET' && (
+                                        <div>
+                                            <label className="form-label">Umur Ekonomis (Tahun) <span className="text-rose-500">*</span></label>
+                                            <div className="grid grid-cols-4 gap-3">
+                                                {['4', '8', '10', '20'].map(yr => (
+                                                    <button
+                                                        type="button"
+                                                        key={yr}
+                                                        onClick={() => setFormData({ ...formData, umurEkonomis: yr })}
+                                                        className={`py-3 rounded-2xl font-black text-sm border-2 transition-all ${formData.umurEkonomis === yr
+                                                            ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                                                            : 'border-slate-100 hover:border-slate-200 text-slate-500'
+                                                            }`}
+                                                    >
+                                                        {yr} Thn
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Sinkronisasi Jurnal Info */}
+                                <div className="p-5 bg-emerald-50/60 rounded-3xl border border-blue-100">
+                                    <h5 className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                        <Receipt size={14} /> Sinkronisasi Jurnal
+                                    </h5>
+                                    <p className="text-xs text-slate-600 leading-relaxed font-medium">
+                                        Sistem akan otomatis membuat entri di <b>Jurnal Umum</b> dan memperbarui <b>Buku Besar</b> setelah laporan ini dikonfirmasi.
+                                        {formData.kategoriAset === 'ASET' && formData.umurEkonomis && (
+                                            <span className="block mt-1 text-emerald-600 font-bold">✓ Aset baru akan tercatat dengan umur ekonomis {formData.umurEkonomis} tahun.</span>
+                                        )}
+                                    </p>
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* Fixed Footer */}
+                        <div className="p-8 border-t border-slate-100 flex gap-4 flex-shrink-0 bg-white">
+                            <button type="button" onClick={() => setShowReportForm(false)} className="btn btn-secondary flex-1">Batal</button>
+                            <button type="submit" form="report-form" className="btn btn-primary flex-1 shadow-emerald-500/20">
+                                <Save size={18} />
+                                <span>Simpan Nota (Draft)</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
@@ -558,52 +1732,55 @@ export default function BOSMonthlyReport() {
 
             {/* Printable Area (Hidden on screen, visible on print) */}
             <div className="hidden print:block text-black bg-white w-full">
-                <div className="text-center mb-6">
-                    <h2 className="text-xl font-black uppercase">LAPORAN REALISASI BOS</h2>
-                    <p className="text-sm font-bold mt-1">
-                        {myUnitId ? (units.find(u => u.id === myUnitId)?.name || '') : 'Semua Unit'}
+                <div className="text-center mb-3">
+                    <h2 className="text-base font-black uppercase">LAPORAN PENGELUARAN YAYASAN</h2>
+                    <p className="text-xs font-bold mt-0.5">
+                        {myUnitId ? (units.find(u => u.id === myUnitId)?.name || '') : 'Semua Unit'} 
+                        {filterDateFrom && filterDateTo ? ` (${filterDateFrom} s.d ${filterDateTo})` : ''}
                     </p>
                 </div>
                 
-                <table className="w-full text-left border-collapse border border-slate-800 text-[10px]">
+                <table className="w-full text-left border-collapse border border-slate-800 text-[9px]">
                     <thead>
                         <tr className="bg-slate-100">
-                            <th className="p-2 border border-slate-800 text-center font-bold">No</th>
-                            <th className="p-2 border border-slate-800 font-bold">Tanggal</th>
-                            <th className="p-2 border border-slate-800 font-bold">No. Nota</th>
-                            <th className="p-2 border border-slate-800 font-bold">Uraian Belanja BOS</th>
-                            <th className="p-2 border border-slate-800 font-bold">Bukti Transaksi</th>
-                            <th className="p-2 border border-slate-800 text-center font-bold">Volume</th>
-                            <th className="p-2 border border-slate-800 text-right font-bold">Harga</th>
-                            <th className="p-2 border border-slate-800 text-right font-bold">Jumlah</th>
-                            <th className="p-2 border border-slate-800 text-center font-bold">Kategori</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">No</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Tanggal</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">No. Nota</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Keterangan</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Jenis Belanja</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Bukti Transaksi</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">Volume</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-right font-bold">Harga</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-right font-bold">Jumlah</th>
+                            <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">Kategori</th>
                         </tr>
                     </thead>
                     <tbody>
                         {filteredReports.map((report, idx) => (
                             <tr key={report.id}>
-                                <td className="p-2 border border-slate-800 text-center">{idx + 1}</td>
-                                <td className="p-2 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
-                                <td className="p-2 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
-                                <td className="p-2 border border-slate-800">{report.category || report.description || 'Realisasi BOS'}</td>
-                                <td className="p-2 border border-slate-800">{report.buktiTeks || '—'}</td>
-                                <td className="p-2 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
-                                <td className="p-2 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
-                                <td className="p-2 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
-                                <td className="p-2 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center">{idx + 1}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800">{report.description || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.category || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800">{report.buktiTeks || '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
                             </tr>
                         ))}
                         {filteredReports.length === 0 && (
                             <tr>
-                                <td colSpan="9" className="p-4 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
+                                <td colSpan="10" className="p-2 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
                             </tr>
                         )}
                     </tbody>
                     {filteredReports.length > 0 && (
                         <tfoot>
                             <tr className="bg-slate-100">
-                                <td colSpan="7" className="p-2 border border-slate-800 text-right font-black uppercase">Total Pengeluaran BOS</td>
-                                <td className="p-2 border border-slate-800 text-right font-black">{formatRupiah(stats.totalLapor)}</td>
+                                <td colSpan="8" className="px-1 py-0.5 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-right font-black">{formatRupiah(totalNilai)}</td>
                                 <td className="border border-slate-800"></td>
                             </tr>
                         </tfoot>
