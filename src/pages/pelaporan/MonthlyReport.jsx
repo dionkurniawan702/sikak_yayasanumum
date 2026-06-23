@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -204,7 +205,14 @@ export default function MonthlyReport() {
     const [showReportForm, setShowReportForm] = useState(false);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
     const [processingId, setProcessingId] = useState(null);
-    const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
+    const [searchParams] = useSearchParams();
+    const sourceParam = searchParams.get('source') || 'YAYASAN';
+    const [sourceMode, setSourceMode] = useState(sourceParam.toUpperCase() === 'BOS' ? 'BOS' : 'YAYASAN');
+
+    React.useEffect(() => {
+        setSourceMode(sourceParam.toUpperCase() === 'BOS' ? 'BOS' : 'YAYASAN');
+    }, [sourceParam]);
+
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
     const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission
     const [showReportsList, setShowReportsList] = useState(false);
@@ -941,27 +949,21 @@ export default function MonthlyReport() {
                 {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">Laporan Pengeluaran</h1>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-1 font-display">
+                        Laporan Pengeluaran {sourceMode === 'BOS' ? 'BOS' : 'Yayasan'}
+                    </h1>
                     <p className="text-slate-500 font-medium italic mb-6">Laporkan realisasi penggunaan dana yang telah dicairkan.</p>
                     
-                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200 mb-8 inline-flex">
-                        <button 
-                            onClick={() => setSourceMode('YAYASAN')}
-                            className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-indigo-600'}`}
-                        >
-                            <Building2 size={12} className="inline mr-2" />
-                            Dana Yayasan
-                        </button>
-                        {(!myFieldId || isSuperAdmin) && (
+                    {sourceMode === 'BOS' && (
+                        <div className="mb-6">
                             <button 
-                                onClick={() => setSourceMode('BOS')}
-                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-emerald-600'}`}
+                                onClick={() => window.location.href = '/pelaporan/realisasi-bos'}
+                                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold hover:bg-emerald-100 transition-all shadow-sm"
                             >
-                                <Tag size={12} className="inline mr-2" />
-                                Dana BOS
+                                ← Kembali ke Pengeluaran BOS
                             </button>
-                        )}
-                    </div>
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
                     <button

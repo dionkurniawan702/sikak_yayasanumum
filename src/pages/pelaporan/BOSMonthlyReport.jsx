@@ -453,7 +453,7 @@ export default function BOSMonthlyReport() {
                                         </div>
                                         {!isSuperAdmin && (
                                             <button 
-                                                onClick={() => window.location.href = '/pelaporan/bulanan'} 
+                                                onClick={() => window.location.href = '/pelaporan/bulanan?source=BOS'} 
                                                 className="px-8 py-4 bg-emerald-600 text-white rounded-3xl font-black text-[10px] uppercase tracking-widest shadow-xl shadow-emerald-600/20 hover:scale-105 transition-all flex items-center gap-2"
                                             >
                                                 <Save size={16} /> Buat Laporan
