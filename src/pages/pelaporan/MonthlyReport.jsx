@@ -424,6 +424,16 @@ export default function MonthlyReport() {
                 }
             }
         });
+        
+        // Urutkan: rincian yang belum memiliki draf ditaruh di atas, yang sudah memiliki draf ditaruh di bawah
+        items.sort((a, b) => {
+            const hasDraftA = draftReports.some(d => a.componentId ? d.componentId === a.componentId : d.budgetRequestId === a.reqId);
+            const hasDraftB = draftReports.some(d => b.componentId ? d.componentId === b.componentId : d.budgetRequestId === b.reqId);
+            if (hasDraftA && !hasDraftB) return 1;
+            if (!hasDraftA && hasDraftB) return -1;
+            return 0;
+        });
+
         return items;
     }, [requestsForYear, reportedAmounts, budgetRequests, budgetReports, globalAcademicYearId, sourceMode, draftReports]);
 
