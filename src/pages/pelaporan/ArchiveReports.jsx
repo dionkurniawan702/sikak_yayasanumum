@@ -101,8 +101,8 @@ export default function ArchiveReports() {
         if (!currentYear) return [];
 
         const reports = budgetReports.filter(r => {
-            // Only show APPROVED reports
-            if (r.status !== 'APPROVED') return false;
+            // Tampilkan laporan berstatus APPROVED, PENDING, atau DRAFT
+            if (r.status !== 'APPROVED' && r.status !== 'PENDING' && r.status !== 'DRAFT') return false;
             
             // Year filter
             if (r.academicYearId !== globalAcademicYearId) return false;
@@ -392,7 +392,18 @@ export default function ArchiveReports() {
                                         
                                         <td className="px-6 py-4">
                                             <div className="flex flex-col space-y-1">
-                                                <span className="text-sm font-black text-slate-900">{item.category || item.description || 'Pengeluaran Umum'}</span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm font-black text-slate-900">{item.category || item.description || 'Pengeluaran Umum'}</span>
+                                                    {item.status === 'PENDING' ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-200">
+                                                            Menunggu
+                                                        </span>
+                                                    ) : item.status === 'DRAFT' ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-300">
+                                                            Draft
+                                                        </span>
+                                                    ) : null}
+                                                </div>
                                                 <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg w-fit">
                                                     {item.expenseItemName}
                                                 </span>
