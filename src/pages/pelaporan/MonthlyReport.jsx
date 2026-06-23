@@ -224,6 +224,7 @@ export default function MonthlyReport() {
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
     const [pendingSearch, setPendingSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'FILLED', 'NOT_FILLED'
 
     const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
@@ -514,7 +515,7 @@ export default function MonthlyReport() {
         return map;
     }, [budgetRequests, budgetReports, reportedAmounts, globalAcademicYearId, sourceMode]);
 
-    // Filtered pending items for superadmin based on selected unit + search term
+    // Filtered pending items for superadmin based on selected unit + search term + statusFilter
     const filteredPendingItems = useMemo(() => {
         let items = pendingItems;
         if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
@@ -530,8 +531,31 @@ export default function MonthlyReport() {
                 return name.includes(q) || desc.includes(q) || reqId.includes(q) || unitName.includes(q);
             });
         }
+        if (statusFilter === 'FILLED') {
+            items = items.filter(item => {
+                const hasDraft = draftReports.some(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
+                const hasPending = (budgetReports || []).some(r => 
+                    r.status === 'PENDING' && 
+                    !r.isDeleted && 
+                    (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId)
+                );
+                const isPartiallyOrFullyReported = item.sisa < item.amount;
+                return isPartiallyOrFullyReported || hasDraft || hasPending;
+            });
+        } else if (statusFilter === 'NOT_FILLED') {
+            items = items.filter(item => {
+                const hasDraft = draftReports.some(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
+                const hasPending = (budgetReports || []).some(r => 
+                    r.status === 'PENDING' && 
+                    !r.isDeleted && 
+                    (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId)
+                );
+                const isPartiallyOrFullyReported = item.sisa < item.amount;
+                return !isPartiallyOrFullyReported && !hasDraft && !hasPending;
+            });
+        }
         return items;
-    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, units, fields]);
+    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, statusFilter, units, fields, draftReports, budgetReports]);
 
     const verificationReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -1022,6 +1046,20 @@ export default function MonthlyReport() {
                                 </button>
                             )}
                         </div>
+
+                        {/* Dropdown status pelaporan */}
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
+                            <Filter size={14} className="text-slate-400" />
+                            <select 
+                                className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
+                                value={statusFilter}
+                                onChange={(e) => setStatusFilter(e.target.value)}
+                            >
+                                <option value="ALL">Semua Pelaporan</option>
+                                <option value="NOT_FILLED">Belum Isi</option>
+                                <option value="FILLED">Sudah Isi</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1139,7 +1177,11 @@ export default function MonthlyReport() {
                             </div>
                         )}) : (
                             <div className="card p-20 text-center text-slate-400 italic font-medium">
-                                {pendingSearch ? 'Tidak ada rincian yang cocok dengan kata kunci pencarian.' : (selectedUnitFilter !== 'ALL' ? 'Tidak ada rincian untuk unit ini.' : 'Tidak ada rincian dana yang menunggu laporan.')}
+                                {pendingSearch 
+                                    ? 'Tidak ada rincian yang cocok dengan kata kunci pencarian.' 
+                                    : (statusFilter !== 'ALL' 
+                                        ? `Tidak ada rincian dengan status "${statusFilter === 'FILLED' ? 'Sudah Isi' : 'Belum Isi'}".`
+                                        : (selectedUnitFilter !== 'ALL' ? 'Tidak ada rincian untuk unit ini.' : 'Tidak ada rincian dana yang menunggu laporan.'))}
                             </div>
                         )}
                     </div>
