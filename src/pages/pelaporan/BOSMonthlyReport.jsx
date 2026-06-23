@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { 
     FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, 
     History, Search, ChevronDown, ChevronRight, Download, Package, 
-    Layers, Filter, Calendar, Tag, Building2, Loader2, Landmark
+    Layers, Filter, Calendar, Tag, Building2, Loader2, Landmark, X
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
@@ -126,6 +126,7 @@ export default function BOSMonthlyReport() {
     const [searchTerm, setSearchTerm] = useState('');
     const [processingId, setProcessingId] = useState(null);
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
+    const [pendingSearch, setPendingSearch] = useState('');
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -238,11 +239,24 @@ export default function BOSMonthlyReport() {
         return map;
     }, [budgetRequests, reportedAmounts, globalAcademicYearId]);
 
-    // Filtered pending items for superadmin based on selected unit
+    // Filtered pending items based on selected unit and search term
     const filteredPendingBOSReporting = useMemo(() => {
-        if (!isSuperAdmin || selectedUnitFilter === 'ALL') return pendingBOSReporting;
-        return pendingBOSReporting.filter(item => item.reqUnitId === selectedUnitFilter);
-    }, [pendingBOSReporting, isSuperAdmin, selectedUnitFilter]);
+        let items = pendingBOSReporting;
+        if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
+            items = items.filter(item => item.reqUnitId === selectedUnitFilter);
+        }
+        if (pendingSearch.trim()) {
+            const q = pendingSearch.toLowerCase();
+            items = items.filter(item => {
+                const unitName = (units.find(u => u.id === item.reqUnitId)?.name || '').toLowerCase();
+                const name = (item.name || '').toLowerCase();
+                const desc = (item.reqDescription || '').toLowerCase();
+                const reqId = (item.reqId || '').toLowerCase();
+                return name.includes(q) || desc.includes(q) || reqId.includes(q) || unitName.includes(q);
+            });
+        }
+        return items;
+    }, [pendingBOSReporting, isSuperAdmin, selectedUnitFilter, pendingSearch, units]);
 
     const bosReports = useMemo(() => {
         return (budgetReports || []).filter(r => {
@@ -361,6 +375,31 @@ export default function BOSMonthlyReport() {
 
             {activeTab === 'pending' ? (
                 <div className="space-y-4">
+                    {pendingBOSReporting.length > 0 && (
+                        /* Search & Filter Pending Items */
+                        <div className="flex flex-col sm:flex-row gap-4 items-center">
+                            <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20 focus-within:border-emerald-500">
+                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                    <Search size={14} className="text-slate-400" />
+                                </div>
+                                <input
+                                    type="text"
+                                    value={pendingSearch}
+                                    onChange={(e) => setPendingSearch(e.target.value)}
+                                    placeholder="Cari rincian pengeluaran (nama, deskripsi, REQ)..."
+                                    className="w-full pl-10 pr-10 py-2.5 bg-transparent border-none outline-none text-xs font-bold text-slate-700 placeholder:text-slate-400"
+                                />
+                                {pendingSearch && (
+                                    <button
+                                        onClick={() => setPendingSearch('')}
+                                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    )}
 
 
                     {pendingBOSReporting.length === 0 ? (
@@ -425,7 +464,7 @@ export default function BOSMonthlyReport() {
                             )})}
                             {filteredPendingBOSReporting.length === 0 && (
                                 <div className="bg-white p-12 rounded-[2.5rem] border border-slate-100 shadow-sm text-center text-slate-400 italic font-medium">
-                                    Tidak ada rincian BOS untuk unit ini.
+                                    {pendingSearch ? 'Tidak ada rincian yang cocok dengan kata kunci pencarian.' : 'Tidak ada rincian BOS untuk unit ini.'}
                                 </div>
                             )}
                         </div>

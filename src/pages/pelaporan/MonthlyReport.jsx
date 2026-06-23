@@ -215,6 +215,7 @@ export default function MonthlyReport() {
     const [filterKategori, setFilterKategori] = useState('ALL');
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
+    const [pendingSearch, setPendingSearch] = useState('');
 
     const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
@@ -505,11 +506,24 @@ export default function MonthlyReport() {
         return map;
     }, [budgetRequests, budgetReports, reportedAmounts, globalAcademicYearId, sourceMode]);
 
-    // Filtered pending items for superadmin based on selected unit
+    // Filtered pending items for superadmin based on selected unit + search term
     const filteredPendingItems = useMemo(() => {
-        if (!isSuperAdmin || selectedUnitFilter === 'ALL') return pendingItems;
-        return pendingItems.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
-    }, [pendingItems, isSuperAdmin, selectedUnitFilter]);
+        let items = pendingItems;
+        if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
+            items = items.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
+        }
+        if (pendingSearch.trim()) {
+            const q = pendingSearch.toLowerCase();
+            items = items.filter(item => {
+                const unitName = (units.find(u => u.id === item.reqUnitId)?.name || fields.find(f => f.id === item.reqUnitId)?.name || '').toLowerCase();
+                const name = (item.name || '').toLowerCase();
+                const desc = (item.reqDescription || '').toLowerCase();
+                const reqId = (item.reqId || '').toLowerCase();
+                return name.includes(q) || desc.includes(q) || reqId.includes(q) || unitName.includes(q);
+            });
+        }
+        return items;
+    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, units, fields]);
 
     const verificationReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -980,7 +994,32 @@ export default function MonthlyReport() {
             </div>
 
             {activeTab === 'pending' ? (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="space-y-6">
+                    {/* Search & Filter Pending Items */}
+                    <div className="flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-2xl shadow-sm transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500">
+                            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                <Search size={14} className="text-slate-400" />
+                            </div>
+                            <input
+                                type="text"
+                                value={pendingSearch}
+                                onChange={(e) => setPendingSearch(e.target.value)}
+                                placeholder="Cari rincian pengeluaran (nama, deskripsi, REQ)..."
+                                className="w-full pl-10 pr-10 py-2.5 bg-transparent border-none outline-none text-xs font-bold text-slate-700 placeholder:text-slate-400"
+                            />
+                            {pendingSearch && (
+                                <button
+                                    onClick={() => setPendingSearch('')}
+                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {/* List of pending/draft reports */}
                     <div className="lg:col-span-2 space-y-6">
 
@@ -1095,7 +1134,7 @@ export default function MonthlyReport() {
                             </div>
                         )}) : (
                             <div className="card p-20 text-center text-slate-400 italic font-medium">
-                                {selectedUnitFilter !== 'ALL' ? 'Tidak ada rincian untuk unit ini.' : 'Tidak ada rincian dana yang menunggu laporan.'}
+                                {pendingSearch ? 'Tidak ada rincian yang cocok dengan kata kunci pencarian.' : (selectedUnitFilter !== 'ALL' ? 'Tidak ada rincian untuk unit ini.' : 'Tidak ada rincian dana yang menunggu laporan.')}
                             </div>
                         )}
                     </div>
@@ -1132,6 +1171,7 @@ export default function MonthlyReport() {
                         </div>
                     </div>
                 </div>
+            </div>
             ) : activeTab === 'history' ? (
                 <div className="space-y-6">
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
