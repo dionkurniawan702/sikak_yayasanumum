@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, AlertCircle } from 'lucide-react';
 
 const monthMap = {
     '01': 'Jan', '02': 'Feb', '03': 'Mar', '04': 'Apr', '05': 'Mei', '06': 'Jun',
@@ -49,6 +49,17 @@ export default function BudgetRow({
         ? 'bg-rose-50 text-rose-600'
         : (isBos ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600');
 
+    const hasUnbalancedComponents = React.useMemo(() => {
+        if (!data.breakdown) return false;
+        return data.breakdown.some(item => {
+            if (!item.components) return false;
+            return item.components.some(comp => {
+                const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                return Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
+            });
+        });
+    }, [data.breakdown]);
+
     return (
         <>
             <tr
@@ -61,7 +72,14 @@ export default function BudgetRow({
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </span>
                         <div className="flex flex-col">
-                            <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
+                                {hasUnbalancedComponents && (
+                                    <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                        <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
+                                    </span>
+                                )}
+                            </div>
                             {data.status && (
                                 <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
                                     (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
@@ -90,6 +108,10 @@ export default function BudgetRow({
             {isExpanded && data.breakdown && data.breakdown.map((item, idx) => {
                 const hasSubLevel = (item.sources && Object.keys(item.sources).length > 0) || (item.components && item.components.length > 0);
                 const isDetailExpanded = !!expandedDetailItems[`${data.id}|${item.id}`];
+                const itemHasUnbalanced = (item.components || []).some(comp => {
+                    const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                    return Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
+                });
 
                 return (
                     <React.Fragment key={item.id || idx}>
@@ -108,6 +130,11 @@ export default function BudgetRow({
                                     <span className={`${hasSubLevel ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px] italic`}>
                                         {item.name}
                                     </span>
+                                    {itemHasUnbalanced && (
+                                        <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                            <AlertCircle size={8} strokeWidth={3} /> Belum Seimbang
+                                        </span>
+                                    )}
                                 </div>
                             </td>
                             <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic">
@@ -131,6 +158,9 @@ export default function BudgetRow({
                             const compIndex = comp._cIdx !== undefined ? comp._cIdx : cIdx;
                             const compId = `${data.id}|${item.id}|${pIndex}|${compIndex}`;
                             const isSelected = selectedComponents.has(compId);
+
+                            const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                            const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
 
                             return (
                                 <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white ${isSelected ? '!bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
@@ -209,6 +239,11 @@ export default function BudgetRow({
                                                     {comp.status === 'DRAFT' && (
                                                         <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-300 text-slate-700 whitespace-nowrap">
                                                             Draft
+                                                        </span>
+                                                    )}
+                                                    {isUnbalanced && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-600 text-white flex items-center gap-1 whitespace-nowrap" title={`Alokasi Bulanan Belum Seimbang. Total: ${formatCurrency(comp.total)} vs Terjadwal: ${formatCurrency(monthlyTotal)}`}>
+                                                            <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
                                                         </span>
                                                     )}
                                                     {(() => {

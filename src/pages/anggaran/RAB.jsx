@@ -4258,6 +4258,8 @@ function RABContent() {
                                                                         const isDraft = comp.status === 'DRAFT' || comp.status === 'REJECTED' || !comp.status;
                                                                         const isApproved = comp.status === 'APPROVED';
                                                                         const isPending = comp.status === 'PENDING';
+                                                                        const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                                                                        const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
                                                                         return (
                                                                             <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                                                                                 <div className="flex-1">
@@ -4269,6 +4271,14 @@ function RABContent() {
                                                                                         <span className="w-1 h-1 rounded-full bg-slate-200" />
                                                                                         <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Harga: {formatRupiah(comp.harga)}</span>
                                                                                     </div>
+                                                                                    {isUnbalanced && (
+                                                                                        <div className="mt-3 flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-2.5 rounded-2xl w-fit">
+                                                                                            <AlertCircle size={14} className="text-rose-500 flex-shrink-0" />
+                                                                                            <span className="text-[10px] font-black uppercase tracking-wider">
+                                                                                                Alokasi Bulanan Belum Seimbang (Selisih: {formatRupiah(Math.abs((comp.total || 0) - monthlyTotal))})
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
                                                                                     {(() => {
                                                                                         const selectedMonths = monthsOptions.filter(m => comp.months?.[m.id]?.m === true || comp.months?.[m.id]?.jumlah > 0);
                                                                                         if (selectedMonths.length === 12) {
