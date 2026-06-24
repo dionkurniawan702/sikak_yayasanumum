@@ -2546,6 +2546,36 @@ function RABContent() {
                 const wsExpense = wb.Sheets["Belanja"] || wb.Sheets["Rencana Belanja"];
                 if (wsExpense) {
                     const data = XLSX.utils.sheet_to_json(wsExpense);
+
+                    // Validate balance for all rows first
+                    const errors = [];
+                    data.forEach((row, idx) => {
+                        const itemName = row['Item Belanja'];
+                        const compLabel = (row['Keterangan / Komponen'] || '').toString().trim();
+                        
+                        const vol = parseFloat(row['Vol']) || 0;
+                        const kali = parseFloat(row['Kali']) || 1;
+                        const harga = parseFloat(row['Harga']) || 0;
+                        const calculatedTotal = vol * kali * harga;
+                        
+                        let monthlyTotal = 0;
+                        monthsOptions.forEach(m => {
+                            const val = parseFloat(row[m.name]) || 0;
+                            monthlyTotal += val;
+                        });
+                        
+                        const hasContent = itemName || compLabel || calculatedTotal > 0 || monthlyTotal > 0;
+                        if (hasContent) {
+                            if (Math.abs(calculatedTotal - monthlyTotal) > 1.1) {
+                                errors.push(`Baris ${idx + 2} (${itemName || 'Tanpa Nama'} - ${compLabel || 'Tanpa Keterangan'}): Total hitung Rp ${calculatedTotal.toLocaleString('id-ID')} vs Terjadwal Rp ${monthlyTotal.toLocaleString('id-ID')}`);
+                            }
+                        }
+                    });
+
+                    if (errors.length > 0) {
+                        throw new Error("Alokasi anggaran belum seimbang pada rincian berikut:\n" + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...dan ${errors.length - 10} baris lainnya` : ''));
+                    }
+
                     // Clear existing expenses for imported items to prevent duplicates
                     const importedItemNames = new Set(data.map(r => r['Item Belanja']).filter(Boolean));
                     expenseItems.forEach(ei => {
@@ -2568,14 +2598,19 @@ function RABContent() {
                             const program = progNameStr ? allPrograms.find(p => p.name.trim().toLowerCase() === progNameStr) : null;
                             const compLabel = (row['Keterangan / Komponen'] || '').toString().trim();
 
+                            const vol = parseFloat(row['Vol']) || 0;
+                            const kali = parseFloat(row['Kali']) || 1;
+                            const harga = parseFloat(row['Harga']) || 0;
+                            const calculatedTotal = vol * kali * harga;
+
                             const comp = {
                                 id: `C-${Date.now()}-${idx}`,
                                 label: compLabel,
-                                volume: parseFloat(row['Vol']) || 0,
+                                volume: vol,
                                 satuan: row['Satuan'] || '',
-                                kali: parseFloat(row['Kali']) || 1,
-                                harga: parseFloat(row['Harga']) || 0,
-                                total: total,
+                                kali: kali,
+                                harga: harga,
+                                total: calculatedTotal,
                                 months: months,
                                 programId: program?.id || '',
                                 semester: row['Semester'] || '1'
@@ -2748,6 +2783,19 @@ function RABContent() {
                         comp.label = 'Imported';
                     }
                 });
+
+                // Validate balance for all components
+                const errors = [];
+                newComponents.forEach((comp, idx) => {
+                    const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                    if (Math.abs(comp.total - monthlyTotal) > 1.1) {
+                        errors.push(`Baris ${idx + 2} (${comp.label || 'Tanpa Keterangan'}): Total hitung Rp ${comp.total.toLocaleString('id-ID')} vs Terjadwal Rp ${monthlyTotal.toLocaleString('id-ID')}`);
+                    }
+                });
+
+                if (errors.length > 0) {
+                    throw new Error("Alokasi anggaran belum seimbang pada rincian berikut:\n" + errors.slice(0, 10).join('\n') + (errors.length > 10 ? `\n...dan ${errors.length - 10} baris lainnya` : ''));
+                }
 
                 if (newComponents.length > 0) {
                     const existingPlans = currentPlan.expense[itemId] || [];
