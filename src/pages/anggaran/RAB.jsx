@@ -187,6 +187,7 @@ function RABContent() {
     });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
     const [showCompModal, setShowCompModal] = useState(false);
+    const [isReadOnlyComp, setIsReadOnlyComp] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
@@ -4197,7 +4198,7 @@ function RABContent() {
                                                                     <Package size={40} className="mx-auto text-slate-300 mb-4 opacity-30" />
                                                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-50">Belum ada rincian belanja</p>
                                                                     <button
-                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                         className="mt-6 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all mx-auto inline-flex items-center gap-2"
                                                                     >
                                                                         <Plus size={16} strokeWidth={3} /> Tambah Rincian Pertama
@@ -4249,6 +4250,18 @@ function RABContent() {
                                                                                                 <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                                                                                                     <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
                                                                                                 </div>
+                                                                                                <button
+                                                                                                    onClick={() => {
+                                                                                                        setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp });
+                                                                                                        setEditingCompIdx(idx);
+                                                                                                        setIsReadOnlyComp(true);
+                                                                                                        setShowCompModal(true);
+                                                                                                    }}
+                                                                                                    className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors shadow-sm"
+                                                                                                    title="Lihat Rincian Anggaran"
+                                                                                                >
+                                                                                                    <Eye size={15} />
+                                                                                                </button>
                                                                                                 {isPending && !isSuperAdmin && activePlan.status !== 'APPROVED' && (
                                                                                                     <button
                                                                                                         onClick={() => handleBatalkanRincian(idx)}
@@ -4270,7 +4283,7 @@ function RABContent() {
                                                                                             </div>
                                                                                         ) : (
                                                                                             <>
-                                                                                                <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                                                <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
                                                                                                 <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
                                                                                                 <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>
                                                                                             </>
@@ -4284,7 +4297,7 @@ function RABContent() {
                                                                     <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
                                                                         <div className="flex items-center gap-5">
                                                                             <button
-                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setShowCompModal(true); }}
+                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                                 className="w-14 h-14 flex items-center justify-center bg-blue-600 text-white rounded-[1.25rem] shadow-lg shadow-blue-200 hover:scale-105 transition-all"
                                                                             >
                                                                                 <Plus size={24} strokeWidth={3} />
@@ -4357,8 +4370,10 @@ function RABContent() {
                                             <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[85vh]">
                                                 <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
                                                     <div>
-                                                        <h3 className="text-xl font-black italic uppercase tracking-tight">Detail Rincian</h3>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru'}</p>
+                                                        <h3 className="text-xl font-black italic uppercase tracking-tight">{isReadOnlyComp ? 'Lihat Rincian' : 'Detail Rincian'}</h3>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                            {isReadOnlyComp ? 'Rincian Telah Disetujui/Mengantre' : (editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru')}
+                                                        </p>
                                                     </div>
                                                     <button onClick={() => setShowCompModal(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><X size={20} /></button>
                                                 </div>
@@ -4369,13 +4384,13 @@ function RABContent() {
                                                         <div className="space-y-6">
                                                             <div className="space-y-2">
                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Keterangan Barang</label>
-                                                                <input autoFocus type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({ ...entryForm, label: e.target.value })} />
+                                                                <input autoFocus={!isReadOnlyComp} readOnly={isReadOnlyComp} type="text" className={`w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-800 text-sm rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner ${isReadOnlyComp ? 'opacity-70 pointer-events-none' : ''}`} placeholder="Peralatan Kantor..." value={entryForm.label} onChange={e => setEntryForm({ ...entryForm, label: e.target.value })} />
                                                             </div>
                                                             <div className="grid grid-cols-3 gap-4">
                                                                 {['volume', 'satuan', 'kali'].map(field => (
                                                                     <div key={field} className="space-y-2">
                                                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1 capitalize">{field}</label>
-                                                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center" value={entryForm[field]} onChange={e => setEntryForm({ ...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '') })} />
+                                                                        <input type="text" readOnly={isReadOnlyComp} className={`w-full bg-slate-50 border-2 border-slate-100 p-4 font-black text-slate-700 text-sm rounded-2xl outline-none focus:border-blue-500 text-center ${isReadOnlyComp ? 'opacity-70 pointer-events-none' : ''}`} value={entryForm[field]} onChange={e => setEntryForm({ ...entryForm, [field]: field === 'satuan' ? e.target.value : e.target.value.replace(/\D/g, '') })} />
                                                                     </div>
                                                                 ))}
                                                             </div>
@@ -4384,14 +4399,14 @@ function RABContent() {
                                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Harga Satuan (Rp)</label>
                                                                     <div className="relative">
                                                                         <span className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 font-black text-xs italic">Rp</span>
-                                                                        <input type="text" className="w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner" value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({ ...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0) })} />
+                                                                        <input type="text" readOnly={isReadOnlyComp} className={`w-full bg-slate-50 border-2 border-slate-100 p-4 pl-12 font-black text-slate-900 text-lg rounded-2xl outline-none focus:border-blue-500 transition-all shadow-inner ${isReadOnlyComp ? 'opacity-70 pointer-events-none' : ''}`} value={Number(entryForm.harga || 0).toLocaleString('id-ID')} onChange={e => setEntryForm({ ...entryForm, harga: parseFloat(e.target.value.replace(/\D/g, '') || 0) })} />
                                                                     </div>
                                                                 </div>
                                                                 <div className="space-y-2">
                                                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Semester</label>
                                                                     <div className="flex bg-slate-100 p-1.5 rounded-2xl">
                                                                         {['1', '2'].map(s => (
-                                                                            <button key={s} onClick={() => setEntryForm({ ...entryForm, semester: s })} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${entryForm.semester === s ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'}`}>SMT {s}</button>
+                                                                            <button key={s} disabled={isReadOnlyComp} onClick={() => setEntryForm({ ...entryForm, semester: s })} className={`flex-1 py-3 rounded-xl font-black text-[10px] transition-all ${entryForm.semester === s ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400'} ${isReadOnlyComp ? 'cursor-default' : ''}`}>SMT {s}</button>
                                                                         ))}
                                                                     </div>
                                                                 </div>
@@ -4401,8 +4416,8 @@ function RABContent() {
                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Program Belanja</label>
                                                                 <div className="relative" data-program-dropdown>
                                                                     <div
-                                                                        className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none cursor-pointer flex items-center justify-between"
-                                                                        onClick={() => setShowProgramDropdown(v => !v)}
+                                                                        className={`w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-700 text-xs outline-none flex items-center justify-between ${isReadOnlyComp ? 'opacity-70 cursor-default' : 'cursor-pointer'}`}
+                                                                        onClick={() => !isReadOnlyComp && setShowProgramDropdown(v => !v)}
                                                                     >
                                                                         <span className={entryForm.programId ? 'text-slate-700' : 'text-slate-400'}>
                                                                             {entryForm.programId
@@ -4411,7 +4426,7 @@ function RABContent() {
                                                                         </span>
                                                                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" className={`transition-transform text-slate-400 ${showProgramDropdown ? 'rotate-180' : ''}`}><polyline points="6 9 12 15 18 9"></polyline></svg>
                                                                     </div>
-                                                                    {showProgramDropdown && (
+                                                                    {!isReadOnlyComp && showProgramDropdown && (
                                                                         <div className="absolute z-50 top-full mt-1 left-0 right-0 bg-white border-2 border-slate-100 rounded-2xl shadow-2xl overflow-hidden">
                                                                             <div className="p-2 border-b border-slate-100">
                                                                                 <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-3 py-2">
@@ -4474,14 +4489,14 @@ function RABContent() {
                                                                 <div className="grid grid-cols-2 gap-4 animate-in fade-in">
                                                                     <div className="space-y-1">
                                                                         <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">POS BOS</label>
-                                                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosPosId || ''} onChange={e => setEntryForm({ ...entryForm, bosPosId: e.target.value })}>
+                                                                        <select disabled={isReadOnlyComp} className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none disabled:opacity-75" value={entryForm.bosPosId || ''} onChange={e => setEntryForm({ ...entryForm, bosPosId: e.target.value })}>
                                                                             <option value="">Pilih POS...</option>
                                                                             {bosPosList?.filter(p => !p?.isDeleted).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                                                         </select>
                                                                     </div>
                                                                     <div className="space-y-1">
                                                                         <label className="text-[9px] font-black text-emerald-600 uppercase tracking-widest italic ml-1">Tahap BOS</label>
-                                                                        <select className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none" value={entryForm.bosStageId || ''} onChange={e => setEntryForm({ ...entryForm, bosStageId: e.target.value })}>
+                                                                        <select disabled={isReadOnlyComp} className="w-full p-3 bg-emerald-50 border-2 border-emerald-100 rounded-xl text-[10px] font-black outline-none disabled:opacity-75" value={entryForm.bosStageId || ''} onChange={e => setEntryForm({ ...entryForm, bosStageId: e.target.value })}>
                                                                             <option value="">Pilih Tahap...</option>
                                                                             {bosStages?.filter(s => !s?.isDeleted).map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                                                                         </select>
@@ -4491,7 +4506,7 @@ function RABContent() {
 
                                                             <div className="space-y-2">
                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Catatan / Justifikasi</label>
-                                                                <textarea className="w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] italic font-medium min-h-[60px] outline-none focus:border-blue-500" value={entryForm.description || ''} onChange={e => setEntryForm({ ...entryForm, description: e.target.value })} placeholder="Alasan pengadaan rincian ini..." />
+                                                                <textarea readOnly={isReadOnlyComp} className={`w-full p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[11px] italic font-medium min-h-[60px] outline-none focus:border-blue-500 ${isReadOnlyComp ? 'opacity-70' : ''}`} value={entryForm.description || ''} onChange={e => setEntryForm({ ...entryForm, description: e.target.value })} placeholder={isReadOnlyComp ? '' : "Alasan pengadaan rincian ini..."} />
                                                             </div>
 
                                                             <div className="bg-blue-600 rounded-3xl p-6 text-white shadow-xl flex items-center justify-between">
@@ -4507,10 +4522,12 @@ function RABContent() {
                                                         <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col">
                                                             <div className="flex items-center justify-between mb-6">
                                                                 <h4 className="text-[10px] font-black uppercase tracking-[0.2em] italic text-blue-400">Alokasi Bulanan Rincian</h4>
-                                                                <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2">
-                                                                    <RefreshCw size={12} />
-                                                                    Sync
-                                                                </button>
+                                                                {!isReadOnlyComp && (
+                                                                    <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2">
+                                                                        <RefreshCw size={12} />
+                                                                        Sync
+                                                                    </button>
+                                                                )}
                                                             </div>
 
                                                             <div className="grid grid-cols-2 gap-3 flex-1">
@@ -4520,12 +4537,12 @@ function RABContent() {
 
 
                                                                     return (
-                                                                        <div key={m.id} className={`p-3 rounded-2xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')}`}>
+                                                                        <div key={m.id} className={`p-3 rounded-2xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')} ${isReadOnlyComp ? 'pointer-events-none' : ''}`}>
                                                                             <div className="flex items-center justify-between mb-1.5">
                                                                                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{m.shortLabel}</span>
-                                                                                <input type="checkbox" checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-blue-500" />
+                                                                                <input type="checkbox" disabled={isReadOnlyComp} checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-blue-500 disabled:opacity-50" />
                                                                             </div>
-                                                                            <input type="text" className="w-full bg-transparent font-black text-[11px] outline-none p-0 text-white placeholder-white/20" placeholder="Rp 0" value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} onChange={e => handleEntryMonthlyUpdate(m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} />
+                                                                            <input type="text" readOnly={isReadOnlyComp} className="w-full bg-transparent font-black text-[11px] outline-none p-0 text-white placeholder-white/20" placeholder="Rp 0" value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} onChange={e => handleEntryMonthlyUpdate(m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} />
                                                                         </div>
                                                                     );
                                                                 })}
@@ -4540,23 +4557,29 @@ function RABContent() {
                                                 </div>
 
                                                 <div className="p-8 pt-0 flex gap-4 bg-slate-50/50">
-                                                    <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all">BATAL</button>
-                                                    {(() => {
-                                                        const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0);
-                                                        const monthlyTotal = Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
-                                                        const isBalanced = Math.abs(total - monthlyTotal) < 1.1;
-                                                        const canSave = entryForm.label && entryForm.volume && entryForm.harga && isBalanced;
+                                                    {isReadOnlyComp ? (
+                                                        <button onClick={() => setShowCompModal(false)} className="w-full py-5 bg-blue-600 hover:bg-slate-900 text-white rounded-2xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2">TUTUP DETIL</button>
+                                                    ) : (
+                                                        <>
+                                                            <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all">BATAL</button>
+                                                            {(() => {
+                                                                const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0);
+                                                                const monthlyTotal = Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
+                                                                const isBalanced = Math.abs(total - monthlyTotal) < 1.1;
+                                                                const canSave = entryForm.label && entryForm.volume && entryForm.harga && isBalanced;
 
-                                                        return (
-                                                            <button
-                                                                disabled={!canSave}
-                                                                onClick={() => handlePushComponent(itemId, item.id)}
-                                                                className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-slate-900'}`}
-                                                            >
-                                                                {!isBalanced && total > 0 ? 'ALOKASI BELUM SEIMBANG' : (editingCompIdx !== null ? 'PERBARUI RINCIAN' : 'SIMPAN RINCIAN')}
-                                                            </button>
-                                                        );
-                                                    })()}
+                                                                return (
+                                                                    <button
+                                                                        disabled={!canSave}
+                                                                        onClick={() => handlePushComponent(itemId, item.id)}
+                                                                        className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-slate-900'}`}
+                                                                    >
+                                                                        {!isBalanced && total > 0 ? 'ALOKASI BELUM SEIMBANG' : (editingCompIdx !== null ? 'PERBARUI RINCIAN' : 'SIMPAN RINCIAN')}
+                                                                    </button>
+                                                                );
+                                                            })()}
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
