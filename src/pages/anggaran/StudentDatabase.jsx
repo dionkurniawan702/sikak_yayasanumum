@@ -340,8 +340,11 @@ export default function StudentDatabase() {
                         unitId = unit?.id || units[0]?.id;
                     }
 
+                    const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
+                    const classId = studentClass?.id || '';
+
                     // 1. Check for duplicates WITHIN the Excel file itself
-                    const fileKey = `${studentName.toLowerCase()}_${unitId}`;
+                    const fileKey = `${studentName.toLowerCase()}_${studentNis.toLowerCase()}_${classId}_${unitId}`;
                     if (seenInFile.has(fileKey)) {
                         return { ...item, _importStatus: 'DUPLICATE_FILE' };
                     }
@@ -353,8 +356,7 @@ export default function StudentDatabase() {
                         existing = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
                     }
                     if (!existing) {
-                        const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
-                        existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && (s.nis || '') === studentNis && s.classId === (studentClass?.id || '') && s.unitId === unitId && !s.isDeleted);
+                        existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && (s.nis || '') === studentNis && s.classId === classId && s.unitId === unitId && !s.isDeleted);
                     }
 
                     if (existing) {

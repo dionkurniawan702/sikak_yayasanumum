@@ -609,11 +609,13 @@ app.post('/api/sync', async (req, res) => {
                             const existingById = await tx.student.findUnique({ where: { id: s.id } });
                             
                             if (!existingById) {
-                                // 2. ID doesn't exist. Check for duplicates by name + unitId
+                                // 2. ID doesn't exist. Check for duplicates by name + unitId + nis + classId
                                 const existingByName = await tx.student.findFirst({
                                     where: { 
                                         name: s.name,
                                         unitId: s.unitId,
+                                        nis: s.nis || '',
+                                        classId: s.classId || null,
                                         isDeleted: false
                                     }
                                 });
@@ -621,7 +623,7 @@ app.post('/api/sync', async (req, res) => {
                                 if (existingByName) {
                                     // Found a duplicate! Map the incoming ID to the existing DB ID.
                                     targetId = existingByName.id;
-                                    console.log(`[Sync] Merging duplicate student: ${s.name}. Using existing ID: ${targetId} instead of new ID: ${s.id}`);
+                                    console.log(`[Sync] Merging duplicate student: ${s.name} (NIS: ${s.nis || '-'}). Using existing ID: ${targetId} instead of new ID: ${s.id}`);
                                 }
                             }
 
