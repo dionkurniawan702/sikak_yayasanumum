@@ -308,6 +308,18 @@ export default function StudentDatabase() {
         saveAs(blob, `Template_Import_${targetUnit?.name || 'Unit'}.xlsx`);
     };
 
+    const getExcelValue = (item, keys) => {
+        if (!item) return undefined;
+        const itemKeys = Object.keys(item);
+        for (const key of keys) {
+            const foundKey = itemKeys.find(k => k.toLowerCase().trim() === key.toLowerCase().trim());
+            if (foundKey !== undefined) {
+                return item[foundKey];
+            }
+        }
+        return undefined;
+    };
+
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -330,17 +342,19 @@ export default function StudentDatabase() {
                 const seenInFile = new Set();
 
                 const analyzedData = rawData.map(item => {
-                    const studentName = item.Nama?.toString().trim();
-                    const studentNis = item.NIS?.toString().trim() || '';
+                    const studentName = getExcelValue(item, ['Nama', 'Nama Lengkap', 'Nama Siswa'])?.toString().trim();
+                    const studentNis = getExcelValue(item, ['NIS', 'Nis', 'No. Induk', 'Nomor Induk', 'NISN'])?.toString().trim() || '';
                     if (!studentName) return { ...item, _importStatus: 'INVALID' };
 
                     let unitId = isUnitAdmin ? currentUser.unitId : null;
                     if (!isUnitAdmin) {
-                        const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toString().toLowerCase());
+                        const unitName = getExcelValue(item, ['Unit', 'Nama Unit'])?.toString();
+                        const unit = units.find(u => u.name.toLowerCase() === unitName?.toLowerCase());
                         unitId = unit?.id || units[0]?.id;
                     }
 
-                    const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
+                    const className = getExcelValue(item, ['Kelas', 'Kelas Siswa'])?.toString();
+                    const studentClass = state.classes?.find(c => c.name?.toLowerCase() === className?.toLowerCase() && c.unitId === unitId);
                     const classId = studentClass?.id || '';
 
                     // 1. Check for duplicates WITHIN the Excel file itself
@@ -360,14 +374,17 @@ export default function StudentDatabase() {
                     }
 
                     if (existing) {
-                        const studentClass = state.classes?.find(c => c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && c.unitId === unitId);
-                        const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
-                        const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
-                        const newGender = item['Jenis Kelamin']?.toString() || '';
+                        const statusName = getExcelValue(item, ['Status', 'Status Siswa'])?.toString();
+                        const status = state.studentStatuses?.find(s => s.name.toLowerCase() === statusName?.toLowerCase());
+                        
+                        const parentStatusName = getExcelValue(item, ['Status Orang Tua', 'Status Ortu', 'Kategori Ortu'])?.toString();
+                        const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === parentStatusName?.toLowerCase());
+                        
+                        const newGender = getExcelValue(item, ['Jenis Kelamin', 'Gender', 'JK'])?.toString() || '';
 
                         const incomeDetails = incomeItems.map(ii => ({
                             incomeItemId: ii.id,
-                            amount: parseFloat(item[ii.name]) || 0
+                            amount: parseFloat(getExcelValue(item, [ii.name])) || 0
                         })).filter(id => id.amount > 0);
 
                         const sortedCurrentIncome = [...(existing.incomeDetails || [])].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
@@ -415,38 +432,43 @@ export default function StudentDatabase() {
                     continue;
                 }
                 try {
-                    const studentName = item.Nama?.toString().trim();
-                    const studentNis = item.NIS?.toString().trim() || '';
+                    const studentName = getExcelValue(item, ['Nama', 'Nama Lengkap', 'Nama Siswa'])?.toString().trim();
+                    const studentNis = getExcelValue(item, ['NIS', 'Nis', 'No. Induk', 'Nomor Induk', 'NISN'])?.toString().trim() || '';
                     
                     if (!studentName) continue;
 
                     // 1. Determine Unit
                     let unitId = isUnitAdmin ? currentUser.unitId : null;
                     if (!isUnitAdmin) {
-                        const unit = units.find(u => u.name.toLowerCase() === item.Unit?.toString().toLowerCase());
+                        const unitName = getExcelValue(item, ['Unit', 'Nama Unit'])?.toString();
+                        const unit = units.find(u => u.name.toLowerCase() === unitName?.toLowerCase());
                         unitId = unit?.id || units[0]?.id;
                     }
 
                     // 2. Determine Class
+                    const className = getExcelValue(item, ['Kelas', 'Kelas Siswa'])?.toString();
                     const studentClass = state.classes?.find(c => 
-                        c.name?.toLowerCase() === item.Kelas?.toString().toLowerCase() && 
+                        c.name?.toLowerCase() === className?.toLowerCase() && 
                         c.unitId === unitId
                     );
 
                     // 3. Determine Status
-                    const status = state.studentStatuses?.find(s => s.name.toLowerCase() === item.Status?.toString().toLowerCase());
+                    const statusName = getExcelValue(item, ['Status', 'Status Siswa'])?.toString();
+                    const status = state.studentStatuses?.find(s => s.name.toLowerCase() === statusName?.toLowerCase());
 
                     // 3b. Determine Academic Year from Excel (Fallback to current)
-                    const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === item['Tahun Ajaran']?.toString().toLowerCase());
+                    const academicYearName = getExcelValue(item, ['Tahun Ajaran', 'Tahun ajaran', 'Tahun', 'TA'])?.toString();
+                    const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === academicYearName?.toLowerCase());
                     const finalAcademicYearId = academicYear?.id || currentYear?.id || '';
                     
                     // 3c. Determine Parent Status
-                    const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === item['Status Orang Tua']?.toString().toLowerCase());
+                    const parentStatusName = getExcelValue(item, ['Status Orang Tua', 'Status Ortu', 'Kategori Ortu'])?.toString();
+                    const parentStatus = state.parentStatuses?.find(s => s.name.toLowerCase() === parentStatusName?.toLowerCase());
 
                     // 4. Map Income Details
                     const incomeDetails = incomeItems.map(ii => ({
                         incomeItemId: ii.id,
-                        amount: parseFloat(item[ii.name]) || 0
+                        amount: parseFloat(getExcelValue(item, [ii.name])) || 0
                     })).filter(id => id.amount > 0);
 
                     // 5. Find existing student
@@ -470,7 +492,7 @@ export default function StudentDatabase() {
                         const newClassId = studentClass?.id || existingStudent.classId;
                         const newStatusId = status?.id || existingStudent.statusId;
                         const newParentStatusId = parentStatus?.id || existingStudent.parentStatusId;
-                        const newGender = item['Jenis Kelamin']?.toString() || existingStudent.gender;
+                        const newGender = getExcelValue(item, ['Jenis Kelamin', 'Gender', 'JK'])?.toString() || existingStudent.gender;
 
                         const sortedCurrentIncome = [...(existingStudent.incomeDetails || [])].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
                         const sortedNewIncome = [...incomeDetails].sort((a,b) => a.incomeItemId.localeCompare(b.incomeItemId));
@@ -511,7 +533,7 @@ export default function StudentDatabase() {
                             academicYearId: finalAcademicYearId,
                             statusId: status?.id || defaultStatus?.id || '',
                             parentStatusId: parentStatus?.id || '',
-                            gender: item['Jenis Kelamin']?.toString() || '',
+                            gender: getExcelValue(item, ['Jenis Kelamin', 'Gender', 'JK'])?.toString() || '',
                             classId: studentClass?.id || '',
                             incomeDetails
                         };
@@ -523,7 +545,7 @@ export default function StudentDatabase() {
                 } catch (err) {
                     console.error('Import Error for item:', item, err);
                     errorCount++;
-                    failedStudents.push(`${item.Nama || 'Tanpa Nama'} (${err.message})`);
+                    failedStudents.push(`${studentName || 'Tanpa Nama'} (${err.message})`);
                 }
             }
 
