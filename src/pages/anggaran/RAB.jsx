@@ -4242,6 +4242,22 @@ function RABContent() {
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
+                                        {message && (
+                                            <div className={`p-6 rounded-[2rem] flex items-start gap-4 animate-in slide-in-from-top-4 duration-300 ${
+                                                message.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
+                                            }`}>
+                                                <div className={`p-2 rounded-xl shrink-0 ${message.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'}`}>
+                                                    {message.type === 'success' ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
+                                                </div>
+                                                <div className="flex-1 space-y-1.5 min-w-0">
+                                                    <h5 className="font-black text-sm tracking-tight">{message.type === 'success' ? 'Berhasil' : 'Gagal Mengimpor'}</h5>
+                                                    <p className="text-xs font-semibold leading-relaxed whitespace-pre-line">{message.text}</p>
+                                                </div>
+                                                <button onClick={() => setMessage(null)} className="p-1.5 rounded-lg transition-colors hover:bg-black/5 text-slate-400 hover:text-slate-600">
+                                                    <X size={16} />
+                                                </button>
+                                            </div>
+                                        )}
                                         {/* Summary Table */}
                                         <div className="p-8 bg-slate-50/50 rounded-[2.5rem] border border-slate-100 space-y-6">
                                             <div className="flex items-center justify-between">
