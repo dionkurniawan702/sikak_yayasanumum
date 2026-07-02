@@ -7,4 +7,12 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    server: {
+        proxy: {
+            '/api': {
+                target: 'https://dion-sikak-yayasanumum.0oh83a.easypanel.host',
+                changeOrigin: true,
+            }
+        }
+    }
 })

@@ -348,8 +348,8 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.use('/api', anggaranRouter);
 app.use('/api', coreRouter);
+app.use('/api', anggaranRouter);
 app.use('/api/trash', trashRouter);
 
 app.get('/api/run-db-push', async (req, res) => {

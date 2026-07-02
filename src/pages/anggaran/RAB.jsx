@@ -89,6 +89,33 @@ const generateMonths = (ay) => {
     return months;
 };
 
+// Robust helper to parse number values from Excel sheet cells, handling Indonesian format (e.g. dots as thousands and comma as decimal separator)
+const parseExcelNum = (val) => {
+    if (val === undefined || val === null) return 0;
+    const str = val.toString().trim();
+    if (str === '') return 0;
+    if (/^-?\d+$/.test(str)) return parseInt(str, 10);
+    // If it has dots/commas typical of Indonesian thousand/decimal separators
+    const sanitized = str.replace(/\./g, '').replace(/,/g, '.');
+    return parseFloat(sanitized) || parseFloat(str) || 0;
+};
+
+// Flexible month matching logic that supports clean matches with and without year suffix (case-insensitive)
+const findRowKeyForMonth = (rowKeys, monthObj) => {
+    const cleanName = monthObj.name.toLowerCase();
+    const cleanLabel = monthObj.label.toLowerCase();
+    const cleanShortLabel = monthObj.shortLabel.toLowerCase();
+    const monthOnly = cleanName.split('-')[0];
+    
+    return rowKeys.find(k => {
+        const cleanKey = k.trim().toLowerCase();
+        return cleanKey === cleanName || 
+               cleanKey === cleanLabel || 
+               cleanKey === cleanShortLabel ||
+               cleanKey === monthOnly;
+    });
+};
+
 function RABContent() {
     const { state, dispatch } = useApp();
     const lastPlanIdRef = React.useRef(null);
@@ -2550,17 +2577,25 @@ function RABContent() {
                     // Validate balance for all rows first
                     const errors = [];
                     data.forEach((row, idx) => {
-                        const itemName = row['Item Belanja'];
-                        const compLabel = (row['Keterangan / Komponen'] || '').toString().trim();
+                        const rowKeys = Object.keys(row);
+                        const itemNameKey = rowKeys.find(k => k.trim().toLowerCase() === 'item belanja') || 'Item Belanja';
+                        const compLabelKey = rowKeys.find(k => k.trim().toLowerCase() === 'keterangan / komponen') || 'Keterangan / Komponen';
+                        const volKey = rowKeys.find(k => k.trim().toLowerCase() === 'vol') || 'Vol';
+                        const kaliKey = rowKeys.find(k => k.trim().toLowerCase() === 'kali') || 'Kali';
+                        const hargaKey = rowKeys.find(k => k.trim().toLowerCase() === 'harga') || 'Harga';
+
+                        const itemName = row[itemNameKey];
+                        const compLabel = (row[compLabelKey] || '').toString().trim();
                         
-                        const vol = parseFloat(row['Vol']) || 0;
-                        const kali = parseFloat(row['Kali']) || 1;
-                        const harga = parseFloat(row['Harga']) || 0;
+                        const vol = parseExcelNum(row[volKey]);
+                        const kali = rowKeys.find(k => k.trim().toLowerCase() === 'kali') ? (parseExcelNum(row[kaliKey]) || 1) : 1;
+                        const harga = parseExcelNum(row[hargaKey]);
                         const calculatedTotal = vol * kali * harga;
                         
                         let monthlyTotal = 0;
                         monthsOptions.forEach(m => {
-                            const val = parseFloat(row[m.name]) || 0;
+                            const exactKey = findRowKeyForMonth(rowKeys, m);
+                            const val = exactKey ? parseExcelNum(row[exactKey]) : 0;
                             monthlyTotal += val;
                         });
                         
@@ -2577,43 +2612,58 @@ function RABContent() {
                     }
 
                     // Clear existing expenses for imported items to prevent duplicates
-                    const importedItemNames = new Set(data.map(r => r['Item Belanja']).filter(Boolean));
+                    const importedItemNames = new Set(data.map(row => {
+                        const rowKeys = Object.keys(row);
+                        const itemNameKey = rowKeys.find(k => k.trim().toLowerCase() === 'item belanja') || 'Item Belanja';
+                        return row[itemNameKey];
+                    }).filter(Boolean));
                     expenseItems.forEach(ei => {
                         if (importedItemNames.has(ei.name)) newExpense[ei.id] = [];
                     });
 
                     data.forEach((row, idx) => {
-                        const itemName = row['Item Belanja'];
+                        const rowKeys = Object.keys(row);
+                        const itemNameKey = rowKeys.find(k => k.trim().toLowerCase() === 'item belanja') || 'Item Belanja';
+                        const compLabelKey = rowKeys.find(k => k.trim().toLowerCase() === 'keterangan / komponen') || 'Keterangan / Komponen';
+                        const volKey = rowKeys.find(k => k.trim().toLowerCase() === 'vol') || 'Vol';
+                        const kaliKey = rowKeys.find(k => k.trim().toLowerCase() === 'kali') || 'Kali';
+                        const hargaKey = rowKeys.find(k => k.trim().toLowerCase() === 'harga') || 'Harga';
+                        const satuanKey = rowKeys.find(k => k.trim().toLowerCase() === 'satuan') || 'Satuan';
+                        const progKey = rowKeys.find(k => k.trim().toLowerCase() === 'program belanja') || 'Program Belanja';
+                        const semKey = rowKeys.find(k => k.trim().toLowerCase() === 'semester') || 'Semester';
+
+                        const itemName = row[itemNameKey];
                         const item = expenseItems.find(i => i.name === itemName);
                         if (item) {
                             const months = {};
                             let total = 0;
                             monthsOptions.forEach(m => {
-                                const val = parseFloat(row[m.name]) || 0;
+                                const exactKey = findRowKeyForMonth(rowKeys, m);
+                                const val = exactKey ? parseExcelNum(row[exactKey]) : 0;
                                 months[m.id] = { m: val > 0, jumlah: val };
                                 total += val;
                             });
 
-                            const progNameStr = (row['Program Belanja']?.toString() || '').trim().toLowerCase();
+                            const progNameStr = (row[progKey]?.toString() || '').trim().toLowerCase();
                             const program = progNameStr ? allPrograms.find(p => p.name.trim().toLowerCase() === progNameStr) : null;
-                            const compLabel = (row['Keterangan / Komponen'] || '').toString().trim();
+                            const compLabel = (row[compLabelKey] || '').toString().trim();
 
-                            const vol = parseFloat(row['Vol']) || 0;
-                            const kali = parseFloat(row['Kali']) || 1;
-                            const harga = parseFloat(row['Harga']) || 0;
+                            const vol = parseExcelNum(row[volKey]);
+                            const kali = rowKeys.find(k => k.trim().toLowerCase() === 'kali') ? (parseExcelNum(row[kaliKey]) || 1) : 1;
+                            const harga = parseExcelNum(row[hargaKey]);
                             const calculatedTotal = vol * kali * harga;
 
                             const comp = {
                                 id: `C-${Date.now()}-${idx}`,
                                 label: compLabel,
                                 volume: vol,
-                                satuan: row['Satuan'] || '',
+                                satuan: row[satuanKey] || '',
                                 kali: kali,
                                 harga: harga,
                                 total: calculatedTotal,
                                 months: months,
                                 programId: program?.id || '',
-                                semester: row['Semester'] || '1'
+                                semester: row[semKey]?.toString() || '1'
                             };
 
                             if (!newExpense[item.id]) newExpense[item.id] = [];
@@ -2645,6 +2695,8 @@ function RABContent() {
             } catch (error) {
                 console.error(error);
                 setMessage({ type: 'error', text: 'Gagal memproses file Excel: ' + error.message });
+            } finally {
+                e.target.value = '';
             }
         };
         reader.readAsBinaryString(file);
@@ -2737,8 +2789,8 @@ function RABContent() {
                     // Flexible column matching for months
                     const rowKeys = Object.keys(row);
                     monthsOptions.forEach(m => {
-                        const exactKey = rowKeys.find(k => k.trim().toLowerCase() === m.name.toLowerCase());
-                        const val = exactKey ? (parseFloat(row[exactKey]) || 0) : 0;
+                        const exactKey = findRowKeyForMonth(rowKeys, m);
+                        const val = exactKey ? parseExcelNum(row[exactKey]) : 0;
                         months[m.id] = { m: val > 0, jumlah: val };
                     });
 
@@ -2748,10 +2800,11 @@ function RABContent() {
                     const ketKey = rowKeys.find(k => k.trim().toLowerCase() === 'keterangan') || 'Keterangan';
                     const progKey = rowKeys.find(k => k.trim().toLowerCase() === 'program belanja') || 'Program Belanja';
                     const semKey = rowKeys.find(k => k.trim().toLowerCase() === 'semester') || 'Semester';
+                    const satuanKey = rowKeys.find(k => k.trim().toLowerCase() === 'satuan') || 'Satuan';
 
-                    const vol = parseFloat(row[volKey]) || 0;
-                    const kali = parseFloat(row[kaliKey]) || 1;
-                    const harga = parseFloat(row[hargaKey]) || 0;
+                    const vol = parseExcelNum(row[volKey]);
+                    const kali = rowKeys.find(k => k.trim().toLowerCase() === 'kali') ? (parseExcelNum(row[kaliKey]) || 1) : 1;
+                    const harga = parseExcelNum(row[hargaKey]);
                     const total = vol * kali * harga;
 
                     const progNameStr = (row[progKey]?.toString() || '').trim().toLowerCase();
@@ -2760,7 +2813,7 @@ function RABContent() {
                         id: `C-${Date.now()}-${idx}`,
                         label: row[ketKey] || '',
                         volume: vol,
-                        satuan: row['Satuan'] || '',
+                        satuan: row[satuanKey] || '',
                         kali: kali,
                         harga: harga,
                         total: total,
@@ -2783,6 +2836,10 @@ function RABContent() {
                         comp.label = 'Imported';
                     }
                 });
+
+                if (newComponents.length === 0) {
+                    throw new Error("Tidak ada data rincian belanja yang valid untuk diimpor. Pastikan Anda telah mengisi keterangan, jumlah, dan alokasi bulanan.");
+                }
 
                 // Validate balance for all components
                 const errors = [];
@@ -2860,6 +2917,8 @@ function RABContent() {
             } catch (err) {
                 console.error(err);
                 setMessage({ type: 'error', text: 'Gagal mengimpor rincian: ' + err.message });
+            } finally {
+                e.target.value = '';
             }
         };
         reader.readAsBinaryString(file);
