@@ -440,12 +440,11 @@ export const api = {
         return await this.post('/distribution-settings/duplicate', { sourceYearId, targetYearId });
     },
 
-    async syncWholeState(state) {
+    async syncWholeState(state, includeAll = false) {
         if (!isRemote) return { status: 'disabled' };
         try {
             const syncData = {
                 accounts: state.accounts || [],
-                journals: state.journals || [],
                 assets: state.assets || [],
                 programs: state.programs || [],
                 expensePrograms: state.expensePrograms || [],
@@ -453,7 +452,6 @@ export const api = {
                 budgets: state.budgets || [],
                 fields: state.fields || [],
                 units: state.units || [],
-                students: state.students || [],
                 incomeItems: state.incomeItems || [],
                 expenseItems: state.expenseItems || [],
                 // distributionSettings removed from auto-sync to prevent dormant tabs from resurrecting deleted rules
@@ -470,6 +468,12 @@ export const api = {
                 bosPosList: state.bosPosList || [],
                 bosAllocations: state.bosAllocations || []
             };
+
+            // Only include large tables (students, journals) for manual syncs/restores to avoid database timeout and packet limits
+            if (includeAll) {
+                syncData.students = state.students || [];
+                syncData.journals = state.journals || [];
+            }
 
             const response = await this.post('/sync', syncData);
             return response;

@@ -83,7 +83,7 @@ export default function BackupRestore() {
         setSyncing(true);
         setUploadStatus({ type: 'info', message: 'Sedang menyinkronkan data ke server MySQL...' });
         try {
-            await api.syncWholeState(state);
+            await api.syncWholeState(state, true);
             setUploadStatus({
                 type: 'success',
                 message: 'Data berhasil disinkronkan ke server MySQL secara utuh!'
