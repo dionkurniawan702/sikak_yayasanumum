@@ -67,8 +67,14 @@ function loadState() {
                 return { ...defaultState, version: CURRENT_VERSION };
             }
 
-            // Ensure all new keys from defaultState are present
-            const merged = { ...defaultState, ...data };
+            // Ensure all new keys from defaultState are present and transient state is reset
+            const merged = { 
+                ...defaultState, 
+                ...data,
+                isInitialLoading: false,
+                isSyncing: false,
+                syncMessage: ''
+            };
 
             if (data.accounts) {
                 const currentSeedIds = new Set(initialAccounts.map(a => a.id));
