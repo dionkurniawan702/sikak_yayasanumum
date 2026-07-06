@@ -1361,10 +1361,39 @@ function RABContent() {
         const newPlans = [...plans];
         newPlans[planIndex] = updatedPlan;
 
-        const nextPlan = {
+        const tempPlan = {
             ...currentPlan,
-            expense: { ...currentPlan.expense, [mId]: newPlans },
-            status: 'DRAFT',
+            expense: { ...currentPlan.expense, [mId]: newPlans }
+        };
+
+        // Dynamically determine the overall status of the RAB Plan
+        let hasPendingComp = false;
+        let hasApprovedComp = false;
+
+        const checkStatus = (comps) => {
+            (comps || []).forEach(c => {
+                if (c.status === 'PENDING') hasPendingComp = true;
+                if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
+            });
+        };
+
+        // Check expense
+        Object.values(tempPlan.expense || {}).forEach(plansArr => {
+            const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
+            arr.forEach(p => checkStatus(p?.components));
+        });
+
+        // Check income
+        Object.values(tempPlan.income || {}).forEach(plansArr => {
+            const arr = Array.isArray(plansArr) ? plansArr : (plansArr && typeof plansArr === 'object' && Object.keys(plansArr).length > 0 ? [plansArr] : []);
+            arr.forEach(p => checkStatus(p?.components));
+        });
+
+        const newPlanStatus = hasPendingComp ? 'PENDING' : (hasApprovedComp ? 'APPROVED' : 'DRAFT');
+
+        const nextPlan = {
+            ...tempPlan,
+            status: newPlanStatus,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
         };
@@ -1378,7 +1407,7 @@ function RABContent() {
             fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
             income: nextPlan.income,
             expense: nextPlan.expense,
-            status: 'DRAFT',
+            status: newPlanStatus,
             rejectionReason: null,
             updatedAt: nextPlan.updatedAt,
             updatedBy: nextPlan.updatedBy
