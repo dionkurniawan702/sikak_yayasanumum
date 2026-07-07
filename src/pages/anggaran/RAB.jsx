@@ -789,7 +789,7 @@ function RABContent() {
     const isConsolidation = selectedUnitId === 'FOUNDATION';
     const isField = selectedUnitId.startsWith('FIELD-');
     const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
-    const isLocked = (activePlan?.status === 'APPROVED' && !isAddendumMode) || activePlan?.status === 'PENDING' || isConsolidation;
+    const isLocked = ((activePlan?.status === 'APPROVED' && !isAddendumMode) || activePlan?.status === 'PENDING' || isConsolidation) && !isSuperAdmin;
 
     const bosItemMap = useMemo(() => {
         const map = {};
@@ -1038,7 +1038,9 @@ function RABContent() {
         }
         
         let newStatus = entryForm.status;
-        if (newStatus === 'REJECTED' || !newStatus) newStatus = 'DRAFT';
+        if (newStatus === 'REJECTED' || !newStatus) {
+            newStatus = (currentPlan?.status === 'APPROVED' || currentPlan?.status === 'PENDING') ? currentPlan.status : 'DRAFT';
+        }
 
         const newComp = {
             ...entryForm,
@@ -4407,7 +4409,7 @@ function RABContent() {
                                                                                         <span className="font-black text-slate-900 text-lg">{formatRupiah(comp.total)}</span>
                                                                                     </div>
                                                                                     <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
-                                                                                        {(isPending || isApproved) ? (
+                                                                                        {(isPending || isApproved) && !isSuperAdmin ? (
                                                                                             <div className="flex items-center gap-2">
                                                                                                 <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                                                                                                     <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
@@ -4433,21 +4435,21 @@ function RABContent() {
                                                                                                         <XCircle size={15} />
                                                                                                     </button>
                                                                                                 )}
-                                                                                                {isSuperAdmin && (isApproved || isPending) && (
-                                                                                                    <button
-                                                                                                        onClick={() => handleSuperAdminCancelComponent(idx)}
-                                                                                                        className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm active:scale-95"
-                                                                                                        title="Batalkan Persetujuan/Pengajuan Rincian Ini"
-                                                                                                    >
-                                                                                                        <XCircle size={15} />
-                                                                                                    </button>
-                                                                                                )}
                                                                                             </div>
                                                                                         ) : (
                                                                                             <>
                                                                                                 <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
                                                                                                 <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
-                                                                                                <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>
+                                                                                                {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
+                                                                                                {isSuperAdmin && (isApproved || isPending) && (
+                                                                                                    <button
+                                                                                                        onClick={() => handleSuperAdminCancelComponent(idx)}
+                                                                                                        className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm active:scale-95 ml-1"
+                                                                                                        title="Batalkan Persetujuan/Pengajuan Rincian Ini"
+                                                                                                    >
+                                                                                                        <XCircle size={15} />
+                                                                                                    </button>
+                                                                                                )}
                                                                                             </>
                                                                                         )}
                                                                                     </div>
