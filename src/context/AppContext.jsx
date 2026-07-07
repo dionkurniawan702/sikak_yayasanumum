@@ -654,7 +654,9 @@ function appReducer(state, action) {
                 'parent-status': 'parentStatuses',
                 'bos-stage': 'bosStages',
                 'bos-pos': 'bosPosList',
-                'bos-allocation': 'bosAllocations'
+                'bos-allocation': 'bosAllocations',
+                budgetRequest: 'budgetRequests',
+                budgetReport: 'budgetReports'
             };
             const collection = mapping[type];
             if (collection) {
@@ -682,7 +684,9 @@ function appReducer(state, action) {
                 'student-status': 'studentStatuses',
                 'parent-status': 'parentStatuses',
                 'bos-stage': 'bosStages',
-                'bos-pos': 'bosPosList'
+                'bos-pos': 'bosPosList',
+                budgetRequest: 'budgetRequests',
+                budgetReport: 'budgetReports'
             };
             const collection = mapping[type];
             if (collection) {
@@ -712,7 +716,9 @@ function appReducer(state, action) {
                 parentStatuses: state.parentStatuses.filter(ps => !ps.isDeleted),
                 bosStages: state.bosStages.filter(bs => !bs.isDeleted),
                 bosPosList: state.bosPosList.filter(bp => !bp.isDeleted),
-                bosAllocations: state.bosAllocations.filter(ba => !ba.isDeleted)
+                bosAllocations: state.bosAllocations.filter(ba => !ba.isDeleted),
+                budgetRequests: state.budgetRequests.filter(br => !br.isDeleted),
+                budgetReports: state.budgetReports.filter(br => !br.isDeleted)
             };
             break;
 

@@ -388,7 +388,9 @@ export const api = {
                         'student-status': 'student-statuses',
                         'parent-status': 'parent-statuses',
                         'bos-stage': 'bos-stages',
-                        'bos-pos': 'bos-pos'
+                        'bos-pos': 'bos-pos',
+                        budgetRequest: 'budget-requests',
+                        budgetReport: 'budget-reports'
                     };
                     const endpoint = mapping[type];
                     if (endpoint) {
@@ -415,7 +417,9 @@ export const api = {
                         'student-status': 'student-statuses',
                         'parent-status': 'parent-statuses',
                         'bos-stage': 'bos-stages',
-                        'bos-pos': 'bos-pos'
+                        'bos-pos': 'bos-pos',
+                        budgetRequest: 'budget-requests',
+                        budgetReport: 'budget-reports'
                     };
                     const endpoint = mapping[type];
                     if (endpoint) {

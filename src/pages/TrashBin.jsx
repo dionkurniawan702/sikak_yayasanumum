@@ -101,7 +101,9 @@ export default function TrashBin() {
             'student-status': 'Status Siswa',
             'parent-status': 'Status Ortu',
             'bos-stage': 'Tahap BOS',
-            'bos-pos': 'Pos BOS'
+            'bos-pos': 'Pos BOS',
+            budgetRequest: 'Permintaan Dana',
+            budgetReport: 'Laporan Realisasi'
         };
         return labels[type] || type;
     };
@@ -124,7 +126,9 @@ export default function TrashBin() {
             'student-status': UserCheck,
             'parent-status': UserCircle,
             'bos-stage': Calendar,
-            'bos-pos': List
+            'bos-pos': List,
+            budgetRequest: Wallet,
+            budgetReport: FileText
         };
         return icons[type] || Archive;
     };
@@ -135,6 +139,10 @@ export default function TrashBin() {
                 return `${item.description || 'Jurnal'} — ${formatTanggal(item.date)}`;
             case 'account':
                 return `${item.code} — ${item.name}`;
+            case 'budgetRequest':
+                return `${item.description || 'Permintaan Dana'} — ${formatRupiah(item.amount || item.totalAmount || 0)}`;
+            case 'budgetReport':
+                return `${item.description || 'Laporan Realisasi'} — ${formatRupiah(item.amount || 0)}`;
             case 'asset':
             case 'program':
             case 'user':
@@ -164,6 +172,10 @@ export default function TrashBin() {
             }
             case 'account':
                 return `Klasifikasi: ${item.type} | Dana: ${item.fund}`;
+            case 'budgetRequest':
+                return `Status: ${item.status} | Bulan: ${item.month} | Unit ID: ${item.unitId || 'N/A'}`;
+            case 'budgetReport':
+                return `Nota: ${item.nomorNota || 'Tanpa Nota'} | Jumlah: ${formatRupiah(item.amount || 0)}`;
             case 'asset':
                 return `Kategori: ${item.category} | Nilai: ${formatRupiah(item.cost)}`;
             case 'program':
