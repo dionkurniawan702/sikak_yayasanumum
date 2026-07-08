@@ -40,6 +40,12 @@ export default function FieldUnitManagement() {
         }
     }, [state.academicYears, selectedYearId]);
 
+    useEffect(() => {
+        if (state.globalAcademicYearId) {
+            setSelectedYearId(state.globalAcademicYearId);
+        }
+    }, [state.globalAcademicYearId]);
+
     const handleExecuteDuplicate = async () => {
         if (!duplicateSourceYear || !duplicateTargetYear) return;
         if (!window.confirm('Apakah Anda yakin ingin menduplikasi seluruh konfigurasi dana ini? Semua konfigurasi dana yang ada di Tahun Ajaran Tujuan akan dihapus dan digantikan dengan data baru.')) return;
@@ -461,7 +467,11 @@ export default function FieldUnitManagement() {
                         <label className="text-xs font-black text-slate-500 uppercase tracking-widest">Tahun Ajaran Konfigurasi:</label>
                         <select
                             value={selectedYearId}
-                            onChange={(e) => setSelectedYearId(e.target.value)}
+                            onChange={(e) => {
+                                const val = e.target.value;
+                                setSelectedYearId(val);
+                                dispatch({ type: 'SET_GLOBAL_YEAR', payload: val });
+                            }}
                             className="bg-white border-2 border-slate-100 rounded-xl px-4 py-2.5 font-black text-xs text-slate-700 outline-none focus:border-blue-500 transition-all shadow-sm"
                         >
                             {(state.academicYears || []).filter(y => !y.isDeleted).map(y => (
