@@ -4,6 +4,7 @@ import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, Hist
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
+import * as XLSX from 'xlsx';
 
 // ─── Badge Kategori Aset ─────────────────────────────────────────────────────
 function AsetBadge({ kategori, umurEkonomis }) {
@@ -961,6 +962,108 @@ export default function BOSMonthlyReport() {
         }
     };
 
+    const handleExportExcel = () => {
+        if (filteredReports.length === 0) return alert("Tidak ada data untuk diekspor");
+
+        const wsData = [
+            ["No", "Tanggal", "Nomor Nota", "Rincian", "Unit/Bidang", "Keterangan", "Bukti Transaksi", "Volume", "Satuan", "Harga Satuan", "Jumlah Realisasi", "Mata Anggaran", "Kategori Aset", "Umur Ekonomis", "Status"]
+        ];
+
+        filteredReports.forEach((report, i) => {
+            const unitName = report.unitId 
+                ? (units.find(u => u.id === report.unitId)?.name || '-') 
+                : (fields.find(f => f.id === report.fieldId)?.name || '-');
+            
+            const dateStr = report.date 
+                ? new Date(report.date).toLocaleDateString('id-ID') 
+                : '-';
+
+            let exId = report.expenseItemId;
+            if (!exId && report.planId && report.componentId) {
+                const plan = rabPlans?.find(p => p.id === report.planId);
+                if (plan && plan.expense) {
+                    for (const [itemId, plans] of Object.entries(plan.expense)) {
+                        const itemPlans = Array.isArray(plans) ? plans : [plans];
+                        for (const p of itemPlans) {
+                            if (p.components && p.components.some(c => c.id === report.componentId || `COMP-${plan.id}-${itemId}` === report.componentId.substring(0, `COMP-${plan.id}-${itemId}`.length))) {
+                                exId = itemId;
+                                break;
+                            }
+                        }
+                        if (exId) break;
+                    }
+                }
+            }
+            if (!exId && report.budgetRequestId) {
+                const req = budgetRequests?.find(r => r.id === report.budgetRequestId);
+                if (req) {
+                    if (report.componentId && req.items) {
+                        const reqItem = req.items.find(i => i.componentId === report.componentId);
+                        if (reqItem && reqItem.expenseItemId) exId = reqItem.expenseItemId;
+                    }
+                    if (!exId && req.expenseItemId) exId = req.expenseItemId;
+                }
+            }
+            const expenseItemName = expenseItems?.find(e => e.id === exId)?.name || '-';
+
+            wsData.push([
+                i + 1,
+                dateStr,
+                report.nomorNota || '-',
+                report.category || '-',
+                unitName,
+                report.description || '-',
+                report.buktiTeks || '-',
+                report.volume ? parseFloat(report.volume) : '-',
+                report.satuan || '-',
+                report.harga ? parseFloat(report.harga) : '-',
+                parseFloat(report.amount || 0),
+                expenseItemName,
+                report.kategoriAset || 'NON_ASET',
+                report.umurEkonomis ? `${report.umurEkonomis} Tahun` : '-',
+                report.status || '-'
+            ]);
+        });
+
+        // Add a row for total
+        const totalAmount = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+        const totalRow = Array(15).fill("");
+        totalRow[0] = "TOTAL";
+        totalRow[10] = totalAmount; // index 10 is Jumlah Realisasi
+        wsData.push(totalRow);
+
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        
+        ws['!cols'] = [
+            { wch: 5 },  // No
+            { wch: 12 }, // Tanggal
+            { wch: 15 }, // Nomor Nota
+            { wch: 25 }, // Rincian
+            { wch: 20 }, // Unit/Bidang
+            { wch: 30 }, // Keterangan
+            { wch: 30 }, // Bukti Transaksi
+            { wch: 10 }, // Volume
+            { wch: 10 }, // Satuan
+            { wch: 15 }, // Harga Satuan
+            { wch: 18 }, // Jumlah Realisasi
+            { wch: 25 }, // Mata Anggaran
+            { wch: 15 }, // Kategori Aset
+            { wch: 15 }, // Umur Ekonomis
+            { wch: 15 }  // Status
+        ];
+
+        const wb = XLSX.utils.book_new();
+        const sheetName = sourceMode === 'BOS' ? "Laporan BOS" : "Laporan Yayasan";
+        XLSX.utils.book_append_sheet(wb, ws, sheetName);
+        
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const filename = sourceMode === 'BOS' 
+            ? `Laporan_Pengeluaran_BOS_${timestamp}.xlsx`
+            : `Laporan_Pengeluaran_Yayasan_${timestamp}.xlsx`;
+            
+        XLSX.writeFile(wb, filename);
+    };
+
     return (
         <div className="p-8 animate-in text-slate-900 bg-slate-50 min-h-screen">
             <div className="print:hidden space-y-8">
@@ -1253,7 +1356,7 @@ export default function BOSMonthlyReport() {
                         )}
                         <div className="flex gap-2 ml-auto">
                             <button
-                                onClick={() => alert('Fitur export Excel akan segera tersedia.')}
+                                onClick={handleExportExcel}
                                 className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-emerald-700 transition-colors shadow-sm">
                                 <Download size={14} /> Export Excel
                             </button>
