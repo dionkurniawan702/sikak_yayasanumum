@@ -6,7 +6,7 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
-    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, CheckSquare
+    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, CheckSquare, Search
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -155,6 +155,14 @@ function RABContent() {
     const [fundSourceFilter, setFundSourceFilter] = useState('Yayasan');
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
     const [editingItem, setEditingItem] = useState(null);
+    const [compSearchQuery, setCompSearchQuery] = useState('');
+    const [compStatusFilter, setCompStatusFilter] = useState('ALL');
+
+    useEffect(() => {
+        setCompSearchQuery('');
+        setCompStatusFilter('ALL');
+    }, [editingItem]);
+
     const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
     const [filterProgram, setFilterProgram] = useState(null); // programId
     const [isAddendumMode, setIsAddendumMode] = useState(false);
@@ -4326,6 +4334,37 @@ function RABContent() {
                                                     const comps = item?.components || [];
                                                     const draftIndexes = comps.map((c, idx) => (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) ? idx : -1).filter(i => i !== -1);
                                                     
+                                                    // Map components with their original index to avoid indexing bugs when editing/deleting/etc.
+                                                    const compsWithOriginalIndex = comps.map((c, originalIdx) => ({
+                                                        ...c,
+                                                        originalIdx
+                                                    }));
+
+                                                    // Apply search & status filter
+                                                    const filteredComps = compsWithOriginalIndex.filter(comp => {
+                                                        // 1. Search filter
+                                                        if (compSearchQuery) {
+                                                            const query = compSearchQuery.toLowerCase();
+                                                            const matchesLabel = (comp.label || '').toLowerCase().includes(query);
+                                                            const matchesProgram = (allPrograms.find(p => p.id === comp.programId)?.name || 'Tanpa Program').toLowerCase().includes(query);
+                                                            const matchesSatuan = (comp.satuan || '').toLowerCase().includes(query);
+                                                            if (!matchesLabel && !matchesProgram && !matchesSatuan) return false;
+                                                        }
+
+                                                        // 2. Status filter
+                                                        if (compStatusFilter && compStatusFilter !== 'ALL') {
+                                                            const isDraft = comp.status === 'DRAFT' || comp.status === 'REJECTED' || !comp.status;
+                                                            const isApproved = comp.status === 'APPROVED';
+                                                            const isPending = comp.status === 'PENDING';
+
+                                                            if (compStatusFilter === 'DRAFT' && !isDraft) return false;
+                                                            if (compStatusFilter === 'APPROVED' && !isApproved) return false;
+                                                            if (compStatusFilter === 'PENDING' && !isPending) return false;
+                                                        }
+
+                                                        return true;
+                                                    });
+
                                                     return (
                                                         <>
                                                             {draftIndexes.length > 0 && (
@@ -4347,6 +4386,43 @@ function RABContent() {
                                                                 </div>
                                                             )}
 
+                                                            {/* Search and Filters Bar */}
+                                                            {comps.length > 0 && (
+                                                                <div className="flex flex-col sm:flex-row gap-4 items-center justify-between bg-white p-5 rounded-[2rem] border border-slate-100 shadow-sm">
+                                                                    <div className="relative w-full sm:max-w-md">
+                                                                        <Search size={14} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                                        <input
+                                                                            type="text"
+                                                                            placeholder="Cari rincian belanja (nama, program, dll)..."
+                                                                            value={compSearchQuery}
+                                                                            onChange={(e) => setCompSearchQuery(e.target.value)}
+                                                                            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-xs font-bold text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                                                                        />
+                                                                        {compSearchQuery && (
+                                                                            <button 
+                                                                                onClick={() => setCompSearchQuery('')}
+                                                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                                                                            >
+                                                                                <X size={14} />
+                                                                            </button>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0 justify-end">
+                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Filter Status:</span>
+                                                                        <select
+                                                                            value={compStatusFilter || 'ALL'}
+                                                                            onChange={(e) => setCompStatusFilter(e.target.value)}
+                                                                            className="px-3.5 py-2.5 bg-slate-50 border border-slate-200/60 rounded-xl text-[10px] font-black uppercase tracking-wider text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                                                                        >
+                                                                            <option value="ALL">Semua Status</option>
+                                                                            <option value="DRAFT">Draft</option>
+                                                                            <option value="PENDING">Menunggu (Pending)</option>
+                                                                            <option value="APPROVED">Disetujui</option>
+                                                                        </select>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
                                                             {comps.length === 0 ? (
                                                                 <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 border-dashed">
                                                                     <Package size={40} className="mx-auto text-slate-300 mb-4 opacity-30" />
@@ -4360,103 +4436,117 @@ function RABContent() {
                                                                 </div>
                                                             ) : (
                                                                 <div className="space-y-4">
-                                                                    {comps.map((comp, idx) => {
-                                                                        const isDraft = comp.status === 'DRAFT' || comp.status === 'REJECTED' || !comp.status;
-                                                                        const isApproved = comp.status === 'APPROVED';
-                                                                        const isPending = comp.status === 'PENDING';
-                                                                        const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
-                                                                        const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
-                                                                        return (
-                                                                            <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
-                                                                                <div className="flex-1">
-                                                                                    <h4 className="font-black text-slate-800 text-base mb-2">{comp.label}</h4>
-                                                                                    <div className="flex flex-wrap items-center gap-3">
-                                                                                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md line-clamp-1 max-w-[200px]">{allPrograms.find(p => p.id === comp.programId)?.name || 'Tanpa Program'}</span>
-                                                                                        <span className="w-1 h-1 rounded-full bg-slate-200" />
-                                                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vol: {comp.volume} {comp.satuan} &times; {comp.kali}</span>
-                                                                                        <span className="w-1 h-1 rounded-full bg-slate-200" />
-                                                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Harga: {formatRupiah(comp.harga)}</span>
-                                                                                    </div>
-                                                                                    {isUnbalanced && (
-                                                                                        <div className="mt-3 flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-2.5 rounded-2xl w-fit">
-                                                                                            <AlertCircle size={14} className="text-rose-500 flex-shrink-0" />
-                                                                                            <span className="text-[10px] font-black uppercase tracking-wider">
-                                                                                                Alokasi Bulanan Belum Seimbang (Selisih: {formatRupiah(Math.abs((comp.total || 0) - monthlyTotal))})
-                                                                                            </span>
+                                                                    {filteredComps.length === 0 ? (
+                                                                        <div className="p-12 text-center bg-white rounded-[2rem] border border-slate-200 border-dashed">
+                                                                            <Search size={32} className="mx-auto text-slate-300 mb-3 opacity-40" />
+                                                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-60">Tidak ditemukan rincian yang cocok</p>
+                                                                            <button
+                                                                                onClick={() => { setCompSearchQuery(''); setCompStatusFilter('ALL'); }}
+                                                                                className="mt-4 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-black text-[9px] uppercase tracking-widest transition-all"
+                                                                            >
+                                                                                Reset Pencarian
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        filteredComps.map((comp) => {
+                                                                            const idx = comp.originalIdx;
+                                                                            const isDraft = comp.status === 'DRAFT' || comp.status === 'REJECTED' || !comp.status;
+                                                                            const isApproved = comp.status === 'APPROVED';
+                                                                            const isPending = comp.status === 'PENDING';
+                                                                            const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                                                                            const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
+                                                                            return (
+                                                                                <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                                                                                    <div className="flex-1">
+                                                                                        <h4 className="font-black text-slate-800 text-base mb-2">{comp.label}</h4>
+                                                                                        <div className="flex flex-wrap items-center gap-3">
+                                                                                            <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md line-clamp-1 max-w-[200px]">{allPrograms.find(p => p.id === comp.programId)?.name || 'Tanpa Program'}</span>
+                                                                                            <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vol: {comp.volume} {comp.satuan} &times; {comp.kali}</span>
+                                                                                            <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                                                            <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Harga: {formatRupiah(comp.harga)}</span>
                                                                                         </div>
-                                                                                    )}
-                                                                                    {(() => {
-                                                                                        const selectedMonths = monthsOptions.filter(m => comp.months?.[m.id]?.m === true || comp.months?.[m.id]?.jumlah > 0);
-                                                                                        if (selectedMonths.length === 12) {
-                                                                                            return <div className="mt-3 flex flex-wrap gap-2"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-black uppercase tracking-widest border border-emerald-100">Setiap Bulan (12 Bulan Penuh)</span></div>;
-                                                                                        } else if (selectedMonths.length > 0) {
-                                                                                            return (
-                                                                                                <div className="mt-3 flex flex-wrap gap-1.5">
-                                                                                                    {selectedMonths.map(m => (
-                                                                                                        <span key={m.id} className="px-2 py-1 bg-slate-50 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200">
-                                                                                                            {m.label || m.name || m.id}
-                                                                                                        </span>
-                                                                                                    ))}
-                                                                                                </div>
-                                                                                            );
-                                                                                        }
-                                                                                        return null;
-                                                                                    })()}
-                                                                                </div>
-                                                                                <div className="flex items-center gap-6 mt-6 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
-                                                                                    <div className="text-right">
-                                                                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-1">Subtotal</p>
-                                                                                        <span className="font-black text-slate-900 text-lg">{formatRupiah(comp.total)}</span>
-                                                                                    </div>
-                                                                                    <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
-                                                                                        {(isPending || isApproved) && !isSuperAdmin ? (
-                                                                                            <div className="flex items-center gap-2">
-                                                                                                <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                                                                    <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
-                                                                                                </div>
-                                                                                                <button
-                                                                                                    onClick={() => {
-                                                                                                        setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp });
-                                                                                                        setEditingCompIdx(idx);
-                                                                                                        setIsReadOnlyComp(true);
-                                                                                                        setShowCompModal(true);
-                                                                                                    }}
-                                                                                                    className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors shadow-sm"
-                                                                                                    title="Lihat Rincian Anggaran"
-                                                                                                >
-                                                                                                    <Eye size={15} />
-                                                                                                </button>
-                                                                                                {isPending && !isSuperAdmin && activePlan.status !== 'APPROVED' && (
-                                                                                                    <button
-                                                                                                        onClick={() => handleBatalkanRincian(idx)}
-                                                                                                        className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm"
-                                                                                                        title="Batalkan Pengajuan Rincian Ini"
-                                                                                                    >
-                                                                                                        <XCircle size={15} />
-                                                                                                    </button>
-                                                                                                )}
+                                                                                        {isUnbalanced && (
+                                                                                            <div className="mt-3 flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-2.5 rounded-2xl w-fit">
+                                                                                                <AlertCircle size={14} className="text-rose-500 flex-shrink-0" />
+                                                                                                <span className="text-[10px] font-black uppercase tracking-wider">
+                                                                                                    Alokasi Bulanan Belum Seimbang (Selisih: {formatRupiah(Math.abs((comp.total || 0) - monthlyTotal))})
+                                                                                                </span>
                                                                                             </div>
-                                                                                        ) : (
-                                                                                            <>
-                                                                                                <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
-                                                                                                <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
-                                                                                                {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
-                                                                                                {isSuperAdmin && (isApproved || isPending) && (
-                                                                                                    <button
-                                                                                                        onClick={() => handleSuperAdminCancelComponent(idx)}
-                                                                                                        className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm active:scale-95 ml-1"
-                                                                                                        title="Batalkan Persetujuan/Pengajuan Rincian Ini"
-                                                                                                    >
-                                                                                                        <XCircle size={15} />
-                                                                                                    </button>
-                                                                                                )}
-                                                                                            </>
                                                                                         )}
+                                                                                        {(() => {
+                                                                                            const selectedMonths = monthsOptions.filter(m => comp.months?.[m.id]?.m === true || comp.months?.[m.id]?.jumlah > 0);
+                                                                                            if (selectedMonths.length === 12) {
+                                                                                                return <div className="mt-3 flex flex-wrap gap-2"><span className="px-2 py-1 bg-emerald-50 text-emerald-600 rounded text-[9px] font-black uppercase tracking-widest border border-emerald-100">Setiap Bulan (12 Bulan Penuh)</span></div>;
+                                                                                            } else if (selectedMonths.length > 0) {
+                                                                                                return (
+                                                                                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                                                                                        {selectedMonths.map(m => (
+                                                                                                            <span key={m.id} className="px-2 py-1 bg-slate-50 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200">
+                                                                                                                {m.label || m.name || m.id}
+                                                                                                            </span>
+                                                                                                        ))}
+                                                                                                    </div>
+                                                                                                );
+                                                                                            }
+                                                                                            return null;
+                                                                                        })()}
+                                                                                    </div>
+                                                                                    <div className="flex items-center gap-6 mt-6 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
+                                                                                        <div className="text-right">
+                                                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-1">Subtotal</p>
+                                                                                            <span className="font-black text-slate-900 text-lg">{formatRupiah(comp.total)}</span>
+                                                                                        </div>
+                                                                                        <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
+                                                                                            {(isPending || isApproved) && !isSuperAdmin ? (
+                                                                                                <div className="flex items-center gap-2">
+                                                                                                    <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
+                                                                                                        <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
+                                                                                                    </div>
+                                                                                                    <button
+                                                                                                        onClick={() => {
+                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp });
+                                                                                                            setEditingCompIdx(idx);
+                                                                                                            setIsReadOnlyComp(true);
+                                                                                                            setShowCompModal(true);
+                                                                                                        }}
+                                                                                                        className="p-2 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-colors shadow-sm"
+                                                                                                        title="Lihat Rincian Anggaran"
+                                                                                                    >
+                                                                                                        <Eye size={15} />
+                                                                                                    </button>
+                                                                                                    {isPending && !isSuperAdmin && activePlan.status !== 'APPROVED' && (
+                                                                                                        <button
+                                                                                                            onClick={() => handleBatalkanRincian(idx)}
+                                                                                                            className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm"
+                                                                                                            title="Batalkan Pengajuan Rincian Ini"
+                                                                                                        >
+                                                                                                            <XCircle size={15} />
+                                                                                                        </button>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            ) : (
+                                                                                                <>
+                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                                                    <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
+                                                                                                    {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
+                                                                                                    {isSuperAdmin && (isApproved || isPending) && (
+                                                                                                        <button
+                                                                                                            onClick={() => handleSuperAdminCancelComponent(idx)}
+                                                                                                            className="p-2 bg-rose-50 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-colors shadow-sm active:scale-95 ml-1"
+                                                                                                            title="Batalkan Persetujuan/Pengajuan Rincian Ini"
+                                                                                                        >
+                                                                                                            <XCircle size={15} />
+                                                                                                        </button>
+                                                                                                    )}
+                                                                                                </>
+                                                                                            )}
+                                                                                        </div>
                                                                                     </div>
                                                                                 </div>
-                                                                            </div>
-                                                                        );
-                                                                    })}
+                                                                            );
+                                                                        })
+                                                                    )}
                                                                     
                                                                     <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
                                                                         <div className="flex items-center gap-5">
