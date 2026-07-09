@@ -458,14 +458,13 @@ export const api = {
                 units: state.units || [],
                 incomeItems: state.incomeItems || [],
                 expenseItems: state.expenseItems || [],
-                // distributionSettings removed from auto-sync to prevent dormant tabs from resurrecting deleted rules
+                // distributionSettings and rabPlans removed from auto-sync to prevent dormant tabs from resurrecting deleted rules / stale data
                 academicYears: state.academicYears || [],
                 classGroups: state.classGroups || [],
                 positions: state.positions || [],
                 studentStatuses: state.studentStatuses || [],
                 parentStatuses: state.parentStatuses || [],
                 classes: state.classes || [],
-                rabPlans: state.rabPlans || [],
                 budgetRequests: state.budgetRequests || [],
                 budgetReports: state.budgetReports || [],
                 bosStages: state.bosStages || [],
@@ -473,10 +472,11 @@ export const api = {
                 bosAllocations: state.bosAllocations || []
             };
 
-            // Only include large tables (students, journals) for manual syncs/restores to avoid database timeout and packet limits
+            // Only include large/sensitive tables for manual syncs/restores to avoid background conflicts and database limits
             if (includeAll) {
                 syncData.students = state.students || [];
                 syncData.journals = state.journals || [];
+                syncData.rabPlans = state.rabPlans || [];
             }
 
             const response = await this.post('/sync', syncData);
