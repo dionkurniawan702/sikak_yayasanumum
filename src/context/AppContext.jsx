@@ -109,6 +109,14 @@ function loadState() {
                 console.error('Failed to parse currentUser from local storage', e);
             }
 
+            // Migration: Ensure entries in journals are parsed arrays, not JSON strings
+            if (merged.journals && Array.isArray(merged.journals)) {
+                merged.journals = merged.journals.map(j => ({
+                    ...j,
+                    entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries
+                }));
+            }
+
             // Migration: Standardize 'Saldo Dana' to 'Aset Neto'
             if (merged.accounts) {
                 merged.accounts = merged.accounts.map(acc => {
@@ -295,7 +303,11 @@ function appReducer(state, action) {
             newState = {
                 ...state,
                 accounts: serverData.accounts || state.accounts || [],
-                journals: (serverData.journals || state.journals || []).map(j => ({ ...j, programId: j.programId || 'PRG-GEN' })),
+                journals: (serverData.journals || state.journals || []).map(j => ({ 
+                    ...j, 
+                    programId: j.programId || 'PRG-GEN',
+                    entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries
+                })),
                 classes: serverData.classes || state.classes || [],
                 rabPlans: (serverData.rabPlans || state.rabPlans || []).filter(p => {
                     const isGhost = !p.id.endsWith('-YAYASAN') && !p.id.endsWith('-BOS');
@@ -463,7 +475,12 @@ function appReducer(state, action) {
             break;
         case 'ADD_JOURNAL': {
             const journalId = action.payload.id || generateId('JRN');
-            const newJournal = { ...action.payload, id: journalId, programId: action.payload.programId || 'PRG-GEN' };
+            const newJournal = { 
+                ...action.payload, 
+                id: journalId, 
+                programId: action.payload.programId || 'PRG-GEN',
+                entries: typeof action.payload.entries === 'string' ? JSON.parse(action.payload.entries) : action.payload.entries
+            };
             const detectedAssets = getPotentialAssetsFromJournal(newJournal, state.accounts);
             newState = { ...state, journals: [...state.journals, newJournal], assets: [...state.assets, ...detectedAssets] };
             break;

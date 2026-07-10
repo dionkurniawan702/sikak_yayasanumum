@@ -968,7 +968,7 @@ router.post('/budget-reports', async (req, res) => {
                         date: new Date(date),
                         name: `Laporan Anggaran: ${expenseItem.name}`,
                         description: `Pelaporan anggaran untuk unit ${expenseItem.unit?.name || ''}. ${description || ''}`,
-                        entries: JSON.stringify([
+                        entries: [
                             {
                                 accountId: expenseItem.accountId,
                                 accountName: expenseItem.name,
@@ -981,7 +981,7 @@ router.post('/budget-reports', async (req, res) => {
                                 debit: 0,
                                 credit: parseFloat(amount)
                             }
-                        ]),
+                        ],
                         reference: `REPORT-${report.id.substring(0, 8)}`
                     }
                 });
@@ -1049,7 +1049,7 @@ router.put('/budget-reports/:id', async (req, res) => {
                     }));
                     await tx.journal.update({
                         where: { id: journal.id },
-                        data: { entries: JSON.stringify(newEntries) }
+                        data: { entries: newEntries }
                     }).catch(() => {});
                 }
             }
