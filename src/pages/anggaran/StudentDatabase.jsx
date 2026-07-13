@@ -20,6 +20,7 @@ export default function StudentDatabase() {
     const setAcademicYearFilter = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const [classFilter, setClassFilter] = useState('all');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [genderFilter, setGenderFilter] = useState('all');
     const [showAllYears, setShowAllYears] = useState(false);
     
     // Help calculate defaults for modal
@@ -68,9 +69,21 @@ export default function StudentDatabase() {
             const matchesClass = classFilter === 'all' || s.classId === classFilter;
             const matchesStatus = statusFilter === 'all' || s.statusId === statusFilter;
             
-            return matchesSearch && matchesUnit && matchesYear && matchesClass && matchesStatus && !s.isDeleted;
+            let matchesGender = true;
+            if (genderFilter !== 'all') {
+                const g = s.gender?.toLowerCase() || '';
+                if (genderFilter === 'L') {
+                    matchesGender = g === 'laki-laki' || g === 'l';
+                } else if (genderFilter === 'P') {
+                    matchesGender = g === 'perempuan' || g === 'p';
+                } else if (genderFilter === 'empty') {
+                    matchesGender = g === '' || !g;
+                }
+            }
+            
+            return matchesSearch && matchesUnit && matchesYear && matchesClass && matchesStatus && matchesGender && !s.isDeleted;
         });
-    }, [students, isUnitAdmin, currentUser.unitId, searchTerm, unitFilter, academicYearFilter, classFilter, statusFilter]);
+    }, [students, isUnitAdmin, currentUser.unitId, searchTerm, unitFilter, academicYearFilter, classFilter, statusFilter, genderFilter]);
 
     const handleOpenStudentModal = (student = null) => {
         if (student) {
@@ -716,7 +729,7 @@ export default function StudentDatabase() {
             )}
 
             {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
                 <div className="relative">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input 
@@ -769,6 +782,16 @@ export default function StudentDatabase() {
                     {state.studentStatuses?.map(s => (
                         <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
+                </select>
+                <select 
+                    className="form-select"
+                    value={genderFilter}
+                    onChange={e => setGenderFilter(e.target.value)}
+                >
+                    <option value="all">Semua Jenis Kelamin</option>
+                    <option value="L">Laki-laki</option>
+                    <option value="P">Perempuan</option>
+                    <option value="empty">Tanpa Keterangan</option>
                 </select>
             </div>
 
