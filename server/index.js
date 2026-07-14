@@ -219,6 +219,102 @@ const getPrisma = () => {
                 } catch (migrationErr) {
                     console.error('[Migration Error] Failed to migrate distribution settings:', migrationErr.message);
                 }
+
+                // --- AUTO MIGRATION: CREATE DRAFT JOURNALS FOR APPROVED REPORTS MISSING JOURNAL ---
+                try {
+                    const approvedWithoutJournal = await prisma.budgetReport.findMany({
+                        where: {
+                            status: 'APPROVED',
+                            isDeleted: false,
+                            OR: [
+                                { journalId: null },
+                                { journalId: '' }
+                            ]
+                        }
+                    });
+
+                    if (approvedWithoutJournal.length > 0) {
+                        console.log(`[Migration] Found ${approvedWithoutJournal.length} APPROVED budget reports without journal entries. Generating retroactively...`);
+                        let createdCount = 0;
+
+                        for (const report of approvedWithoutJournal) {
+                            let expenseItem = null;
+                            if (report.expenseItemId) {
+                                expenseItem = await prisma.expenseItem.findUnique({
+                                    where: { id: report.expenseItemId },
+                                    include: { unit: true }
+                                });
+                            }
+
+                            let targetName = 'Yayasan';
+                            if (report.unitId) {
+                                const u = await prisma.unit.findUnique({ where: { id: report.unitId } });
+                                if (u) targetName = u.name;
+                            } else if (report.fieldId) {
+                                const f = await prisma.field.findUnique({ where: { id: report.fieldId } });
+                                if (f) targetName = f.name;
+                            }
+
+                            let resolvedProgramId = null;
+                            let journalDescription = '';
+
+                            if (report.kategoriAset === 'PENGEMBALIAN') {
+                                journalDescription = `Pengembalian Sisa Dana: ${targetName}${report.description ? ` (${report.description})` : ''}`;
+                                resolvedProgramId = 'PRG-GEN';
+                            } else {
+                                const expName = expenseItem?.name || report.description || 'Pengeluaran';
+                                journalDescription = `Realisasi: ${expName} - ${targetName}${report.description ? ` (${report.description})` : ''}`;
+                                if (report.category) {
+                                    const p = await prisma.program.findFirst({
+                                        where: { category: report.category, isDeleted: false }
+                                    });
+                                    if (p) resolvedProgramId = p.id;
+                                }
+                            }
+
+                            const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
+                            const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
+                            
+                            const creditAccount = '';
+                            const creditName = 'MENUNGGU COA (Kredit)';
+
+                            const journal = await prisma.journal.create({
+                                data: {
+                                    date: report.date ? new Date(report.date) : new Date(),
+                                    name: targetName,
+                                    description: journalDescription,
+                                    reference: report.nomorNota || (report.planId ? report.planId : `REPORT-${report.id.substring(0, 8)}`),
+                                    proof: report.buktiTeks || null,
+                                    programId: resolvedProgramId,
+                                    entries: [
+                                        {
+                                            accountId: debitAccount,
+                                            accountName: debitName,
+                                            debit: parseFloat(report.amount) || 0,
+                                            credit: 0
+                                        },
+                                        {
+                                            accountId: creditAccount,
+                                            accountName: creditName,
+                                            debit: 0,
+                                            credit: parseFloat(report.amount) || 0
+                                        }
+                                    ]
+                                }
+                            });
+
+                            await prisma.budgetReport.update({
+                                where: { id: report.id },
+                                data: { journalId: journal.id }
+                            });
+
+                            createdCount++;
+                        }
+                        console.log(`[Migration] Retroactively created ${createdCount} journal entries for approved reports.`);
+                    }
+                } catch (journalMigrationErr) {
+                    console.error('[Migration Error] Failed to retroactively create journals:', journalMigrationErr.message);
+                }
             } catch (err) {
                 console.error('[Cleanup Error]', err.message);
             }

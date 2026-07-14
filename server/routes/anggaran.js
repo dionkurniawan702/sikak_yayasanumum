@@ -962,65 +962,69 @@ router.post('/budget-reports', async (req, res) => {
                 });
             }
 
-            // 3. Create Journal Entry
-            let targetName = 'Yayasan';
-            if (unitId) {
-                const u = await tx.unit.findUnique({ where: { id: unitId } });
-                if (u) targetName = u.name;
-            } else if (fieldId) {
-                const f = await tx.field.findUnique({ where: { id: fieldId } });
-                if (f) targetName = f.name;
-            }
-
-            let resolvedProgramId = null;
-            if (category) {
-                const p = await tx.program.findFirst({
-                    where: { category, isDeleted: false }
-                });
-                if (p) resolvedProgramId = p.id;
-            }
-
-            const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
-            const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
-            
-            const creditAccount = '';
-            const creditName = 'MENUNGGU COA (Kredit)';
-            
-            const expName = expenseItem?.name || description || 'Pengeluaran';
-            const descriptionText = description ? ` (${description})` : '';
-
-            const journal = await tx.journal.create({
-                data: {
-                    date: date ? new Date(date) : new Date(),
-                    name: targetName,
-                    description: `Realisasi: ${expName} - ${targetName}${descriptionText}`,
-                    reference: nomorNota || (planId ? planId : `REPORT-${report.id.substring(0, 8)}`),
-                    proof: buktiTeks || null,
-                    programId: resolvedProgramId,
-                    entries: [
-                        {
-                            accountId: debitAccount,
-                            accountName: debitName,
-                            debit: parseFloat(amount) || 0,
-                            credit: 0
-                        },
-                        {
-                            accountId: creditAccount,
-                            accountName: creditName,
-                            debit: 0,
-                            credit: parseFloat(amount) || 0
-                        }
-                    ]
+            // 3. Create Journal Entry (Only if report status is APPROVED)
+            if (report.status === 'APPROVED') {
+                let targetName = 'Yayasan';
+                if (unitId) {
+                    const u = await tx.unit.findUnique({ where: { id: unitId } });
+                    if (u) targetName = u.name;
+                } else if (fieldId) {
+                    const f = await tx.field.findUnique({ where: { id: fieldId } });
+                    if (f) targetName = f.name;
                 }
-            });
 
-            // Update report with journal info
-            const updatedReport = await tx.budgetReport.update({
-                where: { id: report.id },
-                data: { journalId: journal.id }
-            });
+                let resolvedProgramId = null;
+                if (category) {
+                    const p = await tx.program.findFirst({
+                        where: { category, isDeleted: false }
+                    });
+                    if (p) resolvedProgramId = p.id;
+                }
 
-            return updatedReport;
+                const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
+                const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
+                
+                const creditAccount = '';
+                const creditName = 'MENUNGGU COA (Kredit)';
+                
+                const expName = expenseItem?.name || description || 'Pengeluaran';
+                const descriptionText = description ? ` (${description})` : '';
+
+                const journal = await tx.journal.create({
+                    data: {
+                        date: date ? new Date(date) : new Date(),
+                        name: targetName,
+                        description: `Realisasi: ${expName} - ${targetName}${descriptionText}`,
+                        reference: nomorNota || (planId ? planId : `REPORT-${report.id.substring(0, 8)}`),
+                        proof: buktiTeks || null,
+                        programId: resolvedProgramId,
+                        entries: [
+                            {
+                                accountId: debitAccount,
+                                accountName: debitName,
+                                debit: parseFloat(amount) || 0,
+                                credit: 0
+                            },
+                            {
+                                accountId: creditAccount,
+                                accountName: creditName,
+                                debit: 0,
+                                credit: parseFloat(amount) || 0
+                            }
+                        ]
+                    }
+                });
+
+                // Update report with journal info
+                const updatedReport = await tx.budgetReport.update({
+                    where: { id: report.id },
+                    data: { journalId: journal.id }
+                });
+
+                return updatedReport;
+            }
+
+            return report;
         });
 
         res.json({ data: result });
@@ -1035,7 +1039,7 @@ router.put('/budget-reports/:id', async (req, res) => {
             'status', 'amount', 'description', 'date', 'expenseItemId',
             'unitId', 'fieldId', 'academicYearId', 'category',
             'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 
-            'kategoriAset', 'umurEkonomis', 'isDeleted'
+            'kategoriAset', 'umurEkonomis', 'isDeleted', 'planId'
         ];
 
         const data = {};
@@ -1057,6 +1061,82 @@ router.put('/budget-reports/:id', async (req, res) => {
                 where: { id: req.params.id },
                 data
             });
+
+            // If APPROVED and no journalId exists, automatically create the journal entry
+            if (data.status === 'APPROVED' && !updated.journalId) {
+                let expenseItem = null;
+                if (updated.expenseItemId) {
+                    expenseItem = await tx.expenseItem.findUnique({
+                        where: { id: updated.expenseItemId },
+                        include: { unit: true }
+                    });
+                }
+
+                let targetName = 'Yayasan';
+                if (updated.unitId) {
+                    const u = await tx.unit.findUnique({ where: { id: updated.unitId } });
+                    if (u) targetName = u.name;
+                } else if (updated.fieldId) {
+                    const f = await tx.field.findUnique({ where: { id: updated.fieldId } });
+                    if (f) targetName = f.name;
+                }
+
+                let resolvedProgramId = null;
+                let journalDescription = '';
+                
+                if (updated.kategoriAset === 'PENGEMBALIAN') {
+                    journalDescription = `Pengembalian Sisa Dana: ${targetName}${updated.description ? ` (${updated.description})` : ''}`;
+                    resolvedProgramId = 'PRG-GEN';
+                } else {
+                    const expName = expenseItem?.name || updated.description || 'Pengeluaran';
+                    journalDescription = `Realisasi: ${expName} - ${targetName}${updated.description ? ` (${updated.description})` : ''}`;
+                    if (updated.category) {
+                        const p = await tx.program.findFirst({
+                            where: { category: updated.category, isDeleted: false }
+                        });
+                        if (p) resolvedProgramId = p.id;
+                    }
+                }
+
+                const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
+                const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
+                
+                const creditAccount = '';
+                const creditName = 'MENUNGGU COA (Kredit)';
+
+                const journal = await tx.journal.create({
+                    data: {
+                        date: updated.date ? new Date(updated.date) : new Date(),
+                        name: targetName,
+                        description: journalDescription,
+                        reference: updated.nomorNota || (updated.planId ? updated.planId : `REPORT-${updated.id.substring(0, 8)}`),
+                        proof: updated.buktiTeks || null,
+                        programId: resolvedProgramId,
+                        entries: [
+                            {
+                                accountId: debitAccount,
+                                accountName: debitName,
+                                debit: parseFloat(updated.amount) || 0,
+                                credit: 0
+                            },
+                            {
+                                accountId: creditAccount,
+                                accountName: creditName,
+                                debit: 0,
+                                credit: parseFloat(updated.amount) || 0
+                            }
+                        ]
+                    }
+                });
+
+                // Update report with journal info and return this final object
+                const finalReport = await tx.budgetReport.update({
+                    where: { id: updated.id },
+                    data: { journalId: journal.id }
+                });
+
+                return finalReport;
+            }
 
             // If REJECTED, soft-delete the associated journal to restore balance
             if (data.status === 'REJECTED' && updated.journalId) {

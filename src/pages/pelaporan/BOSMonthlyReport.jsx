@@ -911,46 +911,9 @@ export default function BOSMonthlyReport() {
         if (window.confirm('Setujui laporan ini? Draf Jurnal (Menunggu COA) akan otomatis dibuat.')) {
             setProcessingId(report.id);
             try {
-                if (report.journalId) {
-                    // Jurnal sudah dibuat di backend saat pelaporan pengeluaran, cukup set APPROVED
-                    const updated = { ...report, status: 'APPROVED', notified: false };
-                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-                } else {
-                    // Fallback pembuatan jurnal draf untuk data lama yang belum punya journalId
-                    const journalId = `JRN-${Date.now()}`;
-                    const unitName = state.units.find(u => u.id === report.unitId)?.name || '';
-                    const fieldName = state.fields.find(f => f.id === report.fieldId)?.name || '';
-                    const expItem = state.expenseItems.find(e => e.id === report.expenseItemId);
-                    
-                    const expName = expItem?.name || report.description || 'Pengeluaran';
-                    const targetName = unitName || fieldName || 'Yayasan';
-                    
-                    const programId = state.programs.find(p => p.category === report.category)?.id || 'PRG-GEN';
-                    
-                    const descriptionText = report.description ? ` (${report.description})` : '';
-                    const draftJournal = {
-                        id: journalId,
-                        date: report.date ? new Date(report.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-                        name: targetName,
-                        description: `Realisasi: ${expName} - ${targetName}${descriptionText}`,
-                        reference: report.nomorNota || report.planId || '',
-                        proof: report.buktiTeks || '',
-                        programId: programId,
-                        entries: [
-                            { accountId: '', accountName: 'MENUNGGU COA (Debit)', debit: Number(report.amount) || 0, credit: 0 },
-                            { accountId: '', accountName: 'MENUNGGU COA (Kredit)', debit: 0, credit: Number(report.amount) || 0 }
-                        ],
-                        isDeleted: false
-                    };
-
-                    dispatch({ type: 'ADD_JOURNAL', payload: draftJournal });
-                    await api.pushAction({ type: 'ADD_JOURNAL', payload: draftJournal }, state);
-
-                    const updated = { ...report, status: 'APPROVED', notified: false, journalId };
-                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-                }
+                const updated = { ...report, status: 'APPROVED', notified: false };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
                 alert('Laporan berhasil disetujui!');
             } catch (error) {
                 console.error(error);

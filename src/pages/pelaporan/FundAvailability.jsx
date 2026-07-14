@@ -243,40 +243,18 @@ export default function FundAvailability() {
         if (!window.confirm('Setujui pengembalian dana ini? Draf Jurnal akan otomatis dibuat.')) return;
         
         setProcessingId(ret.id);
-        
-        // 1. Create Draft Journal
-        const journalId = `JRN-${Date.now()}`;
-        const unitName = state.units.find(u => u.id === ret.unitId)?.name || '';
-        const fieldName = state.fields.find(f => f.id === ret.fieldId)?.name || '';
-        const targetName = unitName || fieldName || 'Yayasan';
-        
-        const descriptionText = ret.description ? ` (${ret.description})` : '';
-        const draftJournal = {
-            id: journalId,
-            date: ret.date ? new Date(ret.date).toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10),
-            name: targetName,
-            description: `Pengembalian Sisa Dana: ${targetName}${descriptionText}`,
-            reference: ret.id,
-            proof: ret.buktiTeks || '',
-            programId: 'PRG-GEN',
-            entries: [
-                { accountId: '', accountName: 'MENUNGGU COA (Debit)', debit: Number(ret.amount) || 0, credit: 0 },
-                { accountId: '', accountName: 'MENUNGGU COA (Kredit)', debit: 0, credit: Number(ret.amount) || 0 }
-            ],
-            isDeleted: false
-        };
-
-        dispatch({ type: 'ADD_JOURNAL', payload: draftJournal });
-        await api.pushAction({ type: 'ADD_JOURNAL', payload: draftJournal }, state);
-
-        // 2. Update Report Status
-        const updated = { ...ret, status: 'APPROVED', notified: false, journalId };
-        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-        
-        setProcessingId(null);
-        setReviewData(null);
-        alert('Pengembalian dana berhasil di-ACC dan draf jurnal dibuat!');
+        try {
+            const updated = { ...ret, status: 'APPROVED', notified: false };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            alert('Pengembalian dana berhasil di-ACC!');
+        } catch (error) {
+            console.error(error);
+            alert('Gagal menyetujui pengembalian dana: ' + error.message);
+        } finally {
+            setProcessingId(null);
+            setReviewData(null);
+        }
     };
 
     const handleRejectReturn = async (ret) => {
