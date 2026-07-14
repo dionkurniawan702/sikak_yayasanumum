@@ -45,6 +45,7 @@ export default function JournalEntry() {
     const [editingJournal, setEditingJournal] = useState(null);
     const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
     const [historySearch, setHistorySearch] = useState('');
+    const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
 
     const exportHistoryToExcel = () => {
         const data = journals.map(j => ({
@@ -74,8 +75,21 @@ export default function JournalEntry() {
     const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
     const difference = Math.abs(totalDebit - totalCredit);
 
+    const countTotal = journals.length;
+    const countDone = journals.filter(j => !j.entries?.some(e => !e.accountId)).length;
+    const countPending = journals.filter(j => j.entries?.some(e => !e.accountId)).length;
+
     const filteredJournals = journals
         .filter(j => !j.isDeleted)
+        .filter(j => {
+            if (historyStatusFilter === 'PENDING') {
+                return j.entries?.some(e => !e.accountId);
+            }
+            if (historyStatusFilter === 'DONE') {
+                return !j.entries?.some(e => !e.accountId);
+            }
+            return true;
+        })
         .filter(j => 
             j.description.toLowerCase().includes(historySearch.toLowerCase()) || 
             (j.name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
@@ -279,60 +293,129 @@ export default function JournalEntry() {
             )}
 
             {viewMode === 'list' && (
-                <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden animate-in">
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                            <tr>
-                                <th colSpan={4} className="px-8 py-4">
-                                    <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                                        <div className="relative flex-1 w-full">
-                                            <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                            <input className="form-input pl-12 rounded-2xl border-slate-200" placeholder="Cari di riwayat..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
+                <div className="space-y-6 animate-in fade-in duration-500">
+                    {/* Statistik & Filter Jurnal */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {/* Total Jurnal */}
+                        <div 
+                            onClick={() => setHistoryStatusFilter('ALL')}
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
+                                historyStatusFilter === 'ALL' 
+                                    ? 'bg-blue-50/50 border-blue-200 shadow-blue-100/50' 
+                                    : 'bg-white border-slate-100 hover:border-blue-100 shadow-sm'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
+                                    <List size={20} />
+                                </div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Jurnal</span>
+                            </div>
+                            <div className="mt-4">
+                                <h3 className="text-3xl font-black text-slate-800">{countTotal}</h3>
+                                <p className="text-xs text-slate-400 font-bold mt-1">Semua catatan transaksi</p>
+                            </div>
+                        </div>
+
+                        {/* Jurnal Terisi */}
+                        <div 
+                            onClick={() => setHistoryStatusFilter('DONE')}
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
+                                historyStatusFilter === 'DONE' 
+                                    ? 'bg-emerald-50/50 border-emerald-200 shadow-emerald-100/50' 
+                                    : 'bg-white border-slate-100 hover:border-emerald-100 shadow-sm'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">
+                                    <CheckCircle size={20} />
+                                </div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Terisi COA</span>
+                            </div>
+                            <div className="mt-4">
+                                <h3 className="text-3xl font-black text-slate-800">{countDone}</h3>
+                                <p className="text-xs text-slate-400 font-bold mt-1">Transaksi dengan akun lengkap</p>
+                            </div>
+                        </div>
+
+                        {/* Menunggu COA */}
+                        <div 
+                            onClick={() => setHistoryStatusFilter('PENDING')}
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
+                                historyStatusFilter === 'PENDING' 
+                                    ? 'bg-amber-50/50 border-amber-200 shadow-amber-100/50' 
+                                    : 'bg-white border-slate-100 hover:border-amber-100 shadow-sm'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl animate-pulse">
+                                    <Hourglass size={20} />
+                                </div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Menunggu COA</span>
+                            </div>
+                            <div className="mt-4">
+                                <h3 className="text-3xl font-black text-slate-800">{countPending}</h3>
+                                <p className="text-xs text-slate-400 font-bold mt-1">Perlu pemetaan akun COA</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Table List Container */}
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden animate-in">
+                        <table className="w-full text-left">
+                            <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                <tr>
+                                    <th colSpan={4} className="px-8 py-4">
+                                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                            <div className="relative flex-1 w-full">
+                                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                <input className="form-input pl-12 rounded-2xl border-slate-200" placeholder="Cari di riwayat..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
+                                            </div>
+                                            <button onClick={exportHistoryToExcel} className="btn bg-white text-emerald-600 border-emerald-100 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
+                                                <FileSpreadsheet size={18} /> Export Excel
+                                            </button>
                                         </div>
-                                        <button onClick={exportHistoryToExcel} className="btn bg-white text-emerald-600 border-emerald-100 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
-                                            <FileSpreadsheet size={18} /> Export Excel
-                                        </button>
-                                    </div>
-                                </th>
-                            </tr>
-                            <tr>
-                                <th className="px-8 py-6">ID / Tanggal</th>
-                                <th className="px-8 py-6">Deskripsi Transaksi</th>
-                                <th className="px-8 py-6 text-right">Nilai Total</th>
-                                <th className="px-8 py-6 text-center">Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {filteredJournals.map(j => (
-                                <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-8 py-4">
-                                        <p className="font-bold text-blue-600 text-xs">{j.id}</p>
-                                        <p className="text-slate-500 text-xs font-medium">{formatTanggal(j.date)}</p>
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <p className="font-bold text-slate-800 text-sm">{j.description}</p>
-                                        <div className="flex gap-2 mt-1 items-center">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
-                                            {j.entries?.some(e => !e.accountId) && (
-                                                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                                                    <AlertTriangle size={10} /> Menunggu COA
-                                                </span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-4 text-right font-black text-slate-800">
-                                        <CurrencyDisplay value={j.entries.reduce((s, e) => s + e.debit, 0)} />
-                                    </td>
-                                    <td className="px-8 py-4">
-                                        <div className="flex justify-center gap-2">
-                                            <button onClick={() => handleEdit(j)} className="p-2 text-slate-300 hover:text-blue-600 transition-all"><Pencil size={16}/></button>
-                                            <button onClick={() => handleDelete(j.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16}/></button>
-                                        </div>
-                                    </td>
+                                    </th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
+                                <tr>
+                                    <th className="px-8 py-6">ID / Tanggal</th>
+                                    <th className="px-8 py-6">Deskripsi Transaksi</th>
+                                    <th className="px-8 py-6 text-right">Nilai Total</th>
+                                    <th className="px-8 py-6 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                                {filteredJournals.map(j => (
+                                    <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
+                                        <td className="px-8 py-4">
+                                            <p className="font-bold text-blue-600 text-xs">{j.id}</p>
+                                            <p className="text-slate-500 text-xs font-medium">{formatTanggal(j.date)}</p>
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <p className="font-bold text-slate-800 text-sm">{j.description}</p>
+                                            <div className="flex gap-2 mt-1 items-center">
+                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
+                                                {j.entries?.some(e => !e.accountId) && (
+                                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                        <AlertTriangle size={10} /> Menunggu COA
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-4 text-right font-black text-slate-800">
+                                            <CurrencyDisplay value={j.entries.reduce((s, e) => s + e.debit, 0)} />
+                                        </td>
+                                        <td className="px-8 py-4">
+                                            <div className="flex justify-center gap-2">
+                                                <button onClick={() => handleEdit(j)} className="p-2 text-slate-300 hover:text-blue-600 transition-all"><Pencil size={16}/></button>
+                                                <button onClick={() => handleDelete(j.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16}/></button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
         </div>
