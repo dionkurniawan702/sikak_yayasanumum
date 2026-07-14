@@ -360,6 +360,30 @@ export default function JournalEntry() {
 
             {viewMode === 'input' && (
                 <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-xl animate-in">
+                    {/* Bulk Import Action Bar */}
+                    <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50/80 border border-slate-100 p-6 rounded-2xl mb-8 gap-4">
+                        <div>
+                            <h4 className="text-sm font-black text-slate-800">Impor Jurnal Massal (Excel)</h4>
+                            <p className="text-xs text-slate-400 mt-1">Posting beberapa transaksi sekaligus dengan mengunggah template Excel</p>
+                        </div>
+                        <div className="flex gap-2">
+                            {/* Hidden File Input */}
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handleImportExcel} 
+                                accept=".xlsx, .xls" 
+                                className="hidden" 
+                            />
+                            <button onClick={downloadTemplate} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                <Download size={12} /> Template Impor
+                            </button>
+                            <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                <Upload size={12} /> Impor Banyak
+                            </button>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                         <div>
                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Tanggal Transaksi</label>
@@ -531,25 +555,6 @@ export default function JournalEntry() {
                                             
                                             {/* Action Buttons Group */}
                                             <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-start xl:justify-end">
-                                                {/* Hidden File Input */}
-                                                <input 
-                                                    type="file" 
-                                                    ref={fileInputRef} 
-                                                    onChange={handleImportExcel} 
-                                                    accept=".xlsx, .xls" 
-                                                    className="hidden" 
-                                                />
-                                                
-                                                {/* Download Template */}
-                                                <button onClick={downloadTemplate} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
-                                                    <Download size={12} /> Template Impor
-                                                </button>
-                                                
-                                                {/* Import Excel */}
-                                                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
-                                                    <Upload size={12} /> Impor Banyak
-                                                </button>
-
                                                 {/* Export Summary */}
                                                 <button onClick={exportHistoryToExcel} className="flex items-center gap-1.5 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
                                                     <FileSpreadsheet size={12} /> Ekspor Ringkasan
