@@ -50,16 +50,173 @@ export default function JournalEntry() {
     const exportHistoryToExcel = () => {
         const data = journals.map(j => ({
             'ID Jurnal': j.id,
-            'Tanggal': j.date,
+            'Tanggal': j.date ? j.date.split('T')[0] : '',
             'Deskripsi': j.description,
             'Pihak Terkait': j.name || '-',
-            'Referesi': j.reference || '-',
+            'Referensi': j.reference || '-',
             'Total': j.entries.reduce((s, e) => s + e.debit, 0)
         }));
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'History');
-        XLSX.writeFile(wb, 'SIKAD-Dareliman-Journal-History.xlsx');
+        XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
+        XLSX.writeFile(wb, 'SIKAD-Ringkasan-Jurnal.xlsx');
+    };
+
+    const exportDetailedHistoryToExcel = () => {
+        const detailedRows = [];
+        journals.forEach(j => {
+            const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
+            j.entries.forEach((e, idx) => {
+                const accCode = accounts.find(a => a.id === e.accountId)?.code || e.accountId || '';
+                detailedRows.push({
+                    'Tanggal': idx === 0 ? (j.date ? j.date.split('T')[0] : '') : '',
+                    'Pihak Terkait': idx === 0 ? (j.name || '-') : '',
+                    'Deskripsi': idx === 0 ? j.description : '',
+                    'No Referensi': idx === 0 ? (j.reference || '-') : '',
+                    'Program': idx === 0 ? progName : '',
+                    'Kode Akun': accCode,
+                    'Nama Akun': e.accountName || '',
+                    'Debit': e.debit || 0,
+                    'Kredit': e.credit || 0
+                });
+            });
+        });
+
+        const ws = XLSX.utils.json_to_sheet(detailedRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal');
+        XLSX.writeFile(wb, 'SIKAD-Detail-Jurnal-Ekspor.xlsx');
+    };
+
+    const downloadTemplate = () => {
+        const wsData = [
+            ['Tanggal', 'Pihak Terkait', 'Deskripsi', 'No Referensi', 'Program', 'Kode Akun', 'Debit', 'Kredit'],
+            ['2026-07-14', 'TAUD', 'Pembelian Alat Jilid (Stapler)', 'Nota-01', 'Umum', '11101', 325000, 0],
+            ['', '', '', '', '', '11102', 0, 325000]
+        ];
+        const ws = XLSX.utils.aoa_to_sheet(wsData);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Template Jurnal');
+        XLSX.writeFile(wb, 'SIKAD-Template-Impor-Jurnal.xlsx');
+    };
+
+    const handleImportExcel = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = async (evt) => {
+            try {
+                const data = evt.target.result;
+                const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                const rows = XLSX.utils.sheet_to_json(worksheet);
+
+                if (rows.length === 0) return alert('File Excel kosong!');
+
+                const journalsGrouped = [];
+                let currentJournal = null;
+
+                for (let i = 0; i < rows.length; i++) {
+                    const row = rows[i];
+                    
+                    const rowDate = row['Tanggal'];
+                    const rowDesc = row['Deskripsi'] || row['Keterangan'];
+                    const rowName = row['Pihak Terkait'] || row['Nama'];
+                    const rowRef = String(row['No Referensi'] || row['Referensi'] || '');
+                    const rowProg = String(row['Program'] || '');
+                    const rowCode = String(row['Kode Akun'] || row['Akun'] || '').trim();
+                    const rowDebit = parseFloat(row['Debit']) || 0;
+                    const rowCredit = parseFloat(row['Kredit']) || 0;
+
+                    if (!rowCode) continue; // Skip empty rows
+
+                    const isNewJournal = rowDate || rowDesc || !currentJournal;
+
+                    if (isNewJournal) {
+                        if (currentJournal) {
+                            journalsGrouped.push(currentJournal);
+                        }
+                        
+                        let parsedDate = new Date();
+                        if (rowDate) {
+                            parsedDate = new Date(rowDate);
+                            if (isNaN(parsedDate.getTime())) parsedDate = new Date();
+                        }
+
+                        let matchedProgId = 'PRG-GEN';
+                        if (rowProg) {
+                            const p = programs.find(pr => pr.name.toLowerCase().includes(rowProg.toLowerCase()) || pr.id.toLowerCase() === rowProg.toLowerCase());
+                            if (p) matchedProgId = p.id;
+                        }
+
+                        currentJournal = {
+                            date: parsedDate.toISOString().slice(0, 10),
+                            name: rowName || '',
+                            description: rowDesc || 'Jurnal Impor',
+                            reference: rowRef || '',
+                            programId: matchedProgId,
+                            entries: []
+                        };
+                    }
+
+                    const account = detailAccounts.find(a => a.code === rowCode || a.name === rowCode);
+                    if (!account) {
+                        throw new Error(`Baris ${i + 2}: Kode Akun "${rowCode}" tidak ditemukan di Chart of Accounts (COA)!`);
+                    }
+
+                    currentJournal.entries.push({
+                        accountId: account.id,
+                        accountName: account.name,
+                        debit: rowDebit,
+                        credit: rowCredit
+                    });
+                }
+
+                if (currentJournal) {
+                    journalsGrouped.push(currentJournal);
+                }
+
+                // Validasi balance
+                const invalidJournals = [];
+                for (let i = 0; i < journalsGrouped.length; i++) {
+                    const j = journalsGrouped[i];
+                    const totalD = j.entries.reduce((sum, entry) => sum + entry.debit, 0);
+                    const totalC = j.entries.reduce((sum, entry) => sum + entry.credit, 0);
+                    
+                    if (j.entries.length < 2) {
+                        invalidJournals.push(`Jurnal ke-${i+1} (${j.description}): Harus memiliki minimal 2 entri rekening.`);
+                    } else if (Math.abs(totalD - totalC) > 0.01 || totalD === 0) {
+                        invalidJournals.push(`Jurnal ke-${i+1} (${j.description}): Nilai Debit (${totalD}) dan Kredit (${totalC}) tidak seimbang atau bernilai 0.`);
+                    }
+                }
+
+                if (invalidJournals.length > 0) {
+                    alert('Impor gagal. Temuan kesalahan:\n' + invalidJournals.slice(0, 10).join('\n') + (invalidJournals.length > 10 ? '\n...dan lainnya' : ''));
+                    return;
+                }
+
+                if (window.confirm(`Berhasil memvalidasi ${journalsGrouped.length} jurnal. Lanjutkan untuk memposting ke database?`)) {
+                    for (const j of journalsGrouped) {
+                        const journalId = `JRN-${Date.now()}-${generateId()}`;
+                        const payload = {
+                            ...j,
+                            id: journalId,
+                            isDeleted: false
+                        };
+                        dispatch({ type: 'ADD_JOURNAL', payload });
+                        await api.pushAction({ type: 'ADD_JOURNAL', payload }, state);
+                    }
+                    alert(`Sukses memposting ${journalsGrouped.length} jurnal ke database!`);
+                    e.target.value = '';
+                }
+
+            } catch (err) {
+                alert('Gagal memproses file Excel: ' + err.message);
+            }
+        };
+        reader.readAsBinaryString(file);
     };
 
     const TAX_GROUPS = [
@@ -366,14 +523,43 @@ export default function JournalEntry() {
                             <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                 <tr>
                                     <th colSpan={4} className="px-8 py-4">
-                                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                                        <div className="flex flex-col xl:flex-row justify-between items-center gap-4">
                                             <div className="relative flex-1 w-full">
                                                 <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
                                                 <input className="form-input pl-12 rounded-2xl border-slate-200" placeholder="Cari di riwayat..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
                                             </div>
-                                            <button onClick={exportHistoryToExcel} className="btn bg-white text-emerald-600 border-emerald-100 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
-                                                <FileSpreadsheet size={18} /> Export Excel
-                                            </button>
+                                            
+                                            {/* Action Buttons Group */}
+                                            <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-start xl:justify-end">
+                                                {/* Hidden File Input */}
+                                                <input 
+                                                    type="file" 
+                                                    ref={fileInputRef} 
+                                                    onChange={handleImportExcel} 
+                                                    accept=".xlsx, .xls" 
+                                                    className="hidden" 
+                                                />
+                                                
+                                                {/* Download Template */}
+                                                <button onClick={downloadTemplate} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                                    <Download size={12} /> Template Impor
+                                                </button>
+                                                
+                                                {/* Import Excel */}
+                                                <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                                    <Upload size={12} /> Impor Banyak
+                                                </button>
+
+                                                {/* Export Summary */}
+                                                <button onClick={exportHistoryToExcel} className="flex items-center gap-1.5 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                                    <FileSpreadsheet size={12} /> Ekspor Ringkasan
+                                                </button>
+
+                                                {/* Export Detailed */}
+                                                <button onClick={exportDetailedHistoryToExcel} className="flex items-center gap-1.5 bg-emerald-55 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                                    <FileSpreadsheet size={12} /> Ekspor Detail Jurnal
+                                                </button>
+                                            </div>
                                         </div>
                                     </th>
                                 </tr>
