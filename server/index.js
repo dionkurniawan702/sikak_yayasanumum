@@ -887,7 +887,7 @@ app.get('/api/all-data', async (req, res) => {
 
             client.bosStage.findMany({ where: { isDeleted: false } }),
             client.bosPos.findMany({ where: { isDeleted: false } }),
-            client.bosAllocation.findMany()
+            client.bosAllocation.findMany({ where: { isDeleted: false } })
         ]);
 
         res.json({
@@ -1526,10 +1526,16 @@ const ensureBosAllocationColumns = async () => {
 
         const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
         const hasExpenseItem = columns.some(c => (c.Field || c.field) === 'expenseItemId');
+        const hasIsDeleted = columns.some(c => (c.Field || c.field) === 'isDeleted');
 
         if (!hasExpenseItem) {
             console.log(`[Self-Healing] Adding expenseItemId column to ${targetTable}...`);
             await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN expenseItemId VARCHAR(255)`);
+        }
+
+        if (!hasIsDeleted) {
+            console.log(`[Self-Healing] Adding isDeleted column to ${targetTable}...`);
+            await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN isDeleted BOOLEAN DEFAULT FALSE`);
         }
 
         console.log(`[Self-Healing] bos_allocations columns verified.`);

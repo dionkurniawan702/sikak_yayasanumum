@@ -390,7 +390,8 @@ export const api = {
                         'bos-stage': 'bos-stages',
                         'bos-pos': 'bos-pos',
                         budgetRequest: 'budget-requests',
-                        budgetReport: 'budget-reports'
+                        budgetReport: 'budget-reports',
+                        bosAllocation: 'bos-allocations'
                     };
                     const endpoint = mapping[type];
                     if (endpoint) {
@@ -419,7 +420,8 @@ export const api = {
                         'bos-stage': 'bos-stages',
                         'bos-pos': 'bos-pos',
                         budgetRequest: 'budget-requests',
-                        budgetReport: 'budget-reports'
+                        budgetReport: 'budget-reports',
+                        bosAllocation: 'bos-allocations'
                     };
                     const endpoint = mapping[type];
                     if (endpoint) {

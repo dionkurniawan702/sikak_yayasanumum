@@ -13,7 +13,8 @@ async function fixSchema() {
     { name: 'Unit', table: 'units' },
     { name: 'Field', table: 'fields' },
     { name: 'Class', table: 'Class' },
-    { name: 'Student', table: 'Student' }
+    { name: 'Student', table: 'Student' },
+    { name: 'BosAllocation', table: 'bos_allocations' }
   ];
 
   console.log('--- STARTING DATABASE SCHEMA FIX ---');

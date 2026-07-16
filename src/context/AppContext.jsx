@@ -671,7 +671,7 @@ function appReducer(state, action) {
                 'parent-status': 'parentStatuses',
                 'bos-stage': 'bosStages',
                 'bos-pos': 'bosPosList',
-                'bos-allocation': 'bosAllocations',
+                bosAllocation: 'bosAllocations',
                 budgetRequest: 'budgetRequests',
                 budgetReport: 'budgetReports'
             };

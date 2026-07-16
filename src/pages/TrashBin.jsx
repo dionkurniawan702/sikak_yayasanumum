@@ -103,7 +103,8 @@ export default function TrashBin() {
             'bos-stage': 'Tahap BOS',
             'bos-pos': 'Pos BOS',
             budgetRequest: 'Permintaan Dana',
-            budgetReport: 'Laporan Realisasi'
+            budgetReport: 'Laporan Realisasi',
+            bosAllocation: 'Alokasi BOS'
         };
         return labels[type] || type;
     };
@@ -128,7 +129,8 @@ export default function TrashBin() {
             'bos-stage': Calendar,
             'bos-pos': List,
             budgetRequest: Wallet,
-            budgetReport: FileText
+            budgetReport: FileText,
+            bosAllocation: Wallet
         };
         return icons[type] || Archive;
     };
@@ -159,6 +161,8 @@ export default function TrashBin() {
             case 'bos-stage':
             case 'bos-pos':
                 return item.name;
+            case 'bosAllocation':
+                return `Alokasi BOS — ${formatRupiah(item.amount)}`;
             default:
                 return item.id;
         }
@@ -190,6 +194,11 @@ export default function TrashBin() {
                 return `NISN: ${item.nisn} | Kelas: ${item.classId}`;
             case 'class':
                 return `Unit: ${item.unitId}`;
+            case 'bosAllocation': {
+                const unit = state.units?.find(u => u.id === item.unitId)?.name || item.unitId;
+                const stage = state.bosStages?.find(s => s.id === item.stageId)?.name || item.stageId;
+                return `Unit: ${unit} | Tahap: ${stage}`;
+            }
             default:
                 return '';
         }
