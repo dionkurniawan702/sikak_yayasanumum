@@ -429,6 +429,10 @@ export default function ArchiveReports() {
                                                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-300">
                                                             Draft
                                                         </span>
+                                                    ) : item.status === 'APPROVED' ? (
+                                                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest bg-emerald-50 text-emerald-600 border border-emerald-200">
+                                                            Terverifikasi
+                                                        </span>
                                                     ) : null}
                                                 </div>
                                                 <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-lg w-fit">
