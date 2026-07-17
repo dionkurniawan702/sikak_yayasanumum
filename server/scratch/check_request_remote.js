@@ -9,12 +9,7 @@ async function main() {
             body: JSON.stringify({ username: 'adminpdk', password: 'admin123' })
         });
         const loginJson = await loginRes.json();
-        if (!loginJson.data) {
-            console.error('Login failed:', loginJson);
-            return;
-        }
         const token = loginJson.data.token;
-        console.log('Fetching all data...');
 
         const dataRes = await fetch(`${API_URL}/all-data`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -22,34 +17,18 @@ async function main() {
         const dataJson = await dataRes.json();
         const state = dataJson.data;
 
-        const { budgetReports = [], budgetRequests = [] } = state;
+        const { budgetReports = [], units = [] } = state;
 
-        // Find TKIT 2 unit
-        const tkit2Unit = state.units.find(u => u.name.includes('TKIT 2'));
-        const unitId = tkit2Unit?.id;
-        console.log(`TKIT 2 Unit ID: ${unitId}`);
+        const tkit2Unit = units.find(u => u.name.includes('TKIT 2'));
+        const unitId = tkit2Unit.id;
 
-        // Let's filter all reports for TKIT 2
-        const tkitReports = budgetReports.filter(r => r.unitId === unitId);
-        console.log(`\nTotal reports for TKIT 2: ${tkitReports.length}`);
+        // Find all APPROVED reports for TKIT 2 in the database right now
+        const approvedReports = budgetReports.filter(r => r.unitId === unitId && r.status === 'APPROVED' && !r.isDeleted);
+        console.log(`Current APPROVED reports count for TKIT 2: ${approvedReports.length}`);
 
-        console.log('\n--- TKIT 2 Reports that are NOT APPROVED (status !== APPROVED) ---');
-        const notApproved = tkitReports.filter(r => r.status !== 'APPROVED');
-        notApproved.forEach(r => {
-            console.log(`- Report [${r.id}] ReqId: ${r.budgetRequestId}, Amount: ${r.amount}, Status: ${r.status}, Nota: ${r.nomorNota}, Desc: ${r.description}, isDeleted: ${r.isDeleted}`);
-        });
-
-        console.log('\n--- TKIT 2 Reports with amount = 90,000 or similar ---');
-        const ninetyKReports = tkitReports.filter(r => Math.abs(parseFloat(r.amount) - 90000) < 1 || r.description?.includes('90') || r.description?.toLowerCase().includes('sembilan puluh'));
-        ninetyKReports.forEach(r => {
-            console.log(`- Report [${r.id}] ReqId: ${r.budgetRequestId}, Amount: ${r.amount}, Status: ${r.status}, Nota: ${r.nomorNota}, Desc: ${r.description}, isDeleted: ${r.isDeleted}`);
-        });
-
-        // Let's print out all requests of TKIT 2 for this academic year
-        console.log('\n--- All Requests of TKIT 2 ---');
-        const tkitRequests = budgetRequests.filter(r => r.unitId === unitId);
-        tkitRequests.forEach(r => {
-            console.log(`- Request [${r.id}] Month: ${r.month}, Status: ${r.status}, Amount: ${r.totalAmount}, isDeleted: ${r.isDeleted}`);
+        // Print details of remaining approved reports
+        approvedReports.forEach((r, idx) => {
+            console.log(`[${idx+1}] ID: ${r.id}, Date: ${r.date}, Category: ${r.category}, Amount: ${r.amount}, YearId: ${r.academicYearId}`);
         });
 
     } catch (err) {
