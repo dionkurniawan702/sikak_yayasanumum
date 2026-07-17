@@ -22,13 +22,11 @@ async function main() {
         const tkit2Unit = units.find(u => u.name.includes('TKIT 2'));
         const unitId = tkit2Unit.id;
 
-        // Find all APPROVED reports for TKIT 2 in the database right now
-        const approvedReports = budgetReports.filter(r => r.unitId === unitId && r.status === 'APPROVED' && !r.isDeleted);
-        console.log(`Current APPROVED reports count for TKIT 2: ${approvedReports.length}`);
-
-        // Print details of remaining approved reports
-        approvedReports.forEach((r, idx) => {
-            console.log(`[${idx+1}] ID: ${r.id}, Date: ${r.date}, Category: ${r.category}, Amount: ${r.amount}, YearId: ${r.academicYearId}`);
+        console.log('--- FINDING ACTIVE APPROVED REPORTS ---');
+        const approved = budgetReports.filter(r => r.unitId === unitId && r.status === 'APPROVED' && !r.isDeleted);
+        console.log(`Total APPROVED reports in DB right now: ${approved.length}`);
+        approved.forEach(r => {
+            console.log(`- Report [${r.id}] Category: "${r.category}", Amount: ${r.amount}, Status: ${r.status}`);
         });
 
     } catch (err) {
