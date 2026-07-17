@@ -28,10 +28,11 @@ function AsetBadge({ kategori, umurEkonomis }) {
 
 export default function ArchiveReports() {
     const { state } = useApp();
-    const { currentUser, budgetReports = [], units = [], fields = [], academicYears = [], globalAcademicYearId, expenseItems = [] } = state;
+    const { currentUser, budgetReports = [], budgetRequests = [], units = [], fields = [], academicYears = [], globalAcademicYearId, expenseItems = [] } = state;
 
     const [sourceMode, setSourceMode] = useState('YAYASAN'); // 'YAYASAN' or 'BOS'
     const [filterMonth, setFilterMonth] = useState('ALL');
+    const [filterRequestMonth, setFilterRequestMonth] = useState('ALL');
     const [filterKategori, setFilterKategori] = useState('ALL');
     const [filterUnit, setFilterUnit] = useState('ALL');
     const [searchTerm, setSearchTerm] = useState('');
@@ -139,6 +140,11 @@ export default function ArchiveReports() {
             const monthId = `${rDate.getFullYear()}-${String(rDate.getMonth() + 1).padStart(2, '0')}`;
             const monthLabel = yearMonths.find(ym => ym.id === monthId)?.label || monthId;
 
+            // Find associated budget request
+            const req = budgetRequests.find(q => q.id === r.budgetRequestId);
+            const reqMonthId = req?.month || null;
+            const reqMonthLabel = reqMonthId ? (yearMonths.find(ym => ym.id === reqMonthId)?.label || reqMonthId) : '—';
+
             return {
                 ...r,
                 unitName,
@@ -146,10 +152,13 @@ export default function ArchiveReports() {
                 expenseItemName,
                 monthId,
                 monthLabel,
+                reqMonthId,
+                reqMonthLabel,
                 amountNum: parseFloat(r.amount || 0)
             };
         }).filter(item => {
             if (filterMonth !== 'ALL' && item.monthId !== filterMonth) return false;
+            if (filterRequestMonth !== 'ALL' && item.reqMonthId !== filterRequestMonth) return false;
             
             let katFilter = filterKategori;
             if (filterKategori === 'NON_ASET') katFilter = undefined; // Since legacy or empty is non-aset
@@ -179,7 +188,7 @@ export default function ArchiveReports() {
 
         // Sort by date descending
         return mapped.sort((a, b) => new Date(b.date) - new Date(a.date));
-    }, [budgetReports, globalAcademicYearId, sourceMode, isSuperAdmin, filterUnit, myUnitId, myFieldId, filterMonth, filterKategori, searchTerm, yearMonths, units, fields, expenseItems, currentYear]);
+    }, [budgetReports, budgetRequests, globalAcademicYearId, sourceMode, isSuperAdmin, filterUnit, myUnitId, myFieldId, filterMonth, filterRequestMonth, filterKategori, searchTerm, yearMonths, units, fields, expenseItems, currentYear]);
 
     const totalAmount = useMemo(() => {
         return archiveData.reduce((sum, item) => sum + item.amountNum, 0);
@@ -192,7 +201,7 @@ export default function ArchiveReports() {
         if (archiveData.length === 0) return alert("Tidak ada data untuk diekspor");
 
         const wsData = [
-            ["No", "Tanggal", "Nomor Nota", "Unit/Bidang", "Kategori Item", "Keterangan", "Bukti Teks", "Kategori Aset", "Umur Ekonomis", "Jumlah Realisasi"]
+            ["No", "Tanggal Transaksi", "Nomor Nota", "Periode Permintaan", "Unit/Bidang", "Kategori Item", "Keterangan", "Bukti Teks", "Kategori Aset", "Umur Ekonomis", "Jumlah Realisasi"]
         ];
 
         archiveData.forEach((item, i) => {
@@ -200,6 +209,7 @@ export default function ArchiveReports() {
                 i + 1,
                 item.date ? new Date(item.date).toLocaleDateString('id-ID') : '-',
                 item.nomorNota || '-',
+                item.reqMonthLabel || '—',
                 item.fieldName !== '-' ? `${item.unitName} - ${item.fieldName}` : item.unitName,
                 item.expenseItemName,
                 item.category || item.description || '-',
@@ -317,7 +327,19 @@ export default function ArchiveReports() {
                         onChange={(e) => setFilterMonth(e.target.value)}
                         className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
                     >
-                        <option value="ALL">Semua Bulan</option>
+                        <option value="ALL">Bulan Transaksi (Semua)</option>
+                        {yearMonths.map(m => (
+                            <option key={m.id} value={m.id}>{m.label}</option>
+                        ))}
+                    </select>
+
+                    {/* Request Month Filter */}
+                    <select
+                        value={filterRequestMonth}
+                        onChange={(e) => setFilterRequestMonth(e.target.value)}
+                        className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
+                    >
+                        <option value="ALL">Periode Permintaan (Semua)</option>
                         {yearMonths.map(m => (
                             <option key={m.id} value={m.id}>{m.label}</option>
                         ))}
@@ -346,6 +368,7 @@ export default function ArchiveReports() {
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest w-12 text-center border-b border-slate-800">No</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Tanggal</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Nomor Nota</th>
+                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Periode Permintaan</th>
                                 {isSuperAdmin && (
                                     <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Unit / Bidang</th>
                                 )}
@@ -357,7 +380,7 @@ export default function ArchiveReports() {
                         <tbody>
                             {archiveData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-16 text-center">
+                                    <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center justify-center">
                                             <Archive size={48} className="text-slate-200 mb-4" />
                                             <p className="text-sm font-bold text-slate-400 italic">Tidak ada laporan yang sesuai dengan filter.</p>
@@ -377,6 +400,10 @@ export default function ArchiveReports() {
                                         
                                         <td className="px-6 py-4">
                                             <span className="text-xs font-black text-indigo-600 font-mono">{item.nomorNota || '—'}</span>
+                                        </td>
+
+                                        <td className="px-6 py-4">
+                                            <span className="text-xs font-bold text-slate-700 whitespace-nowrap font-mono">{item.reqMonthLabel}</span>
                                         </td>
 
                                         {isSuperAdmin && (
@@ -432,7 +459,7 @@ export default function ArchiveReports() {
                             {/* Total Row */}
                             {archiveData.length > 0 && (
                                 <tr className="bg-slate-50">
-                                    <td colSpan={isSuperAdmin ? 6 : 5} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
+                                    <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
                                         Total Realisasi Filtered
                                     </td>
                                     <td className="px-6 py-4 text-right border-t-2 border-slate-200 border-l border-l-slate-200">
