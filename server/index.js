@@ -592,6 +592,19 @@ app.post('/api/sync', async (req, res) => {
                         cleanItem.isDeleted = true;
                     }
 
+                    // Prevent client from resurrecting APPROVED reports that were reset/cancelled on the server
+                    if (model === 'budgetReport' && existingRecord) {
+                        if ((existingRecord.status === 'DRAFT' || existingRecord.status === 'PENDING') && cleanItem.status === 'APPROVED') {
+                            cleanItem.status = existingRecord.status;
+                            cleanItem.journalId = existingRecord.journalId;
+                        }
+                    }
+                    if (model === 'budgetRequest' && existingRecord) {
+                        if ((existingRecord.status === 'PENDING' || existingRecord.status === 'REJECTED') && cleanItem.status === 'APPROVED') {
+                            cleanItem.status = existingRecord.status;
+                        }
+                    }
+
                     await tx[model].upsert({
                         where: { id: item.id },
                         update: { ...cleanItem, id: undefined },
