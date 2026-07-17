@@ -1138,8 +1138,21 @@ router.put('/budget-reports/:id', async (req, res) => {
                 return finalReport;
             }
 
-            // If REJECTED, soft-delete the associated journal to restore balance
-            if (data.status === 'REJECTED' && updated.journalId) {
+            // If status is changed away from APPROVED, delete/soft-delete the associated journal and clear journalId
+            if (data.status && data.status !== 'APPROVED' && updated.journalId) {
+                await tx.journal.delete({ where: { id: updated.journalId } }).catch(async () => {
+                    await tx.journal.update({
+                        where: { id: updated.journalId },
+                        data: { isDeleted: true }
+                    }).catch(() => {});
+                });
+                
+                await tx.budgetReport.update({
+                    where: { id: updated.id },
+                    data: { journalId: null }
+                });
+                updated.journalId = null;
+            } else if (data.status === 'REJECTED' && updated.journalId) {
                 await tx.journal.update({
                     where: { id: updated.journalId },
                     data: { isDeleted: true }

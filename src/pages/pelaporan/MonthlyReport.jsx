@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X } from 'lucide-react';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
@@ -30,7 +30,7 @@ function AsetBadge({ kategori, umurEkonomis }) {
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, onCancelApproval, isProcessing }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -188,6 +188,21 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm">
                                             <Trash2 size={14} className="mr-1 inline-block" /> Hapus Draft
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Actions for Approved (Superadmin Only) */}
+                            {isSuperAdmin && report.status === 'APPROVED' && onCancelApproval && (
+                                <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
+                                    <div className="flex gap-3 justify-end">
+                                        <button 
+                                            onClick={(e) => { e.stopPropagation(); onCancelApproval(); }} 
+                                            disabled={isProcessing}
+                                            className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <RotateCcw size={12} className="inline-block" /> Batalkan Persetujuan (ACC)
                                         </button>
                                     </div>
                                 </div>
@@ -941,6 +956,23 @@ export default function MonthlyReport() {
         }
     };
 
+    const handleCancelReportApproval = async (report) => {
+        if (window.confirm('Batalkan persetujuan laporan ini? Jurnal akuntansi terkait akan otomatis dihapus dan status laporan kembali ke PENDING.')) {
+            setProcessingId(report.id);
+            try {
+                const updated = { ...report, status: 'PENDING', journalId: null };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                alert('Persetujuan laporan berhasil dibatalkan. Status kembali ke PENDING.');
+            } catch (error) {
+                console.error(error);
+                alert('Gagal membatalkan persetujuan laporan: ' + error.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
     const handleExportExcel = () => {
         if (filteredReports.length === 0) return alert("Tidak ada data untuk diekspor");
 
@@ -1421,6 +1453,8 @@ export default function MonthlyReport() {
                                                 onToggleSelect={handleToggleSelectHistory}
                                                 onEdit={() => handleEditDraft(report)}
                                                 onDelete={() => handleDeleteDraft(report.id)}
+                                                onCancelApproval={() => handleCancelReportApproval(report)}
+                                                isProcessing={processingId === report.id}
                                             />
                                         ))
                                         : (
