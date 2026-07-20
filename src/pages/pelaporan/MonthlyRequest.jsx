@@ -467,24 +467,14 @@ export default function MonthlyRequest() {
     };
 
     const resolveItemDetails = (item) => {
-        // 1. If direct properties exist, use them
-        if (item.volume !== undefined && item.satuan !== undefined && item.harga !== undefined) {
-            const harga = parseFloat(item.harga) || 0;
-            const amount = parseFloat(item.amount) || 0;
-            const vol = harga > 0 ? (amount / harga) : (parseFloat(item.volume) || 0);
-            return {
-                volume: vol,
-                satuan: item.satuan || '-',
-                harga: harga
-            };
-        }
+        let originalSatuan = item.satuan || '-';
+        let originalHarga = parseFloat(item.harga) || 0;
+        let originalVolume = parseFloat(item.volume) || 1;
 
-        // 2. Otherwise search in rabPlans
         if (rabPlans && Array.isArray(rabPlans)) {
-            // Find plan first using item.planId
             const plan = rabPlans.find(p => p.id === item.planId);
             if (plan && plan.expense && typeof plan.expense === 'object') {
-                for (const [itemId, rawItemPlans] of Object.entries(plan.expense)) {
+                outerLoop: for (const [itemId, rawItemPlans] of Object.entries(plan.expense)) {
                     const itemPlans = Array.isArray(rawItemPlans) 
                         ? rawItemPlans 
                         : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 
@@ -497,53 +487,40 @@ export default function MonthlyRequest() {
                                 const comp = p.components[cIdx];
                                 const compId = comp.id || `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
                                 if (compId === item.componentId || comp.label === item.name || comp.name === item.name) {
-                                    return {
-                                        volume: comp.volume !== undefined ? parseFloat(comp.volume) : 1,
-                                        satuan: comp.satuan || comp.unit || '-',
-                                        harga: comp.harga !== undefined ? parseFloat(comp.harga) : 0
-                                    };
+                                    originalSatuan = comp.satuan || comp.unit || originalSatuan;
+                                    originalHarga = comp.harga !== undefined ? parseFloat(comp.harga) : originalHarga;
+                                    originalVolume = comp.volume !== undefined ? parseFloat(comp.volume) : originalVolume;
+                                    break outerLoop;
                                 }
                             }
                         }
                     }
                 }
             }
-            
-            // Fallback: search all plans if planId mismatch or missing
-            for (const p of rabPlans) {
-                if (p.expense && typeof p.expense === 'object') {
-                    for (const [itemId, rawItemPlans] of Object.entries(p.expense)) {
-                        const itemPlans = Array.isArray(rawItemPlans) 
-                            ? rawItemPlans 
-                            : (rawItemPlans && typeof rawItemPlans === 'object' && Object.keys(rawItemPlans).length > 0 
-                                ? [{ id: `P-${itemId}-LEGACY`, itemId: itemId, ...rawItemPlans }] 
-                                : []);
-                        for (let pIdx = 0; pIdx < itemPlans.length; pIdx++) {
-                            const itemPlan = itemPlans[pIdx];
-                            if (itemPlan.components && Array.isArray(itemPlan.components)) {
-                                for (let cIdx = 0; cIdx < itemPlan.components.length; cIdx++) {
-                                    const comp = itemPlan.components[cIdx];
-                                    const compId = comp.id || `COMP-${p.id}-${itemId}-${pIdx}-${cIdx}`;
-                                    if (compId === item.componentId || comp.label === item.name || comp.name === item.name) {
-                                        return {
-                                            volume: comp.volume !== undefined ? parseFloat(comp.volume) : 1,
-                                            satuan: comp.satuan || comp.unit || '-',
-                                            harga: comp.harga !== undefined ? parseFloat(comp.harga) : 0
-                                        };
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        } else {
+            originalSatuan = item.satuan || originalSatuan;
+            originalHarga = item.harga !== undefined ? parseFloat(item.harga) : originalHarga;
+            originalVolume = item.volume !== undefined ? parseFloat(item.volume) : originalVolume;
         }
 
-        // Default if not found
+        const amount = parseFloat(item.amount) || 0;
+        const vol = originalHarga > 0 ? (amount / originalHarga) : originalVolume;
+
+        const tolerance = 0.001;
+        const isCloseToInteger = Math.abs(vol - Math.round(vol)) < tolerance;
+
+        if (originalHarga > 0 && !isCloseToInteger) {
+            return {
+                volume: 1,
+                satuan: originalSatuan,
+                harga: amount
+            };
+        }
+
         return {
-            volume: 1,
-            satuan: '-',
-            harga: parseFloat(item.amount) || 0
+            volume: isCloseToInteger ? Math.round(vol) : parseFloat(vol.toFixed(2)),
+            satuan: originalSatuan,
+            harga: originalHarga > 0 ? originalHarga : amount
         };
     };
 
