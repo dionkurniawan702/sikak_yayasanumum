@@ -4796,7 +4796,21 @@ function RABContent() {
                                                                                 <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{m.shortLabel}</span>
                                                                                 <input type="checkbox" disabled={isReadOnlyComp} checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-blue-500 disabled:opacity-50" />
                                                                             </div>
-                                                                            <input type="text" readOnly={isReadOnlyComp} className="w-full bg-transparent font-black text-[11px] outline-none p-0 text-white placeholder-white/20" placeholder="Rp 0" value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} onChange={e => handleEntryMonthlyUpdate(m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} />
+                                                                            <div className="relative mt-1">
+                                                                                <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold transition-colors ${mData.m ? 'text-blue-200' : 'text-white/40'}`}>Rp</span>
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    readOnly={isReadOnlyComp} 
+                                                                                    className={`w-full pl-7 pr-2 py-1.5 rounded-xl font-black text-[11px] outline-none placeholder-white/20 transition-all border ${
+                                                                                        mData.m 
+                                                                                            ? 'bg-blue-700/40 border-blue-400/40 text-white focus:bg-blue-800/40 focus:border-blue-300' 
+                                                                                            : 'bg-white/5 border-white/10 text-white focus:bg-white/10 focus:border-white/30'
+                                                                                    } ${isReadOnlyComp ? 'pointer-events-none opacity-70' : 'cursor-text'}`} 
+                                                                                    placeholder="0" 
+                                                                                    value={mData.jumlah > 0 ? Number(mData.jumlah).toLocaleString('id-ID') : ''} 
+                                                                                    onChange={e => handleEntryMonthlyUpdate(m.id, 'jumlah', parseFloat(e.target.value.replace(/\D/g, '') || 0))} 
+                                                                                />
+                                                                            </div>
                                                                         </div>
                                                                     );
                                                                 })}
