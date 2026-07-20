@@ -137,7 +137,7 @@ export default function ArchiveRequests() {
             originalVolume = item.volume !== undefined ? parseFloat(item.volume) : originalVolume;
         }
 
-        const amount = parseFloat(item.amount) || 0;
+        const amount = parseFloat(item.amount || item.total) || 0;
         const vol = originalHarga > 0 ? (amount / originalHarga) : originalVolume;
 
         const tolerance = 0.001;

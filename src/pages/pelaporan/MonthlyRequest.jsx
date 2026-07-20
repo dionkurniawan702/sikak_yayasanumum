@@ -503,7 +503,7 @@ export default function MonthlyRequest() {
             originalVolume = item.volume !== undefined ? parseFloat(item.volume) : originalVolume;
         }
 
-        const amount = parseFloat(item.amount) || 0;
+        const amount = parseFloat(item.amount || item.total) || 0;
         const vol = originalHarga > 0 ? (amount / originalHarga) : originalVolume;
 
         const tolerance = 0.001;
@@ -1105,9 +1105,14 @@ export default function MonthlyRequest() {
                                                         {comp.itemMasterName}
                                                     </p>
                                                     <h4 className="font-black text-lg tracking-tight leading-tight">{comp.label || comp.name}</h4>
-                                                    <p className={`text-[10px] font-bold ${selectedComponents.includes(comp.id) ? 'text-indigo-200' : 'text-slate-400'}`}>
-                                                        {comp.volume} {comp.satuan || comp.unit} x {formatRupiah(comp.harga || comp.price)}
-                                                    </p>
+                                                    {(() => {
+                                                        const details = resolveItemDetails(comp);
+                                                        return (
+                                                            <p className={`text-[10px] font-bold ${selectedComponents.includes(comp.id) ? 'text-indigo-200' : 'text-slate-400'}`}>
+                                                                {details.volume} {details.satuan} x {formatRupiah(details.harga)}
+                                                            </p>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div className="text-right">
