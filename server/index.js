@@ -1203,6 +1203,18 @@ const ensureBudgetOperationalColumns = async () => {
             await client.$executeRawUnsafe("ALTER TABLE `budget_reports` ADD COLUMN status VARCHAR(191) DEFAULT 'PENDING'");
         }
 
+        // 3. journals (proof column needs to be TEXT to avoid VarChar(191) overflow when buktiTeks is long)
+        try {
+            const journalCols = await client.$queryRaw`DESCRIBE \`journals\``;
+            const proofCol = journalCols.find(c => (c.Field === 'proof' || c.field === 'proof'));
+            if (proofCol && (proofCol.Type || proofCol.type).toLowerCase().includes('varchar')) {
+                console.log(`[Self-Healing] Converting journals.proof from VarChar to Text...`);
+                await client.$executeRawUnsafe('ALTER TABLE `journals` MODIFY COLUMN proof TEXT');
+            }
+        } catch (jErr) {
+            console.warn(`[Self-Healing Warning] Journals check: ${jErr.message}`);
+        }
+
         console.log(`[Self-Healing] Budget tables check complete.`);
     } catch (error) {
         console.error(`[Self-Healing Error] Budget columns: ${error.message}`);

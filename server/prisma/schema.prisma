@@ -50,7 +50,7 @@ model Journal {
   isDeleted       Boolean  @default(false)
   programId       String?
   reference       String?
-  proof           String?
+  proof           String?  @db.Text
   phoneNumber     String?
 
   @@map("journals")
