@@ -1168,6 +1168,26 @@ export default function MonthlyReport() {
                                 <option value="FILLED">Sudah Isi</option>
                             </select>
                         </div>
+
+                        {/* Dropdown unit & bidang (Super Admin Only) */}
+                        {isSuperAdmin && (
+                            <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
+                                <Building2 size={14} className="text-slate-400" />
+                                <select 
+                                    className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer max-w-[200px]"
+                                    value={selectedUnitFilter}
+                                    onChange={(e) => setSelectedUnitFilter(e.target.value)}
+                                >
+                                    <option value="ALL">Semua Unit & Bidang</option>
+                                    <optgroup label="Bidang">
+                                        {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                    </optgroup>
+                                    <optgroup label="Unit Pendidikan">
+                                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </optgroup>
+                                </select>
+                            </div>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -1353,6 +1373,21 @@ export default function MonthlyReport() {
                                 placeholder="Cari nota, keterangan, kategori..."
                                 value={search} onChange={e => setSearch(e.target.value)} />
                         </div>
+                        {isSuperAdmin && (
+                            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                                <Building2 size={14} className="text-slate-400" />
+                                <select className="bg-transparent text-xs font-bold text-slate-700 outline-none max-w-[180px] cursor-pointer"
+                                    value={selectedUnitFilter} onChange={e => setSelectedUnitFilter(e.target.value)}>
+                                    <option value="ALL">Semua Unit & Bidang</option>
+                                    <optgroup label="Bidang">
+                                        {fields.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
+                                    </optgroup>
+                                    <optgroup label="Unit Pendidikan">
+                                        {units.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                                    </optgroup>
+                                </select>
+                            </div>
+                        )}
                         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
                             <Tag size={14} className="text-slate-400" />
                             <select className="bg-transparent text-xs font-bold text-slate-700 outline-none"
@@ -1370,8 +1405,8 @@ export default function MonthlyReport() {
                             <input type="date" className="bg-transparent text-xs font-bold text-slate-600 outline-none"
                                 value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
                         </div>
-                        {(search || filterKategori !== 'ALL' || filterDateFrom || filterDateTo) && (
-                            <button onClick={() => { setSearch(''); setFilterKategori('ALL'); setFilterDateFrom(''); setFilterDateTo(''); }}
+                        {(search || filterKategori !== 'ALL' || filterDateFrom || filterDateTo || (isSuperAdmin && selectedUnitFilter !== 'ALL')) && (
+                            <button onClick={() => { setSearch(''); setFilterKategori('ALL'); setFilterDateFrom(''); setFilterDateTo(''); setSelectedUnitFilter('ALL'); }}
                                 className="text-[10px] font-black text-rose-500 hover:text-rose-700 uppercase tracking-widest">
                                 Reset Filter
                             </button>
