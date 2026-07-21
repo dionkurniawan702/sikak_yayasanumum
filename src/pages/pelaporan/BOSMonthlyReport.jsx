@@ -183,9 +183,11 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                             {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onEdit && onDelete && (
                                 <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
                                     <div className="flex gap-3 justify-end">
-                                        <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-emerald-600 hover:!bg-emerald-50 hover:!border-emerald-200 shadow-sm">
-                                            <Edit2 size={14} className="mr-1 inline-block" /> {report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
-                                        </button>
+                                        {report.kategoriAset !== 'PENGEMBALIAN' && (
+                                            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-emerald-600 hover:!bg-emerald-50 hover:!border-emerald-200 shadow-sm">
+                                                <Edit2 size={14} className="mr-1 inline-block" /> {report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
+                                            </button>
+                                        )}
                                         <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm">
                                             <Trash2 size={14} className="mr-1 inline-block" /> {report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
                                         </button>

@@ -1223,8 +1223,8 @@ router.delete('/budget-reports/:id', requireAuth, async (req, res) => {
                 return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang untuk menghapus laporan ini.' });
             }
 
-            // Hanya laporan berstatus DRAFT yang boleh dihapus oleh unit/bidang
-            if (report.status !== 'DRAFT') {
+            // Hanya laporan berstatus DRAFT atau REJECTED yang boleh dihapus oleh unit/bidang
+            if (report.status !== 'DRAFT' && report.status !== 'REJECTED') {
                 return res.status(400).json({ error: 'Gagal menghapus: Laporan sudah diajukan atau diproses.' });
             }
         }
