@@ -180,14 +180,14 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 <div className="text-[9px] text-slate-400 font-bold font-mono mt-2">ID: {report.id?.slice(0, 16)}...</div>
                             </div>
                             {/* Actions for Draft (Unit Only) */}
-                            {!isSuperAdmin && report.status === 'DRAFT' && onEdit && onDelete && (
+                            {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onEdit && onDelete && (
                                 <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
                                     <div className="flex gap-3 justify-end">
                                         <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-indigo-600 hover:!bg-indigo-50 hover:!border-indigo-200 shadow-sm">
-                                            <Edit2 size={14} className="mr-1 inline-block" /> Edit Draft
+                                            <Edit2 size={14} className="mr-1 inline-block" /> {report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm">
-                                            <Trash2 size={14} className="mr-1 inline-block" /> Hapus Draft
+                                            <Trash2 size={14} className="mr-1 inline-block" /> {report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
                                         </button>
                                     </div>
                                 </div>
@@ -797,7 +797,8 @@ export default function MonthlyReport() {
         if (draft.componentId) {
             const reqItem = req.items?.find(i => i.componentId === draft.componentId);
             if (reqItem) {
-                const reportedComp = (reportedAmounts.byComponent[draft.componentId] || 0) - parseFloat(draft.amount || 0);
+                const isRejected = draft.status === 'REJECTED';
+                const reportedComp = (reportedAmounts.byComponent[draft.componentId] || 0) - (isRejected ? 0 : parseFloat(draft.amount || 0));
                 item = { ...reqItem, ...item, sisa: parseFloat(reqItem.amount || 0) - reportedComp };
             }
         }
@@ -854,7 +855,10 @@ export default function MonthlyReport() {
             return alert('Pilih umur ekonomis untuk kategori Aset.');
         }
 
-        const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
+        const editingReport = editingDraftId ? budgetReports.find(r => r.id === editingDraftId) : null;
+        const currentDraftAmount = (editingReport && editingReport.status !== 'REJECTED') 
+            ? parseFloat(editingReport.amount || 0) 
+            : 0;
         
         // Cek sisa dana keseluruhan dari Pengajuan Dana (Budget Request) induknya
         const parentReq = budgetRequests.find(r => r.id === selectedRequest.reqId);
