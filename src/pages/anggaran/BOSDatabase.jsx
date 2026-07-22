@@ -164,7 +164,7 @@ export default function BOSDatabase() {
                 </div>
                 {isSuperAdmin && (
                     <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center gap-5 transition-all hover:scale-[1.02]">
-                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
+                        <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
                             <Landmark size={28} />
                         </div>
                         <div className="flex-1 min-w-0">
@@ -172,9 +172,9 @@ export default function BOSDatabase() {
                             <select
                                 value={selectedUnitId}
                                 onChange={(e) => setSelectedUnitId(e.target.value)}
-                                className="w-full mt-1 bg-transparent font-black text-2xl text-slate-900 outline-none cursor-pointer border-b border-slate-200 focus:border-blue-500 py-0.5 truncate"
+                                className="w-full mt-1 bg-transparent font-black text-base text-slate-900 outline-none cursor-pointer border-b border-slate-200 focus:border-blue-500 py-1 truncate"
                             >
-                                <option value="">Semua Unit ({bosUnits.length} Sekolah)</option>
+                                <option value="">Semua Unit Sekolah</option>
                                 {bosUnits.map(u => (
                                     <option key={u.id} value={u.id}>{u.name}</option>
                                 ))}
@@ -183,7 +183,7 @@ export default function BOSDatabase() {
                     </div>
                 )}
                 <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex items-center gap-5 transition-all hover:scale-[1.02]">
-                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                    <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner shrink-0">
                         <Calendar size={28} />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -191,7 +191,7 @@ export default function BOSDatabase() {
                         <select
                             value={selectedAcademicYearId}
                             onChange={(e) => setSelectedAcademicYearId(e.target.value)}
-                            className="w-full mt-1 bg-transparent font-black text-2xl text-slate-900 outline-none cursor-pointer border-b border-slate-200 focus:border-indigo-500 py-0.5 truncate"
+                            className="w-full mt-1 bg-transparent font-black text-base text-slate-900 outline-none cursor-pointer border-b border-slate-200 focus:border-indigo-500 py-1 truncate"
                         >
                             <option value="">Semua Tahun Ajaran</option>
                             {academicYears.filter(ay => !ay.isDeleted).map(ay => (
