@@ -216,8 +216,8 @@ export default function BOSDatabase() {
 
             {/* main Table */}
             <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 overflow-hidden">
-                <div className="p-8 border-b border-slate-50 bg-slate-50/30 flex flex-col md:flex-row md:items-center gap-4">
-                    <div className="relative flex-1 group">
+                <div className="p-8 border-b border-slate-50 bg-slate-50/30">
+                    <div className="relative group">
                         <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={20} />
                         <input 
                             type="text" 
@@ -226,44 +226,6 @@ export default function BOSDatabase() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                             className="w-full pl-14 pr-8 py-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 shadow-sm"
                         />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                        {isSuperAdmin && (
-                            <div className="relative min-w-[200px]">
-                                <Filter className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                                <select 
-                                    value={selectedUnitId}
-                                    onChange={(e) => setSelectedUnitId(e.target.value)}
-                                    className="w-full pl-10 pr-8 py-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 shadow-sm appearance-none cursor-pointer text-xs"
-                                >
-                                    <option value="">Semua Unit Sekolah</option>
-                                    {bosUnits.map(u => (
-                                        <option key={u.id} value={u.id}>{u.name}</option>
-                                    ))}
-                                </select>
-                                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                    <ChevronRight size={14} className="rotate-90" />
-                                </div>
-                            </div>
-                        )}
-                        <div className="relative min-w-[200px]">
-                            <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
-                            <select 
-                                value={selectedAcademicYearId}
-                                onChange={(e) => setSelectedAcademicYearId(e.target.value)}
-                                className="w-full pl-10 pr-8 py-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all font-bold text-slate-900 shadow-sm appearance-none cursor-pointer text-xs"
-                            >
-                                <option value="">Semua Tahun Ajaran</option>
-                                {academicYears.filter(ay => !ay.isDeleted).map(ay => (
-                                    <option key={ay.id} value={ay.id}>
-                                        {ay.name} {ay.isCurrent ? '(Aktif)' : ''}
-                                    </option>
-                                ))}
-                            </select>
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                <ChevronRight size={14} className="rotate-90" />
-                            </div>
-                        </div>
                     </div>
                 </div>
 
