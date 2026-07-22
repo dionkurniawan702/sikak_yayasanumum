@@ -172,7 +172,7 @@ export default function BOSDatabase() {
                             <select
                                 value={selectedUnitId}
                                 onChange={(e) => setSelectedUnitId(e.target.value)}
-                                className="w-full mt-1 bg-transparent font-black text-lg text-blue-600 outline-none cursor-pointer border-b border-dashed border-blue-200 focus:border-blue-500 py-0.5 truncate"
+                                className="w-full mt-1 bg-transparent font-black text-2xl text-slate-900 outline-none cursor-pointer border-b border-slate-200 focus:border-blue-500 py-0.5 truncate"
                             >
                                 <option value="">Semua Unit ({bosUnits.length} Sekolah)</option>
                                 {bosUnits.map(u => (
@@ -191,7 +191,7 @@ export default function BOSDatabase() {
                         <select
                             value={selectedAcademicYearId}
                             onChange={(e) => setSelectedAcademicYearId(e.target.value)}
-                            className="w-full mt-1 bg-transparent font-black text-lg text-indigo-600 outline-none cursor-pointer border-b border-dashed border-indigo-200 focus:border-indigo-500 py-0.5 truncate"
+                            className="w-full mt-1 bg-transparent font-black text-2xl text-slate-900 outline-none cursor-pointer border-b border-slate-200 focus:border-indigo-500 py-0.5 truncate"
                         >
                             <option value="">Semua Tahun Ajaran</option>
                             {academicYears.filter(ay => !ay.isDeleted).map(ay => (
