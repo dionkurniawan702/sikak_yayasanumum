@@ -850,59 +850,21 @@ export function AppProvider({ children }) {
         state.parentStatuses, state.bosAllocations
     ]);
 
-    // Auto-Sync Trigger (Background)
-    useEffect(() => {
-        if (!isRemote || !state.currentUser || !state.isInitialized) return;
-
-        // Debounce sync to avoid spamming the server
-        const timer = setTimeout(async () => {
-            dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
-            try {
-                console.group('Syncing State to Server');
-                console.log('Payload:', state);
-                const response = await api.syncWholeState(state);
-                console.groupEnd();
-                dispatch({
-                    type: 'SET_SYNC_RESULT',
-                    payload: {
-                        timestamp: response.timestamp || new Date().toISOString(),
-                        results: response.results
-                    }
-                });
-            } catch (err) {
-                console.warn('[Sync] Auto-Sync failed:', err.message);
-            } finally {
-                dispatch({ type: 'SET_SYNCING', payload: { status: false } });
-            }
-        }, 3000); // Wait 3 seconds of inactivity before pushing
-
-        return () => clearTimeout(timer);
-    }, [
-        state.accounts,
-        state.journals,
-        state.assets,
-        state.programs,
-        state.expensePrograms,
-        state.units,
-        state.fields,
-        state.students,
-        state.rabPlans,
-        state.budgetRequests,
-        state.budgetReports,
-        state.bosStages,
-        state.bosPosList,
-        state.incomeItems,
-        state.expenseItems,
-        state.distributionSettings,
-        state.academicYears,
-        state.classes,
-        state.users,
-        state.classGroups,
-        state.positions,
-        state.studentStatuses,
-        state.parentStatuses,
-        state.bosAllocations
-    ]);
+    // Auto-Sync Trigger (Disabled: All CRUD actions are already pushed in real-time via api.pushAction)
+    // useEffect(() => {
+    //     if (!isRemote || !state.currentUser || !state.isInitialized) return;
+    //     const timer = setTimeout(async () => {
+    //         dispatch({ type: 'SET_SYNCING', payload: { status: true, message: 'Menyamakan data...' } });
+    //         try {
+    //             await api.syncWholeState(state);
+    //         } catch (err) {
+    //             console.warn('[Sync] Auto-Sync failed:', err.message);
+    //         } finally {
+    //             dispatch({ type: 'SET_SYNCING', payload: { status: false } });
+    //         }
+    //     }, 3000);
+    //     return () => clearTimeout(timer);
+    // }, [...]);
 
     return (
         <AppContext.Provider value={{ state, dispatch }}>
