@@ -21,6 +21,7 @@ export default function BOSDatabase() {
     const isSuperAdmin = currentUser?.role === 'superadmin';
 
     const [searchTerm, setSearchTerm] = useState('');
+    const [selectedUnitId, setSelectedUnitId] = useState('');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingItem, setEditingItem] = useState(null);
     const [formData, setFormData] = useState({ 
@@ -52,6 +53,11 @@ export default function BOSDatabase() {
                 return false;
             }
 
+            // Filter per Unit
+            if (selectedUnitId && item.unitId !== selectedUnitId) {
+                return false;
+            }
+
             const unit = units.find(u => u.id === item.unitId);
             const stage = bosStages.find(s => s.id === item.stageId);
             const pos = bosPosList.find(p => p.id === item.posId);
@@ -59,7 +65,7 @@ export default function BOSDatabase() {
             const searchStr = `${unit?.name} ${stage?.name} ${pos?.name}`.toLowerCase();
             return searchStr.includes(searchTerm.toLowerCase());
         });
-    }, [bosAllocations, units, bosStages, bosPosList, searchTerm, isSuperAdmin, currentUser]);
+    }, [bosAllocations, units, bosStages, bosPosList, searchTerm, selectedUnitId, isSuperAdmin, currentUser]);
 
     const totalAllocated = useMemo(() => {
         return filteredAllocations.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
@@ -155,9 +161,18 @@ export default function BOSDatabase() {
                         <div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shadow-inner">
                             <Landmark size={28} />
                         </div>
-                        <div>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Unit Penerima</p>
-                            <p className="text-2xl font-black text-slate-900">{bosUnits.length} Sekolah</p>
+                        <div className="flex-1 min-w-0">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Filter Unit Penerima</p>
+                            <select
+                                value={selectedUnitId}
+                                onChange={(e) => setSelectedUnitId(e.target.value)}
+                                className="w-full mt-1 bg-transparent font-black text-lg text-blue-600 outline-none cursor-pointer border-b border-dashed border-blue-200 focus:border-blue-500 py-0.5 truncate"
+                            >
+                                <option value="">Semua Unit ({bosUnits.length} Sekolah)</option>
+                                {bosUnits.map(u => (
+                                    <option key={u.id} value={u.id}>{u.name}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
                 )}
@@ -195,6 +210,26 @@ export default function BOSDatabase() {
                             className="w-full pl-14 pr-8 py-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 shadow-sm"
                         />
                     </div>
+                    {isSuperAdmin && (
+                        <div className="flex items-center gap-3">
+                            <div className="relative min-w-[240px]">
+                                <Filter className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} />
+                                <select 
+                                    value={selectedUnitId}
+                                    onChange={(e) => setSelectedUnitId(e.target.value)}
+                                    className="w-full pl-12 pr-10 py-5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all font-bold text-slate-900 shadow-sm appearance-none cursor-pointer text-sm"
+                                >
+                                    <option value="">Semua Unit Sekolah</option>
+                                    {bosUnits.map(u => (
+                                        <option key={u.id} value={u.id}>{u.name}</option>
+                                    ))}
+                                </select>
+                                <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                                    <ChevronRight size={16} className="rotate-90" />
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="overflow-x-auto">
