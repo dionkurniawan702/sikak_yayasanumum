@@ -309,15 +309,43 @@ export default function MonthlyReport() {
 
         // Include Pengembalian Dana (refund) reports towards request settlement
         (budgetReports || []).forEach(r => {
-            if (r.status !== 'REJECTED' && !r.isDeleted && r.kategoriAset === 'PENGEMBALIAN' && !r.budgetRequestId) {
+            if (r.status !== 'REJECTED' && !r.isDeleted && r.kategoriAset === 'PENGEMBALIAN') {
                 const amt = parseFloat(r.amount || 0);
-                (budgetRequests || []).forEach(req => {
-                    const isSameUnit = (req.unitId && req.unitId === r.unitId) || (req.fieldId && req.fieldId === r.fieldId);
-                    if (isSameUnit && req.academicYearId === r.academicYearId && req.status === 'APPROVED') {
-                        if (!reqSettledMap[req.id]) reqSettledMap[req.id] = 0;
-                        reqSettledMap[req.id] += amt;
+                if (r.budgetRequestId) {
+                    if (!reqSettledMap[r.budgetRequestId]) reqSettledMap[r.budgetRequestId] = 0;
+                    reqSettledMap[r.budgetRequestId] += amt;
+                } else {
+                    const rDesc = (r.description || '').toLowerCase();
+                    const matchingReqs = (budgetRequests || []).filter(req => {
+                        const isSameUnit = (req.unitId && req.unitId === r.unitId) || (req.fieldId && req.fieldId === r.fieldId);
+                        return isSameUnit && req.academicYearId === r.academicYearId && req.status === 'APPROVED';
+                    });
+
+                    let matchedReq = matchingReqs.find(req => {
+                        if (!req.month) return false;
+                        const mName = req.month.slice(5);
+                        const monthNames = {
+                            '01': 'januari', '02': 'februari', '03': 'maret', '04': 'april',
+                            '05': 'mei', '06': 'juni', '07': 'juli', '08': 'agustus',
+                            '09': 'september', '10': 'oktober', '11': 'november', '12': 'desember'
+                        };
+                        const nameStr = monthNames[mName] || '';
+                        return nameStr && rDesc.includes(nameStr);
+                    });
+
+                    if (!matchedReq) {
+                        matchedReq = matchingReqs.find(req => {
+                            const reqTot = parseFloat(req.totalAmount || 0);
+                            const currSettled = (reqMap[req.id] || 0) + (reqSettledMap[req.id] || 0);
+                            return currSettled < reqTot;
+                        });
                     }
-                });
+
+                    if (matchedReq) {
+                        if (!reqSettledMap[matchedReq.id]) reqSettledMap[matchedReq.id] = 0;
+                        reqSettledMap[matchedReq.id] += amt;
+                    }
+                }
             }
         });
 
