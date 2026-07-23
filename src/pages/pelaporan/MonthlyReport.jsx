@@ -1399,11 +1399,11 @@ export default function MonthlyReport() {
                                     <span className="text-sm font-black text-slate-700">{formatRupiah(totalCair)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-400">Total Lapor</span>
+                                    <span className="text-xs font-bold text-slate-400">Total Sudah Dilaporkan</span>
                                     <span className="text-sm font-black text-emerald-600">{formatRupiah(totalLapor)}</span>
                                 </div>
                                 <div className="flex justify-between items-center border-t border-slate-100 pt-4">
-                                    <span className="text-xs font-bold text-slate-400">Total Sisa</span>
+                                    <span className="text-xs font-bold text-slate-400">Total Belum Dilaporkan</span>
                                     <span className="text-sm font-black text-amber-500">{formatRupiah(totalSisa)}</span>
                                 </div>
                             </div>
