@@ -270,8 +270,10 @@ export default function MonthlyReport() {
     const reportedAmounts = useMemo(() => {
         const map = {};
         const reqMap = {};
+        const reqSettledMap = {};
+
         (budgetReports || []).forEach(r => {
-            if (r.status !== 'REJECTED') {
+            if (r.status !== 'REJECTED' && !r.isDeleted) {
                 // Backward-compatible componentId lookup if missing in old reports
                 let effectiveComponentId = r.componentId;
                 if (!effectiveComponentId && r.budgetRequestId) {
@@ -288,16 +290,38 @@ export default function MonthlyReport() {
                     }
                 }
 
+                const amt = parseFloat(r.amount || 0);
+
                 if (effectiveComponentId) {
                     if (!map[effectiveComponentId]) map[effectiveComponentId] = 0;
-                    map[effectiveComponentId] += parseFloat(r.amount || 0);
-                } else {
+                    map[effectiveComponentId] += amt;
+                }
+                
+                if (r.budgetRequestId) {
                     if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
-                    reqMap[r.budgetRequestId] += parseFloat(r.amount || 0);
+                    reqMap[r.budgetRequestId] += amt;
+
+                    if (!reqSettledMap[r.budgetRequestId]) reqSettledMap[r.budgetRequestId] = 0;
+                    reqSettledMap[r.budgetRequestId] += amt;
                 }
             }
         });
-        return { byComponent: map, byRequest: reqMap };
+
+        // Include Pengembalian Dana (refund) reports towards request settlement
+        (budgetReports || []).forEach(r => {
+            if (r.status !== 'REJECTED' && !r.isDeleted && r.kategoriAset === 'PENGEMBALIAN' && !r.budgetRequestId) {
+                const amt = parseFloat(r.amount || 0);
+                (budgetRequests || []).forEach(req => {
+                    const isSameUnit = (req.unitId && req.unitId === r.unitId) || (req.fieldId && req.fieldId === r.fieldId);
+                    if (isSameUnit && req.academicYearId === r.academicYearId && req.status === 'APPROVED') {
+                        if (!reqSettledMap[req.id]) reqSettledMap[req.id] = 0;
+                        reqSettledMap[req.id] += amt;
+                    }
+                });
+            }
+        });
+
+        return { byComponent: map, byRequest: reqMap, reqSettledMap };
     }, [budgetReports, budgetRequests]);
 
     const getReportsCountForItem = (item) => {
@@ -384,6 +408,14 @@ export default function MonthlyReport() {
             const reqUnitId = req.unitId;
             const reqFieldId = req.fieldId;
 
+            // Check if request itself is 100% settled (total reported + returned >= totalAmount)
+            const reqTotal = parseFloat(req.totalAmount || 0);
+            const settledAmount = reportedAmounts.reqSettledMap[req.id] || 0;
+            if (settledAmount >= reqTotal - 1.0 || req.isClosed) {
+                // Request is 100% settled or closed!
+                return;
+            }
+
             // Check if this unit/field has any remaining balance. If balance is 0 or less, skip.
             const unitRequests = (budgetRequests || []).filter(r => 
                 r.academicYearId === globalAcademicYearId && 
@@ -412,16 +444,15 @@ export default function MonthlyReport() {
                 return;
             }
 
-            // If the old system fully reported the request without component tracking, hide all items
-            const reportedReq = reportedAmounts.byRequest[req.id] || 0;
-            if (reportedReq >= parseFloat(req.totalAmount || 0) && Object.keys(reportedAmounts.byComponent).length === 0) {
-                return;
-            }
-
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    const sisa = parseFloat(item.amount || 0) - reportedComp;
+
+                    // Skip items that are fully reported (sisa <= 0)!
+                    if (sisa <= 0) return;
+
                     items.push({
                         ...item,
                         reqId: req.id,
@@ -429,11 +460,14 @@ export default function MonthlyReport() {
                         reqDescription: req.description,
                         reqUnitId: req.unitId,
                         expenseItemId: item.expenseItemId || req.expenseItemId,
-                        sisa: parseFloat(item.amount || 0) - reportedComp
+                        sisa
                     });
                 });
             } else {
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                const sisa = reqTotal - reportedReq;
+                if (sisa <= 0) return;
+
                 items.push({
                     reqId: req.id,
                     reqDate: req.date,
@@ -442,7 +476,7 @@ export default function MonthlyReport() {
                     expenseItemId: req.expenseItemId,
                     name: 'General (Legacy)',
                     amount: req.totalAmount,
-                    sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                    sisa
                 });
             }
         });
@@ -451,7 +485,6 @@ export default function MonthlyReport() {
         // Priority 0: Aktif/Baru (sisa > 0, belum ada draf, belum ada pending)
         // Priority 1: Memiliki draf
         // Priority 2: Memiliki pengajuan pending verifikasi
-        // Priority 3: Selesai/Nihil (sisa <= 0)
         items.sort((a, b) => {
             const getPriority = (x) => {
                 const hasDraft = draftReports.some(d => x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId);
@@ -460,9 +493,6 @@ export default function MonthlyReport() {
                     !r.isDeleted && 
                     (x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId)
                 );
-                const isCompleted = x.sisa <= 0;
-
-                if (isCompleted) return 3;
                 if (hasPending) return 2;
                 if (hasDraft) return 1;
                 return 0;
