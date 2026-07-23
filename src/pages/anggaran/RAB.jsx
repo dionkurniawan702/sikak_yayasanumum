@@ -1453,10 +1453,25 @@ function RABContent() {
         const newPlans = [...plans];
         newPlans[planIndex] = updatedPlan;
 
+        const updatedExpense = { ...currentPlan.expense, [mId]: newPlans };
+        
+        let hasPendingComp = false;
+        let hasApprovedComp = false;
+        Object.keys(updatedExpense).forEach(itemId => {
+            const itemPlans = Array.isArray(updatedExpense[itemId]) ? updatedExpense[itemId] : [updatedExpense[itemId]];
+            itemPlans.forEach(p => {
+                (p?.components || []).forEach(c => {
+                    if (c.status === 'PENDING') hasPendingComp = true;
+                    if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
+                });
+            });
+        });
+        const newPlanStatus = hasPendingComp ? 'PENDING' : (hasApprovedComp ? 'APPROVED' : 'REJECTED');
+
         const nextPlan = {
             ...currentPlan,
-            expense: { ...currentPlan.expense, [mId]: newPlans },
-            status: 'REJECTED',
+            expense: updatedExpense,
+            status: newPlanStatus,
             rejectionReason: reason,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
@@ -1471,7 +1486,7 @@ function RABContent() {
             fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
             income: nextPlan.income,
             expense: nextPlan.expense,
-            status: 'REJECTED',
+            status: newPlanStatus,
             rejectionReason: reason,
             updatedAt: nextPlan.updatedAt,
             updatedBy: nextPlan.updatedBy

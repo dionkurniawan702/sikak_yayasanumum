@@ -180,7 +180,7 @@ export default function BudgetDashboard() {
 
         // 1. Process Consolidated RAB Plans (The Master Budget Source)
         // BUG FIX: Only use this as the single source for RAB to avoid double counting with requests
-        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId && p.status === 'APPROVED' && !p.id.includes('-REVISION-')).forEach(plan => {
+        rabPlans.filter(p => p.academicYearId === selectedAcademicYearId && !p.id.includes('-REVISION-')).forEach(plan => {
             Object.keys(plan.expense || {}).forEach(exId => {
                 const rawItemPlans = plan.expense[exId];
                 const itemPlans = Array.isArray(rawItemPlans)
