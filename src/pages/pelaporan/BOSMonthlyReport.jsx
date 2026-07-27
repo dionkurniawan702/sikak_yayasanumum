@@ -29,12 +29,29 @@ function AsetBadge({ kategori, umurEkonomis }) {
     );
 }
 
+function formatMonthLabel(monthStr) {
+    if (!monthStr) return '—';
+    const monthNames = {
+        '01': 'Januari', '02': 'Februari', '03': 'Maret', '04': 'April',
+        '05': 'Mei', '06': 'Juni', '07': 'Juli', '08': 'Agustus',
+        '09': 'September', '10': 'Oktober', '11': 'November', '12': 'Desember'
+    };
+    const parts = monthStr.split('-');
+    if (parts.length === 2 && monthNames[parts[1]]) {
+        return `${monthNames[parts[1]]} ${parts[0]}`;
+    }
+    return monthStr;
+}
+
 // ─── Expandable Row ──────────────────────────────────────────────────────────
 function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
     
+    const req = budgetRequests?.find(r => r.id === (report.budgetRequestId || report.requestId));
+    const reqMonthLabel = req?.month ? formatMonthLabel(req.month) : '—';
+
     let exId = report.expenseItemId;
     if (!exId && report.planId && report.componentId) {
         const plan = rabPlans?.find(p => p.id === report.planId);
@@ -52,13 +69,13 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
         }
     }
     if (!exId && report.budgetRequestId) {
-        const req = budgetRequests?.find(r => r.id === report.budgetRequestId);
-        if (req) {
-            if (report.componentId && req.items) {
-                const reqItem = req.items.find(i => i.componentId === report.componentId);
+        const reqFound = budgetRequests?.find(r => r.id === report.budgetRequestId);
+        if (reqFound) {
+            if (report.componentId && reqFound.items) {
+                const reqItem = reqFound.items.find(i => i.componentId === report.componentId);
                 if (reqItem && reqItem.expenseItemId) exId = reqItem.expenseItemId;
             }
-            if (!exId && req.expenseItemId) exId = req.expenseItemId;
+            if (!exId && reqFound.expenseItemId) exId = reqFound.expenseItemId;
         }
     }
     
@@ -87,6 +104,11 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                 </td>
                 <td className="px-5 py-4">
                     <span className="text-xs font-bold text-slate-500">{dateStr}</span>
+                </td>
+                <td className="px-5 py-4">
+                    <span className="inline-flex items-center px-2 py-1 bg-emerald-50 text-emerald-700 border border-emerald-100 rounded text-[10px] font-black uppercase tracking-wider">
+                        {reqMonthLabel}
+                    </span>
                 </td>
                 <td className="px-5 py-4">
                     <span className="text-xs font-black text-emerald-600 font-mono">{report.nomorNota || '—'}</span>
@@ -218,12 +240,25 @@ export default function BOSMonthlyReport() {
     // Filter state for history
     const [search, setSearch] = useState('');
     const [filterKategori, setFilterKategori] = useState('ALL');
+    const [filterRequestMonth, setFilterRequestMonth] = useState('ALL');
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
     const [pendingSearch, setPendingSearch] = useState('');
     const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'FILLED', 'NOT_FILLED'
 
     const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
+
+    const monthOptions = useMemo(() => {
+        const set = new Set();
+        (budgetRequests || []).forEach(r => {
+            if (r.month) set.add(r.month);
+        });
+        const list = Array.from(set).sort();
+        return list.map(mStr => ({
+            id: mStr,
+            label: formatMonthLabel(mStr)
+        }));
+    }, [budgetRequests]);
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
@@ -687,12 +722,16 @@ export default function BOSMonthlyReport() {
                 (r.category || '').toLowerCase().includes(q) ||
                 (r.buktiTeks || '').toLowerCase().includes(q);
             const matchKategori = filterKategori === 'ALL' || r.kategoriAset === filterKategori;
+            const matchRequestMonth = filterRequestMonth === 'ALL' || (() => {
+                const req = budgetRequests.find(q => q.id === (r.budgetRequestId || r.requestId));
+                return req?.month === filterRequestMonth;
+            })();
             const rDate = r.date ? new Date(r.date) : null;
             const matchFrom = !filterDateFrom || (rDate && rDate >= new Date(filterDateFrom));
             const matchTo = !filterDateTo || (rDate && rDate <= new Date(filterDateTo));
-            return matchSearch && matchKategori && matchFrom && matchTo;
+            return matchSearch && matchKategori && matchRequestMonth && matchFrom && matchTo;
         });
-    }, [baseReports, search, filterKategori, filterDateFrom, filterDateTo]);
+    }, [baseReports, search, filterKategori, filterRequestMonth, filterDateFrom, filterDateTo, budgetRequests]);
 
     // Summary stats for history
     const totalNilai = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
@@ -910,7 +949,7 @@ export default function BOSMonthlyReport() {
         if (filteredReports.length === 0) return alert("Tidak ada data untuk diekspor");
 
         const wsData = [
-            ["No", "Tanggal", "Nomor Nota", "Rincian", "Unit/Bidang", "Keterangan", "Bukti Transaksi", "Volume", "Satuan", "Harga Satuan", "Jumlah Realisasi", "Mata Anggaran", "Kategori Aset", "Umur Ekonomis", "Status"]
+            ["No", "Tanggal Nota", "Bulan Permintaan", "Nomor Nota", "Rincian", "Unit/Bidang", "Keterangan", "Bukti Transaksi", "Volume", "Satuan", "Harga Satuan", "Jumlah Realisasi", "Mata Anggaran", "Kategori Aset", "Umur Ekonomis", "Status"]
         ];
 
         filteredReports.forEach((report, i) => {
@@ -921,6 +960,9 @@ export default function BOSMonthlyReport() {
             const dateStr = report.date 
                 ? new Date(report.date).toLocaleDateString('id-ID') 
                 : '-';
+
+            const req = budgetRequests?.find(r => r.id === (report.budgetRequestId || report.requestId));
+            const reqMonthLabel = req?.month ? formatMonthLabel(req.month) : '-';
 
             let exId = report.expenseItemId;
             if (!exId && report.planId && report.componentId) {
@@ -939,13 +981,13 @@ export default function BOSMonthlyReport() {
                 }
             }
             if (!exId && report.budgetRequestId) {
-                const req = budgetRequests?.find(r => r.id === report.budgetRequestId);
-                if (req) {
-                    if (report.componentId && req.items) {
-                        const reqItem = req.items.find(i => i.componentId === report.componentId);
+                const reqFound = budgetRequests?.find(r => r.id === report.budgetRequestId);
+                if (reqFound) {
+                    if (report.componentId && reqFound.items) {
+                        const reqItem = reqFound.items.find(i => i.componentId === report.componentId);
                         if (reqItem && reqItem.expenseItemId) exId = reqItem.expenseItemId;
                     }
-                    if (!exId && req.expenseItemId) exId = req.expenseItemId;
+                    if (!exId && reqFound.expenseItemId) exId = reqFound.expenseItemId;
                 }
             }
             const expenseItemName = expenseItems?.find(e => e.id === exId)?.name || '-';
@@ -953,6 +995,7 @@ export default function BOSMonthlyReport() {
             wsData.push([
                 i + 1,
                 dateStr,
+                reqMonthLabel,
                 report.nomorNota || '-',
                 report.category || '-',
                 unitName,
@@ -971,9 +1014,9 @@ export default function BOSMonthlyReport() {
 
         // Add a row for total
         const totalAmount = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-        const totalRow = Array(15).fill("");
+        const totalRow = Array(16).fill("");
         totalRow[0] = "TOTAL";
-        totalRow[10] = totalAmount; // index 10 is Jumlah Realisasi
+        totalRow[11] = totalAmount; // index 11 is Jumlah Realisasi
         wsData.push(totalRow);
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -1328,14 +1371,24 @@ export default function BOSMonthlyReport() {
                         </div>
                         <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
                             <Calendar size={14} className="text-slate-400" />
+                            <select className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
+                                value={filterRequestMonth} onChange={e => setFilterRequestMonth(e.target.value)}>
+                                <option value="ALL">Semua Bulan Permintaan</option>
+                                {monthOptions.map(m => (
+                                    <option key={m.id} value={m.id}>{m.label}</option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5">
+                            <Calendar size={14} className="text-slate-400" />
                             <input type="date" className="bg-transparent text-xs font-bold text-slate-600 outline-none"
                                 value={filterDateFrom} onChange={e => setFilterDateFrom(e.target.value)} />
                             <span className="text-slate-300 text-xs">—</span>
                             <input type="date" className="bg-transparent text-xs font-bold text-slate-600 outline-none"
                                 value={filterDateTo} onChange={e => setFilterDateTo(e.target.value)} />
                         </div>
-                        {(search || filterKategori !== 'ALL' || filterDateFrom || filterDateTo || (isSuperAdmin && selectedUnitFilter !== 'ALL')) && (
-                            <button onClick={() => { setSearch(''); setFilterKategori('ALL'); setFilterDateFrom(''); setFilterDateTo(''); setSelectedUnitFilter('ALL'); }}
+                        {(search || filterKategori !== 'ALL' || filterRequestMonth !== 'ALL' || filterDateFrom || filterDateTo || (isSuperAdmin && selectedUnitFilter !== 'ALL')) && (
+                            <button onClick={() => { setSearch(''); setFilterKategori('ALL'); setFilterRequestMonth('ALL'); setFilterDateFrom(''); setFilterDateTo(''); setSelectedUnitFilter('ALL'); }}
                                 className="text-[10px] font-black text-rose-500 hover:text-rose-700 uppercase tracking-widest">
                                 Reset Filter
                             </button>
@@ -1388,7 +1441,8 @@ export default function BOSMonthlyReport() {
                                             </th>
                                         )}
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-10">No</th>
-                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal Nota</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest">Bulan Permintaan</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Rincian</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Keterangan</th>
@@ -1421,7 +1475,7 @@ export default function BOSMonthlyReport() {
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="10" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
+                                                <td colSpan="11" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
                                                     {baseReports.length === 0 ? 'Belum ada laporan yang dibuat.' : 'Tidak ada data yang cocok dengan filter.'}
                                                 </td>
                                             </tr>
@@ -1430,7 +1484,7 @@ export default function BOSMonthlyReport() {
                                 {filteredReports.length > 0 && (
                                     <tfoot>
                                         <tr className="bg-slate-900 text-white">
-                                            <td colSpan={isSuperAdmin ? 6 : 7} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
+                                            <td colSpan={isSuperAdmin ? 7 : 8} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
                                             <td className="px-5 py-4 text-right font-black text-emerald-400 text-base">{formatRupiah(totalNilai)}</td>
                                             <td colSpan="4"></td>
                                         </tr>
@@ -1864,9 +1918,10 @@ export default function BOSMonthlyReport() {
             {/* Printable Area (Hidden on screen, visible on print) */}
             <div className="hidden print:block text-black bg-white w-full">
                 <div className="text-center mb-3">
-                    <h2 className="text-base font-black uppercase">LAPORAN PENGELUARAN YAYASAN</h2>
+                    <h2 className="text-base font-black uppercase">LAPORAN PENGELUARAN BOS</h2>
                     <p className="text-xs font-bold mt-0.5">
                         {myUnitId ? (units.find(u => u.id === myUnitId)?.name || '') : 'Semua Unit'} 
+                        {filterRequestMonth !== 'ALL' ? ` • Bulan Permintaan: ${formatMonthLabel(filterRequestMonth)}` : ''}
                         {filterDateFrom && filterDateTo ? ` (${filterDateFrom} s.d ${filterDateTo})` : ''}
                     </p>
                 </div>
@@ -1875,7 +1930,8 @@ export default function BOSMonthlyReport() {
                     <thead>
                         <tr className="bg-slate-100">
                             <th className="px-1 py-0.5 border border-slate-800 text-center font-bold">No</th>
-                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Tanggal</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Tanggal Nota</th>
+                            <th className="px-1 py-0.5 border border-slate-800 font-bold">Bulan Permintaan</th>
                             <th className="px-1 py-0.5 border border-slate-800 font-bold">No. Nota</th>
                             <th className="px-1 py-0.5 border border-slate-800 font-bold">Keterangan</th>
                             <th className="px-1 py-0.5 border border-slate-800 font-bold">Jenis Belanja</th>
@@ -1887,10 +1943,14 @@ export default function BOSMonthlyReport() {
                         </tr>
                     </thead>
                     <tbody>
-                        {filteredReports.map((report, idx) => (
+                        {filteredReports.map((report, idx) => {
+                            const req = budgetRequests?.find(r => r.id === (report.budgetRequestId || report.requestId));
+                            const reqMonthLabel = req?.month ? formatMonthLabel(req.month) : '—';
+                            return (
                             <tr key={report.id}>
                                 <td className="px-1 py-0.5 border border-slate-800 text-center">{idx + 1}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.date ? new Date(report.date).toLocaleDateString('id-ID') : '—'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap font-bold">{reqMonthLabel}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 font-mono whitespace-nowrap">{report.nomorNota || '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800">{report.description || '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 whitespace-nowrap">{report.category || '—'}</td>
@@ -1900,17 +1960,17 @@ export default function BOSMonthlyReport() {
                                 <td className="px-1 py-0.5 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
                             </tr>
-                        ))}
+                        )})}
                         {filteredReports.length === 0 && (
                             <tr>
-                                <td colSpan="10" className="p-2 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
+                                <td colSpan="11" className="p-2 border border-slate-800 text-center italic">Tidak ada data untuk dicetak</td>
                             </tr>
                         )}
                     </tbody>
                     {filteredReports.length > 0 && (
                         <tfoot>
                             <tr className="bg-slate-100">
-                                <td colSpan="8" className="px-1 py-0.5 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
+                                <td colSpan="9" className="px-1 py-0.5 border border-slate-800 text-right font-black uppercase">Total Pengeluaran</td>
                                 <td className="px-1 py-0.5 border border-slate-800 text-right font-black">{formatRupiah(totalNilai)}</td>
                                 <td className="border border-slate-800"></td>
                             </tr>
