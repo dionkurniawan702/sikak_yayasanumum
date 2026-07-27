@@ -433,53 +433,13 @@ export default function MonthlyReport() {
     const pendingItems = useMemo(() => {
         const items = [];
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
-            const reqUnitId = req.unitId;
-            const reqFieldId = req.fieldId;
-
-            // Check if request itself is 100% settled (total reported + returned >= totalAmount)
-            const reqTotal = parseFloat(req.totalAmount || 0);
-            const settledAmount = reportedAmounts.reqSettledMap[req.id] || 0;
-            if (settledAmount >= reqTotal - 1.0 || req.isClosed) {
-                // Request is 100% settled or closed!
-                return;
-            }
-
-            // Check if this unit/field has any remaining balance. If balance is 0 or less, skip.
-            const unitRequests = (budgetRequests || []).filter(r => 
-                r.academicYearId === globalAcademicYearId && 
-                r.status === 'APPROVED' &&
-                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
-                (sourceMode === 'BOS' 
-                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
-                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
-            );
-            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
-
-            const unitReports = (budgetReports || []).filter(r => 
-                r.academicYearId === globalAcademicYearId && 
-                r.status === 'APPROVED' &&
-                !r.isDeleted &&
-                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
-                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
-            );
-            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-
-            const activeBalance = unitCair - unitUsed - unitReturned;
-
-            if (activeBalance <= 0) {
-                // If this unit/field has no remaining cash balance, skip all its pending items!
-                return;
-            }
+            if (req.isClosed) return;
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
                     const sisa = parseFloat(item.amount || 0) - reportedComp;
-
-                    // Skip items that are fully reported (sisa <= 0)!
-                    if (sisa <= 0) return;
 
                     items.push({
                         ...item,
@@ -492,9 +452,9 @@ export default function MonthlyReport() {
                     });
                 });
             } else {
+                const reqTotal = parseFloat(req.totalAmount || 0);
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
                 const sisa = reqTotal - reportedReq;
-                if (sisa <= 0) return;
 
                 items.push({
                     reqId: req.id,
@@ -513,6 +473,7 @@ export default function MonthlyReport() {
         // Priority 0: Aktif/Baru (sisa > 0, belum ada draf, belum ada pending)
         // Priority 1: Memiliki draf
         // Priority 2: Memiliki pengajuan pending verifikasi
+        // Priority 3: Selesai/Nihil (sisa <= 0)
         items.sort((a, b) => {
             const getPriority = (x) => {
                 const hasDraft = draftReports.some(d => x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId);
@@ -521,6 +482,9 @@ export default function MonthlyReport() {
                     !r.isDeleted && 
                     (x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId)
                 );
+                const isCompleted = x.sisa <= 0;
+
+                if (isCompleted) return 3;
                 if (hasPending) return 2;
                 if (hasDraft) return 1;
                 return 0;
@@ -1272,7 +1236,14 @@ export default function MonthlyReport() {
                             return (
                             <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all border-l-8 border-l-blue-600">
                                 <div className="flex-1">
-                                    <h4 className="font-black text-slate-900 text-xl mb-1">{item.name}</h4>
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                        <h4 className="font-black text-slate-900 text-xl">{item.name}</h4>
+                                        {item.sisa <= 0 && (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                                <CheckCircle2 size={12} /> Selesai / Lunas
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex flex-wrap items-center gap-3 text-slate-400 text-xs font-bold">
                                         <span className="flex items-center gap-1"><History size={14} /> {item.reqDate}</span>
                                         <span className="flex items-center gap-1 font-black text-blue-600 italic">REQ: {item.reqId.slice(0, 8)}</span>

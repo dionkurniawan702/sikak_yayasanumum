@@ -360,42 +360,7 @@ export default function BOSMonthlyReport() {
     const pendingItems = useMemo(() => {
         const items = [];
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
-            const reqUnitId = req.unitId;
-            const reqFieldId = req.fieldId;
-
-            // Check if this unit/field has any remaining balance. If balance is 0 or less, skip.
-            const unitRequests = (budgetRequests || []).filter(r => 
-                r.academicYearId === globalAcademicYearId && 
-                r.status === 'APPROVED' &&
-                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
-                (sourceMode === 'BOS' 
-                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
-                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
-            );
-            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
-
-            const unitReports = (budgetReports || []).filter(r => 
-                r.academicYearId === globalAcademicYearId && 
-                r.status === 'APPROVED' &&
-                !r.isDeleted &&
-                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
-                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
-            );
-            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-
-            const activeBalance = unitCair - unitUsed - unitReturned;
-
-            if (activeBalance <= 0) {
-                // If this unit/field has no remaining cash balance, skip all its pending items!
-                return;
-            }
-
-            // If the old system fully reported the request without component tracking, hide all items
-            const reportedReq = reportedAmounts.byRequest[req.id] || 0;
-            if (reportedReq >= parseFloat(req.totalAmount || 0) && Object.keys(reportedAmounts.byComponent).length === 0) {
-                return;
-            }
+            if (req.isClosed) return;
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
@@ -1165,7 +1130,14 @@ export default function BOSMonthlyReport() {
                             return (
                             <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-emerald-200 transition-all border-l-8 border-l-emerald-600">
                                 <div className="flex-1">
-                                    <h4 className="font-black text-slate-900 text-xl mb-1">{item.name}</h4>
+                                    <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
+                                        <h4 className="font-black text-slate-900 text-xl">{item.name}</h4>
+                                        {item.sisa <= 0 && (
+                                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider">
+                                                <CheckCircle2 size={12} /> Selesai / Lunas
+                                            </span>
+                                        )}
+                                    </div>
                                     <div className="flex flex-wrap items-center gap-3 text-slate-400 text-xs font-bold">
                                         <span className="flex items-center gap-1"><History size={14} /> {item.reqDate}</span>
                                         <span className="flex items-center gap-1 font-black text-emerald-600 italic">REQ: {item.reqId.slice(0, 8)}</span>
