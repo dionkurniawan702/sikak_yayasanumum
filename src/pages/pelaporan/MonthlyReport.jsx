@@ -396,7 +396,7 @@ export default function MonthlyReport() {
             }
         });
 
-        return { byComponent: map, byRequest: reqMap, reqSettledMap };
+        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, reqSettledMap };
     }, [budgetReports, budgetRequests]);
 
     const getReportsCountForItem = (item) => {
@@ -485,8 +485,8 @@ export default function MonthlyReport() {
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
-                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    const approvedComp = reportedAmounts.approvedByComponent[item.componentId] || 0;
+                    const reportedComp = (reportedAmounts?.byComponent && reportedAmounts.byComponent[item.componentId]) || 0;
+                    const approvedComp = (reportedAmounts?.approvedByComponent && reportedAmounts.approvedByComponent[item.componentId]) || 0;
 
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisaApproved = itemAmount - approvedComp;

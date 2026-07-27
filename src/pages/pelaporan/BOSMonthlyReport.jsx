@@ -414,8 +414,8 @@ export default function BOSMonthlyReport() {
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
-                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    const approvedComp = reportedAmounts.approvedByComponent[item.componentId] || 0;
+                    const reportedComp = (reportedAmounts?.byComponent && reportedAmounts.byComponent[item.componentId]) || 0;
+                    const approvedComp = (reportedAmounts?.approvedByComponent && reportedAmounts.approvedByComponent[item.componentId]) || 0;
 
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisaApproved = itemAmount - approvedComp;
