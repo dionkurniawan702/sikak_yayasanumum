@@ -265,6 +265,7 @@ export default function MonthlyReport() {
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
     const [pendingSearch, setPendingSearch] = useState('');
+    const [pendingMonthFilter, setPendingMonthFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'FILLED', 'NOT_FILLED'
 
     const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
@@ -491,14 +492,21 @@ export default function MonthlyReport() {
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisaApproved = itemAmount - approvedComp;
 
-                    // Hide item ONLY if its report has ALREADY been APPROVED (ACC) by Superadmin (sisaApproved <= 0)
-                    if (sisaApproved <= 0) return;
+                    const hasApprovedReport = (budgetReports || []).some(r => 
+                        r.status === 'APPROVED' && 
+                        !r.isDeleted && 
+                        (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === req.id)
+                    );
+
+                    // Hide item if it has ALREADY been reported & APPROVED (ACC) by Superadmin OR sisaApproved <= 0
+                    if (hasApprovedReport || sisaApproved <= 0) return;
 
                     const sisa = itemAmount - reportedComp;
 
                     items.push({
                         ...item,
                         reqId: req.id,
+                        reqMonth: req.month,
                         reqDate: req.date,
                         reqDescription: req.description,
                         reqUnitId: req.unitId,
@@ -511,14 +519,21 @@ export default function MonthlyReport() {
                 const approvedReq = (reportedAmounts.approvedByRequest && reportedAmounts.approvedByRequest[req.id]) || 0;
                 const sisaApproved = reqTotal - approvedReq;
 
-                // Hide item ONLY if its report has ALREADY been APPROVED (ACC) by Superadmin (sisaApproved <= 0)
-                if (sisaApproved <= 0) return;
+                const hasApprovedReport = (budgetReports || []).some(r => 
+                    r.status === 'APPROVED' && 
+                    !r.isDeleted && 
+                    r.budgetRequestId === req.id
+                );
+
+                // Hide item if it has ALREADY been reported & APPROVED (ACC) by Superadmin OR sisaApproved <= 0
+                if (hasApprovedReport || sisaApproved <= 0) return;
 
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
                 const sisa = reqTotal - reportedReq;
 
                 items.push({
                     reqId: req.id,
+                    reqMonth: req.month,
                     reqDate: req.date,
                     reqDescription: req.description,
                     reqUnitId: req.unitId,
@@ -619,6 +634,9 @@ export default function MonthlyReport() {
     // Filtered pending items for superadmin based on selected unit + search term + statusFilter
     const filteredPendingItems = useMemo(() => {
         let items = pendingItems;
+        if (pendingMonthFilter !== 'ALL') {
+            items = items.filter(item => item.reqMonth === pendingMonthFilter);
+        }
         if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
             items = items.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
         }
@@ -656,7 +674,7 @@ export default function MonthlyReport() {
             });
         }
         return items;
-    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, statusFilter, units, fields, draftReports, budgetReports]);
+    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, pendingMonthFilter, statusFilter, units, fields, draftReports, budgetReports]);
 
     const verificationReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -1264,6 +1282,21 @@ export default function MonthlyReport() {
                                 <option value="ALL">Semua Pelaporan</option>
                                 <option value="NOT_FILLED">Belum Isi</option>
                                 <option value="FILLED">Sudah Isi</option>
+                            </select>
+                        </div>
+
+                        {/* Dropdown Bulan Permintaan */}
+                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-4 py-2.5 shadow-sm">
+                            <Calendar size={14} className="text-slate-400" />
+                            <select 
+                                className="bg-transparent text-xs font-bold text-slate-700 outline-none cursor-pointer"
+                                value={pendingMonthFilter}
+                                onChange={(e) => setPendingMonthFilter(e.target.value)}
+                            >
+                                <option value="ALL">Semua Bulan Permintaan</option>
+                                {monthOptions.map(m => (
+                                    <option key={m.id} value={m.id}>{m.label}</option>
+                                ))}
                             </select>
                         </div>
 
