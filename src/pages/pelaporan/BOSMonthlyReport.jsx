@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, Landmark } from 'lucide-react';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, Landmark, Upload } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
@@ -587,6 +587,139 @@ export default function BOSMonthlyReport() {
         }
         return items;
     }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, pendingMonthFilter, statusFilter, units, fields, draftReports, budgetReports]);
+
+    // Handle Export Excel for a single item card
+    const handleExportSingleItemExcel = (item) => {
+        try {
+            const itemReports = (budgetReports || []).filter(r => 
+                !r.isDeleted && 
+                (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId)
+            );
+
+            const wsData = [
+                ["RINCIAN PELAPORAN REALISASI ANGGARAN BOS (EXCEL)"],
+                ["Nama Item Rincian:", item.name || "-"],
+                ["Kode Pengajuan (REQ ID):", item.reqId || "-"],
+                ["Bulan Permintaan:", item.reqMonth || "-"],
+                ["Pagu RAB (Rp):", parseFloat(item.amount || 0)],
+                ["Sisa Dana Saat Ini (Rp):", item.sisa || 0],
+                [],
+                ["PETUNJUK: Tambahkan atau ubah baris transaksi di bawah ini untuk di-Import ke sistem."],
+                ["No", "Tanggal Realisasi (YYYY-MM-DD)", "Deskripsi / Keterangan Nota", "Nama Toko / Vendor", "Volume", "Satuan", "Nominal Belanja (Rp)", "Nomor Nota"]
+            ];
+
+            if (itemReports.length > 0) {
+                itemReports.forEach((r, idx) => {
+                    wsData.push([
+                        idx + 1,
+                        r.date || new Date().toISOString().split('T')[0],
+                        r.description || item.name || '',
+                        r.vendor || '-',
+                        r.volume || 1,
+                        r.satuan || 'Pcs',
+                        parseFloat(r.amount || 0),
+                        r.nomorNota || '-'
+                    ]);
+                });
+            } else {
+                wsData.push([
+                    1,
+                    new Date().toISOString().split('T')[0],
+                    `Pembelian ${item.name}`,
+                    "Toko A",
+                    1,
+                    "Pcs",
+                    parseFloat(item.sisa > 0 ? item.sisa : item.amount || 0),
+                    "NOTA-001"
+                ]);
+            }
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Realisasi Item BOS");
+
+            const cleanName = (item.name || 'Rincian').replace(/[/\\?%*:|"<>]/g, '_');
+            XLSX.writeFile(wb, `Laporan_BOS_${cleanName}_${item.reqId.slice(0, 8)}.xlsx`);
+        } catch (err) {
+            console.error('Export Error:', err);
+            alert('Gagal mengekspor file Excel: ' + err.message);
+        }
+    };
+
+    // Handle Import Excel for a single item card
+    const handleImportSingleItemExcel = (e, item) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const sheetName = wb.SheetNames[0];
+                const ws = wb.Sheets[sheetName];
+                
+                const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+                if (!rows || rows.length < 9) {
+                    alert('Format file Excel tidak sesuai. Gunakan file Excel yang di-Export dari rincian ini.');
+                    e.target.value = '';
+                    return;
+                }
+
+                const transactionRows = rows.slice(8);
+                let importedCount = 0;
+
+                transactionRows.forEach((row) => {
+                    if (!row || row.length < 4) return;
+
+                    const dateVal = row[1] ? String(row[1]).trim() : new Date().toISOString().split('T')[0];
+                    const descVal = row[2] ? String(row[2]).trim() : '';
+                    const vendorVal = row[3] ? String(row[3]).trim() : '';
+                    const volVal = row[4] ? parseFloat(row[4]) : 1;
+                    const satuanVal = row[5] ? String(row[5]).trim() : 'Pcs';
+                    const amountVal = row[6] ? parseFloat(row[6]) : 0;
+                    const notaVal = row[7] ? String(row[7]).trim() : '';
+
+                    if (!descVal || amountVal <= 0) return;
+
+                    const newReport = {
+                        id: `REL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+                        budgetRequestId: item.reqId,
+                        componentId: item.componentId || null,
+                        expenseItemId: item.expenseItemId || null,
+                        category: item.name,
+                        date: dateVal,
+                        description: descVal,
+                        vendor: vendorVal,
+                        volume: volVal,
+                        satuan: satuanVal,
+                        amount: amountVal,
+                        nomorNota: notaVal,
+                        status: 'DRAFT',
+                        createdAt: new Date().toISOString(),
+                        unitId: item.reqUnitId,
+                        source: 'BOS'
+                    };
+
+                    dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReport });
+                    api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReport }, state);
+                    importedCount++;
+                });
+
+                if (importedCount > 0) {
+                    alert(`Berhasil mengimpor ${importedCount} nota realisasi BOS untuk "${item.name}"! Data telah tersimpan sebagai Draft Nota.`);
+                } else {
+                    alert('Tidak ada data nota valid yang ditemukan pada file Excel.');
+                }
+            } catch (err) {
+                console.error('Import Error:', err);
+                alert('Gagal mengunggah file Excel: ' + err.message);
+            } finally {
+                e.target.value = '';
+            }
+        };
+        reader.readAsBinaryString(file);
+    };
 
     const verificationReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
@@ -1321,6 +1454,30 @@ export default function BOSMonthlyReport() {
                                             <History size={14} />
                                             <span>Lihat Laporan ({getReportsCountForItem(item)})</span>
                                         </button>
+                                        {/* Excel Import & Export per item card */}
+                                        <div className="grid grid-cols-2 gap-1.5 mt-1">
+                                            <button
+                                                onClick={() => handleExportSingleItemExcel(item)}
+                                                className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm"
+                                                title="Unduh data / template Excel rincian ini"
+                                            >
+                                                <Download size={12} />
+                                                <span>Export</span>
+                                            </button>
+                                            <label
+                                                className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-amber-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                                                title="Upload Excel nota realisasi untuk rincian ini"
+                                            >
+                                                <Upload size={12} />
+                                                <span>Import</span>
+                                                <input
+                                                    type="file"
+                                                    accept=".xlsx, .xls"
+                                                    className="hidden"
+                                                    onChange={(e) => handleImportSingleItemExcel(e, item)}
+                                                />
+                                            </label>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
