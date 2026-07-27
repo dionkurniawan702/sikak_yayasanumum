@@ -412,24 +412,19 @@ export default function BOSMonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return;
 
+            // If this request already has APPROVED (ACC) report(s), it is COMPLETED/REPORTED -> Hide all its items!
+            const hasApprovedReportForReq = (budgetReports || []).some(r => 
+                r.status === 'APPROVED' && 
+                !r.isDeleted && 
+                (r.budgetRequestId === req.id || r.requestId === req.id)
+            );
+            if (hasApprovedReportForReq) return;
+
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     const reportedComp = (reportedAmounts?.byComponent && reportedAmounts.byComponent[item.componentId]) || 0;
-                    const approvedComp = (reportedAmounts?.approvedByComponent && reportedAmounts.approvedByComponent[item.componentId]) || 0;
-
                     const itemAmount = parseFloat(item.amount || 0);
-                    const sisaApproved = itemAmount - approvedComp;
-
-                    const hasApprovedReport = (budgetReports || []).some(r => 
-                        r.status === 'APPROVED' && 
-                        !r.isDeleted && 
-                        (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === req.id)
-                    );
-
-                    // Hide item if it has ALREADY been reported & APPROVED (ACC) by Superadmin OR sisaApproved <= 0
-                    if (hasApprovedReport || sisaApproved <= 0) return;
-
                     const sisa = itemAmount - reportedComp;
 
                     items.push({
@@ -445,18 +440,6 @@ export default function BOSMonthlyReport() {
                 });
             } else {
                 const reqTotal = parseFloat(req.totalAmount || 0);
-                const approvedReq = (reportedAmounts.approvedByRequest && reportedAmounts.approvedByRequest[req.id]) || 0;
-                const sisaApproved = reqTotal - approvedReq;
-
-                const hasApprovedReport = (budgetReports || []).some(r => 
-                    r.status === 'APPROVED' && 
-                    !r.isDeleted && 
-                    r.budgetRequestId === req.id
-                );
-
-                // Hide item if it has ALREADY been reported & APPROVED (ACC) by Superadmin OR sisaApproved <= 0
-                if (hasApprovedReport || sisaApproved <= 0) return;
-
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
                 const sisa = reqTotal - reportedReq;
 
