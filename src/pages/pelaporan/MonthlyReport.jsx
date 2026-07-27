@@ -659,6 +659,43 @@ export default function MonthlyReport() {
         return items;
     }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, pendingMonthFilter, statusFilter, units, fields, draftReports, budgetReports]);
 
+    // Handle Download Template Import Excel for a single item card
+    const handleDownloadItemTemplate = (item) => {
+        try {
+            const wsData = [
+                ["TEMPLATE IMPORT REALISASI NOTA BELANJA (EXCEL)"],
+                ["Nama Item Rincian:", item.name || "-"],
+                ["Kode Pengajuan (REQ ID):", item.reqId || "-"],
+                ["Bulan Permintaan:", item.reqMonth || "-"],
+                ["Pagu RAB (Rp):", parseFloat(item.amount || 0)],
+                ["Sisa Dana Saat Ini (Rp):", item.sisa || 0],
+                [],
+                ["PETUNJUK: Isi baris transaksi nota di bawah ini, lalu simpan & Import file ini kembali ke sistem."],
+                ["No", "Tanggal Realisasi (YYYY-MM-DD)", "Deskripsi / Keterangan Nota", "Nama Toko / Vendor", "Volume", "Satuan", "Nominal Belanja (Rp)", "Nomor Nota"],
+                [
+                    1,
+                    new Date().toISOString().split('T')[0],
+                    `Pembelian ${item.name}`,
+                    "Toko A",
+                    1,
+                    "Pcs",
+                    parseFloat(item.sisa > 0 ? item.sisa : item.amount || 0),
+                    "NOTA-001"
+                ]
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Template Realisasi");
+
+            const cleanName = (item.name || 'Rincian').replace(/[/\\?%*:|"<>]/g, '_');
+            XLSX.writeFile(wb, `Template_Import_${cleanName}_${item.reqId.slice(0, 8)}.xlsx`);
+        } catch (err) {
+            console.error('Template Download Error:', err);
+            alert('Gagal mengunduh template Excel: ' + err.message);
+        }
+    };
+
     // Handle Export Excel for a single item card
     const handleExportSingleItemExcel = (item) => {
         try {
@@ -1554,21 +1591,29 @@ export default function MonthlyReport() {
                                             <span>Lihat Laporan ({getReportsCountForItem(item)})</span>
                                         </button>
                                         
-                                        {/* Excel Import & Export per item card */}
-                                        <div className="grid grid-cols-2 gap-1.5 mt-1">
+                                        {/* Excel Template, Export & Import per item card */}
+                                        <div className="grid grid-cols-3 gap-1 mt-1">
+                                            <button
+                                                onClick={() => handleDownloadItemTemplate(item)}
+                                                className="px-2 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-blue-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm"
+                                                title="Unduh template Excel kosong khusus rincian ini"
+                                            >
+                                                <FileSpreadsheet size={11} />
+                                                <span>Template</span>
+                                            </button>
                                             <button
                                                 onClick={() => handleExportSingleItemExcel(item)}
-                                                className="px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm"
-                                                title="Unduh data / template Excel rincian ini"
+                                                className="px-2 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm"
+                                                title="Unduh data realisasi eksisting rincian ini"
                                             >
-                                                <Download size={12} />
+                                                <Download size={11} />
                                                 <span>Export</span>
                                             </button>
                                             <label
-                                                className="px-2.5 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-amber-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm cursor-pointer"
+                                                className="px-2 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-xl font-black text-[9px] uppercase tracking-wider hover:bg-amber-600 hover:text-white transition-all flex items-center justify-center gap-1 shadow-sm cursor-pointer"
                                                 title="Upload Excel nota realisasi untuk rincian ini"
                                             >
-                                                <Upload size={12} />
+                                                <Upload size={11} />
                                                 <span>Import</span>
                                                 <input
                                                     type="file"
