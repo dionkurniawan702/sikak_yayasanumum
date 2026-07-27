@@ -283,9 +283,11 @@ export default function BOSMonthlyReport() {
 
     const reportedAmounts = useMemo(() => {
         const map = {};
+        const approvedMap = {};
         const reqMap = {};
+        const reqApprovedMap = {};
         (budgetReports || []).forEach(r => {
-            if (r.status !== 'REJECTED') {
+            if (r.status !== 'REJECTED' && !r.isDeleted) {
                 // Backward-compatible componentId lookup if missing in old reports
                 let effectiveComponentId = r.componentId;
                 if (!effectiveComponentId && r.budgetRequestId) {
@@ -302,16 +304,28 @@ export default function BOSMonthlyReport() {
                     }
                 }
 
+                const amt = parseFloat(r.amount || 0);
+
                 if (effectiveComponentId) {
                     if (!map[effectiveComponentId]) map[effectiveComponentId] = 0;
-                    map[effectiveComponentId] += parseFloat(r.amount || 0);
+                    map[effectiveComponentId] += amt;
+
+                    if (r.status === 'APPROVED') {
+                        if (!approvedMap[effectiveComponentId]) approvedMap[effectiveComponentId] = 0;
+                        approvedMap[effectiveComponentId] += amt;
+                    }
                 } else {
                     if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
-                    reqMap[r.budgetRequestId] += parseFloat(r.amount || 0);
+                    reqMap[r.budgetRequestId] += amt;
+
+                    if (r.status === 'APPROVED') {
+                        if (!reqApprovedMap[r.budgetRequestId]) reqApprovedMap[r.budgetRequestId] = 0;
+                        reqApprovedMap[r.budgetRequestId] += amt;
+                    }
                 }
             }
         });
-        return { byComponent: map, byRequest: reqMap };
+        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap };
     }, [budgetReports, budgetRequests]);
 
     const getReportsCountForItem = (item) => {
@@ -401,6 +415,16 @@ export default function BOSMonthlyReport() {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    const approvedComp = reportedAmounts.approvedByComponent[item.componentId] || 0;
+
+                    const itemAmount = parseFloat(item.amount || 0);
+                    const sisaApproved = itemAmount - approvedComp;
+
+                    // Hide item ONLY if its report has ALREADY been APPROVED (ACC) by Superadmin (sisaApproved <= 0)
+                    if (sisaApproved <= 0) return;
+
+                    const sisa = itemAmount - reportedComp;
+
                     items.push({
                         ...item,
                         reqId: req.id,
@@ -408,11 +432,20 @@ export default function BOSMonthlyReport() {
                         reqDescription: req.description,
                         reqUnitId: req.unitId,
                         expenseItemId: item.expenseItemId || req.expenseItemId,
-                        sisa: parseFloat(item.amount || 0) - reportedComp
+                        sisa
                     });
                 });
             } else {
+                const reqTotal = parseFloat(req.totalAmount || 0);
+                const approvedReq = (reportedAmounts.approvedByRequest && reportedAmounts.approvedByRequest[req.id]) || 0;
+                const sisaApproved = reqTotal - approvedReq;
+
+                // Hide item ONLY if its report has ALREADY been APPROVED (ACC) by Superadmin (sisaApproved <= 0)
+                if (sisaApproved <= 0) return;
+
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                const sisa = reqTotal - reportedReq;
+
                 items.push({
                     reqId: req.id,
                     reqDate: req.date,
@@ -421,7 +454,7 @@ export default function BOSMonthlyReport() {
                     expenseItemId: req.expenseItemId,
                     name: 'General (Legacy)',
                     amount: req.totalAmount,
-                    sisa: parseFloat(req.totalAmount || 0) - reportedReq
+                    sisa
                 });
             }
         });

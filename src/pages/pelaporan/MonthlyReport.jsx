@@ -304,7 +304,9 @@ export default function MonthlyReport() {
 
     const reportedAmounts = useMemo(() => {
         const map = {};
+        const approvedMap = {};
         const reqMap = {};
+        const reqApprovedMap = {};
         const reqSettledMap = {};
 
         (budgetReports || []).forEach(r => {
@@ -330,11 +332,21 @@ export default function MonthlyReport() {
                 if (effectiveComponentId) {
                     if (!map[effectiveComponentId]) map[effectiveComponentId] = 0;
                     map[effectiveComponentId] += amt;
+
+                    if (r.status === 'APPROVED') {
+                        if (!approvedMap[effectiveComponentId]) approvedMap[effectiveComponentId] = 0;
+                        approvedMap[effectiveComponentId] += amt;
+                    }
                 }
                 
                 if (r.budgetRequestId) {
                     if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
                     reqMap[r.budgetRequestId] += amt;
+
+                    if (r.status === 'APPROVED') {
+                        if (!reqApprovedMap[r.budgetRequestId]) reqApprovedMap[r.budgetRequestId] = 0;
+                        reqApprovedMap[r.budgetRequestId] += amt;
+                    }
 
                     if (!reqSettledMap[r.budgetRequestId]) reqSettledMap[r.budgetRequestId] = 0;
                     reqSettledMap[r.budgetRequestId] += amt;
@@ -474,7 +486,15 @@ export default function MonthlyReport() {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    const sisa = parseFloat(item.amount || 0) - reportedComp;
+                    const approvedComp = reportedAmounts.approvedByComponent[item.componentId] || 0;
+
+                    const itemAmount = parseFloat(item.amount || 0);
+                    const sisaApproved = itemAmount - approvedComp;
+
+                    // Hide item ONLY if its report has ALREADY been APPROVED (ACC) by Superadmin (sisaApproved <= 0)
+                    if (sisaApproved <= 0) return;
+
+                    const sisa = itemAmount - reportedComp;
 
                     items.push({
                         ...item,
@@ -488,6 +508,12 @@ export default function MonthlyReport() {
                 });
             } else {
                 const reqTotal = parseFloat(req.totalAmount || 0);
+                const approvedReq = (reportedAmounts.approvedByRequest && reportedAmounts.approvedByRequest[req.id]) || 0;
+                const sisaApproved = reqTotal - approvedReq;
+
+                // Hide item ONLY if its report has ALREADY been APPROVED (ACC) by Superadmin (sisaApproved <= 0)
+                if (sisaApproved <= 0) return;
+
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
                 const sisa = reqTotal - reportedReq;
 
