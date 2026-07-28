@@ -161,9 +161,31 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                     )}
                 </td>
                 <td className="px-5 py-4 text-center">
-                    {open
-                        ? <ChevronDown size={14} className="text-emerald-400 mx-auto" />
-                        : <ChevronRight size={14} className="text-slate-300 mx-auto" />}
+                    <div className="flex items-center justify-center gap-1.5">
+                        {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onEdit && onDelete && (
+                            <>
+                                {report.kategoriAset !== 'PENGEMBALIAN' && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                        className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
+                                        title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
+                                    >
+                                        <Edit2 size={14} />
+                                    </button>
+                                )}
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                                >
+                                    <Trash2 size={14} />
+                                </button>
+                            </>
+                        )}
+                        {open
+                            ? <ChevronDown size={14} className="text-emerald-400" />
+                            : <ChevronRight size={14} className="text-slate-300" />}
+                    </div>
                 </td>
             </tr>
 
@@ -1917,6 +1939,7 @@ export default function BOSMonthlyReport() {
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
+                                                {!isSuperAdmin && <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>}
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1951,6 +1974,39 @@ export default function BOSMonthlyReport() {
                                                                 </span>
                                                             )}
                                                         </td>
+                                                        {!isSuperAdmin && (
+                                                            <td className="px-5 py-4 text-center">
+                                                                {(report.status === 'DRAFT' || report.status === 'REJECTED') ? (
+                                                                    <div className="flex items-center justify-center gap-1.5">
+                                                                        {report.kategoriAset !== 'PENGEMBALIAN' && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    setShowReportsList(false);
+                                                                                    handleEditDraft(report);
+                                                                                }}
+                                                                                className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                                                title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
+                                                                            >
+                                                                                <Edit2 size={14} />
+                                                                            </button>
+                                                                        )}
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleDeleteDraft(report.id);
+                                                                            }}
+                                                                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                                                            title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                                                                        >
+                                                                            <Trash2 size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-slate-300 text-xs">—</span>
+                                                                )}
+                                                            </td>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}
