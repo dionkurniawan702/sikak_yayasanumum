@@ -201,7 +201,7 @@ export default function ArchiveReports() {
         if (archiveData.length === 0) return alert("Tidak ada data untuk diekspor");
 
         const wsData = [
-            ["No", "Tanggal Transaksi", "Nomor Nota", "Periode Permintaan", "Unit/Bidang", "Kategori Item", "Keterangan", "Bukti Teks", "Kategori Aset", "Umur Ekonomis", "Jumlah Realisasi"]
+            ["No", "Tanggal Transaksi", "Nomor Nota", "Periode Permintaan", "Unit/Bidang", "Kategori Item", "Keterangan", "Bukti Teks", "Kategori Aset", "Umur Ekonomis", "Potongan/Diskon", "Jumlah Realisasi"]
         ];
 
         archiveData.forEach((item, i) => {
@@ -216,6 +216,7 @@ export default function ArchiveReports() {
                 item.buktiTeks || '-',
                 item.kategoriAset || 'NON_ASET',
                 item.umurEkonomis ? `${item.umurEkonomis} Tahun` : '-',
+                parseFloat(item.diskon || 0),
                 item.amountNum
             ]);
         });
@@ -374,13 +375,14 @@ export default function ArchiveReports() {
                                 )}
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Keterangan Laporan</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-center">Info Aset</th>
+                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-right text-rose-400">Diskon (Rp)</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-right">Realisasi (Rp)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {archiveData.length === 0 ? (
                                 <tr>
-                                    <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-16 text-center">
+                                    <td colSpan={isSuperAdmin ? 9 : 8} className="px-6 py-16 text-center">
                                         <div className="flex flex-col items-center justify-center">
                                             <Archive size={48} className="text-slate-200 mb-4" />
                                             <p className="text-sm font-bold text-slate-400 italic">Tidak ada laporan yang sesuai dengan filter.</p>
@@ -452,6 +454,12 @@ export default function ArchiveReports() {
                                         </td>
                                         
                                         <td className="px-6 py-4 text-right">
+                                            <span className="text-xs font-bold text-rose-500 font-mono whitespace-nowrap">
+                                                {parseFloat(item.diskon || 0) > 0 ? `-${formatRupiah(parseFloat(item.diskon))}` : '—'}
+                                            </span>
+                                        </td>
+
+                                        <td className="px-6 py-4 text-right">
                                             <span className="text-sm font-black text-slate-900 italic bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm whitespace-nowrap">
                                                 {formatRupiah(item.amountNum)}
                                             </span>
@@ -463,7 +471,7 @@ export default function ArchiveReports() {
                             {/* Total Row */}
                             {archiveData.length > 0 && (
                                 <tr className="bg-slate-50">
-                                    <td colSpan={isSuperAdmin ? 7 : 6} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
+                                    <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
                                         Total Realisasi Filtered
                                     </td>
                                     <td className="px-6 py-4 text-right border-t-2 border-slate-200 border-l border-l-slate-200">

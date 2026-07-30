@@ -132,6 +132,13 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                         </span>
                     ) : <span className="text-slate-300">—</span>}
                 </td>
+                <td className="px-5 py-4 text-right font-mono">
+                    {parseFloat(report.diskon || 0) > 0 ? (
+                        <span className="text-xs font-bold text-rose-500">
+                            -{formatRupiah(parseFloat(report.diskon))}
+                        </span>
+                    ) : <span className="text-slate-300 text-xs">—</span>}
+                </td>
                 <td className="px-5 py-4 text-right">
                     <span className="text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</span>
                 </td>
@@ -1824,6 +1831,7 @@ export default function MonthlyReport() {
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Rincian</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Keterangan</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-rose-500 uppercase tracking-widest text-right">Diskon</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Mata Anggaran</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Kategori</th>
@@ -1854,7 +1862,7 @@ export default function MonthlyReport() {
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="11" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
+                                                <td colSpan="12" className="px-8 py-20 text-center text-slate-400 italic font-medium border-t border-slate-50">
                                                     {baseReports.length === 0 ? 'Belum ada laporan yang dibuat.' : 'Tidak ada data yang cocok dengan filter.'}
                                                 </td>
                                             </tr>
@@ -1863,7 +1871,7 @@ export default function MonthlyReport() {
                                 {filteredReports.length > 0 && (
                                     <tfoot>
                                         <tr className="bg-slate-900 text-white">
-                                            <td colSpan={isSuperAdmin ? 7 : 8} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
+                                            <td colSpan={isSuperAdmin ? 8 : 9} className="px-5 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400">Total</td>
                                             <td className="px-5 py-4 text-right font-black text-emerald-400 text-base">{formatRupiah(totalNilai)}</td>
                                             <td colSpan="4"></td>
                                         </tr>
@@ -1944,6 +1952,7 @@ export default function MonthlyReport() {
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[180px]">Rincian</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest min-w-[200px]">Keterangan</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                        <th className="px-5 py-3 text-[9px] font-black text-rose-500 uppercase tracking-widest text-right">Diskon</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Kategori</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
@@ -1972,6 +1981,7 @@ export default function MonthlyReport() {
                                                 <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.category || '—'}</td>
                                                 <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={report.description}>{report.description}</td>
                                                 <td className="px-5 py-4 text-center text-xs font-bold text-slate-600">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
+                                                <td className="px-5 py-4 text-right text-xs font-bold text-rose-500 font-mono">{parseFloat(report.diskon || 0) > 0 ? `-${formatRupiah(parseFloat(report.diskon))}` : '—'}</td>
                                                 <td className="px-5 py-4 text-right text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</td>
                                                 <td className="px-5 py-4 text-center"><AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} /></td>
                                                 <td className="px-5 py-4">
@@ -1998,7 +2008,7 @@ export default function MonthlyReport() {
                                         ))
                                         : (
                                             <tr>
-                                                <td colSpan="9" className="px-8 py-4 bg-indigo-50/20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
+                                                <td colSpan="10" className="px-8 py-4 bg-indigo-50/20 text-center text-slate-400 italic font-medium">Tidak ada laporan yang menunggu persetujuan.</td>
                                             </tr>
                                         )}
                                 </tbody>
@@ -2043,6 +2053,7 @@ export default function MonthlyReport() {
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">No. Nota</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Keterangan</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Volume</th>
+                                                <th className="px-5 py-3 text-[9px] font-black text-rose-500 uppercase tracking-widest text-right">Diskon</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
                                                 {!isSuperAdmin && <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>}
@@ -2059,6 +2070,9 @@ export default function MonthlyReport() {
                                                         <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.description || '—'}</td>
                                                         <td className="px-5 py-4 text-xs font-bold text-slate-500 text-center">
                                                             {report.volume ? `${parseFloat(report.volume)} ${report.satuan || ''}` : '—'}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-xs font-bold text-rose-500 font-mono text-right">
+                                                            {parseFloat(report.diskon || 0) > 0 ? `-${formatRupiah(parseFloat(report.diskon))}` : '—'}
                                                         </td>
                                                         <td className="px-5 py-4 text-xs font-black text-slate-800 text-right">{formatRupiah(parseFloat(report.amount || 0))}</td>
                                                         <td className="px-5 py-4 text-center">
