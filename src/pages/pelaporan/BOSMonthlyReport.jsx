@@ -978,6 +978,7 @@ export default function BOSMonthlyReport() {
         volume: '',
         satuan: '',
         harga: '',
+        diskon: '',
         kategoriAset: 'NON_ASET',
         umurEkonomis: ''
     });
@@ -994,6 +995,7 @@ export default function BOSMonthlyReport() {
             volume: '',
             satuan: '',
             harga: '',
+            diskon: '',
             kategoriAset: 'NON_ASET',
             umurEkonomis: ''
         });
@@ -1025,6 +1027,7 @@ export default function BOSMonthlyReport() {
             volume: draft.volume || '',
             satuan: draft.satuan || '',
             harga: draft.harga || '',
+            diskon: draft.diskon || '',
             kategoriAset: draft.kategoriAset || 'NON_ASET',
             umurEkonomis: draft.umurEkonomis || ''
         });
@@ -1108,6 +1111,7 @@ export default function BOSMonthlyReport() {
             volume: formData.volume,
             satuan: formData.satuan,
             harga: formData.harga,
+            diskon: formData.diskon,
             kategoriAset: formData.kategoriAset,
             umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
             status: 'DRAFT',
@@ -2086,7 +2090,7 @@ export default function BOSMonthlyReport() {
                                 {/* Row 2: Volume + Satuan + Harga → auto Jumlah */}
                                 <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian Pembelian</p>
-                                    <div className="grid grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         <div>
                                             <label className="form-label">Volume</label>
                                             <input type="number" min="0" step="any" className="form-input" placeholder="Qty"
@@ -2094,8 +2098,10 @@ export default function BOSMonthlyReport() {
                                                 onChange={e => {
                                                     const vol = e.target.value;
                                                     const currentHarga = formData.harga || 0;
-                                                    const total = parseFloat(vol || 0) * parseFloat(currentHarga);
-                                                    setFormData({ ...formData, volume: vol, amount: total || formData.amount });
+                                                    const currentDiskon = formData.diskon || 0;
+                                                    const gross = parseFloat(vol || 0) * parseFloat(currentHarga);
+                                                    const total = Math.max(0, gross - parseFloat(currentDiskon));
+                                                    setFormData({ ...formData, volume: vol, amount: total });
                                                 }} />
                                         </div>
                                         <div>
@@ -2111,16 +2117,38 @@ export default function BOSMonthlyReport() {
                                                 onChange={e => {
                                                     const hrg = e.target.value;
                                                     const currentVol = formData.volume || 0;
-                                                    const total = parseFloat(currentVol) * parseFloat(hrg || 0);
-                                                    setFormData({ ...formData, harga: hrg, amount: total || formData.amount });
+                                                    const currentDiskon = formData.diskon || 0;
+                                                    const gross = parseFloat(currentVol) * parseFloat(hrg || 0);
+                                                    const total = Math.max(0, gross - parseFloat(currentDiskon));
+                                                    setFormData({ ...formData, harga: hrg, amount: total });
+                                                }} />
+                                        </div>
+                                        <div>
+                                            <label className="form-label">Potongan / Diskon (Rp)</label>
+                                            <input type="number" min="0" className="form-input text-rose-600 font-bold" placeholder="0"
+                                                value={formData.diskon}
+                                                onChange={e => {
+                                                    const disk = e.target.value;
+                                                    const currentVol = formData.volume || 0;
+                                                    const currentHarga = formData.harga || 0;
+                                                    const gross = parseFloat(currentVol) * parseFloat(currentHarga);
+                                                    const total = Math.max(0, gross - parseFloat(disk || 0));
+                                                    setFormData({ ...formData, diskon: disk, amount: total });
                                                 }} />
                                         </div>
                                     </div>
                                     {/* Auto total display */}
                                     <div className="flex items-center justify-between px-4 py-3 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                        <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Total Otomatis</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">Total Otomatis</span>
+                                            {parseFloat(formData.diskon || 0) > 0 && (
+                                                <span className="text-[10px] font-bold text-rose-500 bg-rose-50 px-2 py-0.5 rounded-full border border-rose-100">
+                                                    Diskon -{formatRupiah(parseFloat(formData.diskon || 0))}
+                                                </span>
+                                            )}
+                                        </div>
                                         <span className="font-black text-emerald-700 text-base">
-                                            {formatRupiah(parseFloat(formData.volume || 0) * parseFloat(formData.harga || 0))}
+                                            {formatRupiah(Math.max(0, (parseFloat(formData.volume || 0) * parseFloat(formData.harga || 0)) - parseFloat(formData.diskon || 0)))}
                                         </span>
                                     </div>
                                 </div>

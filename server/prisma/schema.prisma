@@ -388,6 +388,7 @@ model BudgetReport {
   volume          Decimal?      @db.Decimal(15, 4)
   satuan          String?
   harga           Decimal?      @db.Decimal(15, 2)
+  diskon          Decimal?      @db.Decimal(15, 2)
   kategoriAset    String?       @default("NON_ASET")
   umurEkonomis    Int?
 

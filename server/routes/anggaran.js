@@ -914,7 +914,7 @@ router.post('/budget-reports', async (req, res) => {
         const {
             id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
-            buktiTeks, nomorNota, volume, satuan, harga, kategoriAset, umurEkonomis, status, planId
+            buktiTeks, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, status, planId
         } = req.body;
         const prisma = getPrisma(req);
 
@@ -946,6 +946,7 @@ router.post('/budget-reports', async (req, res) => {
                     volume: volume ? parseFloat(volume) : null,
                     satuan: satuan || null,
                     harga: harga ? parseFloat(harga) : null,
+                    diskon: diskon ? parseFloat(diskon) : null,
                     kategoriAset: kategoriAset || 'NON_ASET',
                     umurEkonomis: umurEkonomis ? parseInt(umurEkonomis) : null,
                     status: status || 'PENDING',
@@ -1038,7 +1039,7 @@ router.put('/budget-reports/:id', async (req, res) => {
         const ALLOWED_FIELDS = [
             'status', 'amount', 'description', 'date', 'expenseItemId',
             'unitId', 'fieldId', 'academicYearId', 'category',
-            'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 
+            'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
             'kategoriAset', 'umurEkonomis', 'isDeleted', 'planId'
         ];
 
@@ -1051,6 +1052,7 @@ router.put('/budget-reports/:id', async (req, res) => {
         if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
         if (data.volume !== undefined && data.volume !== null) data.volume = parseFloat(data.volume);
         if (data.harga !== undefined && data.harga !== null) data.harga = parseFloat(data.harga);
+        if (data.diskon !== undefined && data.diskon !== null) data.diskon = parseFloat(data.diskon);
         if (data.umurEkonomis !== undefined && data.umurEkonomis !== null) data.umurEkonomis = parseInt(data.umurEkonomis);
 
         console.log(`[API] Updating BudgetReport ${req.params.id} → status: ${data.status}`);
