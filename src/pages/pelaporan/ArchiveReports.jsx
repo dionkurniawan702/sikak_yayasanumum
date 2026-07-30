@@ -201,7 +201,20 @@ export default function ArchiveReports() {
         if (archiveData.length === 0) return alert("Tidak ada data untuk diekspor");
 
         const wsData = [
-            ["No", "Tanggal Transaksi", "Nomor Nota", "Periode Permintaan", "Unit/Bidang", "Kategori Item", "Keterangan", "Bukti Teks", "Kategori Aset", "Umur Ekonomis", "Potongan/Diskon", "Jumlah Realisasi"]
+            [
+                "No",
+                "Tanggal Pelaporan",
+                "Nomor Urut Nota",
+                "Periode Permintaan",
+                "Unit/Bidang",
+                "Mata Anggaran",
+                "Keterangan Detail",
+                "Bukti Transaksi (Teks)",
+                "Kategori Penggunaan",
+                "Umur Ekonomis (Tahun)",
+                "Potongan / Diskon (Rp)",
+                "Jumlah Realisasi (Rp)"
+            ]
         ];
 
         archiveData.forEach((item, i) => {
@@ -221,7 +234,31 @@ export default function ArchiveReports() {
             ]);
         });
 
+        // Add a row for total
+        const totalDiskon = archiveData.reduce((sum, item) => sum + parseFloat(item.diskon || 0), 0);
+        const totalAmount = archiveData.reduce((sum, item) => sum + item.amountNum, 0);
+        const totalRow = Array(12).fill("");
+        totalRow[0] = "TOTAL";
+        totalRow[10] = totalDiskon;   // index 10 is Potongan / Diskon (Rp)
+        totalRow[11] = totalAmount;  // index 11 is Jumlah Realisasi (Rp)
+        wsData.push(totalRow);
+
         const ws = XLSX.utils.aoa_to_sheet(wsData);
+        ws['!cols'] = [
+            { wch: 5 },  // No
+            { wch: 18 }, // Tanggal Pelaporan
+            { wch: 18 }, // Nomor Urut Nota
+            { wch: 20 }, // Periode Permintaan
+            { wch: 20 }, // Unit/Bidang
+            { wch: 25 }, // Mata Anggaran
+            { wch: 30 }, // Keterangan Detail
+            { wch: 30 }, // Bukti Transaksi (Teks)
+            { wch: 20 }, // Kategori Penggunaan
+            { wch: 22 }, // Umur Ekonomis (Tahun)
+            { wch: 22 }, // Potongan / Diskon (Rp)
+            { wch: 22 }  // Jumlah Realisasi (Rp)
+        ];
+
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Arsip Laporan");
         XLSX.writeFile(wb, `Arsip_Laporan_Realisasi_${sourceMode}.xlsx`);

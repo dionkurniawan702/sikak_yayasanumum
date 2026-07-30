@@ -1273,7 +1273,25 @@ export default function MonthlyReport() {
         if (filteredReports.length === 0) return alert("Tidak ada data untuk diekspor");
 
         const wsData = [
-            ["No", "Tanggal Nota", "Bulan Permintaan", "Nomor Nota", "Rincian", "Unit/Bidang", "Keterangan", "Bukti Transaksi", "Volume", "Satuan", "Harga Satuan", "Jumlah Realisasi", "Mata Anggaran", "Kategori Aset", "Umur Ekonomis", "Status"]
+            [
+                "No",
+                "Tanggal Pelaporan",
+                "Bulan Permintaan",
+                "Nomor Urut Nota",
+                "Rincian",
+                "Unit/Bidang",
+                "Volume",
+                "Satuan",
+                "Harga Satuan (Rp)",
+                "Potongan / Diskon (Rp)",
+                "Jumlah Realisasi (Rp)",
+                "Keterangan Detail",
+                "Bukti Transaksi (Teks)",
+                "Mata Anggaran",
+                "Kategori Penggunaan",
+                "Umur Ekonomis (Tahun)",
+                "Status"
+            ]
         ];
 
         filteredReports.forEach((report, i) => {
@@ -1323,12 +1341,13 @@ export default function MonthlyReport() {
                 report.nomorNota || '-',
                 report.category || '-',
                 unitName,
-                report.description || '-',
-                report.buktiTeks || '-',
                 report.volume ? parseFloat(report.volume) : '-',
                 report.satuan || '-',
-                report.harga ? parseFloat(report.harga) : '-',
+                report.harga ? parseFloat(report.harga) : 0,
+                parseFloat(report.diskon || 0),
                 parseFloat(report.amount || 0),
+                report.description || '-',
+                report.buktiTeks || '-',
                 expenseItemName,
                 report.kategoriAset || 'NON_ASET',
                 report.umurEkonomis ? `${report.umurEkonomis} Tahun` : '-',
@@ -1337,30 +1356,33 @@ export default function MonthlyReport() {
         });
 
         // Add a row for total
+        const totalDiskon = filteredReports.reduce((s, r) => s + parseFloat(r.diskon || 0), 0);
         const totalAmount = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-        const totalRow = Array(16).fill("");
+        const totalRow = Array(17).fill("");
         totalRow[0] = "TOTAL";
-        totalRow[11] = totalAmount; // index 11 is Jumlah Realisasi
-        wsData.push(totalRow);
+        totalRow[9] = totalDiskon;   // index 9 is Potongan / Diskon (Rp)
+        totalRow[10] = totalAmount;  // index 10 is Jumlah Realisasi (Rp)
         wsData.push(totalRow);
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
         
         ws['!cols'] = [
             { wch: 5 },  // No
-            { wch: 12 }, // Tanggal
-            { wch: 15 }, // Nomor Nota
+            { wch: 18 }, // Tanggal Pelaporan
+            { wch: 18 }, // Bulan Permintaan
+            { wch: 18 }, // Nomor Urut Nota
             { wch: 25 }, // Rincian
             { wch: 20 }, // Unit/Bidang
-            { wch: 30 }, // Keterangan
-            { wch: 30 }, // Bukti Transaksi
             { wch: 10 }, // Volume
             { wch: 10 }, // Satuan
-            { wch: 15 }, // Harga Satuan
-            { wch: 18 }, // Jumlah Realisasi
+            { wch: 18 }, // Harga Satuan (Rp)
+            { wch: 22 }, // Potongan / Diskon (Rp)
+            { wch: 22 }, // Jumlah Realisasi (Rp)
+            { wch: 30 }, // Keterangan Detail
+            { wch: 30 }, // Bukti Transaksi (Teks)
             { wch: 25 }, // Mata Anggaran
-            { wch: 15 }, // Kategori Aset
-            { wch: 15 }, // Umur Ekonomis
+            { wch: 20 }, // Kategori Penggunaan
+            { wch: 22 }, // Umur Ekonomis (Tahun)
             { wch: 15 }  // Status
         ];
 
