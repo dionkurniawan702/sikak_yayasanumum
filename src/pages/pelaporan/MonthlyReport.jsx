@@ -2192,9 +2192,9 @@ export default function MonthlyReport() {
                                 {/* Row 2: Volume + Satuan + Harga → auto Jumlah */}
                                 <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100 space-y-4">
                                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rincian Pembelian</p>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                        <div>
-                                            <label className="form-label">Volume</label>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 items-end">
+                                        <div className="flex flex-col justify-end h-full">
+                                            <label className="form-label min-h-[24px] flex items-end mb-1">Volume</label>
                                             <input type="number" min="0" step="any" className="form-input" placeholder="Qty"
                                                 value={formData.volume}
                                                 onChange={e => {
@@ -2206,14 +2206,14 @@ export default function MonthlyReport() {
                                                     setFormData({ ...formData, volume: vol, amount: total });
                                                 }} />
                                         </div>
-                                        <div>
-                                            <label className="form-label">Satuan</label>
+                                        <div className="flex flex-col justify-end h-full">
+                                            <label className="form-label min-h-[24px] flex items-end mb-1">Satuan</label>
                                             <input type="text" className="form-input" placeholder="Buah / Rim / Kg"
                                                 value={formData.satuan}
                                                 onChange={e => setFormData({ ...formData, satuan: e.target.value })} />
                                         </div>
-                                        <div>
-                                            <label className="form-label">Harga Satuan (Rp)</label>
+                                        <div className="flex flex-col justify-end h-full">
+                                            <label className="form-label min-h-[24px] flex items-end mb-1">Harga Satuan (Rp)</label>
                                             <input type="number" min="0" className="form-input" placeholder="0"
                                                 value={formData.harga}
                                                 onChange={e => {
@@ -2225,8 +2225,8 @@ export default function MonthlyReport() {
                                                     setFormData({ ...formData, harga: hrg, amount: total });
                                                 }} />
                                         </div>
-                                        <div>
-                                            <label className="form-label">Potongan / Diskon (Rp)</label>
+                                        <div className="flex flex-col justify-end h-full">
+                                            <label className="form-label min-h-[24px] flex items-end mb-1">Diskon / Potongan (Rp)</label>
                                             <input type="number" min="0" className="form-input text-rose-600 font-bold" placeholder="0"
                                                 value={formData.diskon}
                                                 onChange={e => {
