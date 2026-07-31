@@ -907,24 +907,27 @@ export default function MonthlyReport() {
     };
 
     const handleBulkApprove = async () => {
-        if (selectedReportIds.length === 0) return;
+        if (selectedReportIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan yang ingin disetujui terlebih dahulu!');
+        }
         if (window.confirm(`Setujui ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
             setProcessingId('BULK');
             try {
                 const updatedReportsMap = new Map();
-                selectedReportIds.forEach(id => {
+                for (const id of selectedReportIds) {
                     const r = budgetReports.find(x => x.id === id);
                     if (r) {
                         const updated = { ...r, status: 'APPROVED', notified: false };
                         updatedReportsMap.set(id, updated);
                         dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
                     }
-                });
+                }
 
-                const newBudgetReports = budgetReports.map(r => updatedReportsMap.get(r.id) || r);
+                const newBudgetReports = (budgetReports || []).map(r => updatedReportsMap.get(r.id) || r);
                 await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
-                alert(`${selectedReportIds.length} laporan berhasil disetujui`);
+                alert(`${selectedReportIds.length} laporan berhasil disetujui!`);
                 setSelectedReportIds([]);
             } catch (err) {
                 alert('Gagal memproses persetujuan masal: ' + err.message);
@@ -935,24 +938,27 @@ export default function MonthlyReport() {
     };
 
     const handleBulkReject = async () => {
-        if (selectedReportIds.length === 0) return;
+        if (selectedReportIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan yang ingin ditolak terlebih dahulu!');
+        }
         if (window.confirm(`Tolak ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
             setProcessingId('BULK');
             try {
                 const updatedReportsMap = new Map();
-                selectedReportIds.forEach(id => {
+                for (const id of selectedReportIds) {
                     const r = budgetReports.find(x => x.id === id);
                     if (r) {
                         const updated = { ...r, status: 'REJECTED', notified: false };
                         updatedReportsMap.set(id, updated);
                         dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
                     }
-                });
+                }
 
-                const newBudgetReports = budgetReports.map(r => updatedReportsMap.get(r.id) || r);
+                const newBudgetReports = (budgetReports || []).map(r => updatedReportsMap.get(r.id) || r);
                 await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
-                alert(`${selectedReportIds.length} laporan berhasil ditolak`);
+                alert(`${selectedReportIds.length} laporan berhasil ditolak!`);
                 setSelectedReportIds([]);
             } catch (err) {
                 alert('Gagal memproses penolakan masal: ' + err.message);
@@ -977,21 +983,24 @@ export default function MonthlyReport() {
     };
 
     const handleBulkSubmitHistory = async () => {
-        if (selectedHistoryIds.length === 0) return;
+        if (selectedHistoryIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan yang ingin diajukan terlebih dahulu!');
+        }
         if (window.confirm(`Anda akan mengajukan ${selectedHistoryIds.length} laporan terpilih ke Superadmin. Lanjutkan?`)) {
             setProcessingId('BULK_HISTORY');
             try {
                 const updatedReportsMap = new Map();
-                selectedHistoryIds.forEach(id => {
+                for (const id of selectedHistoryIds) {
                     const r = budgetReports.find(x => x.id === id);
                     if (r) {
                         const updated = { ...r, status: 'PENDING' };
                         updatedReportsMap.set(id, updated);
                         dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
                     }
-                });
+                }
 
-                const newBudgetReports = budgetReports.map(r => updatedReportsMap.get(r.id) || r);
+                const newBudgetReports = (budgetReports || []).map(r => updatedReportsMap.get(r.id) || r);
                 await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
                 alert(`${selectedHistoryIds.length} laporan berhasil diajukan!`);
