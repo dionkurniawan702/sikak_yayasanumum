@@ -1239,7 +1239,8 @@ export default function MonthlyReport() {
             try {
                 const updated = { ...report, status: 'APPROVED', notified: false };
                 dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                const newBudgetReports = (budgetReports || []).map(r => r.id === report.id ? updated : r);
+                await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
                 alert('Laporan berhasil disetujui!');
             } catch (error) {
                 console.error(error);
@@ -1253,11 +1254,18 @@ export default function MonthlyReport() {
     const handleRejectReport = async (report) => {
         if (window.confirm('Tolak laporan ini? Saldo unit akan dikembalikan.')) {
             setProcessingId(report.id);
-            const updated = { ...report, status: 'REJECTED', notified: false };
-            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-            setProcessingId(null);
-            alert('Laporan berhasil ditolak');
+            try {
+                const updated = { ...report, status: 'REJECTED', notified: false };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                const newBudgetReports = (budgetReports || []).map(r => r.id === report.id ? updated : r);
+                await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
+                alert('Laporan berhasil ditolak');
+            } catch (error) {
+                console.error(error);
+                alert('Gagal menolak laporan: ' + error.message);
+            } finally {
+                setProcessingId(null);
+            }
         }
     };
 
