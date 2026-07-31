@@ -911,15 +911,18 @@ export default function MonthlyReport() {
         if (window.confirm(`Setujui ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
             setProcessingId('BULK');
             try {
-                const updatedReports = selectedReportIds.map(id => {
+                const updatedReportsMap = new Map();
+                selectedReportIds.forEach(id => {
                     const r = budgetReports.find(x => x.id === id);
-                    return r ? { ...r, status: 'APPROVED', notified: false } : null;
-                }).filter(Boolean);
+                    if (r) {
+                        const updated = { ...r, status: 'APPROVED', notified: false };
+                        updatedReportsMap.set(id, updated);
+                        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                    }
+                });
 
-                for (const report of updatedReports) {
-                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
-                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
-                }
+                const newBudgetReports = budgetReports.map(r => updatedReportsMap.get(r.id) || r);
+                await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
                 alert(`${selectedReportIds.length} laporan berhasil disetujui`);
                 setSelectedReportIds([]);
@@ -936,15 +939,18 @@ export default function MonthlyReport() {
         if (window.confirm(`Tolak ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
             setProcessingId('BULK');
             try {
-                const updatedReports = selectedReportIds.map(id => {
+                const updatedReportsMap = new Map();
+                selectedReportIds.forEach(id => {
                     const r = budgetReports.find(x => x.id === id);
-                    return r ? { ...r, status: 'REJECTED', notified: false } : null;
-                }).filter(Boolean);
+                    if (r) {
+                        const updated = { ...r, status: 'REJECTED', notified: false };
+                        updatedReportsMap.set(id, updated);
+                        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                    }
+                });
 
-                for (const report of updatedReports) {
-                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
-                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
-                }
+                const newBudgetReports = budgetReports.map(r => updatedReportsMap.get(r.id) || r);
+                await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
                 alert(`${selectedReportIds.length} laporan berhasil ditolak`);
                 setSelectedReportIds([]);
@@ -975,15 +981,18 @@ export default function MonthlyReport() {
         if (window.confirm(`Anda akan mengajukan ${selectedHistoryIds.length} laporan terpilih ke Superadmin. Lanjutkan?`)) {
             setProcessingId('BULK_HISTORY');
             try {
-                const updatedReports = selectedHistoryIds.map(id => {
+                const updatedReportsMap = new Map();
+                selectedHistoryIds.forEach(id => {
                     const r = budgetReports.find(x => x.id === id);
-                    return r ? { ...r, status: 'PENDING' } : null;
-                }).filter(Boolean);
+                    if (r) {
+                        const updated = { ...r, status: 'PENDING' };
+                        updatedReportsMap.set(id, updated);
+                        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                    }
+                });
 
-                for (const report of updatedReports) {
-                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
-                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
-                }
+                const newBudgetReports = budgetReports.map(r => updatedReportsMap.get(r.id) || r);
+                await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
                 alert(`${selectedHistoryIds.length} laporan berhasil diajukan!`);
                 setSelectedHistoryIds([]);
