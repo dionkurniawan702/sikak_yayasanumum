@@ -316,12 +316,15 @@ export default function BOSMonthlyReport() {
         const approvedMap = {};
         const reqMap = {};
         const reqApprovedMap = {};
+        const byRequestComponent = {};
+
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED' && !r.isDeleted) {
                 // Backward-compatible componentId lookup if missing in old reports
                 let effectiveComponentId = r.componentId;
-                if (!effectiveComponentId && r.budgetRequestId) {
-                    const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+                if (!effectiveComponentId && (r.budgetRequestId || r.requestId)) {
+                    const reqIdVal = r.budgetRequestId || r.requestId;
+                    const req = (budgetRequests || []).find(br => br.id === reqIdVal);
                     if (req && req.items) {
                         const match = req.items.find(item => 
                             item.name === r.category || 
@@ -344,26 +347,37 @@ export default function BOSMonthlyReport() {
                         if (!approvedMap[effectiveComponentId]) approvedMap[effectiveComponentId] = 0;
                         approvedMap[effectiveComponentId] += amt;
                     }
-                } else {
-                    if (!reqMap[r.budgetRequestId]) reqMap[r.budgetRequestId] = 0;
-                    reqMap[r.budgetRequestId] += amt;
+                }
+                
+                const rReqId = r.budgetRequestId || r.requestId;
+                if (rReqId) {
+                    if (!reqMap[rReqId]) reqMap[rReqId] = 0;
+                    reqMap[rReqId] += amt;
 
                     if (r.status === 'APPROVED') {
-                        if (!reqApprovedMap[r.budgetRequestId]) reqApprovedMap[r.budgetRequestId] = 0;
-                        reqApprovedMap[r.budgetRequestId] += amt;
+                        if (!reqApprovedMap[rReqId]) reqApprovedMap[rReqId] = 0;
+                        reqApprovedMap[rReqId] += amt;
+                    }
+
+                    if (effectiveComponentId) {
+                        const reqCompKey = `${rReqId}_${effectiveComponentId}`;
+                        if (!byRequestComponent[reqCompKey]) byRequestComponent[reqCompKey] = 0;
+                        byRequestComponent[reqCompKey] += amt;
                     }
                 }
             }
         });
-        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap };
+        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, byRequestComponent };
     }, [budgetReports, budgetRequests]);
 
     const getReportsCountForItem = (item) => {
         return (budgetReports || []).filter(r => {
             if (r.isDeleted || r.status === 'REJECTED') return false;
             let effectiveComponentId = r.componentId;
-            if (!effectiveComponentId && r.budgetRequestId) {
-                const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
+            const rReqId = r.budgetRequestId || r.requestId;
+
+            if (!effectiveComponentId && rReqId) {
+                const req = (budgetRequests || []).find(br => br.id === rReqId);
                 if (req && req.items) {
                     const match = req.items.find(ri => 
                         ri.name === r.category || 
@@ -374,6 +388,9 @@ export default function BOSMonthlyReport() {
                         effectiveComponentId = match.componentId;
                     }
                 }
+            }
+            if (rReqId && item.reqId) {
+                return rReqId === item.reqId && (effectiveComponentId ? effectiveComponentId === item.componentId : true);
             }
             return effectiveComponentId === item.componentId || (!effectiveComponentId && r.budgetRequestId === item.reqId);
         }).length;
@@ -441,18 +458,24 @@ export default function BOSMonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return;
 
-            // If this request already has APPROVED (ACC) report(s), it is COMPLETED/REPORTED -> Hide all its items!
-            const hasApprovedReportForReq = (budgetReports || []).some(r => 
-                r.status === 'APPROVED' && 
-                !r.isDeleted && 
-                (r.budgetRequestId === req.id || r.requestId === req.id)
-            );
-            if (hasApprovedReportForReq) return;
-
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
-                    const reportedComp = (reportedAmounts?.byComponent && reportedAmounts.byComponent[item.componentId]) || 0;
+                    
+                    const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
+                    let reportedComp = 0;
+
+                    if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    } else if (item.componentId) {
+                        const reportsNoReqId = (budgetReports || []).filter(r => 
+                            !r.isDeleted && r.status !== 'REJECTED' && 
+                            !r.budgetRequestId && !r.requestId && 
+                            r.componentId === item.componentId
+                        );
+                        reportedComp = reportsNoReqId.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                    }
+
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisa = itemAmount - reportedComp;
 
@@ -493,12 +516,21 @@ export default function BOSMonthlyReport() {
         // Priority 3: Selesai/Nihil (sisa <= 0)
         items.sort((a, b) => {
             const getPriority = (x) => {
-                const hasDraft = draftReports.some(d => x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId);
-                const hasPending = (budgetReports || []).some(r => 
-                    r.status === 'PENDING' && 
-                    !r.isDeleted && 
-                    (x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId)
-                );
+                const hasDraft = draftReports.some(d => {
+                    const dReqId = d.budgetRequestId || d.requestId;
+                    if (dReqId) {
+                        return dReqId === x.reqId && (x.componentId ? d.componentId === x.componentId : true);
+                    }
+                    return x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId;
+                });
+                const hasPending = (budgetReports || []).some(r => {
+                    if (r.status !== 'PENDING' || r.isDeleted) return false;
+                    const rReqId = r.budgetRequestId || r.requestId;
+                    if (rReqId) {
+                        return rReqId === x.reqId && (x.componentId ? r.componentId === x.componentId : true);
+                    }
+                    return x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId;
+                });
                 const isCompleted = x.sisa <= 0;
 
                 if (isCompleted) return 3;
@@ -1018,7 +1050,9 @@ export default function BOSMonthlyReport() {
             const reqItem = req.items?.find(i => i.componentId === draft.componentId);
             if (reqItem) {
                 const isRejected = draft.status === 'REJECTED';
-                const reportedComp = (reportedAmounts.byComponent[draft.componentId] || 0) - (isRejected ? 0 : parseFloat(draft.amount || 0));
+                const reqCompKey = `${req.id}_${draft.componentId}`;
+                const reportedCompVal = reportedAmounts.byRequestComponent?.[reqCompKey] || 0;
+                const reportedComp = reportedCompVal - (isRejected ? 0 : parseFloat(draft.amount || 0));
                 item = { ...reqItem, ...item, sisa: parseFloat(reqItem.amount || 0) - reportedComp };
             }
         }
