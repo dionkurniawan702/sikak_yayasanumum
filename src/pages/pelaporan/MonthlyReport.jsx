@@ -348,13 +348,16 @@ export default function MonthlyReport() {
         const reqSettledMap = {};
         const byRequestComponent = {};
 
+        const reqLookup = new Map();
+        (budgetRequests || []).forEach(br => reqLookup.set(br.id, br));
+
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED' && !r.isDeleted) {
                 // Backward-compatible componentId lookup if missing in old reports
                 let effectiveComponentId = r.componentId;
-                if (!effectiveComponentId && (r.budgetRequestId || r.requestId)) {
-                    const reqIdVal = r.budgetRequestId || r.requestId;
-                    const req = (budgetRequests || []).find(br => br.id === reqIdVal);
+                const rReqId = r.budgetRequestId || r.requestId;
+                if (!effectiveComponentId && rReqId) {
+                    const req = reqLookup.get(rReqId);
                     if (req && req.items) {
                         const match = req.items.find(item => 
                             item.name === r.category || 
@@ -379,7 +382,6 @@ export default function MonthlyReport() {
                     }
                 }
                 
-                const rReqId = r.budgetRequestId || r.requestId;
                 if (rReqId) {
                     if (!reqMap[rReqId]) reqMap[rReqId] = 0;
                     reqMap[rReqId] += amt;
@@ -409,37 +411,6 @@ export default function MonthlyReport() {
                 if (rReqId) {
                     if (!reqSettledMap[rReqId]) reqSettledMap[rReqId] = 0;
                     reqSettledMap[rReqId] += amt;
-                } else {
-                    const rDesc = (r.description || '').toLowerCase();
-                    const matchingReqs = (budgetRequests || []).filter(req => {
-                        const isSameUnit = (req.unitId && req.unitId === r.unitId) || (req.fieldId && req.fieldId === r.fieldId);
-                        return isSameUnit && req.academicYearId === r.academicYearId && req.status === 'APPROVED';
-                    });
-
-                    let matchedReq = matchingReqs.find(req => {
-                        if (!req.month) return false;
-                        const mName = req.month.slice(5);
-                        const monthNames = {
-                            '01': 'januari', '02': 'februari', '03': 'maret', '04': 'april',
-                            '05': 'mei', '06': 'juni', '07': 'juli', '08': 'agustus',
-                            '09': 'september', '10': 'oktober', '11': 'november', '12': 'desember'
-                        };
-                        const nameStr = monthNames[mName] || '';
-                        return nameStr && rDesc.includes(nameStr);
-                    });
-
-                    if (!matchedReq) {
-                        matchedReq = matchingReqs.find(req => {
-                            const reqTot = parseFloat(req.totalAmount || 0);
-                            const currSettled = (reqMap[req.id] || 0) + (reqSettledMap[req.id] || 0);
-                            return currSettled < reqTot;
-                        });
-                    }
-
-                    if (matchedReq) {
-                        if (!reqSettledMap[matchedReq.id]) reqSettledMap[matchedReq.id] = 0;
-                        reqSettledMap[matchedReq.id] += amt;
-                    }
                 }
             }
         });
@@ -447,237 +418,111 @@ export default function MonthlyReport() {
         return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, reqSettledMap, byRequestComponent };
     }, [budgetReports, budgetRequests]);
 
+    const reportsCountMap = useMemo(() => {
+        const counts = {};
+        const reqLookup = new Map();
+        (budgetRequests || []).forEach(br => reqLookup.set(br.id, br));
+
+        (budgetReports || []).forEach(r => {
+            if (r.isDeleted || r.status === 'REJECTED') return;
+            const rReqId = r.budgetRequestId || r.requestId;
+            let effectiveCompId = r.componentId;
+            if (!effectiveCompId && rReqId) {
+                const req = reqLookup.get(rReqId);
+                if (req && req.items) {
+                    const match = req.items.find(ri => 
+                        ri.name === r.category || 
+                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
+                        ri.name?.toLowerCase() === r.description?.toLowerCase()
+                    );
+                    if (match) effectiveCompId = match.componentId;
+                }
+            }
+            if (rReqId && effectiveCompId) {
+                const key = `${rReqId}_${effectiveCompId}`;
+                counts[key] = (counts[key] || 0) + 1;
+            } else if (rReqId) {
+                counts[rReqId] = (counts[rReqId] || 0) + 1;
+            } else if (effectiveCompId) {
+                counts[effectiveCompId] = (counts[effectiveCompId] || 0) + 1;
+            }
+        });
+        return counts;
+    }, [budgetReports, budgetRequests]);
+
     const getReportsCountForItem = (item) => {
-        return (budgetReports || []).filter(r => {
-            if (r.isDeleted || r.status === 'REJECTED') return false;
-            let effectiveComponentId = r.componentId;
-            const rReqId = r.budgetRequestId || r.requestId;
-
-            if (!effectiveComponentId && rReqId) {
-                const req = (budgetRequests || []).find(br => br.id === rReqId);
-                if (req && req.items) {
-                    const match = req.items.find(ri => 
-                        ri.name === r.category || 
-                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
-                        ri.name?.toLowerCase() === r.description?.toLowerCase()
-                    );
-                    if (match) {
-                        effectiveComponentId = match.componentId;
-                    }
-                }
-            }
-            if (rReqId && item.reqId) {
-                return rReqId === item.reqId && (effectiveComponentId ? effectiveComponentId === item.componentId : true);
-            }
-            return effectiveComponentId === item.componentId || (!effectiveComponentId && r.budgetRequestId === item.reqId);
-        }).length;
+        if (!item) return 0;
+        const key = (item.reqId && item.componentId) ? `${item.reqId}_${item.componentId}` : (item.reqId || item.componentId);
+        return reportsCountMap[key] || 0;
     };
-
-    const itemReports = useMemo(() => {
-        if (!selectedItemForReports) return [];
-        return (budgetReports || []).filter(r => {
-            if (r.isDeleted) return false;
-            let effectiveComponentId = r.componentId;
-            const rReqId = r.budgetRequestId || r.requestId;
-
-            if (!effectiveComponentId && rReqId) {
-                const req = (budgetRequests || []).find(br => br.id === rReqId);
-                if (req && req.items) {
-                    const match = req.items.find(ri => 
-                        ri.name === r.category || 
-                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
-                        ri.name?.toLowerCase() === r.description?.toLowerCase()
-                    );
-                    if (match) {
-                        effectiveComponentId = match.componentId;
-                    }
-                }
-            }
-            if (rReqId && selectedItemForReports.reqId) {
-                return rReqId === selectedItemForReports.reqId && (effectiveComponentId ? effectiveComponentId === selectedItemForReports.componentId : true);
-            }
-            return effectiveComponentId === selectedItemForReports.componentId || (!effectiveComponentId && r.budgetRequestId === selectedItemForReports.reqId);
-        });
-    }, [selectedItemForReports, budgetReports, budgetRequests]);
-
-    const requestsForYear = useMemo(() => {
-        return (budgetRequests || []).filter(req => {
-            const isYear = req.academicYearId === globalAcademicYearId;
-            if (!isYear) return false;
-            
-            // Filter by source
-            const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
-            if (sourceMode === 'BOS' && !isBosRequest) return false;
-            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
-
-            if (isSuperAdmin) return true;
-            if (myUnitId) return req.unitId === myUnitId;
-            if (myFieldId) return req.fieldId === myFieldId;
-            return false;
-        });
-    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
-
-    const draftReports = useMemo(() => {
-        return (budgetReports || []).filter(rel => {
-            const effectiveStatus = rel.status || (rel.id?.startsWith('REL-') ? 'DRAFT' : 'APPROVED');
-            if (effectiveStatus !== 'DRAFT') return false;
-            if (rel.academicYearId !== globalAcademicYearId) return false;
-            if (isSuperAdmin) return false; 
-            if (myUnitId && rel.unitId !== myUnitId) return false;
-            if (myFieldId && rel.fieldId !== myFieldId) return false;
-            
-            // Filter by source
-            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
-            if (sourceMode === 'BOS' && !isBosReport) return false;
-            if (sourceMode === 'YAYASAN' && isBosReport) return false;
-
-            return true;
-        });
-    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
-
-    const pendingItems = useMemo(() => {
-        const items = [];
-        requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
-            if (req.isClosed) return;
-
-            if (req.items && req.items.length > 0) {
-                req.items.forEach(item => {
-                    if (item.isClosed) return; // Skip closed items!
-                    
-                    const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
-                    let reportedComp = 0;
-
-                    if (reqCompKey && reportedAmounts?.byRequestComponent) {
-                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey] || 0;
-                    } else if (item.componentId) {
-                        const reportsNoReqId = (budgetReports || []).filter(r => 
-                            !r.isDeleted && r.status !== 'REJECTED' && 
-                            !r.budgetRequestId && !r.requestId && 
-                            r.componentId === item.componentId
-                        );
-                        reportedComp = reportsNoReqId.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-                    }
-
-                    const itemAmount = parseFloat(item.amount || 0);
-                    const sisa = itemAmount - reportedComp;
-
-                    items.push({
-                        ...item,
-                        reqId: req.id,
-                        reqMonth: req.month,
-                        reqDate: req.date,
-                        reqDescription: req.description,
-                        reqUnitId: req.unitId,
-                        expenseItemId: item.expenseItemId || req.expenseItemId,
-                        sisa
-                    });
-                });
-            } else {
-                const reqTotal = parseFloat(req.totalAmount || 0);
-                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
-                const sisa = reqTotal - reportedReq;
-
-                items.push({
-                    reqId: req.id,
-                    reqMonth: req.month,
-                    reqDate: req.date,
-                    reqDescription: req.description,
-                    reqUnitId: req.unitId,
-                    expenseItemId: req.expenseItemId,
-                    name: 'General (Legacy)',
-                    amount: req.totalAmount,
-                    sisa
-                });
-            }
-        });
-        
-        // Urutkan rincian:
-        // Priority 0: Aktif/Baru (sisa > 0, belum ada draf, belum ada pending)
-        // Priority 1: Memiliki draf
-        // Priority 2: Memiliki pengajuan pending verifikasi
-        // Priority 3: Selesai/Nihil (sisa <= 0)
-        items.sort((a, b) => {
-            const getPriority = (x) => {
-                const hasDraft = draftReports.some(d => {
-                    const dReqId = d.budgetRequestId || d.requestId;
-                    if (dReqId) {
-                        return dReqId === x.reqId && (x.componentId ? d.componentId === x.componentId : true);
-                    }
-                    return x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId;
-                });
-                const hasPending = (budgetReports || []).some(r => {
-                    if (r.status !== 'PENDING' || r.isDeleted) return false;
-                    const rReqId = r.budgetRequestId || r.requestId;
-                    if (rReqId) {
-                        return rReqId === x.reqId && (x.componentId ? r.componentId === x.componentId : true);
-                    }
-                    return x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId;
-                });
-                const isCompleted = x.sisa <= 0;
-
-                if (isCompleted) return 3;
-                if (hasPending) return 2;
-                if (hasDraft) return 1;
-                return 0;
-            };
-
-            return getPriority(a) - getPriority(b);
-        });
-
-        return items;
-    }, [requestsForYear, reportedAmounts, budgetRequests, budgetReports, globalAcademicYearId, sourceMode, draftReports]);
 
     // Map of unit/field id → count of pending items (for superadmin badges)
     const pendingCountByUnit = useMemo(() => {
         const map = {};
-        const allItems = [];
-        (budgetRequests || []).filter(req => {
-            const isYear = req.academicYearId === globalAcademicYearId;
-            if (!isYear || req.status !== 'APPROVED') return false;
+
+        // 1. Pre-calculate unit/field cair totals once
+        const unitCairMap = {};
+        (budgetRequests || []).forEach(r => {
+            if (r.academicYearId !== globalAcademicYearId || r.status !== 'APPROVED') return;
+            const isBosRequest = r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return;
+
+            const key = r.unitId || r.fieldId;
+            if (key) {
+                unitCairMap[key] = (unitCairMap[key] || 0) + (parseFloat(r.totalAmount) || 0);
+            }
+        });
+
+        // 2. Pre-calculate unit/field report totals once
+        const unitUsedMap = {};
+        const unitReturnedMap = {};
+        (budgetReports || []).forEach(r => {
+            if (r.academicYearId !== globalAcademicYearId || r.status !== 'APPROVED' || r.isDeleted) return;
+            const isBosReport = r.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return;
+            if (sourceMode === 'YAYASAN' && isBosReport) return;
+
+            const key = r.unitId || r.fieldId;
+            if (key) {
+                const amt = parseFloat(r.amount) || 0;
+                if (r.kategoriAset === 'PENGEMBALIAN') {
+                    unitReturnedMap[key] = (unitReturnedMap[key] || 0) + amt;
+                } else {
+                    unitUsedMap[key] = (unitUsedMap[key] || 0) + amt;
+                }
+            }
+        });
+
+        // 3. Count pending items per unit
+        (budgetRequests || []).forEach(req => {
+            if (req.academicYearId !== globalAcademicYearId || req.status !== 'APPROVED') return;
             const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
-            if (sourceMode === 'BOS' && !isBosRequest) return false;
-            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
-            return true;
-        }).forEach(req => {
-            const reqUnitId = req.unitId;
-            const reqFieldId = req.fieldId;
+            if (sourceMode === 'BOS' && !isBosRequest) return;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return;
 
-            // Check active balance
-            const unitRequests = (budgetRequests || []).filter(r => 
-                r.academicYearId === globalAcademicYearId && 
-                r.status === 'APPROVED' &&
-                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
-                (sourceMode === 'BOS' 
-                    ? (r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'))) 
-                    : (r.source !== 'BOS' && !(r.items || []).some(item => item.planId?.endsWith('-BOS'))))
-            );
-            const unitCair = unitRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
-
-            const unitReports = (budgetReports || []).filter(r => 
-                r.academicYearId === globalAcademicYearId && 
-                r.status === 'APPROVED' &&
-                !r.isDeleted &&
-                (reqUnitId ? r.unitId === reqUnitId : r.fieldId === reqFieldId) &&
-                (sourceMode === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS'))
-            );
-            const unitUsed = unitReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-            const unitReturned = unitReports.filter(r => r.kategoriAset === 'PENGEMBALIAN').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-
+            const unitKey = req.unitId || req.fieldId || 'UNKNOWN';
+            const unitCair = unitCairMap[unitKey] || 0;
+            const unitUsed = unitUsedMap[unitKey] || 0;
+            const unitReturned = unitReturnedMap[unitKey] || 0;
             const activeBalance = unitCair - unitUsed - unitReturned;
 
             if (activeBalance <= 0) return;
 
-            const unitKey = reqUnitId || reqFieldId || 'UNKNOWN';
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
-                    if (item.isClosed) return; // Skip closed
-                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
+                    if (item.isClosed) return;
+                    const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
+                    const reportedComp = (reqCompKey && reportedAmounts?.byRequestComponent?.[reqCompKey] !== undefined)
+                        ? reportedAmounts.byRequestComponent[reqCompKey]
+                        : (item.componentId ? (reportedAmounts?.byComponent?.[item.componentId] || 0) : 0);
+                    
                     if (reportedComp < parseFloat(item.amount || 0)) {
                         map[unitKey] = (map[unitKey] || 0) + 1;
                     }
                 });
             } else {
-                const reportedReq = reportedAmounts.byRequest[req.id] || 0;
+                const reportedReq = reportedAmounts?.byRequest?.[req.id] || 0;
                 if (reportedReq < parseFloat(req.totalAmount || 0)) {
                     map[unitKey] = (map[unitKey] || 0) + 1;
                 }
