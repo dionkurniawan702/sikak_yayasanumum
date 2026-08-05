@@ -287,15 +287,23 @@ export default function MonthlyReport() {
     const [showReportsList, setShowReportsList] = useState(false);
     const [selectedItemForReports, setSelectedItemForReports] = useState(null);
 
+    const monthParam = searchParams.get('month');
+    const reqIdParam = searchParams.get('reqId');
+
     // Filter state for history
     const [search, setSearch] = useState('');
     const [filterKategori, setFilterKategori] = useState('ALL');
     const [filterRequestMonth, setFilterRequestMonth] = useState('ALL');
     const [filterDateFrom, setFilterDateFrom] = useState('');
     const [filterDateTo, setFilterDateTo] = useState('');
-    const [pendingSearch, setPendingSearch] = useState('');
-    const [pendingMonthFilter, setPendingMonthFilter] = useState('ALL');
+    const [pendingSearch, setPendingSearch] = useState(reqIdParam || '');
+    const [pendingMonthFilter, setPendingMonthFilter] = useState(monthParam || 'ALL');
     const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'FILLED', 'NOT_FILLED'
+
+    React.useEffect(() => {
+        if (monthParam) setPendingMonthFilter(monthParam);
+        if (reqIdParam) setPendingSearch(reqIdParam);
+    }, [monthParam, reqIdParam]);
 
     const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
@@ -1531,8 +1539,8 @@ export default function MonthlyReport() {
                         className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                     >
                         Perlu Dilaporkan
-                        {pendingItems.length > 0 && (
-                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{pendingItems.length}</span>
+                        {filteredPendingItems.length > 0 && (
+                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{filteredPendingItems.length}</span>
                         )}
                     </button>
                     <button
