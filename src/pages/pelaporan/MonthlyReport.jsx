@@ -1637,10 +1637,8 @@ export default function MonthlyReport() {
                         className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-blue-600 shadow-sm shadow-blue-500/5' : 'text-slate-500'}`}
                     >
                         Perlu Dilaporkan
-                        {filteredPendingItems.filter(item => item.sisa > 0).length > 0 && (
-                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
-                                {filteredPendingItems.filter(item => item.sisa > 0).length}
-                            </span>
+                        {filteredPendingItems.length > 0 && (
+                            <span className="ml-2 bg-amber-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">{filteredPendingItems.length}</span>
                         )}
                     </button>
                     <button
