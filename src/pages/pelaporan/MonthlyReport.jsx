@@ -456,6 +456,160 @@ export default function MonthlyReport() {
         return reportsCountMap[key] || 0;
     };
 
+    const itemReports = useMemo(() => {
+        if (!selectedItemForReports) return [];
+        return (budgetReports || []).filter(r => {
+            if (r.isDeleted) return false;
+            let effectiveComponentId = r.componentId;
+            const rReqId = r.budgetRequestId || r.requestId;
+
+            if (!effectiveComponentId && rReqId) {
+                const req = (budgetRequests || []).find(br => br.id === rReqId);
+                if (req && req.items) {
+                    const match = req.items.find(ri => 
+                        ri.name === r.category || 
+                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
+                        ri.name?.toLowerCase() === r.description?.toLowerCase()
+                    );
+                    if (match) {
+                        effectiveComponentId = match.componentId;
+                    }
+                }
+            }
+            if (rReqId && selectedItemForReports.reqId) {
+                return rReqId === selectedItemForReports.reqId && (effectiveComponentId ? effectiveComponentId === selectedItemForReports.componentId : true);
+            }
+            return effectiveComponentId === selectedItemForReports.componentId || (!effectiveComponentId && r.budgetRequestId === selectedItemForReports.reqId);
+        });
+    }, [selectedItemForReports, budgetReports, budgetRequests]);
+
+    const requestsForYear = useMemo(() => {
+        return (budgetRequests || []).filter(req => {
+            const isYear = req.academicYearId === globalAcademicYearId;
+            if (!isYear) return false;
+            
+            // Filter by source
+            const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (sourceMode === 'BOS' && !isBosRequest) return false;
+            if (sourceMode === 'YAYASAN' && isBosRequest) return false;
+
+            if (isSuperAdmin) return true;
+            if (myUnitId) return req.unitId === myUnitId;
+            if (myFieldId) return req.fieldId === myFieldId;
+            return false;
+        });
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+
+    const draftReports = useMemo(() => {
+        return (budgetReports || []).filter(rel => {
+            const effectiveStatus = rel.status || (rel.id?.startsWith('REL-') ? 'DRAFT' : 'APPROVED');
+            if (effectiveStatus !== 'DRAFT') return false;
+            if (rel.academicYearId !== globalAcademicYearId) return false;
+            if (isSuperAdmin) return false; 
+            if (myUnitId && rel.unitId !== myUnitId) return false;
+            if (myFieldId && rel.fieldId !== myFieldId) return false;
+            
+            // Filter by source
+            const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+
+            return true;
+        });
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+
+    const pendingItems = useMemo(() => {
+        const items = [];
+        requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
+            if (req.isClosed) return;
+
+            if (req.items && req.items.length > 0) {
+                req.items.forEach(item => {
+                    if (item.isClosed) return; // Skip closed items!
+                    
+                    const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
+                    let reportedComp = 0;
+
+                    if (reqCompKey && reportedAmounts?.byRequestComponent) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey] || 0;
+                    } else if (item.componentId) {
+                        const reportsNoReqId = (budgetReports || []).filter(r => 
+                            !r.isDeleted && r.status !== 'REJECTED' && 
+                            !r.budgetRequestId && !r.requestId && 
+                            r.componentId === item.componentId
+                        );
+                        reportedComp = reportsNoReqId.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                    }
+
+                    const itemAmount = parseFloat(item.amount || 0);
+                    const sisa = itemAmount - reportedComp;
+
+                    items.push({
+                        ...item,
+                        reqId: req.id,
+                        reqMonth: req.month,
+                        reqDate: req.date,
+                        reqDescription: req.description,
+                        reqUnitId: req.unitId,
+                        expenseItemId: item.expenseItemId || req.expenseItemId,
+                        sisa
+                    });
+                });
+            } else {
+                const reqTotal = parseFloat(req.totalAmount || 0);
+                const reportedReq = reportedAmounts?.byRequest?.[req.id] || 0;
+                const sisa = reqTotal - reportedReq;
+
+                items.push({
+                    reqId: req.id,
+                    reqMonth: req.month,
+                    reqDate: req.date,
+                    reqDescription: req.description,
+                    reqUnitId: req.unitId,
+                    expenseItemId: req.expenseItemId,
+                    name: 'General (Legacy)',
+                    amount: req.totalAmount,
+                    sisa
+                });
+            }
+        });
+        
+        // Urutkan rincian:
+        // Priority 0: Aktif/Baru (sisa > 0, belum ada draf, belum ada pending)
+        // Priority 1: Memiliki draf
+        // Priority 2: Memiliki pengajuan pending verifikasi
+        // Priority 3: Selesai/Nihil (sisa <= 0)
+        items.sort((a, b) => {
+            const getPriority = (x) => {
+                const hasDraft = draftReports.some(d => {
+                    const dReqId = d.budgetRequestId || d.requestId;
+                    if (dReqId) {
+                        return dReqId === x.reqId && (x.componentId ? d.componentId === x.componentId : true);
+                    }
+                    return x.componentId ? d.componentId === x.componentId : d.budgetRequestId === x.reqId;
+                });
+                const hasPending = (budgetReports || []).some(r => {
+                    if (r.status !== 'PENDING' || r.isDeleted) return false;
+                    const rReqId = r.budgetRequestId || r.requestId;
+                    if (rReqId) {
+                        return rReqId === x.reqId && (x.componentId ? r.componentId === x.componentId : true);
+                    }
+                    return x.componentId ? r.componentId === x.componentId : r.budgetRequestId === x.reqId;
+                });
+                const isCompleted = x.sisa <= 0;
+
+                if (isCompleted) return 3;
+                if (hasPending) return 2;
+                if (hasDraft) return 1;
+                return 0;
+            };
+
+            return getPriority(a) - getPriority(b);
+        });
+
+        return items;
+    }, [requestsForYear, reportedAmounts, budgetRequests, budgetReports, globalAcademicYearId, sourceMode, draftReports]);
+
     // Map of unit/field id → count of pending items (for superadmin badges)
     const pendingCountByUnit = useMemo(() => {
         const map = {};
