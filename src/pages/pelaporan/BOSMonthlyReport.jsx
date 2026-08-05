@@ -1362,7 +1362,7 @@ export default function BOSMonthlyReport() {
                 <div className="flex items-center gap-2 p-1 bg-slate-100 rounded-2xl">
                     <button
                         onClick={() => setActiveTab('pending')}
-                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'pending' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${activeTab === 'pending' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
                     >
                         Perlu Dilaporkan
                         {pendingItems.length > 0 && (
@@ -1371,14 +1371,14 @@ export default function BOSMonthlyReport() {
                     </button>
                     <button
                         onClick={() => setActiveTab('history')}
-                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'history' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
+                        className={`px-6 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${activeTab === 'history' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
                     >
                         Riwayat Laporan
                     </button>
                     {isSuperAdmin && (
                         <button
                             onClick={() => setActiveTab('verification')}
-                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all ${activeTab === 'verification' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
+                            className={`px-6 py-2 rounded-xl font-black text-xs transition-all cursor-pointer ${activeTab === 'verification' ? 'bg-white text-emerald-600 shadow-sm shadow-emerald-500/5' : 'text-slate-500'}`}
                         >
                             Verifikasi Laporan
                             {verificationReports.length > 0 && (
