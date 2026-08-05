@@ -1023,15 +1023,29 @@ export default function MonthlyReport() {
     };
 
     const handleSelectAllHistory = (e) => {
-        if (e.target.checked) {
-            setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+        if (isSuperAdmin) {
+            if (e.target.checked) {
+                setSelectedHistoryCancelIds(filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').map(r => r.id));
+            } else {
+                setSelectedHistoryCancelIds([]);
+            }
         } else {
-            setSelectedHistoryIds([]);
+            if (e.target.checked) {
+                setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+            } else {
+                setSelectedHistoryIds([]);
+            }
         }
     };
 
     const handleToggleSelectHistory = (id) => {
         setSelectedHistoryIds(prev => 
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleToggleSelectHistoryCancel = (id) => {
+        setSelectedHistoryCancelIds(prev => 
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
     };
@@ -1080,14 +1094,19 @@ export default function MonthlyReport() {
             const result = await api.bulkCancelApproval(selectedHistoryCancelIds);
 
             // Update local state for all successfully cancelled reports
+            const updatedReportsMap = new Map();
             const successIds = new Set(result.success || []);
             successIds.forEach(id => {
                 const r = budgetReports.find(x => x.id === id);
                 if (r) {
                     const updated = { ...r, status: 'PENDING', journalId: null, notified: false };
+                    updatedReportsMap.set(id, updated);
                     dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
                 }
             });
+
+            const newBudgetReports = (budgetReports || []).map(r => updatedReportsMap.get(r.id) || r);
+            await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
 
             const failCount = (result.failed || []).length;
             alert(
@@ -1948,6 +1967,14 @@ export default function MonthlyReport() {
                                         {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Terpilih`}
                                     </button>
                                 )}
+                                {isSuperAdmin && selectedHistoryCancelIds.length > 0 && (
+                                    <button 
+                                        onClick={handleBulkCancelApproval} 
+                                        disabled={processingId === 'BULK_CANCEL'}
+                                        className="px-3 py-1.5 bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30">
+                                        {processingId === 'BULK_CANCEL' ? 'Memproses...' : `Batalkan Verifikasi ${selectedHistoryCancelIds.length} Terpilih`}
+                                    </button>
+                                )}
                                 <span className="text-[9px] text-slate-400 font-bold">{filteredReports.length} data ditampilkan</span>
                             </div>
                         </div>
@@ -1955,16 +1982,17 @@ export default function MonthlyReport() {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
-                                        {!isSuperAdmin && (
-                                            <th className="px-5 py-3 w-12 text-center">
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shadow-sm"
-                                                    onChange={handleSelectAllHistory}
-                                                    checked={filteredReports.filter(r => r.status === 'DRAFT').length > 0 && selectedHistoryIds.length === filteredReports.filter(r => r.status === 'DRAFT').length}
-                                                />
-                                            </th>
-                                        )}
+                                        <th className="px-5 py-3 w-12 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shadow-sm"
+                                                onChange={handleSelectAllHistory}
+                                                checked={isSuperAdmin 
+                                                    ? (filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').length > 0 && selectedHistoryCancelIds.length === filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').length)
+                                                    : (filteredReports.filter(r => r.status === 'DRAFT').length > 0 && selectedHistoryIds.length === filteredReports.filter(r => r.status === 'DRAFT').length)
+                                                }
+                                            />
+                                        </th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-10">No</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal Nota</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-indigo-500 uppercase tracking-widest">Bulan Permintaan</th>
@@ -1992,9 +2020,9 @@ export default function MonthlyReport() {
                                                 budgetRequests={budgetRequests} 
                                                 isSuperAdmin={isSuperAdmin} 
                                                 idx={idx} 
-                                                selectable={!isSuperAdmin && report.status === 'DRAFT'}
-                                                isSelected={selectedHistoryIds.includes(report.id)}
-                                                onToggleSelect={handleToggleSelectHistory}
+                                                selectable={(!isSuperAdmin && report.status === 'DRAFT') || (isSuperAdmin && (report.status === 'APPROVED' || report.status === 'PENDING'))}
+                                                isSelected={isSuperAdmin ? selectedHistoryCancelIds.includes(report.id) : selectedHistoryIds.includes(report.id)}
+                                                onToggleSelect={isSuperAdmin ? handleToggleSelectHistoryCancel : handleToggleSelectHistory}
                                                 onEdit={() => handleEditDraft(report)}
                                                 onDelete={() => handleDeleteDraft(report.id)}
                                                 onCancelApproval={() => handleCancelReportApproval(report)}

@@ -591,6 +591,12 @@ app.post('/api/sync', async (req, res) => {
                     if (existingRecord && existingRecord.isDeleted) {
                         cleanItem.isDeleted = true;
                     }
+                    if (model === 'budgetReport' && existingRecord) {
+                        if ((existingRecord.status === 'PENDING' || existingRecord.status === 'DRAFT' || existingRecord.status === 'REJECTED') && cleanItem.status === 'APPROVED') {
+                            cleanItem.status = existingRecord.status;
+                            cleanItem.journalId = existingRecord.journalId;
+                        }
+                    }
 
 
 
