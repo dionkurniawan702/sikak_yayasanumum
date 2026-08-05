@@ -921,10 +921,12 @@ export default function MonthlyReport() {
     }, [budgetReports, globalAcademicYearId, sourceMode]);
 
     const [selectedReportIds, setSelectedReportIds] = useState([]);
+    const [selectedHistoryCancelIds, setSelectedHistoryCancelIds] = useState([]);
 
     React.useEffect(() => {
         setSelectedReportIds([]);
         setSelectedHistoryIds([]);
+        setSelectedHistoryCancelIds([]);
     }, [sourceMode, activeTab]);
 
     const handleSelectAll = (e) => {
@@ -1047,6 +1049,43 @@ export default function MonthlyReport() {
             }
         }
     };
+
+    // --- Bulk Cancel Approval (Superadmin only) ---
+    const handleBulkCancelApproval = async () => {
+        if (selectedHistoryCancelIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan yang terverifikasi untuk dibatalkan!');
+        }
+        const confirmMsg = `Batalkan verifikasi ${selectedHistoryCancelIds.length} laporan terpilih?\n\nJurnal akuntansi terkait akan DIHAPUS dan status laporan kembali ke PENDING.`;
+        if (!window.confirm(confirmMsg)) return;
+
+        setProcessingId('BULK_CANCEL');
+        try {
+            const result = await api.bulkCancelApproval(selectedHistoryCancelIds);
+
+            // Update local state for all successfully cancelled reports
+            const successIds = new Set(result.success || []);
+            successIds.forEach(id => {
+                const r = budgetReports.find(x => x.id === id);
+                if (r) {
+                    const updated = { ...r, status: 'PENDING', journalId: null, notified: false };
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                }
+            });
+
+            const failCount = (result.failed || []).length;
+            alert(
+                `${successIds.size} laporan berhasil dibatalkan verifikasinya.` +
+                (failCount > 0 ? `\n${failCount} laporan gagal diproses (mungkin bukan status APPROVED).` : '')
+            );
+            setSelectedHistoryCancelIds([]);
+        } catch (err) {
+            alert('Gagal membatalkan verifikasi massal: ' + err.message);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
+
     const baseReports = useMemo(() => {
         return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;

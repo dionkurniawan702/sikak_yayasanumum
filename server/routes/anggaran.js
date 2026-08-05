@@ -1040,7 +1040,7 @@ router.put('/budget-reports/:id', async (req, res) => {
             'status', 'amount', 'description', 'date', 'expenseItemId',
             'unitId', 'fieldId', 'academicYearId', 'category',
             'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
-            'kategoriAset', 'umurEkonomis', 'isDeleted', 'planId'
+            'kategoriAset', 'umurEkonomis', 'isDeleted', 'planId', 'budgetRequestId'
         ];
 
         const data = {};
@@ -1182,6 +1182,64 @@ router.put('/budget-reports/:id', async (req, res) => {
         res.json({ data: report });
     } catch (error) {
         console.error(`[API Error] PUT /budget-reports/${req.params.id}: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- BULK CANCEL APPROVAL ---
+// POST /budget-reports/bulk-cancel-approval
+// Body: { ids: string[] }
+// Superadmin only. Resets each APPROVED report → PENDING and deletes its journal.
+router.post('/budget-reports/bulk-cancel-approval', requireSuperAdmin, async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const { ids } = req.body;
+
+        if (!Array.isArray(ids) || ids.length === 0) {
+            return res.status(400).json({ error: 'Harap kirimkan daftar ID laporan yang valid.' });
+        }
+
+        const results = { success: [], failed: [] };
+
+        await prisma.$transaction(async (tx) => {
+            // Fetch all requested reports at once
+            const reports = await tx.budgetReport.findMany({
+                where: { id: { in: ids } }
+            });
+
+            for (const report of reports) {
+                if (report.status !== 'APPROVED') {
+                    results.failed.push({ id: report.id, reason: 'Status bukan APPROVED' });
+                    continue;
+                }
+
+                // Delete or soft-delete the associated journal entry
+                if (report.journalId) {
+                    try {
+                        await tx.journal.delete({ where: { id: report.journalId } });
+                    } catch {
+                        // If hard delete fails (e.g. FK constraint), soft-delete it
+                        await tx.journal.update({
+                            where: { id: report.journalId },
+                            data: { isDeleted: true }
+                        }).catch(() => {});
+                    }
+                }
+
+                // Reset report status to PENDING and clear journalId
+                await tx.budgetReport.update({
+                    where: { id: report.id },
+                    data: { status: 'PENDING', journalId: null, notified: false }
+                });
+
+                results.success.push(report.id);
+            }
+        });
+
+        console.log(`[API] bulk-cancel-approval: ${results.success.length} berhasil, ${results.failed.length} gagal`);
+        res.json({ message: `${results.success.length} laporan berhasil dibatalkan verifikasinya.`, ...results });
+    } catch (error) {
+        console.error('[API Error] POST /budget-reports/bulk-cancel-approval:', error.message);
         res.status(500).json({ error: error.message });
     }
 });

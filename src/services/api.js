@@ -487,5 +487,16 @@ export const api = {
             console.error('Whole state sync failed:', error.message);
             throw error;
         }
+    },
+
+    /**
+     * Membatalkan verifikasi (APPROVED → PENDING) untuk banyak laporan sekaligus.
+     * Server akan sekaligus menghapus / menonaktifkan entri jurnal terkait.
+     * @param {string[]} ids - Daftar ID BudgetReport yang akan dibatalkan verifikasinya
+     * @returns {Promise<{success: string[], failed: Array}>}
+     */
+    async bulkCancelApproval(ids) {
+        if (!isRemote) return { success: ids, failed: [] };
+        return await this.post('/budget-reports/bulk-cancel-approval', { ids });
     }
 };
