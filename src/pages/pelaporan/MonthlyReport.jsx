@@ -530,7 +530,7 @@ export default function MonthlyReport() {
     const pendingItems = useMemo(() => {
         const items = [];
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
-            if (req.isClosed) return;
+            if (req.isClosed || req.month === '2026-06') return; // Exclude closed requests & June 2026 (reporting period closed)
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
