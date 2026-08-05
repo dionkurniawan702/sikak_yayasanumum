@@ -547,8 +547,8 @@ export default function MonthlyReport() {
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
-                    if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    if (reqCompKey && reportedAmounts?.byRequestComponent) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey] || 0;
                     } else if (item.componentId) {
                         const reportsNoReqId = (budgetReports || []).filter(r => 
                             !r.isDeleted && r.status !== 'REJECTED' && 
@@ -707,23 +707,33 @@ export default function MonthlyReport() {
         }
         if (statusFilter === 'FILLED') {
             items = items.filter(item => {
-                const hasDraft = draftReports.some(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
-                const hasPending = (budgetReports || []).some(r => 
-                    r.status === 'PENDING' && 
-                    !r.isDeleted && 
-                    (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId)
-                );
+                const hasDraft = draftReports.some(d => {
+                    const dReqId = d.budgetRequestId || d.requestId;
+                    if (dReqId) return dReqId === item.reqId && (item.componentId ? d.componentId === item.componentId : true);
+                    return item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId;
+                });
+                const hasPending = (budgetReports || []).some(r => {
+                    if (r.status !== 'PENDING' || r.isDeleted) return false;
+                    const rReqId = r.budgetRequestId || r.requestId;
+                    if (rReqId) return rReqId === item.reqId && (item.componentId ? r.componentId === item.componentId : true);
+                    return item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId;
+                });
                 const isPartiallyOrFullyReported = item.sisa < item.amount;
                 return isPartiallyOrFullyReported || hasDraft || hasPending;
             });
         } else if (statusFilter === 'NOT_FILLED') {
             items = items.filter(item => {
-                const hasDraft = draftReports.some(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
-                const hasPending = (budgetReports || []).some(r => 
-                    r.status === 'PENDING' && 
-                    !r.isDeleted && 
-                    (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId)
-                );
+                const hasDraft = draftReports.some(d => {
+                    const dReqId = d.budgetRequestId || d.requestId;
+                    if (dReqId) return dReqId === item.reqId && (item.componentId ? d.componentId === item.componentId : true);
+                    return item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId;
+                });
+                const hasPending = (budgetReports || []).some(r => {
+                    if (r.status !== 'PENDING' || r.isDeleted) return false;
+                    const rReqId = r.budgetRequestId || r.requestId;
+                    if (rReqId) return rReqId === item.reqId && (item.componentId ? r.componentId === item.componentId : true);
+                    return item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId;
+                });
                 const isPartiallyOrFullyReported = item.sisa < item.amount;
                 return !isPartiallyOrFullyReported && !hasDraft && !hasPending;
             });
