@@ -44,7 +44,7 @@ function formatMonthLabel(monthStr) {
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, onCancelApproval, isProcessing }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, onCancelApproval, onWithdraw, isProcessing }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -87,18 +87,16 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                 className={`border-b border-slate-100 cursor-pointer transition-colors ${open ? 'bg-indigo-50/40' : 'hover:bg-slate-50/80'}`}
                 onClick={() => setOpen(o => !o)}
             >
-                {!isSuperAdmin && (
-                    <td className="px-5 py-4 text-center" onClick={e => e.stopPropagation()}>
-                        {selectable && (
-                            <input 
-                                type="checkbox" 
-                                checked={isSelected} 
-                                onChange={() => onToggleSelect(report.id)}
-                                className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shadow-sm"
-                            />
-                        )}
-                    </td>
-                )}
+                <td className="px-5 py-4 text-center" onClick={e => e.stopPropagation()}>
+                    {selectable && (
+                        <input 
+                            type="checkbox" 
+                            checked={isSelected} 
+                            onChange={() => onToggleSelect(report.id)}
+                            className="w-4 h-4 rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 cursor-pointer shadow-sm"
+                        />
+                    )}
+                </td>
                 <td className="px-5 py-4 text-center">
                     <span className="text-[10px] font-black text-slate-400">{idx + 1}</span>
                 </td>
@@ -169,6 +167,16 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                 </td>
                 <td className="px-5 py-4 text-center">
                     <div className="flex items-center justify-center gap-1.5">
+                        {!isSuperAdmin && report.status === 'PENDING' && onWithdraw && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onWithdraw(); }}
+                                className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                                title="Batalkan Ajukan (Kembalikan ke Draf)"
+                            >
+                                <RotateCcw size={11} />
+                                <span>Tarik Ajuan</span>
+                            </button>
+                        )}
                         {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onEdit && onDelete && (
                             <>
                                 {report.kategoriAset !== 'PENGEMBALIAN' && (
@@ -283,7 +291,8 @@ export default function MonthlyReport() {
     }, [sourceParam]);
 
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
-    const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission
+    const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission (drafts)
+    const [selectedHistoryPendingIds, setSelectedHistoryPendingIds] = useState([]); // local history bulk withdrawal (pending)
     const [showReportsList, setShowReportsList] = useState(false);
     const [selectedItemForReports, setSelectedItemForReports] = useState(null);
 
@@ -1031,17 +1040,28 @@ export default function MonthlyReport() {
             }
         } else {
             if (e.target.checked) {
-                setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+                const drafts = filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id);
+                const pendings = filteredReports.filter(r => r.status === 'PENDING').map(r => r.id);
+                setSelectedHistoryIds(drafts);
+                setSelectedHistoryPendingIds(pendings);
             } else {
                 setSelectedHistoryIds([]);
+                setSelectedHistoryPendingIds([]);
             }
         }
     };
 
     const handleToggleSelectHistory = (id) => {
-        setSelectedHistoryIds(prev => 
-            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-        );
+        const r = budgetReports.find(x => x.id === id);
+        if (r && r.status === 'PENDING') {
+            setSelectedHistoryPendingIds(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+            );
+        } else {
+            setSelectedHistoryIds(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+            );
+        }
     };
 
     const handleToggleSelectHistoryCancel = (id) => {
@@ -1050,9 +1070,28 @@ export default function MonthlyReport() {
         );
     };
 
+    const handleWithdrawReportSubmission = async (report) => {
+        if (!window.confirm(`Batalkan pengajuan laporan nota "${report.nomorNota || report.category}"?\n\nStatus laporan akan dikembalikan ke DRAFT agar bisa Anda ubah.`)) return;
+        setProcessingId(report.id);
+        try {
+            const updated = { ...report, status: 'DRAFT', notified: false };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+
+            const newBudgetReports = (budgetReports || []).map(r => r.id === report.id ? updated : r);
+            await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
+
+            alert('Pengajuan laporan berhasil dibatalkan dan dikembalikan ke DRAFT.');
+        } catch (err) {
+            alert('Gagal membatalkan pengajuan: ' + err.message);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     const handleBulkSubmitHistory = async () => {
         if (selectedHistoryIds.length === 0) {
-            return alert('Pilih/centang minimal satu laporan yang ingin diajukan terlebih dahulu!');
+            return alert('Pilih/centang minimal satu laporan draft yang ingin diajukan terlebih dahulu!');
         }
         if (window.confirm(`Anda akan mengajukan ${selectedHistoryIds.length} laporan terpilih ke Superadmin. Lanjutkan?`)) {
             setProcessingId('BULK_HISTORY');
@@ -1075,6 +1114,37 @@ export default function MonthlyReport() {
                 setSelectedHistoryIds([]);
             } catch (err) {
                 alert('Gagal mengajukan laporan: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkWithdrawHistory = async () => {
+        if (selectedHistoryPendingIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan berstatus MENUNGGU untuk dibatalkan pengajuannya!');
+        }
+        if (window.confirm(`Batalkan pengajuan ${selectedHistoryPendingIds.length} laporan terpilih?\n\nStatus laporan akan dikembalikan ke DRAFT.`)) {
+            setProcessingId('BULK_WITHDRAW');
+            try {
+                const updatedReportsMap = new Map();
+                for (const id of selectedHistoryPendingIds) {
+                    const r = budgetReports.find(x => x.id === id);
+                    if (r && r.status === 'PENDING') {
+                        const updated = { ...r, status: 'DRAFT', notified: false };
+                        updatedReportsMap.set(id, updated);
+                        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                    }
+                }
+
+                const newBudgetReports = (budgetReports || []).map(r => updatedReportsMap.get(r.id) || r);
+                await api.syncWholeState({ ...state, budgetReports: newBudgetReports });
+
+                alert(`${selectedHistoryPendingIds.length} pengajuan laporan berhasil dibatalkan dan dikembalikan ke DRAFT!`);
+                setSelectedHistoryPendingIds([]);
+            } catch (err) {
+                alert('Gagal membatalkan pengajuan laporan: ' + err.message);
             } finally {
                 setProcessingId(null);
             }
@@ -1964,7 +2034,15 @@ export default function MonthlyReport() {
                                         onClick={handleBulkSubmitHistory} 
                                         disabled={processingId === 'BULK_HISTORY'}
                                         className="px-3 py-1.5 bg-indigo-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/30">
-                                        {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Terpilih`}
+                                        {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Draft Terpilih`}
+                                    </button>
+                                )}
+                                {!isSuperAdmin && selectedHistoryPendingIds.length > 0 && (
+                                    <button 
+                                        onClick={handleBulkWithdrawHistory} 
+                                        disabled={processingId === 'BULK_WITHDRAW'}
+                                        className="px-3 py-1.5 bg-amber-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-colors shadow-sm shadow-amber-600/30">
+                                        {processingId === 'BULK_WITHDRAW' ? 'Memproses...' : `Batalkan Ajukan ${selectedHistoryPendingIds.length} Terpilih`}
                                     </button>
                                 )}
                                 {isSuperAdmin && selectedHistoryCancelIds.length > 0 && (
@@ -1989,7 +2067,7 @@ export default function MonthlyReport() {
                                                 onChange={handleSelectAllHistory}
                                                 checked={isSuperAdmin 
                                                     ? (filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').length > 0 && selectedHistoryCancelIds.length === filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').length)
-                                                    : (filteredReports.filter(r => r.status === 'DRAFT').length > 0 && selectedHistoryIds.length === filteredReports.filter(r => r.status === 'DRAFT').length)
+                                                    : (filteredReports.filter(r => r.status === 'DRAFT' || r.status === 'PENDING').length > 0 && (selectedHistoryIds.length + selectedHistoryPendingIds.length) === filteredReports.filter(r => r.status === 'DRAFT' || r.status === 'PENDING').length)
                                                 }
                                             />
                                         </th>
@@ -2020,12 +2098,13 @@ export default function MonthlyReport() {
                                                 budgetRequests={budgetRequests} 
                                                 isSuperAdmin={isSuperAdmin} 
                                                 idx={idx} 
-                                                selectable={(!isSuperAdmin && report.status === 'DRAFT') || (isSuperAdmin && (report.status === 'APPROVED' || report.status === 'PENDING'))}
-                                                isSelected={isSuperAdmin ? selectedHistoryCancelIds.includes(report.id) : selectedHistoryIds.includes(report.id)}
+                                                selectable={(!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'PENDING')) || (isSuperAdmin && (report.status === 'APPROVED' || report.status === 'PENDING'))}
+                                                isSelected={isSuperAdmin ? selectedHistoryCancelIds.includes(report.id) : (report.status === 'PENDING' ? selectedHistoryPendingIds.includes(report.id) : selectedHistoryIds.includes(report.id))}
                                                 onToggleSelect={isSuperAdmin ? handleToggleSelectHistoryCancel : handleToggleSelectHistory}
                                                 onEdit={() => handleEditDraft(report)}
                                                 onDelete={() => handleDeleteDraft(report.id)}
                                                 onCancelApproval={() => handleCancelReportApproval(report)}
+                                                onWithdraw={() => handleWithdrawReportSubmission(report)}
                                                 isProcessing={processingId === report.id}
                                             />
                                         ))
