@@ -135,6 +135,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     title: 'LAPORAN KEUANGAN',
                     items: [
                         { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
+                        { path: '/rincian-aset-wakaf', label: 'Rincian Aset Wakaf', icon: Landmark },
                         { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
                         { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
                         { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
