@@ -11,7 +11,6 @@ const FixedAssets = lazy(() => import('./pages/FixedAssets'));
 const GeneralLedger = lazy(() => import('./pages/GeneralLedger'));
 const TrialBalance = lazy(() => import('./pages/TrialBalance'));
 const BalanceSheet = lazy(() => import('./pages/BalanceSheet'));
-const WakafAssetReport = lazy(() => import('./pages/WakafAssetReport'));
 const ActivityReport = lazy(() => import('./pages/ActivityReport'));
 const ProgramManagement = lazy(() => import('./pages/ProgramManagement'));
 const CashFlowStatement = lazy(() => import('./pages/CashFlowStatement'));
@@ -165,7 +164,6 @@ function AppContent() {
                     <Route path="manajemen-anggaran" element={<Budgeting />} />
                     <Route path="buku-besar" element={<GeneralLedger />} />
                     <Route path="neraca-saldo" element={<TrialBalance />} />
-                    <Route path="rincian-aset-wakaf" element={<WakafAssetReport />} />
                     <Route path="neraca" element={<BalanceSheet />} />
                     <Route path="laporan-aktivitas" element={<ActivityReport />} />
                     <Route path="arus-kas" element={<CashFlowStatement />} />
