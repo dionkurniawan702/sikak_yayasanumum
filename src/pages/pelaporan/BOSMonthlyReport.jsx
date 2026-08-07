@@ -2250,6 +2250,42 @@ export default function BOSMonthlyReport() {
                         <div className="overflow-y-auto flex-1 custom-scrollbar">
                             <form id="report-form" onSubmit={handleReportSubmit} className="p-8 space-y-6">
 
+                                {/* Selector Surat Permintaan Dana (Bulan Permintaan) */}
+                                <div>
+                                    <label className="form-label font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                        <span>Surat Permintaan Dana / Bulan Permintaan <span className="text-rose-500">*</span></span>
+                                        <span className="text-[10px] text-slate-400 font-normal">Tentukan bulan permintaan induk dari nota ini</span>
+                                    </label>
+                                    <select
+                                        className="form-input font-bold text-xs bg-slate-50 text-slate-800 border-slate-200"
+                                        value={selectedRequest?.reqId || ''}
+                                        onChange={(e) => {
+                                            const chosenReqId = e.target.value;
+                                            const chosenReq = budgetRequests.find(r => r.id === chosenReqId);
+                                            if (chosenReq) {
+                                                setSelectedRequest(prev => ({
+                                                    ...prev,
+                                                    reqId: chosenReq.id,
+                                                    reqMonth: chosenReq.month,
+                                                    reqDate: chosenReq.date,
+                                                    reqDescription: chosenReq.description,
+                                                    reqUnitId: chosenReq.unitId,
+                                                    fieldId: chosenReq.fieldId
+                                                }));
+                                            }
+                                        }}
+                                        required
+                                    >
+                                        {budgetRequests
+                                            .filter(r => r.status === 'APPROVED' && (selectedRequest?.reqUnitId ? (r.unitId === selectedRequest.reqUnitId || r.fieldId === selectedRequest.reqUnitId) : true))
+                                            .map(r => (
+                                                <option key={r.id} value={r.id}>
+                                                    {formatMonthLabel(r.month)} • REQ: {r.id} — {r.description || 'Pengajuan Dana'} (Total Cair: {formatRupiah(r.totalAmount)})
+                                                </option>
+                                            ))}
+                                    </select>
+                                </div>
+
                                 {/* Row 1: Tanggal + Nomor Nota */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div>
