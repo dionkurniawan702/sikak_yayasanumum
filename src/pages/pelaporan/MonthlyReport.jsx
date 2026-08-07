@@ -2229,7 +2229,7 @@ export default function MonthlyReport() {
                                                 <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.category || '—'}</td>
                                                 <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={report.description}>{report.description}</td>
                                                 <td className="px-5 py-4 text-center text-xs font-bold text-slate-600">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
-                                                <td className="px-5 py-4 text-right text-xs font-bold text-rose-500 font-mono">{parseFloat(report.diskon || 0) > 0 ? `-${formatRupiah(parseFloat(report.diskon))}` : '—'}</td>
+                                                <td className="px-5 py-4 text-right text-xs font-bold text-rose-500 font-mono whitespace-nowrap">{parseFloat(report.diskon || 0) > 0 ? `-${formatRupiah(parseFloat(report.diskon))}` : '—'}</td>
                                                 <td className="px-5 py-4 text-right text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</td>
                                                 <td className="px-5 py-4 text-center"><AsetBadge kategori={report.kategoriAset} umurEkonomis={report.umurEkonomis} /></td>
                                                 <td className="px-5 py-4">
