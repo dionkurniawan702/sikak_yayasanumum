@@ -1,15 +1,26 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye } from 'lucide-react';
+import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye, Calendar, Tag, Filter } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
+
+// Helper formatting bulan ID
+function formatMonthLabel(mStr) {
+    if (!mStr) return 'Semua Bulan';
+    if (mStr.includes('-')) {
+        const [y, m] = mStr.split('-');
+        const date = new Date(parseInt(y), parseInt(m) - 1, 1);
+        return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
+    }
+    return mStr;
+}
 
 // ────────────────────────────────────────────────────────────
 // Helper: hitung saldo satu entitas (unit atau bidang)
 // ────────────────────────────────────────────────────────────
 function calcEntityBalance(requests, reports) {
     const approved = requests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    const used = reports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const used = reports.filter(r => r.kategoriAset !== 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const returned = reports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const pending = requests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
     return { approved, used, returned, balance: approved - used - returned, pending };
@@ -18,29 +29,46 @@ function calcEntityBalance(requests, reports) {
 // ────────────────────────────────────────────────────────────
 // Baris entitas (unit / bidang) yang bisa di-expand
 // ────────────────────────────────────────────────────────────
-function EntityRow({ name, type, requests, reports }) {
+function EntityRow({ name, type, requests, reports, selectedMonth }) {
     const [open, setOpen] = useState(false);
-    const { approved, used, returned, balance, pending } = calcEntityBalance(requests, reports);
+
+    const filteredRequests = useMemo(() => {
+        if (selectedMonth === 'ALL') return requests;
+        return requests.filter(r => r.month === selectedMonth);
+    }, [requests, selectedMonth]);
+
+    const filteredReports = useMemo(() => {
+        if (selectedMonth === 'ALL') return reports;
+        const reqIdsForMonth = new Set(requests.filter(r => r.month === selectedMonth).map(r => r.id));
+        return reports.filter(r => {
+            if (r.date && r.date.startsWith(selectedMonth)) return true;
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (rReqId && reqIdsForMonth.has(rReqId)) return true;
+            return false;
+        });
+    }, [reports, requests, selectedMonth]);
+
+    const { approved, used, returned, balance, pending } = calcEntityBalance(filteredRequests, filteredReports);
 
     // Rincian per kategori (item)
     const positions = useMemo(() => {
         const pos = {};
-        requests.filter(r => r.status === 'APPROVED').forEach(req => {
+        filteredRequests.filter(r => r.status === 'APPROVED').forEach(req => {
             (req.items || []).forEach(item => {
                 const cat = item.name || 'General';
                 if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
                 pos[cat].totalApproved += (parseFloat(item.amount) || 0);
             });
         });
-        reports.forEach(rel => {
-            if (rel.kategoriAset === 'PENGEMBALIAN') return; // Skip returns from category breakdown
+        filteredReports.forEach(rel => {
+            if (rel.kategoriAset === 'PENGEMBALIAN' || rel.status !== 'APPROVED') return;
             const cat = rel.category || 'General';
             if (!pos[cat]) pos[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
             pos[cat].totalUsed += (parseFloat(rel.amount) || 0);
         });
         
         const list = Object.values(pos).filter(p => p.totalApproved > 0 || p.totalUsed > 0);
-        const totalApprovedReturned = reports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        const totalApprovedReturned = filteredReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
         let remainingReturned = totalApprovedReturned;
         list.forEach(p => {
             const initialSisa = p.totalApproved - p.totalUsed;
@@ -53,9 +81,8 @@ function EntityRow({ name, type, requests, reports }) {
             }
         });
         return list;
-    }, [requests, reports]);
+    }, [filteredRequests, filteredReports]);
 
-    const hasData = approved > 0 || pending > 0;
     const balanceColor = balance < 0 ? 'text-rose-600' : balance > 0 ? 'text-emerald-600' : 'text-slate-400';
 
     return (
@@ -137,17 +164,21 @@ export default function FundAvailability() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [processingId, setProcessingId] = useState(null);
     const [reviewData, setReviewData] = useState(null);
+    
+    // NEW STATES: Filter Bulan & Mode Tampilan
+    const [selectedMonth, setSelectedMonth] = useState('ALL');
+    const [viewMode, setViewMode] = useState('month_breakdown'); // 'month_breakdown' | 'category_breakdown'
+    const [expandedRequestIds, setExpandedRequestIds] = useState([]);
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
-    // ── Filter by tahun ajaran aktif
+    // ── Filter by tahun ajaran aktif (Exclude BOS)
     const yearRequests = useMemo(() =>
         (budgetRequests || []).filter(r => {
             const isYear = r.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
-            // EXCLUDE BOS
             const isBos = (r.items || []).some(item => item.planId?.endsWith('-BOS'));
             return !isBos;
         }),
@@ -157,7 +188,6 @@ export default function FundAvailability() {
         (budgetReports || []).filter(r => {
             const isYear = r.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
-            // EXCLUDE BOS
             const req = budgetRequests.find(br => br.id === r.budgetRequestId);
             const isBos = (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
             return !isBos;
@@ -172,6 +202,41 @@ export default function FundAvailability() {
     const myReports = useMemo(() => yearReports.filter(r =>
         myUnitId ? r.unitId === myUnitId : myFieldId ? r.fieldId === myFieldId : false
     ), [yearReports, myUnitId, myFieldId]);
+
+    // ── Extract list of available months from requests
+    const monthOptions = useMemo(() => {
+        const set = new Set();
+        const targetReqs = isSuperAdmin ? yearRequests : myRequests;
+        targetReqs.filter(r => r.status === 'APPROVED' && r.month).forEach(r => {
+            set.add(r.month);
+        });
+        return Array.from(set).sort().reverse();
+    }, [isSuperAdmin, yearRequests, myRequests]);
+
+    // ── Filter requests & reports based on selected month
+    const activeRequestsFiltered = useMemo(() => {
+        const base = isSuperAdmin ? yearRequests : myRequests;
+        if (selectedMonth === 'ALL') return base;
+        return base.filter(r => r.month === selectedMonth);
+    }, [isSuperAdmin, yearRequests, myRequests, selectedMonth]);
+
+    const activeReportsFiltered = useMemo(() => {
+        const base = isSuperAdmin ? yearReports : myReports;
+        if (selectedMonth === 'ALL') return base;
+
+        const reqIdsForMonth = new Set(
+            (isSuperAdmin ? yearRequests : myRequests)
+                .filter(r => r.month === selectedMonth)
+                .map(r => r.id)
+        );
+
+        return base.filter(r => {
+            if (r.date && r.date.startsWith(selectedMonth)) return true;
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (rReqId && reqIdsForMonth.has(rReqId)) return true;
+            return false;
+        });
+    }, [isSuperAdmin, yearReports, myReports, yearRequests, myRequests, selectedMonth]);
 
     // ── Clear notifications for unit/bidang when viewing this page
     useEffect(() => {
@@ -190,101 +255,33 @@ export default function FundAvailability() {
         }
     }, [isSuperAdmin, budgetReports, myUnitId, myFieldId, dispatch, state]);
 
-    // ── Aggregate superadmin (total keseluruhan)
-    const totalApproved = yearRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    const totalUsed = yearReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const totalReturned = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    // ── Aggregate superadmin (Filtered by month)
+    const totalApproved = activeRequestsFiltered.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
+    const totalUsed = activeReportsFiltered.filter(r => r.kategoriAset !== 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalReturned = activeReportsFiltered.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const totalBalance = totalApproved - totalUsed - totalReturned;
-    const totalPending = yearRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + 
-                         yearReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+    const totalPending = activeRequestsFiltered.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + 
+                         activeReportsFiltered.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
-    // ── Aggregate user biasa
-    const myApproved = myRequests.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    const myUsed = myReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const myReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const myBalance = myApproved - myUsed - myReturned;
-    const myPending = myRequests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + 
-                      myReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-
-    const handleSubmitReturn = async (e) => {
-        e.preventDefault();
-        const amt = parseFloat(returnForm.amount);
-        const myPendingReturns = myReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-        
-        if (isNaN(amt) || amt <= 0) return alert('Nominal tidak valid!');
-        if (amt > (myBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
-        if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
-
-        setIsSubmitting(true);
-        const newReturn = {
-            id: 'RET-' + Date.now().toString(36).toUpperCase(),
-            unitId: myUnitId,
-            fieldId: myFieldId,
-            academicYearId: globalAcademicYearId,
-            date: new Date().toISOString().split('T')[0],
-            amount: amt,
-            description: returnForm.description || 'Pengembalian Sisa Dana Kas',
-            buktiTeks: returnForm.buktiTeks,
-            kategoriAset: 'PENGEMBALIAN',
-            status: 'PENDING',
-            notified: false
-        };
-
-        dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
-        await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
-        
-        setIsSubmitting(false);
-        setShowReturnModal(false);
-        setReturnForm({ amount: '', buktiTeks: '', description: '' });
-        alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Yayasan.');
-    };
-
-    const handleApproveReturn = async (ret) => {
-        if (!window.confirm('Setujui pengembalian dana ini? Draf Jurnal akan otomatis dibuat.')) return;
-        
-        setProcessingId(ret.id);
-        try {
-            const updated = { ...ret, status: 'APPROVED', notified: false };
-            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-            alert('Pengembalian dana berhasil di-ACC!');
-        } catch (error) {
-            console.error(error);
-            alert('Gagal menyetujui pengembalian dana: ' + error.message);
-        } finally {
-            setProcessingId(null);
-            setReviewData(null);
-        }
-    };
-
-    const handleRejectReturn = async (ret) => {
-        const reason = window.prompt('Alasan penolakan pengembalian dana:');
-        if (reason !== null) {
-            setProcessingId(ret.id);
-            const updated = { ...ret, status: 'REJECTED', description: `${ret.description} (Ditolak: ${reason})`, notified: false };
-            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-            setProcessingId(null);
-            setReviewData(null);
-            alert('Pengembalian dana ditolak.');
-        }
-    };
-
-    const pendingReturns = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'PENDING');
+    // ── Aggregate user biasa (Filtered by month)
+    const myApproved = totalApproved;
+    const myUsed = totalUsed;
+    const myReturned = totalReturned;
+    const myBalance = totalBalance;
+    const myPending = totalPending;
 
     // ── Daftar unit & bidang yang punya data (untuk superadmin)
     const activeUnits = useMemo(() => (units || []).filter(u => !u.isDeleted), [units]);
     const activeFields = useMemo(() => (fields || []).filter(f => !f.isDeleted), [fields]);
 
-    // Calculate active stats for superadmin: only aggregate units/fields that have an active (positive) balance
     const superadminActiveStats = useMemo(() => {
         let activeApproved = 0;
         let activeUsed = 0;
         let activeBalance = 0;
 
         activeUnits.forEach(u => {
-            const reqs = yearRequests.filter(r => r.unitId === u.id);
-            const reps = yearReports.filter(r => r.unitId === u.id);
+            const reqs = activeRequestsFiltered.filter(r => r.unitId === u.id);
+            const reps = activeReportsFiltered.filter(r => r.unitId === u.id);
             const { approved, used, returned, balance } = calcEntityBalance(reqs, reps);
             if (balance > 0) {
                 activeApproved += approved;
@@ -294,8 +291,8 @@ export default function FundAvailability() {
         });
 
         activeFields.forEach(f => {
-            const reqs = yearRequests.filter(r => r.fieldId === f.id && !r.unitId);
-            const reps = yearReports.filter(r => r.fieldId === f.id && !r.unitId);
+            const reqs = activeRequestsFiltered.filter(r => r.fieldId === f.id && !r.unitId);
+            const reps = activeReportsFiltered.filter(r => r.fieldId === f.id && !r.unitId);
             const { approved, used, returned, balance } = calcEntityBalance(reqs, reps);
             if (balance > 0) {
                 activeApproved += approved;
@@ -305,26 +302,89 @@ export default function FundAvailability() {
         });
 
         return { approved: activeApproved, used: activeUsed, balance: activeBalance };
-    }, [activeUnits, activeFields, yearRequests, yearReports]);
+    }, [activeUnits, activeFields, activeRequestsFiltered, activeReportsFiltered]);
 
-    // ── Aggregation of categories for normal users
+    // ── Grouping breakdown per Surat Permintaan Dana (Per Bulan)
+    const monthBreakdownCards = useMemo(() => {
+        const approvedReqs = activeRequestsFiltered.filter(r => r.status === 'APPROVED');
+        const targetReports = activeReportsFiltered.filter(r => r.status === 'APPROVED');
+
+        return approvedReqs.map(req => {
+            const reqItems = req.items || [];
+            const matchingReports = targetReports.filter(r => {
+                if (r.kategoriAset === 'PENGEMBALIAN') return false;
+                if (r.budgetRequestId === req.id || r.requestId === req.id) return true;
+                if (req.month && r.date && r.date.startsWith(req.month)) return true;
+                return false;
+            });
+
+            const itemsDetail = reqItems.map(item => {
+                const itemAmt = parseFloat(item.amount || 0);
+                const itemReports = matchingReports.filter(r => {
+                    if (item.componentId && r.componentId === item.componentId) return true;
+                    const rName = (r.category || r.description || '').trim().toLowerCase();
+                    const iName = (item.name || '').trim().toLowerCase();
+                    return rName && iName && rName === iName;
+                });
+
+                const usedAmt = itemReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                const sisaAmt = Math.max(0, itemAmt - usedAmt);
+                const pctUsed = itemAmt > 0 ? Math.min(100, (usedAmt / itemAmt) * 100) : 0;
+
+                return {
+                    name: item.name || 'Komponen Belanja',
+                    componentId: item.componentId,
+                    itemAmt,
+                    usedAmt,
+                    sisaAmt,
+                    pctUsed
+                };
+            });
+
+            const reqApproved = itemsDetail.reduce((s, i) => s + i.itemAmt, 0) || (parseFloat(req.totalAmount) || 0);
+            const reqUsed = itemsDetail.reduce((s, i) => s + i.usedAmt, 0);
+            
+            // Check for approved returns for this request
+            const reqReturned = targetReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && (r.budgetRequestId === req.id || r.requestId === req.id)).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            const reqSisa = Math.max(0, reqApproved - reqUsed - reqReturned);
+            const reqPct = reqApproved > 0 ? (reqUsed / reqApproved) * 100 : 0;
+
+            const uName = units?.find(u => u.id === req.unitId)?.name || fields?.find(f => f.id === req.fieldId)?.name || 'Yayasan';
+
+            return {
+                reqId: req.id,
+                reqMonth: req.month,
+                reqDate: req.date,
+                reqDescription: req.description,
+                unitName: uName,
+                reqApproved,
+                reqUsed,
+                reqReturned,
+                reqSisa,
+                reqPct,
+                itemsDetail
+            };
+        });
+    }, [activeRequestsFiltered, activeReportsFiltered, units, fields]);
+
+    // ── Aggregation of categories for normal users (Filtered by month)
     const categoryList = useMemo(() => {
         const positions = {};
-        myRequests.filter(r => r.status === 'APPROVED').forEach(req => {
+        activeRequestsFiltered.filter(r => r.status === 'APPROVED').forEach(req => {
             (req.items || []).forEach(item => {
                 const cat = item.name || 'General';
                 if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
                 positions[cat].totalApproved += (parseFloat(item.amount) || 0);
             });
         });
-        myReports.forEach(rel => {
-            if (rel.kategoriAset === 'PENGEMBALIAN') return; // Skip returns from category breakdown
+        activeReportsFiltered.forEach(rel => {
+            if (rel.kategoriAset === 'PENGEMBALIAN' || rel.status !== 'APPROVED') return;
             const cat = rel.category || 'General';
             if (!positions[cat]) positions[cat] = { category: cat, totalApproved: 0, totalUsed: 0, totalReturned: 0 };
             positions[cat].totalUsed += (parseFloat(rel.amount) || 0);
         });
         const list = Object.values(positions).filter(p => p.totalApproved > 0 || p.totalUsed > 0);
-        const totalApprovedReturned = myReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+        const totalApprovedReturned = activeReportsFiltered.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
         let remainingReturned = totalApprovedReturned;
         list.forEach(p => {
             const initialSisa = p.totalApproved - p.totalUsed;
@@ -337,7 +397,7 @@ export default function FundAvailability() {
             }
         });
         return list;
-    }, [myRequests, myReports]);
+    }, [activeRequestsFiltered, activeReportsFiltered]);
 
     const categoryTotals = useMemo(() => {
         const totalApproved = categoryList.reduce((sum, item) => sum + item.totalApproved, 0);
@@ -348,18 +408,129 @@ export default function FundAvailability() {
         return { totalApproved, totalUsed, totalReturned, totalAvailable, totalPct };
     }, [categoryList]);
 
+    const toggleExpandRequest = (id) => {
+        setExpandedRequestIds(prev =>
+            prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+        );
+    };
+
+    const handleSubmitReturn = async (e) => {
+        e.preventDefault();
+        const amt = parseFloat(returnForm.amount);
+        const myPendingReturns = myReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        
+        if (isNaN(amt) || amt <= 0) return alert('Nominal tidak valid!');
+        if (amt > (myBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
+        if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
+
+        setIsSubmitting(true);
+        window.dispatchEvent(new CustomEvent('app-processing-start', { 
+            detail: { 
+                title: 'Mengirim Pengembalian Dana...', 
+                message: 'Mohon tunggu sebentar, pengajuan pengembalian sisa dana sedang dikirim ke server...', 
+                type: 'submitting' 
+            } 
+        }));
+
+        try {
+            const newReturn = {
+                id: 'RET-' + Date.now().toString(36).toUpperCase(),
+                unitId: myUnitId,
+                fieldId: myFieldId,
+                academicYearId: globalAcademicYearId,
+                date: new Date().toISOString().split('T')[0],
+                amount: amt,
+                description: returnForm.description || 'Pengembalian Sisa Dana Kas',
+                buktiTeks: returnForm.buktiTeks,
+                kategoriAset: 'PENGEMBALIAN',
+                status: 'PENDING',
+                notified: false
+            };
+
+            dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
+            await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+            
+            setShowReturnModal(false);
+            setReturnForm({ amount: '', buktiTeks: '', description: '' });
+            alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Yayasan.');
+        } catch (err) {
+            console.error(err);
+            alert('Gagal mengajukan pengembalian dana: ' + err.message);
+        } finally {
+            setIsSubmitting(false);
+            window.dispatchEvent(new CustomEvent('app-processing-end'));
+        }
+    };
+
+    const handleApproveReturn = async (ret) => {
+        if (!window.confirm('Setujui pengembalian dana ini? Draf Jurnal akan otomatis dibuat.')) return;
+        
+        setProcessingId(ret.id);
+        window.dispatchEvent(new CustomEvent('app-processing-start', { 
+            detail: { 
+                title: 'Memproses ACC Pengembalian...', 
+                message: 'Mohon tunggu sebentar, verifikasi pengembalian dana sedang dicatat...', 
+                type: 'approving' 
+            } 
+        }));
+
+        try {
+            const updated = { ...ret, status: 'APPROVED', notified: false };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            alert('Pengembalian dana berhasil di-ACC!');
+        } catch (error) {
+            console.error(error);
+            alert('Gagal menyetujui pengembalian dana: ' + error.message);
+        } finally {
+            setProcessingId(null);
+            setReviewData(null);
+            window.dispatchEvent(new CustomEvent('app-processing-end'));
+        }
+    };
+
+    const handleRejectReturn = async (ret) => {
+        const reason = window.prompt('Alasan penolakan pengembalian dana:');
+        if (reason !== null) {
+            setProcessingId(ret.id);
+            window.dispatchEvent(new CustomEvent('app-processing-start', { 
+                detail: { 
+                    title: 'Memproses Penolakan Pengembalian...', 
+                    message: 'Mohon tunggu sebentar, status penolakan pengembalian sedang dikirim...', 
+                    type: 'rejecting' 
+                } 
+            }));
+
+            try {
+                const updated = { ...ret, status: 'REJECTED', description: `${ret.description} (Ditolak: ${reason})`, notified: false };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                alert('Pengembalian dana ditolak.');
+            } catch (error) {
+                console.error(error);
+                alert('Gagal menolak pengembalian dana: ' + error.message);
+            } finally {
+                setProcessingId(null);
+                setReviewData(null);
+                window.dispatchEvent(new CustomEvent('app-processing-end'));
+            }
+        }
+    };
+
+    const pendingReturns = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'PENDING');
+
     // Stat cards
     const statApproved = isSuperAdmin 
         ? superadminActiveStats.approved 
-        : (myBalance > 0 ? myApproved : 0);
+        : (totalBalance > 0 ? totalApproved : 0);
 
     const statUsed = isSuperAdmin 
         ? superadminActiveStats.used 
-        : (myBalance > 0 ? myUsed : 0);
+        : (totalBalance > 0 ? totalUsed : 0);
 
     const statBalance = isSuperAdmin 
         ? superadminActiveStats.balance 
-        : (myBalance > 0 ? myBalance : 0);
+        : (totalBalance > 0 ? totalBalance : 0);
 
     const statPending = isSuperAdmin ? totalPending : myPending;
 
@@ -369,14 +540,14 @@ export default function FundAvailability() {
         <div className="p-8 animate-in fade-in duration-500">
 
             {/* ── Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
                 <div>
                     <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2">Ketersediaan Dana & Saldo</h1>
                     <p className="text-slate-500 font-medium italic">
                         {isSuperAdmin ? 'Monitoring saldo kas seluruh unit kerja & bidang.' : `Status saldo kas ${unitName}.`}
                     </p>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex flex-wrap items-center gap-4">
                     {!isSuperAdmin && statBalance > 0 && (
                         <button 
                             onClick={() => {
@@ -389,29 +560,88 @@ export default function FundAvailability() {
                             <span>KEMBALIKAN SISA DANA</span>
                         </button>
                     )}
-                    <div className="flex items-center gap-3 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-100 shadow-sm hidden md:flex">
+                    <div className="flex items-center gap-3 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-100 shadow-sm">
                         <ShieldCheck size={20} />
                         <span className="text-xs font-black uppercase tracking-widest">Saldo Real-Time</span>
                     </div>
                 </div>
             </div>
 
+            {/* ── Filter Bar & Tampilan Selector */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                        <Calendar size={22} />
+                    </div>
+                    <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                            Bulan Permintaan Dana
+                        </label>
+                        <select
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[220px]"
+                        >
+                            <option value="ALL">🗓️ Semua Bulan Permintaan</option>
+                            {monthOptions.map(m => (
+                                <option key={m} value={m}>
+                                    📅 {formatMonthLabel(m)}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                {!isSuperAdmin && (
+                    <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                        <button
+                            onClick={() => setViewMode('month_breakdown')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                                viewMode === 'month_breakdown'
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                            <Layers size={16} />
+                            <span>Per Surat Permintaan (Bulan)</span>
+                        </button>
+                        <button
+                            onClick={() => setViewMode('category_breakdown')}
+                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                                viewMode === 'category_breakdown'
+                                    ? 'bg-indigo-600 text-white shadow-md'
+                                    : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                        >
+                            <Tag size={16} />
+                            <span>Per Kategori Barang</span>
+                        </button>
+                    </div>
+                )}
+            </div>
+
             {/* ── Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
                 <div className="card p-8 bg-white border-b-4 border-emerald-500 shadow-lg hover:translate-y-[-4px] transition-all">
                     <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4"><CheckCircle size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Dana ACC (Masuk)</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Total Dana ACC {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Masuk)'}
+                    </p>
                     <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statApproved)}</h2>
                 </div>
                 <div className="card p-8 bg-white border-b-4 border-rose-500 shadow-lg hover:translate-y-[-4px] transition-all">
                     <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><TrendingUp size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Realisasi (Keluar)</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Total Realisasi {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Keluar)'}
+                    </p>
                     <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statUsed)}</h2>
                 </div>
                 <div className="card p-8 bg-white border-b-4 border-indigo-500 shadow-lg hover:translate-y-[-4px] transition-all">
                     <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4"><Wallet size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Dana (Saldo)</p>
-                    <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statBalance)}</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Sisa Dana {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Saldo)'}
+                    </p>
+                    <h2 className="text-2xl font-black text-emerald-600">{formatRupiah(statBalance)}</h2>
                 </div>
                 <div className="card p-8 bg-white border-b-4 border-amber-500 shadow-lg hover:translate-y-[-4px] transition-all">
                     <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4"><Clock size={24} /></div>
@@ -425,7 +655,7 @@ export default function FundAvailability() {
                 <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] bg-white border-0">
                     <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
                         <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
-                            <Layers className="text-indigo-400" size={16} /> Saldo per Unit & Bidang
+                            <Layers className="text-indigo-400" size={16} /> Saldo per Unit & Bidang {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}
                         </h3>
                         <span className="text-[10px] text-slate-400 font-bold italic">Klik baris untuk lihat rincian kategori</span>
                     </div>
@@ -450,6 +680,7 @@ export default function FundAvailability() {
                                         type="unit"
                                         requests={yearRequests.filter(r => r.unitId === unit.id)}
                                         reports={yearReports.filter(r => r.unitId === unit.id)}
+                                        selectedMonth={selectedMonth}
                                     />
                                 ))}
                                 {/* Fields (bidang) */}
@@ -460,6 +691,7 @@ export default function FundAvailability() {
                                         type="field"
                                         requests={yearRequests.filter(r => r.fieldId === field.id && !r.unitId)}
                                         reports={yearReports.filter(r => r.fieldId === field.id && !r.unitId)}
+                                        selectedMonth={selectedMonth}
                                     />
                                 ))}
                                 {activeUnits.length === 0 && activeFields.length === 0 && (
@@ -485,7 +717,7 @@ export default function FundAvailability() {
                                     </td>
                                     <td className="px-6 py-5 font-black text-emerald-700 text-sm">{formatRupiah(totalApproved)}</td>
                                     <td className="px-6 py-5 font-black text-rose-600 text-sm">{formatRupiah(totalUsed)}</td>
-                                    <td className="px-6 py-5 font-black text-indigo-600 text-base">{formatRupiah(totalBalance)}</td>
+                                    <td className="px-6 py-5 font-black text-emerald-600 text-base">{formatRupiah(totalBalance)}</td>
                                     <td className="px-6 py-5 font-black text-indigo-600 text-sm">{formatRupiah(totalReturned)}</td>
                                     <td className="px-6 py-5 text-center">
                                         <span className="text-[10px] text-slate-300 italic">—</span>
@@ -496,102 +728,235 @@ export default function FundAvailability() {
                     </div>
                 </div>
             ) : (
-                /* ── USER BIASA: Tabel per Kategori (tampilan lama) */
-                <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] bg-white border-0">
-                    <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
-                        <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
-                            <Layers className="text-indigo-400" size={16} /> Rincian Saldo per Kategori
-                        </h3>
+                /* ── USER BIASA: Pilihan Mode Tampilan */
+                viewMode === 'month_breakdown' ? (
+                    /* ── MODE 1: RINCIAN PER SURAT PERMINTAAN DANA (BULAN) */
+                    <div className="space-y-6 mb-10">
+                        <div className="flex items-center justify-between px-2">
+                            <h3 className="font-black text-lg text-slate-800 tracking-tight flex items-center gap-2">
+                                <Layers className="text-indigo-600" size={20} />
+                                <span>Rincian Saldo per Surat Permintaan Dana</span>
+                            </h3>
+                            <span className="text-xs font-bold text-slate-400 italic">
+                                {monthBreakdownCards.length} Surat Permintaan Ditemukan
+                            </span>
+                        </div>
+
+                        {monthBreakdownCards.length === 0 ? (
+                            <div className="bg-white p-12 rounded-[2rem] border border-slate-100 text-center shadow-xl">
+                                <Info size={40} className="text-slate-300 mx-auto mb-4" />
+                                <p className="text-slate-500 font-bold">Tidak ada surat permintaan dana yang di-ACC untuk periode bulan ini.</p>
+                            </div>
+                        ) : (
+                            monthBreakdownCards.map((card) => {
+                                const isExpanded = expandedRequestIds.includes(card.reqId);
+                                return (
+                                    <div key={card.reqId} className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden transition-all duration-300 hover:border-indigo-200">
+                                        {/* Card Header */}
+                                        <div 
+                                            onClick={() => toggleExpandRequest(card.reqId)}
+                                            className="p-6 md:p-8 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer hover:bg-slate-800 transition-colors"
+                                        >
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 mt-1">
+                                                    <Calendar size={22} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex items-center gap-3 mb-1">
+                                                        <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-xs font-black uppercase tracking-wider border border-indigo-500/30">
+                                                            {formatMonthLabel(card.reqMonth)}
+                                                        </span>
+                                                        <span className="text-xs font-bold text-slate-400">ID: {card.reqId}</span>
+                                                    </div>
+                                                    <h4 className="text-lg font-black text-white">{card.reqDescription || 'Surat Permintaan Dana'}</h4>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-center gap-6 self-end md:self-center">
+                                                <div className="text-right">
+                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo Bulan Ini</p>
+                                                    <p className="text-2xl font-black text-emerald-400">{formatRupiah(card.reqSisa)}</p>
+                                                </div>
+                                                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300">
+                                                    {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Card Quick Stats Summary */}
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-slate-50 border-b border-slate-100">
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dana Cair (ACC)</p>
+                                                <p className="text-base font-black text-slate-700">{formatRupiah(card.reqApproved)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Realisasi (Keluar)</p>
+                                                <p className="text-base font-black text-rose-600">{formatRupiah(card.reqUsed)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Saldo</p>
+                                                <p className="text-base font-black text-emerald-600">{formatRupiah(card.reqSisa)}</p>
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Penyerapan</p>
+                                                <div className="flex items-center gap-2 mt-1">
+                                                    <div className="flex-1 bg-slate-200 h-2 rounded-full overflow-hidden">
+                                                        <div className="h-full bg-indigo-600" style={{ width: `${Math.min(100, card.reqPct)}%` }} />
+                                                    </div>
+                                                    <span className="text-xs font-black text-slate-600">{card.reqPct.toFixed(0)}%</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Item Breakdown Table (Expandable or Default Visible) */}
+                                        <div className="p-6 overflow-x-auto">
+                                            <table className="w-full text-left border-collapse">
+                                                <thead>
+                                                    <tr className="border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                        <th className="py-3 px-4">Rincian Item Belanja</th>
+                                                        <th className="py-3 px-4">Dana Cair (ACC)</th>
+                                                        <th className="py-3 px-4">Realisasi Terpakai</th>
+                                                        <th className="py-3 px-4">Sisa Saldo Item</th>
+                                                        <th className="py-3 px-4 text-center">Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100 text-sm">
+                                                    {card.itemsDetail.map((item, idx) => (
+                                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                            <td className="py-4 px-4 font-bold text-slate-800">
+                                                                {item.name}
+                                                            </td>
+                                                            <td className="py-4 px-4 font-semibold text-slate-600">
+                                                                {formatRupiah(item.itemAmt)}
+                                                            </td>
+                                                            <td className="py-4 px-4 font-semibold text-rose-600">
+                                                                {formatRupiah(item.usedAmt)}
+                                                            </td>
+                                                            <td className="py-4 px-4">
+                                                                <span className={`font-black text-base ${item.sisaAmt > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                                    {formatRupiah(item.sisaAmt)}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-4 px-4 text-center">
+                                                                {item.sisaAmt <= 0 ? (
+                                                                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black">
+                                                                        ✅ Tuntas 100%
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-black">
+                                                                        ⏳ Tersisa {formatRupiah(item.sisaAmt)}
+                                                                    </span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                    </div>
+                                );
+                            })
+                        )}
                     </div>
-                    <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
-                        <table className="w-full text-left border-collapse">
-                            <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
-                                <tr className="bg-slate-50 border-b border-slate-200">
-                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Pengeluaran</th>
-                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Cair (ACC)</th>
-                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
-                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
-                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
-                                    <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Penyerapan</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100">
-                                {categoryList.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
-                                            Belum ada data saldo kas. Lakukan pengajuan dana terlebih dahulu.
-                                        </td>
+                ) : (
+                    /* ── MODE 2: TABEL PER KATEGORI (BERDASARKAN FILTER BULAN) */
+                    <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] bg-white border-0">
+                        <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
+                            <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
+                                <Layers className="text-indigo-400" size={16} /> Rincian Saldo per Kategori {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
+                            <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
+                                    <tr className="bg-slate-50 border-b border-slate-200">
+                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Pengeluaran</th>
+                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Cair (ACC)</th>
+                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
+                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
+                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
+                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Penyerapan</th>
                                     </tr>
-                                ) : (
-                                    categoryList.map((item, idx) => {
-                                        const available = item.totalApproved - item.totalUsed - (item.totalReturned || 0);
-                                        const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
-                                        return (
-                                            <tr key={idx} className="hover:bg-slate-50 transition-colors group">
-                                                <td className="px-8 py-6">
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-2 h-10 rounded-full bg-indigo-600 group-hover:scale-y-125 transition-transform" />
-                                                        <span className="font-black text-slate-700">{item.category}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-8 py-6 font-bold text-slate-500">{formatRupiah(item.totalApproved)}</td>
-                                                <td className="px-8 py-6 font-black text-rose-600">{formatRupiah(item.totalUsed)}</td>
-                                                <td className="px-8 py-6">
-                                                    <span className={`text-lg font-black ${available < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>{formatRupiah(available)}</span>
-                                                </td>
-                                                <td className="px-8 py-6 text-center text-slate-700 font-bold">
-                                                    {item.totalReturned > 0 ? formatRupiah(item.totalReturned) : '—'}
-                                                </td>
-                                                <td className="px-8 py-6 text-right w-64">
-                                                    <div className="flex flex-col gap-2">
-                                                        <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                            <span>Terpakai</span><span>{pct.toFixed(1)}%</span>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {categoryList.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
+                                                Belum ada data saldo kas untuk periode bulan ini.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        categoryList.map((item, idx) => {
+                                            const available = item.totalApproved - item.totalUsed - (item.totalReturned || 0);
+                                            const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
+                                            return (
+                                                <tr key={idx} className="hover:bg-slate-50 transition-colors group">
+                                                    <td className="px-8 py-6">
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-2 h-10 rounded-full bg-indigo-600 group-hover:scale-y-125 transition-transform" />
+                                                            <span className="font-black text-slate-700">{item.category}</span>
                                                         </div>
-                                                        <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
-                                                            <div className="h-full bg-indigo-600 shadow-sm" style={{ width: `${Math.min(100, pct)}%` }} />
+                                                    </td>
+                                                    <td className="px-8 py-6 font-bold text-slate-500">{formatRupiah(item.totalApproved)}</td>
+                                                    <td className="px-8 py-6 font-black text-rose-600">{formatRupiah(item.totalUsed)}</td>
+                                                    <td className="px-8 py-6">
+                                                        <span className={`text-lg font-black ${available < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatRupiah(available)}</span>
+                                                    </td>
+                                                    <td className="px-8 py-6 text-center text-slate-700 font-bold">
+                                                        {item.totalReturned > 0 ? formatRupiah(item.totalReturned) : '—'}
+                                                    </td>
+                                                    <td className="px-8 py-6 text-right w-64">
+                                                        <div className="flex flex-col gap-2">
+                                                            <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                                <span>Terpakai</span><span>{pct.toFixed(1)}%</span>
+                                                            </div>
+                                                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
+                                                                <div className="h-full bg-indigo-600 shadow-sm" style={{ width: `${Math.min(100, pct)}%` }} />
+                                                            </div>
                                                         </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                                {categoryList.length > 0 && (
+                                    <tfoot className="sticky bottom-0 z-20 bg-slate-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
+                                        <tr className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-800">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-2 h-10 rounded-full bg-slate-800" />
+                                                    <span className="font-black text-slate-800">TOTAL</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-6 font-black text-slate-800">{formatRupiah(categoryTotals.totalApproved)}</td>
+                                            <td className="px-8 py-6 font-black text-rose-600">{formatRupiah(categoryTotals.totalUsed)}</td>
+                                            <td className="px-8 py-6">
+                                                <span className={`text-lg font-black ${categoryTotals.totalAvailable < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                    {formatRupiah(categoryTotals.totalAvailable)}
+                                                </span>
+                                            </td>
+                                            <td className="px-8 py-6 text-center text-slate-800 font-black">
+                                                {categoryTotals.totalReturned > 0 ? formatRupiah(categoryTotals.totalReturned) : '—'}
+                                            </td>
+                                            <td className="px-8 py-6 text-right w-64">
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                                                        <span>Total Terpakai</span><span>{categoryTotals.totalPct.toFixed(1)}%</span>
                                                     </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
+                                                    <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden border border-slate-300">
+                                                        <div className="h-full bg-indigo-700 shadow-sm" style={{ width: `${Math.min(100, categoryTotals.totalPct)}%` }} />
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 )}
-                            </tbody>
-                            {categoryList.length > 0 && (
-                                <tfoot className="sticky bottom-0 z-20 bg-slate-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-                                    <tr className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-800">
-                                        <td className="px-8 py-6">
-                                            <div className="flex items-center gap-4">
-                                                <div className="w-2 h-10 rounded-full bg-slate-800" />
-                                                <span className="font-black text-slate-800">TOTAL</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-6 font-black text-slate-800">{formatRupiah(categoryTotals.totalApproved)}</td>
-                                        <td className="px-8 py-6 font-black text-rose-600">{formatRupiah(categoryTotals.totalUsed)}</td>
-                                        <td className="px-8 py-6">
-                                            <span className={`text-lg font-black ${categoryTotals.totalAvailable < 0 ? 'text-rose-600' : 'text-indigo-600'}`}>
-                                                {formatRupiah(categoryTotals.totalAvailable)}
-                                            </span>
-                                        </td>
-                                        <td className="px-8 py-6 text-center text-slate-800 font-black">
-                                            {categoryTotals.totalReturned > 0 ? formatRupiah(categoryTotals.totalReturned) : '—'}
-                                        </td>
-                                        <td className="px-8 py-6 text-right w-64">
-                                            <div className="flex flex-col gap-2">
-                                                <div className="flex justify-between items-center text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                                                    <span>Total Terpakai</span><span>{categoryTotals.totalPct.toFixed(1)}%</span>
-                                                </div>
-                                                <div className="w-full bg-slate-200 h-3 rounded-full overflow-hidden border border-slate-300">
-                                                    <div className="h-full bg-indigo-700 shadow-sm" style={{ width: `${Math.min(100, categoryTotals.totalPct)}%` }} />
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            )}
-                        </table>
+                            </table>
+                        </div>
                     </div>
-                </div>
+                )
             )}
 
             {/* ── SUPERADMIN: Verifikasi Pengembalian Dana */}
@@ -599,218 +964,120 @@ export default function FundAvailability() {
                 <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] border-2 border-indigo-100">
                     <div className="p-6 bg-indigo-600 text-white flex items-center justify-between">
                         <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
-                            <HandCoins className="text-indigo-200" size={16} /> Antrean Pengembalian Sisa Dana
+                            <HandCoins size={18} /> Verifikasi Pengembalian Sisa Dana ({pendingReturns.length})
                         </h3>
-                        <span className="bg-white/20 px-3 py-1 rounded-full text-[10px] font-black">{pendingReturns.length} Antrean</span>
                     </div>
-                    <div className="p-6">
-                        <div className="space-y-4">
-                            {pendingReturns.map(ret => {
-                                const unitLabel = units.find(u => u.id === ret.unitId)?.name || fields.find(f => f.id === ret.fieldId)?.name || 'Unknown';
-                                return (
-                                    <div key={ret.id} className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
-                                        <div>
-                                            <div className="flex items-center gap-2 mb-1">
-                                                <span className="text-xs font-black text-slate-800">{unitLabel}</span>
-                                                <span className="text-[10px] font-bold text-slate-400">• {ret.date}</span>
-                                            </div>
-                                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">{ret.description}</p>
-                                            {ret.buktiTeks && (
-                                                <div className="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-2 rounded-lg inline-flex items-center gap-2">
-                                                    <UploadCloud size={14} /> Bukti: {ret.buktiTeks}
-                                                </div>
-                                            )}
+                    <div className="p-6 divide-y divide-slate-100">
+                        {pendingReturns.map(ret => {
+                            const uName = units?.find(u => u.id === ret.unitId)?.name || fields?.find(f => f.id === ret.fieldId)?.name || 'Unit/Bidang';
+                            return (
+                                <div key={ret.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-black text-slate-800 text-sm">{uName}</span>
+                                            <span className="text-[10px] font-bold text-slate-400">({ret.date})</span>
                                         </div>
-                                        <div className="flex items-center gap-4">
-                                            <span className="text-lg font-black text-emerald-600">{formatRupiah(parseFloat(ret.amount || 0))}</span>
-                                            <div className="flex items-center gap-2">
-                                                <button 
-                                                    onClick={() => setReviewData(ret)}
-                                                    className="p-2 bg-indigo-100 text-indigo-700 hover:bg-indigo-600 hover:text-white rounded-xl transition-colors"
-                                                    title="Review Detail"
-                                                >
-                                                    <Eye size={18} />
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleApproveReturn(ret)}
-                                                    disabled={processingId === ret.id}
-                                                    className="p-2 bg-emerald-100 text-emerald-700 hover:bg-emerald-600 hover:text-white rounded-xl transition-colors disabled:opacity-50"
-                                                    title="Terima (ACC)"
-                                                >
-                                                    {processingId === ret.id ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />}
-                                                </button>
-                                                <button 
-                                                    onClick={() => handleRejectReturn(ret)}
-                                                    disabled={processingId === ret.id}
-                                                    className="p-2 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white rounded-xl transition-colors disabled:opacity-50"
-                                                    title="Tolak Pengembalian"
-                                                >
-                                                    {processingId === ret.id ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />}
-                                                </button>
+                                        <div className="text-xs text-slate-500">{ret.description}</div>
+                                        {ret.buktiTeks && (
+                                            <div className="text-[11px] font-mono bg-slate-50 p-2 rounded border border-slate-100 mt-2 text-slate-600">
+                                                Bukti Transfer: {ret.buktiTeks}
                                             </div>
+                                        )}
+                                    </div>
+                                    <div className="flex items-center gap-4">
+                                        <div className="text-right">
+                                            <div className="text-[10px] font-black text-slate-400 uppercase">Nominal</div>
+                                            <div className="text-lg font-black text-indigo-600">{formatRupiah(ret.amount)}</div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleApproveReturn(ret)}
+                                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
+                                            >
+                                                ACC
+                                            </button>
+                                            <button
+                                                onClick={() => handleRejectReturn(ret)}
+                                                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all"
+                                            >
+                                                Tolak
+                                            </button>
                                         </div>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
 
-            {/* ── Info Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-8 bg-indigo-50 rounded-[2.5rem] border border-indigo-100 flex items-start gap-4">
-                    <div className="p-3 bg-white text-indigo-600 rounded-2xl shadow-sm"><Info size={24} /></div>
-                    <div>
-                        <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest mb-2">Informasi Saldo</h4>
-                        <p className="text-sm text-slate-600 leading-relaxed font-semibold">
-                            "Saldo Kas di Tangan" adalah dana yang sudah diajukan dan telah disetujui (ACC) oleh Yayasan, dikurangi dengan laporan realisasi pengeluaran yang dicatat.
-                        </p>
-                    </div>
-                </div>
-                <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 flex items-start gap-4">
-                    <div className="p-3 bg-white text-slate-400 rounded-2xl shadow-sm"><HelpCircle size={24} /></div>
-                    <div>
-                        <h4 className="font-black text-slate-900 uppercase text-xs tracking-widest mb-2">Pencatatan Realisasi</h4>
-                        <p className="text-sm text-slate-500 leading-relaxed font-semibold">
-                            Pastikan segera mencatat pengeluaran di menu Laporan Realisasi agar sisa saldo kas selalu akurat dan up-to-date.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* ── Modal Pengajuan Pengembalian Dana */}
+            {/* ── MODAL PENGEMBALIAN DANA */}
             {showReturnModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                <HandCoins className="text-indigo-600" size={20} /> Ajukan Pengembalian Saldo
-                            </h3>
-                            <button onClick={() => setShowReturnModal(false)} className="text-slate-400 hover:bg-slate-200 p-2 rounded-xl transition-colors">
-                                <X size={18} />
+                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+                    <div className="bg-white rounded-[2rem] p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="font-black text-slate-900 text-lg">Pengembalian Sisa Dana Kas</h3>
+                            <button onClick={() => setShowReturnModal(false)} className="text-slate-400 hover:text-slate-600">
+                                <X size={20} />
                             </button>
                         </div>
-                        <div className="p-6">
-                            <form onSubmit={handleSubmitReturn} className="space-y-5">
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Nominal Dikembalikan</label>
-                                    <div className="relative">
-                                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">Rp</span>
-                                        <input 
-                                            type="number" 
-                                            value={returnForm.amount}
-                                            onChange={e => setReturnForm({...returnForm, amount: e.target.value})}
-                                            className="w-full pl-10 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-black text-slate-700 outline-none transition-all"
-                                            placeholder="Contoh: 50000"
-                                            required
-                                            max={myBalance}
-                                        />
-                                    </div>
-                                    <p className="text-[10px] text-slate-500 font-bold mt-2 px-1">Sisa Saldo Maksimal: <span className="text-indigo-600">{formatRupiah(myBalance)}</span></p>
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Link / Teks Bukti Transfer</label>
-                                    <input 
-                                        type="text" 
-                                        value={returnForm.buktiTeks}
-                                        onChange={e => setReturnForm({...returnForm, buktiTeks: e.target.value})}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 outline-none transition-all"
-                                        placeholder="Misal: Nomor Ref. Transfer / Link GDrive"
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Keterangan Tambahan</label>
-                                    <textarea 
-                                        value={returnForm.description}
-                                        onChange={e => setReturnForm({...returnForm, description: e.target.value})}
-                                        className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 font-bold text-slate-700 outline-none transition-all resize-none h-24"
-                                        placeholder="Penjelasan pengembalian dana..."
-                                    />
-                                </div>
-                                <button 
-                                    type="submit" 
+                        <form onSubmit={handleSubmitReturn} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nominal Pengembalian</label>
+                                <input
+                                    type="number"
+                                    value={returnForm.amount}
+                                    onChange={e => setReturnForm({ ...returnForm, amount: e.target.value })}
+                                    placeholder="Masukkan nominal"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    required
+                                />
+                                <span className="text-[10px] font-bold text-indigo-600 mt-1 block">
+                                    Maksimal sisa saldo: {formatRupiah(statBalance)}
+                                </span>
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bukti Transfer (Nomor/Teks Bukti)</label>
+                                <input
+                                    type="text"
+                                    value={returnForm.buktiTeks}
+                                    onChange={e => setReturnForm({ ...returnForm, buktiTeks: e.target.value })}
+                                    placeholder="Contoh: No. Ref TRX123456"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Keterangan / Catatan</label>
+                                <textarea
+                                    value={returnForm.description}
+                                    onChange={e => setReturnForm({ ...returnForm, description: e.target.value })}
+                                    placeholder="Catatan tambahan (opsional)"
+                                    rows="2"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                            <div className="pt-4 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReturnModal(false)}
+                                    className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl transition-all shadow-lg shadow-indigo-200 active:scale-95 flex items-center justify-center gap-2"
+                                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-200"
                                 >
-                                    {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                                    <span>KIRIM PENGAJUAN</span>
+                                    Kirim Pengajuan
                                 </button>
-                            </form>
-                        </div>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
 
-            {/* ── Modal Review Pengembalian (Superadmin) */}
-            {reviewData && isSuperAdmin && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
-                        <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="font-black text-slate-800 flex items-center gap-2">
-                                <Eye className="text-indigo-600" size={20} /> Review Pengembalian Dana
-                            </h3>
-                            <button onClick={() => setReviewData(null)} className="text-slate-400 hover:bg-slate-200 p-2 rounded-xl transition-colors">
-                                <X size={18} />
-                            </button>
-                        </div>
-                        <div className="p-6 space-y-6">
-                            <div className="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 text-center">
-                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-2">Nominal Dikembalikan</p>
-                                <p className="text-4xl font-black text-indigo-700">{formatRupiah(parseFloat(reviewData.amount || 0))}</p>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Unit / Bidang</p>
-                                    <p className="font-bold text-slate-700">
-                                        {units.find(u => u.id === reviewData.unitId)?.name || fields.find(f => f.id === reviewData.fieldId)?.name || 'Unknown'}
-                                    </p>
-                                </div>
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Tanggal</p>
-                                    <p className="font-bold text-slate-700">{reviewData.date}</p>
-                                </div>
-                            </div>
-
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Keterangan</p>
-                                <p className="font-bold text-slate-700">{reviewData.description || '-'}</p>
-                            </div>
-
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Bukti Transfer (Referensi / Link)</p>
-                                {reviewData.buktiTeks ? (
-                                    <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-200">
-                                        <UploadCloud size={20} className="text-indigo-500" />
-                                        <span className="font-bold text-sm text-slate-600 break-all">{reviewData.buktiTeks}</span>
-                                    </div>
-                                ) : (
-                                    <p className="font-bold text-slate-400 italic text-sm">Tidak ada bukti yang dilampirkan.</p>
-                                )}
-                            </div>
-
-                            <div className="flex items-center gap-4 pt-4 border-t border-slate-100">
-                                <button 
-                                    onClick={() => handleRejectReturn(reviewData)}
-                                    disabled={processingId === reviewData.id}
-                                    className="flex-1 py-4 bg-rose-100 text-rose-700 hover:bg-rose-600 hover:text-white rounded-2xl font-black transition-all flex items-center justify-center gap-2"
-                                >
-                                    {processingId === reviewData.id ? <Loader2 size={18} className="animate-spin" /> : <X size={18} />} TOLAK
-                                </button>
-                                <button 
-                                    onClick={() => handleApproveReturn(reviewData)}
-                                    disabled={processingId === reviewData.id}
-                                    className="flex-1 py-4 bg-emerald-500 text-white hover:bg-emerald-600 rounded-2xl font-black transition-all shadow-lg shadow-emerald-200 active:scale-95 flex items-center justify-center gap-2"
-                                >
-                                    {processingId === reviewData.id ? <Loader2 size={18} className="animate-spin" /> : <FileCheck size={18} />} SETUJUI (ACC)
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
         </div>
     );
 }
