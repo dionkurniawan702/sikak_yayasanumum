@@ -575,10 +575,20 @@ export default function MonthlyReport() {
                     const hasApprovedReport = (budgetReports || []).some(r => {
                         if (r.status !== 'APPROVED' || r.isDeleted) return false;
                         const rReqId = r.budgetRequestId || r.requestId;
-                        if (rReqId) {
-                            return rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true);
+                        if (rReqId && rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true)) {
+                            return true;
                         }
-                        return item.componentId ? r.componentId === item.componentId : false;
+                        if (item.componentId && r.componentId === item.componentId) {
+                            return true;
+                        }
+                        const reportName = (r.category || r.description || '').trim().toLowerCase();
+                        const itemName = (item.name || '').trim().toLowerCase();
+                        if (reportName && itemName && reportName === itemName) {
+                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
+                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                            if (isSameUnit) return true;
+                        }
+                        return false;
                     });
                     if (hasApprovedReport) return;
                     
@@ -733,10 +743,20 @@ export default function MonthlyReport() {
                     const hasApprovedReport = (budgetReports || []).some(r => {
                         if (r.status !== 'APPROVED' || r.isDeleted) return false;
                         const rReqId = r.budgetRequestId || r.requestId;
-                        if (rReqId) {
-                            return rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true);
+                        if (rReqId && rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true)) {
+                            return true;
                         }
-                        return item.componentId ? r.componentId === item.componentId : false;
+                        if (item.componentId && r.componentId === item.componentId) {
+                            return true;
+                        }
+                        const reportName = (r.category || r.description || '').trim().toLowerCase();
+                        const itemName = (item.name || '').trim().toLowerCase();
+                        if (reportName && itemName && reportName === itemName) {
+                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
+                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                            if (isSameUnit) return true;
+                        }
+                        return false;
                     });
                     if (hasApprovedReport) return;
 
