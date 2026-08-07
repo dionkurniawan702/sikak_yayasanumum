@@ -26,6 +26,37 @@ function AsetBadge({ kategori, umurEkonomis }) {
     );
 }
 
+function resolveReportRequest(report, budgetRequests) {
+    if (!report || !budgetRequests || budgetRequests.length === 0) return null;
+
+    if (report.componentId) {
+        const found = budgetRequests.find(r => 
+            r.status === 'APPROVED' && 
+            r.items && 
+            r.items.some(i => i.componentId === report.componentId)
+        );
+        if (found) return found;
+    }
+
+    const rReqId = report.budgetRequestId || report.requestId;
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) return found;
+    }
+
+    if (report.category) {
+        const found = budgetRequests.find(r => 
+            r.status === 'APPROVED' &&
+            (r.unitId === report.unitId || r.fieldId === report.fieldId) &&
+            r.items &&
+            r.items.some(i => i.name === report.category)
+        );
+        if (found) return found;
+    }
+
+    return null;
+}
+
 export default function ArchiveReports() {
     const { state } = useApp();
     const { currentUser, budgetReports = [], budgetRequests = [], units = [], fields = [], academicYears = [], globalAcademicYearId, expenseItems = [] } = state;
@@ -141,7 +172,7 @@ export default function ArchiveReports() {
             const monthLabel = yearMonths.find(ym => ym.id === monthId)?.label || monthId;
 
             // Find associated budget request
-            const req = budgetRequests.find(q => q.id === r.budgetRequestId);
+            const req = resolveReportRequest(r, budgetRequests);
             const reqMonthId = req?.month || null;
             const reqMonthLabel = reqMonthId ? (yearMonths.find(ym => ym.id === reqMonthId)?.label || reqMonthId) : '—';
 

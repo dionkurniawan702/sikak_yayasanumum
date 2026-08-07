@@ -43,13 +43,44 @@ function formatMonthLabel(monthStr) {
     return monthStr;
 }
 
+function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
+    if (!report || !budgetRequests || budgetRequests.length === 0) return null;
+
+    if (report.componentId) {
+        const found = budgetRequests.find(r => 
+            r.status === 'APPROVED' && 
+            r.items && 
+            r.items.some(i => i.componentId === report.componentId)
+        );
+        if (found) return found;
+    }
+
+    const rReqId = report.budgetRequestId || report.requestId;
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) return found;
+    }
+
+    if (report.category) {
+        const found = budgetRequests.find(r => 
+            r.status === 'APPROVED' &&
+            (r.unitId === report.unitId || r.fieldId === report.fieldId) &&
+            r.items &&
+            r.items.some(i => i.name === report.category)
+        );
+        if (found) return found;
+    }
+
+    return null;
+}
+
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, globalAcademicYearId }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
     
-    const req = budgetRequests?.find(r => r.id === (report.budgetRequestId || report.requestId));
+    const req = resolveReportRequest(report, budgetRequests, globalAcademicYearId);
     const reqMonthLabel = req?.month ? formatMonthLabel(req.month) : '—';
 
     let exId = report.expenseItemId;
@@ -1025,7 +1056,7 @@ export default function BOSMonthlyReport() {
                 (r.buktiTeks || '').toLowerCase().includes(q);
             const matchKategori = filterKategori === 'ALL' || r.kategoriAset === filterKategori;
             const matchRequestMonth = filterRequestMonth === 'ALL' || (() => {
-                const req = budgetRequests.find(q => q.id === (r.budgetRequestId || r.requestId));
+                const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
                 return req?.month === filterRequestMonth;
             })();
             const rDate = r.date ? new Date(r.date) : null;
@@ -1033,7 +1064,7 @@ export default function BOSMonthlyReport() {
             const matchTo = !filterDateTo || (rDate && rDate <= new Date(filterDateTo));
             return matchSearch && matchKategori && matchRequestMonth && matchFrom && matchTo;
         });
-    }, [baseReports, search, filterKategori, filterRequestMonth, filterDateFrom, filterDateTo, budgetRequests]);
+    }, [baseReports, search, filterKategori, filterRequestMonth, filterDateFrom, filterDateTo, budgetRequests, globalAcademicYearId]);
 
     // Summary stats for history
     const totalNilai = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
@@ -1055,8 +1086,7 @@ export default function BOSMonthlyReport() {
         return baseReports.filter(r => {
             if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
             if (pendingMonthFilter !== 'ALL') {
-                const rReqId = r.budgetRequestId || r.requestId;
-                const req = budgetRequests.find(b => b.id === rReqId);
+                const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
                 if (req) {
                     return req.month === pendingMonthFilter;
                 }
@@ -1064,14 +1094,13 @@ export default function BOSMonthlyReport() {
             }
             return true;
         }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-    }, [baseReports, pendingMonthFilter, budgetRequests]);
+    }, [baseReports, pendingMonthFilter, budgetRequests, globalAcademicYearId]);
 
     const totalPengembalian = useMemo(() => {
         return baseReports.filter(r => {
             if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
             if (pendingMonthFilter !== 'ALL') {
-                const rReqId = r.budgetRequestId || r.requestId;
-                const req = budgetRequests.find(b => b.id === rReqId);
+                const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
                 if (req) {
                     return req.month === pendingMonthFilter;
                 }
@@ -1079,7 +1108,7 @@ export default function BOSMonthlyReport() {
             }
             return true;
         }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-    }, [baseReports, pendingMonthFilter, budgetRequests]);
+    }, [baseReports, pendingMonthFilter, budgetRequests, globalAcademicYearId]);
 
     const totalSisa = useMemo(() => {
         return Math.max(0, totalCair - totalPengeluaran);
@@ -1096,8 +1125,7 @@ export default function BOSMonthlyReport() {
         const totalPengeluaranHistory = baseReports.filter(r => {
             if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
             if (filterRequestMonth !== 'ALL') {
-                const rReqId = r.budgetRequestId || r.requestId;
-                const req = budgetRequests.find(b => b.id === rReqId);
+                const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
                 if (req) {
                     return req.month === filterRequestMonth;
                 }
