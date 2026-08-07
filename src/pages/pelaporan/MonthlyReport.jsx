@@ -367,7 +367,7 @@ export default function MonthlyReport() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
-    // Clear notifications for unit admin when they visit
+    // Clear notifications for unit admin when they visit (local state update only, no background network push)
     React.useEffect(() => {
         if (!isSuperAdmin && budgetReports?.length > 0) {
             const unnotified = budgetReports.filter(r => {
@@ -378,11 +378,10 @@ export default function MonthlyReport() {
                 unnotified.forEach(r => {
                     const updated = { ...r, notified: true };
                     dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-                    api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
                 });
             }
         }
-    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, dispatch, state]);
+    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, dispatch]);
 
     const reportedAmounts = useMemo(() => {
         const map = {};

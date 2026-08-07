@@ -246,7 +246,7 @@ export default function FundAvailability() {
         });
     }, [baseReports, selectedMonth, budgetRequests, globalAcademicYearId]);
 
-    // ── Clear notifications for unit/bidang when viewing this page
+    // ── Clear notifications for unit/bidang when viewing this page (local state update only, no background network push)
     useEffect(() => {
         if (!isSuperAdmin && budgetReports) {
             const unnotified = budgetReports.filter(r => {
@@ -257,11 +257,10 @@ export default function FundAvailability() {
                 unnotified.forEach(r => {
                     const updated = { ...r, notified: true };
                     dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-                    api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
                 });
             }
         }
-    }, [isSuperAdmin, budgetReports, myUnitId, myFieldId, dispatch, state]);
+    }, [isSuperAdmin, budgetReports, myUnitId, myFieldId, dispatch]);
 
     // ── Aggregate totals (Synchronized 100% with MonthlyReport.jsx)
     const totalApproved = activeRequestsFiltered.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);

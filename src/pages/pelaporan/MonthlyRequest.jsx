@@ -155,7 +155,7 @@ export default function MonthlyRequest() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
-    // Clear notifications for unit admin when they visit
+    // Clear notifications for unit admin when they visit (local state update only, no background network push)
     React.useEffect(() => {
         if (!isSuperAdmin && budgetRequests?.length > 0) {
             const unnotified = budgetRequests.filter(r => {
@@ -166,11 +166,10 @@ export default function MonthlyRequest() {
                 unnotified.forEach(r => {
                     const updated = { ...r, notified: true };
                     dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                    api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
                 });
             }
         }
-    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, dispatch, state]);
+    }, [budgetRequests, isSuperAdmin, myUnitId, myFieldId, dispatch]);
 
     const filteredRequests = useMemo(() => {
         return (budgetRequests || []).filter(req => {

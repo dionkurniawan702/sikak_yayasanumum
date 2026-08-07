@@ -473,7 +473,6 @@ function RABContent() {
                             updatedAt: new Date().toISOString()
                         };
                         dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                        await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
                         needsUpdate = true;
                     }
                     else if (plan.status === 'APPROVED' && hasPendingComp) {
@@ -517,7 +516,6 @@ function RABContent() {
                             updatedAt: new Date().toISOString()
                         };
                         dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                        await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
                         needsUpdate = true;
                     }
                     else if (plan.status === 'DRAFT' && hasPendingComp) {
@@ -561,7 +559,6 @@ function RABContent() {
                             updatedAt: new Date().toISOString()
                         };
                         dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                        await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
                         needsUpdate = true;
                     }
                 }
