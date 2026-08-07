@@ -29,29 +29,44 @@ function AsetBadge({ kategori, umurEkonomis }) {
 function resolveReportRequest(report, budgetRequests) {
     if (!report || !budgetRequests || budgetRequests.length === 0) return null;
 
-    if (report.componentId) {
-        const found = budgetRequests.find(r => 
-            r.status === 'APPROVED' && 
-            r.items && 
-            r.items.some(i => i.componentId === report.componentId)
-        );
-        if (found) return found;
-    }
-
+    // 1. Check exact budgetRequestId / requestId FIRST
     const rReqId = report.budgetRequestId || report.requestId;
     if (rReqId) {
         const found = budgetRequests.find(r => r.id === rReqId);
         if (found) return found;
     }
 
+    // 2. Check matching componentId in approved budgetRequests (matching unit if present)
+    if (report.componentId) {
+        const found = budgetRequests.find(r => 
+            r.status === 'APPROVED' && 
+            (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
+            r.items && 
+            r.items.some(i => i.componentId === report.componentId)
+        );
+        if (found) return found;
+    }
+
+    // 3. Search by category
     if (report.category) {
         const found = budgetRequests.find(r => 
             r.status === 'APPROVED' &&
-            (r.unitId === report.unitId || r.fieldId === report.fieldId) &&
+            (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
             r.items &&
-            r.items.some(i => i.name === report.category)
+            r.items.some(i => (i.name || '').trim().toLowerCase() === (report.category || '').trim().toLowerCase())
         );
         if (found) return found;
+    }
+
+    // 4. Fallback: match by date month and unit
+    if (report.date) {
+        const reportMonth = report.date.substring(0, 7);
+        const foundByDate = budgetRequests.find(r => {
+            const isSameUnit = (r.unitId && (r.unitId === report.unitId || r.unitId === report.fieldId)) ||
+                               (r.fieldId && (r.fieldId === report.unitId || r.fieldId === report.fieldId));
+            return isSameUnit && r.status === 'APPROVED' && r.month === reportMonth;
+        });
+        if (foundByDate) return foundByDate;
     }
 
     return null;
