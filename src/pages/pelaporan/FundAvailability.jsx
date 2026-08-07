@@ -6,13 +6,33 @@ import { api } from '../../services/api';
 
 // Helper formatting bulan ID
 function formatMonthLabel(mStr) {
-    if (!mStr) return 'Semua Bulan';
+    if (!mStr || mStr === 'ALL') return 'Semua Bulan';
     if (mStr.includes('-')) {
         const [y, m] = mStr.split('-');
         const date = new Date(parseInt(y), parseInt(m) - 1, 1);
         return date.toLocaleDateString('id-ID', { month: 'long', year: 'numeric' });
     }
     return mStr;
+}
+
+// Helper resolve report to budget request
+function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
+    if (!report) return null;
+    const reqId = report.budgetRequestId || report.requestId;
+    if (reqId) {
+        const found = (budgetRequests || []).find(r => r.id === reqId);
+        if (found) return found;
+    }
+    if (report.date && budgetRequests) {
+        const reportMonth = report.date.substring(0, 7);
+        const found = budgetRequests.find(r => {
+            const isSameUnit = (r.unitId && (r.unitId === report.unitId || r.unitId === report.fieldId)) ||
+                               (r.fieldId && (r.fieldId === report.unitId || r.fieldId === report.fieldId));
+            return isSameUnit && r.status === 'APPROVED' && r.month === reportMonth;
+        });
+        if (found) return found;
+    }
+    return null;
 }
 
 // ────────────────────────────────────────────────────────────
@@ -23,13 +43,13 @@ function calcEntityBalance(requests, reports) {
     const used = reports.filter(r => r.kategoriAset !== 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const returned = reports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const pending = requests.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
-    return { approved, used, returned, balance: approved - used - returned, pending };
+    return { approved, used, returned, balance: Math.max(0, approved - used - returned), pending };
 }
 
 // ────────────────────────────────────────────────────────────
 // Baris entitas (unit / bidang) yang bisa di-expand
 // ────────────────────────────────────────────────────────────
-function EntityRow({ name, type, requests, reports, selectedMonth }) {
+function EntityRow({ name, type, requests, reports, selectedMonth, budgetRequests, globalAcademicYearId }) {
     const [open, setOpen] = useState(false);
 
     const filteredRequests = useMemo(() => {
@@ -39,16 +59,14 @@ function EntityRow({ name, type, requests, reports, selectedMonth }) {
 
     const filteredReports = useMemo(() => {
         if (selectedMonth === 'ALL') return reports;
-        const reqIdsForMonth = new Set(requests.filter(r => r.month === selectedMonth).map(r => r.id));
         return reports.filter(r => {
-            if (r.date && r.date.startsWith(selectedMonth)) return true;
-            const rReqId = r.budgetRequestId || r.requestId;
-            if (rReqId && reqIdsForMonth.has(rReqId)) return true;
-            return false;
+            const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+            if (req) return req.month === selectedMonth;
+            return r.date ? r.date.startsWith(selectedMonth) : false;
         });
-    }, [reports, requests, selectedMonth]);
+    }, [reports, selectedMonth, budgetRequests, globalAcademicYearId]);
 
-    const { approved, used, returned, balance, pending } = calcEntityBalance(filteredRequests, filteredReports);
+    const { approved, used, returned, balance } = calcEntityBalance(filteredRequests, filteredReports);
 
     // Rincian per kategori (item)
     const positions = useMemo(() => {
@@ -119,7 +137,7 @@ function EntityRow({ name, type, requests, reports, selectedMonth }) {
 
             {/* Sub-rows: rincian per item */}
             {open && positions.map((pos, idx) => {
-                const avail = pos.totalApproved - pos.totalUsed - (pos.totalReturned || 0);
+                const avail = Math.max(0, pos.totalApproved - pos.totalUsed - (pos.totalReturned || 0));
                 const pct = pos.totalApproved > 0 ? (pos.totalUsed / pos.totalApproved) * 100 : 0;
                 return (
                     <tr key={idx} className="bg-slate-50/80 border-b border-slate-100/60">
@@ -165,7 +183,7 @@ export default function FundAvailability() {
     const [processingId, setProcessingId] = useState(null);
     const [reviewData, setReviewData] = useState(null);
     
-    // NEW STATES: Filter Bulan & Mode Tampilan
+    // STATES: Filter Bulan & Mode Tampilan
     const [selectedMonth, setSelectedMonth] = useState('ALL');
     const [viewMode, setViewMode] = useState('month_breakdown'); // 'month_breakdown' | 'category_breakdown'
     const [expandedRequestIds, setExpandedRequestIds] = useState([]);
@@ -174,69 +192,59 @@ export default function FundAvailability() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
-    // ── Filter by tahun ajaran aktif (Exclude BOS)
-    const yearRequests = useMemo(() =>
+    // ── Filter base requests (Exclude BOS)
+    const baseRequests = useMemo(() =>
         (budgetRequests || []).filter(r => {
-            const isYear = r.academicYearId === globalAcademicYearId;
-            if (!isYear) return false;
+            if (r.academicYearId !== globalAcademicYearId) return false;
             const isBos = (r.items || []).some(item => item.planId?.endsWith('-BOS'));
-            return !isBos;
+            if (isBos) return false;
+            if (!isSuperAdmin) {
+                if (myUnitId && r.unitId !== myUnitId) return false;
+                if (myFieldId && r.fieldId !== myFieldId) return false;
+            }
+            return true;
         }),
-        [budgetRequests, globalAcademicYearId]);
+        [budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, myFieldId]);
 
-    const yearReports = useMemo(() =>
+    // ── Filter base reports (Exclude BOS)
+    const baseReports = useMemo(() =>
         (budgetReports || []).filter(r => {
-            const isYear = r.academicYearId === globalAcademicYearId;
-            if (!isYear) return false;
-            const req = budgetRequests.find(br => br.id === r.budgetRequestId);
+            if (r.academicYearId !== globalAcademicYearId || r.isDeleted || r.status === 'REJECTED') return false;
+            const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
             const isBos = (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
-            return !isBos;
+            if (isBos) return false;
+            if (!isSuperAdmin) {
+                if (myUnitId && r.unitId !== myUnitId) return false;
+                if (myFieldId && r.fieldId !== myFieldId) return false;
+            }
+            return true;
         }),
-        [budgetReports, budgetRequests, globalAcademicYearId]);
-
-    // ── Data untuk user biasa (non-superadmin)
-    const myRequests = useMemo(() => yearRequests.filter(r =>
-        myUnitId ? r.unitId === myUnitId : myFieldId ? r.fieldId === myFieldId : false
-    ), [yearRequests, myUnitId, myFieldId]);
-
-    const myReports = useMemo(() => yearReports.filter(r =>
-        myUnitId ? r.unitId === myUnitId : myFieldId ? r.fieldId === myFieldId : false
-    ), [yearReports, myUnitId, myFieldId]);
+        [budgetReports, budgetRequests, globalAcademicYearId, isSuperAdmin, myUnitId, myFieldId]);
 
     // ── Extract list of available months from requests
     const monthOptions = useMemo(() => {
         const set = new Set();
-        const targetReqs = isSuperAdmin ? yearRequests : myRequests;
-        targetReqs.filter(r => r.status === 'APPROVED' && r.month).forEach(r => {
+        baseRequests.filter(r => r.status === 'APPROVED' && r.month).forEach(r => {
             set.add(r.month);
         });
         return Array.from(set).sort().reverse();
-    }, [isSuperAdmin, yearRequests, myRequests]);
+    }, [baseRequests]);
 
     // ── Filter requests & reports based on selected month
     const activeRequestsFiltered = useMemo(() => {
-        const base = isSuperAdmin ? yearRequests : myRequests;
-        if (selectedMonth === 'ALL') return base;
-        return base.filter(r => r.month === selectedMonth);
-    }, [isSuperAdmin, yearRequests, myRequests, selectedMonth]);
+        if (selectedMonth === 'ALL') return baseRequests;
+        return baseRequests.filter(r => r.month === selectedMonth);
+    }, [baseRequests, selectedMonth]);
 
     const activeReportsFiltered = useMemo(() => {
-        const base = isSuperAdmin ? yearReports : myReports;
-        if (selectedMonth === 'ALL') return base;
+        if (selectedMonth === 'ALL') return baseReports;
 
-        const reqIdsForMonth = new Set(
-            (isSuperAdmin ? yearRequests : myRequests)
-                .filter(r => r.month === selectedMonth)
-                .map(r => r.id)
-        );
-
-        return base.filter(r => {
-            if (r.date && r.date.startsWith(selectedMonth)) return true;
-            const rReqId = r.budgetRequestId || r.requestId;
-            if (rReqId && reqIdsForMonth.has(rReqId)) return true;
-            return false;
+        return baseReports.filter(r => {
+            const req = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+            if (req) return req.month === selectedMonth;
+            return r.date ? r.date.startsWith(selectedMonth) : false;
         });
-    }, [isSuperAdmin, yearReports, myReports, yearRequests, myRequests, selectedMonth]);
+    }, [baseReports, selectedMonth, budgetRequests, globalAcademicYearId]);
 
     // ── Clear notifications for unit/bidang when viewing this page
     useEffect(() => {
@@ -255,54 +263,23 @@ export default function FundAvailability() {
         }
     }, [isSuperAdmin, budgetReports, myUnitId, myFieldId, dispatch, state]);
 
-    // ── Aggregate superadmin (Filtered by month)
+    // ── Aggregate totals (Synchronized 100% with MonthlyReport.jsx)
     const totalApproved = activeRequestsFiltered.filter(r => r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0);
     const totalUsed = activeReportsFiltered.filter(r => r.kategoriAset !== 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const totalReturned = activeReportsFiltered.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-    const totalBalance = totalApproved - totalUsed - totalReturned;
+    const totalBalance = Math.max(0, totalApproved - totalUsed - totalReturned);
     const totalPending = activeRequestsFiltered.filter(r => r.status === 'PENDING').reduce((s, r) => s + (parseFloat(r.totalAmount) || 0), 0) + 
                          activeReportsFiltered.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
-    // ── Aggregate user biasa (Filtered by month)
-    const myApproved = totalApproved;
-    const myUsed = totalUsed;
-    const myReturned = totalReturned;
-    const myBalance = totalBalance;
-    const myPending = totalPending;
+    // Stat card values
+    const statApproved = totalApproved;
+    const statUsed = totalUsed;
+    const statBalance = totalBalance;
+    const statPending = totalPending;
 
     // ── Daftar unit & bidang yang punya data (untuk superadmin)
     const activeUnits = useMemo(() => (units || []).filter(u => !u.isDeleted), [units]);
     const activeFields = useMemo(() => (fields || []).filter(f => !f.isDeleted), [fields]);
-
-    const superadminActiveStats = useMemo(() => {
-        let activeApproved = 0;
-        let activeUsed = 0;
-        let activeBalance = 0;
-
-        activeUnits.forEach(u => {
-            const reqs = activeRequestsFiltered.filter(r => r.unitId === u.id);
-            const reps = activeReportsFiltered.filter(r => r.unitId === u.id);
-            const { approved, used, returned, balance } = calcEntityBalance(reqs, reps);
-            if (balance > 0) {
-                activeApproved += approved;
-                activeUsed += used;
-                activeBalance += balance;
-            }
-        });
-
-        activeFields.forEach(f => {
-            const reqs = activeRequestsFiltered.filter(r => r.fieldId === f.id && !r.unitId);
-            const reps = activeReportsFiltered.filter(r => r.fieldId === f.id && !r.unitId);
-            const { approved, used, returned, balance } = calcEntityBalance(reqs, reps);
-            if (balance > 0) {
-                activeApproved += approved;
-                activeUsed += used;
-                activeBalance += balance;
-            }
-        });
-
-        return { approved: activeApproved, used: activeUsed, balance: activeBalance };
-    }, [activeUnits, activeFields, activeRequestsFiltered, activeReportsFiltered]);
 
     // ── Grouping breakdown per Surat Permintaan Dana (Per Bulan)
     const monthBreakdownCards = useMemo(() => {
@@ -403,7 +380,7 @@ export default function FundAvailability() {
         const totalApproved = categoryList.reduce((sum, item) => sum + item.totalApproved, 0);
         const totalUsed = categoryList.reduce((sum, item) => sum + item.totalUsed, 0);
         const totalReturned = categoryList.reduce((sum, item) => sum + (item.totalReturned || 0), 0);
-        const totalAvailable = totalApproved - totalUsed - totalReturned;
+        const totalAvailable = Math.max(0, totalApproved - totalUsed - totalReturned);
         const totalPct = totalApproved > 0 ? (totalUsed / totalApproved) * 100 : 0;
         return { totalApproved, totalUsed, totalReturned, totalAvailable, totalPct };
     }, [categoryList]);
@@ -417,10 +394,10 @@ export default function FundAvailability() {
     const handleSubmitReturn = async (e) => {
         e.preventDefault();
         const amt = parseFloat(returnForm.amount);
-        const myPendingReturns = myReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        const myPendingReturns = baseReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         
         if (isNaN(amt) || amt <= 0) return alert('Nominal tidak valid!');
-        if (amt > (myBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
+        if (amt > (statBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
         if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
 
         setIsSubmitting(true);
@@ -517,23 +494,7 @@ export default function FundAvailability() {
         }
     };
 
-    const pendingReturns = yearReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'PENDING');
-
-    // Stat cards
-    const statApproved = isSuperAdmin 
-        ? superadminActiveStats.approved 
-        : (totalBalance > 0 ? totalApproved : 0);
-
-    const statUsed = isSuperAdmin 
-        ? superadminActiveStats.used 
-        : (totalBalance > 0 ? totalUsed : 0);
-
-    const statBalance = isSuperAdmin 
-        ? superadminActiveStats.balance 
-        : (totalBalance > 0 ? totalBalance : 0);
-
-    const statPending = isSuperAdmin ? totalPending : myPending;
-
+    const pendingReturns = baseReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'PENDING');
     const unitName = units?.find(u => u.id === myUnitId)?.name || fields?.find(f => f.id === myFieldId)?.name || 'Yayasan';
 
     return (
@@ -678,9 +639,11 @@ export default function FundAvailability() {
                                         key={unit.id}
                                         name={unit.name}
                                         type="unit"
-                                        requests={yearRequests.filter(r => r.unitId === unit.id)}
-                                        reports={yearReports.filter(r => r.unitId === unit.id)}
+                                        requests={baseRequests.filter(r => r.unitId === unit.id)}
+                                        reports={baseReports.filter(r => r.unitId === unit.id)}
                                         selectedMonth={selectedMonth}
+                                        budgetRequests={budgetRequests}
+                                        globalAcademicYearId={globalAcademicYearId}
                                     />
                                 ))}
                                 {/* Fields (bidang) */}
@@ -689,9 +652,11 @@ export default function FundAvailability() {
                                         key={field.id}
                                         name={field.name}
                                         type="field"
-                                        requests={yearRequests.filter(r => r.fieldId === field.id && !r.unitId)}
-                                        reports={yearReports.filter(r => r.fieldId === field.id && !r.unitId)}
+                                        requests={baseRequests.filter(r => r.fieldId === field.id && !r.unitId)}
+                                        reports={baseReports.filter(r => r.fieldId === field.id && !r.unitId)}
                                         selectedMonth={selectedMonth}
+                                        budgetRequests={budgetRequests}
+                                        globalAcademicYearId={globalAcademicYearId}
                                     />
                                 ))}
                                 {activeUnits.length === 0 && activeFields.length === 0 && (
@@ -888,7 +853,7 @@ export default function FundAvailability() {
                                         </tr>
                                     ) : (
                                         categoryList.map((item, idx) => {
-                                            const available = item.totalApproved - item.totalUsed - (item.totalReturned || 0);
+                                            const available = Math.max(0, item.totalApproved - item.totalUsed - (item.totalReturned || 0));
                                             const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
                                             return (
                                                 <tr key={idx} className="hover:bg-slate-50 transition-colors group">
