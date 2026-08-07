@@ -178,7 +178,7 @@ export default function FundAvailability() {
     const { currentUser, budgetRequests, budgetReports, units, fields, globalAcademicYearId } = state;
 
     const [showReturnModal, setShowReturnModal] = useState(false);
-    const [returnForm, setReturnForm] = useState({ amount: '', buktiTeks: '', description: '' });
+    const [returnForm, setReturnForm] = useState({ amount: '', buktiTeks: '', description: '', budgetRequestId: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [processingId, setProcessingId] = useState(null);
     const [reviewData, setReviewData] = useState(null);
@@ -413,6 +413,8 @@ export default function FundAvailability() {
                 id: 'RET-' + Date.now().toString(36).toUpperCase(),
                 unitId: myUnitId,
                 fieldId: myFieldId,
+                budgetRequestId: returnForm.budgetRequestId || null,
+                requestId: returnForm.budgetRequestId || null,
                 academicYearId: globalAcademicYearId,
                 date: new Date().toISOString().split('T')[0],
                 amount: amt,
@@ -427,7 +429,7 @@ export default function FundAvailability() {
             await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
             
             setShowReturnModal(false);
-            setReturnForm({ amount: '', buktiTeks: '', description: '' });
+            setReturnForm({ amount: '', buktiTeks: '', description: '', budgetRequestId: '' });
             alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Yayasan.');
         } catch (err) {
             console.error(err);
@@ -987,7 +989,52 @@ export default function FundAvailability() {
                         </div>
                         <form onSubmit={handleSubmitReturn} className="space-y-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nominal Pengembalian</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bulan Permintaan Dana (Surat REQ)</label>
+                                <select
+                                    value={returnForm.budgetRequestId || ''}
+                                    onChange={e => {
+                                        const reqId = e.target.value;
+                                        const chosenCard = monthBreakdownCards.find(c => c.reqId === reqId);
+                                        if (chosenCard) {
+                                            setReturnForm({
+                                                ...returnForm,
+                                                budgetRequestId: reqId,
+                                                amount: chosenCard.reqSisa > 0 ? chosenCard.reqSisa : '',
+                                                description: `Pengembalian Sisa Dana Request ${formatMonthLabel(chosenCard.reqMonth)}`
+                                            });
+                                        } else {
+                                            setReturnForm({
+                                                ...returnForm,
+                                                budgetRequestId: reqId,
+                                                amount: '',
+                                                description: ''
+                                            });
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    required
+                                >
+                                    <option value="">-- Pilih Bulan Permintaan --</option>
+                                    {monthBreakdownCards.map(c => (
+                                        <option key={c.reqId} value={c.reqId}>
+                                            {formatMonthLabel(c.reqMonth)} - REQ [{c.reqId.slice(-8)}] (Sisa: {formatRupiah(c.reqSisa)})
+                                        </option>
+                                    ))}
+                                </select>
+                                {returnForm.budgetRequestId && (() => {
+                                    const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
+                                    if (chosen) {
+                                        return (
+                                            <span className="text-[11px] font-black text-emerald-600 mt-1.5 block bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                                                💡 Sisa Pagu Belum Dilaporkan ({formatMonthLabel(chosen.reqMonth)}): {formatRupiah(chosen.reqSisa)}
+                                            </span>
+                                        );
+                                    }
+                                    return null;
+                                })()}
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nominal Pengembalian (Rp)</label>
                                 <input
                                     type="number"
                                     value={returnForm.amount}
@@ -997,7 +1044,7 @@ export default function FundAvailability() {
                                     required
                                 />
                                 <span className="text-[10px] font-bold text-indigo-600 mt-1 block">
-                                    Maksimal sisa saldo: {formatRupiah(statBalance)}
+                                    Maksimal total sisa saldo: {formatRupiah(statBalance)}
                                 </span>
                             </div>
                             <div>
