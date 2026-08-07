@@ -1282,6 +1282,29 @@ export default function MonthlyReport() {
         return Math.max(0, totalCair - totalPengeluaran);
     }, [totalCair, totalPengeluaran]);
 
+    const totalSisaForHistory = useMemo(() => {
+        const approvedReqsInHistoryFilter = requestsForYear
+            .filter(r => r.status === 'APPROVED')
+            .filter(r => filterRequestMonth === 'ALL' || r.month === filterRequestMonth)
+            .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter);
+
+        const approvedReqIdsHistorySet = new Set(approvedReqsInHistoryFilter.map(r => r.id));
+
+        const totalCairHistory = approvedReqsInHistoryFilter.reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
+
+        const totalPengeluaranHistory = baseReports.filter(r => {
+            if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (filterRequestMonth !== 'ALL') {
+                if (rReqId) return approvedReqIdsHistorySet.has(rReqId);
+                return r.date ? r.date.startsWith(filterRequestMonth) : false;
+            }
+            return true;
+        }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+
+        return Math.max(0, totalCairHistory - totalPengeluaranHistory);
+    }, [requestsForYear, filterRequestMonth, isSuperAdmin, selectedUnitFilter, baseReports]);
+
     const [editingDraftId, setEditingDraftId] = useState(null);
     const [formData, setFormData] = useState({
         date: new Date().toISOString().split('T')[0],
@@ -1978,14 +2001,15 @@ export default function MonthlyReport() {
             </div>
             ) : activeTab === 'history' ? (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                         {[
-                            { label: 'Total Laporan', value: filteredReports.length, unit: 'transaksi', color: 'indigo' },
-                            { label: 'Total Nilai', value: formatRupiah(totalNilai), unit: '', color: 'slate' },
-                            { label: 'Kategori Aset', value: totalAset, unit: 'transaksi', color: 'emerald' },
-                            { label: 'Non Aset', value: totalNonAset, unit: 'transaksi', color: 'amber' },
+                            { label: 'Total Laporan', value: filteredReports.length, unit: 'transaksi', color: 'border-l-indigo-500' },
+                            { label: 'Total Nilai', value: formatRupiah(totalNilai), unit: '', color: 'border-l-slate-400' },
+                            { label: 'Total Sisa', value: formatRupiah(totalSisaForHistory), unit: '', color: 'border-l-amber-500' },
+                            { label: 'Kategori Aset', value: totalAset, unit: 'transaksi', color: 'border-l-emerald-500' },
+                            { label: 'Non Aset', value: totalNonAset, unit: 'transaksi', color: 'border-l-blue-500' },
                         ].map((s, i) => (
-                            <div key={i} className={`card p-5 border-l-4 ${i === 0 ? 'border-l-indigo-500' : i === 1 ? 'border-l-slate-400' : i === 2 ? 'border-l-emerald-500' : 'border-l-amber-500'}`}>
+                            <div key={i} className={`card p-5 border-l-4 ${s.color}`}>
                                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">{s.label}</p>
                                 <p className="text-xl font-black text-slate-800">{s.value}</p>
                                 {s.unit && <p className="text-[9px] text-slate-400 font-bold">{s.unit}</p>}
