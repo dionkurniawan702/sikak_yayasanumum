@@ -489,67 +489,42 @@ export default function BOSMonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return;
 
-            // Skip requests that already have approved/verified reports by Superadmin (unused items in verified months are treated as closed/nihil)
-            const reqHasApprovedReport = (budgetReports || []).some(r => {
-                if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) ||
-                                   (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                if (!isSameUnit) return false;
-
-                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolvedReq && (resolvedReq.id === req.id || resolvedReq.month === req.month)) return true;
-
-                const rReqId = r.budgetRequestId || r.requestId;
-                if (rReqId && rReqId === req.id) return true;
-                if (req.month && r.date && r.date.startsWith(req.month)) return true;
-
-                return false;
-            });
-            if (reqHasApprovedReport) return;
-
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     
-                    // Skip items that have been verified (APPROVED) by Superadmin
-                    const hasApprovedReport = (budgetReports || []).some(r => {
-                        if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                        const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
-                                           (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                        if (!isSameUnit) return false;
-
-                        if (item.componentId && r.componentId === item.componentId) {
-                            return true;
-                        }
-
-                        const reportName = (r.category || r.description || '').trim().toLowerCase();
-                        const itemName = (item.name || '').trim().toLowerCase();
-                        if (reportName && itemName && reportName === itemName) {
-                            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                            if (resolvedReq && resolvedReq.id === req.id) return true;
-                            const rReqId = r.budgetRequestId || r.requestId;
-                            if (!rReqId || rReqId === req.id) return true;
-                        }
-                        return false;
-                    });
-                    if (hasApprovedReport) return;
-
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
                     if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
                         reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
-                    } else if (item.componentId) {
-                        const reportsNoReqId = (budgetReports || []).filter(r => 
-                            !r.isDeleted && r.status !== 'REJECTED' && 
-                            !r.budgetRequestId && !r.requestId && 
-                            r.componentId === item.componentId
-                        );
-                        reportedComp = reportsNoReqId.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                    } else {
+                        const matchingReports = (budgetReports || []).filter(r => {
+                            if (r.isDeleted || r.status === 'REJECTED') return false;
+                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
+                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                            if (!isSameUnit) return false;
+
+                            if (item.componentId && r.componentId === item.componentId) return true;
+
+                            const reportName = (r.category || r.description || '').trim().toLowerCase();
+                            const itemName = (item.name || '').trim().toLowerCase();
+                            if (reportName && itemName && reportName === itemName) {
+                                const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                                if (resolved && resolved.id === req.id) return true;
+                                const rReqId = r.budgetRequestId || r.requestId;
+                                if (!rReqId || rReqId === req.id) return true;
+                            }
+                            return false;
+                        });
+                        reportedComp = matchingReports.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
                     }
 
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisa = itemAmount - reportedComp;
+
+                    // Skip items that have no remaining balance
+                    if (sisa <= 0) return;
 
                     items.push({
                         ...item,
@@ -665,53 +640,41 @@ export default function BOSMonthlyReport() {
 
             if (activeBalance <= 0) return;
 
-            // Skip requests that already have approved/verified reports by Superadmin (unused items in verified months are treated as closed/nihil)
-            const reqHasApprovedReport = (budgetReports || []).some(r => {
-                if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) ||
-                                   (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                if (!isSameUnit) return false;
-
-                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolvedReq && (resolvedReq.id === req.id || resolvedReq.month === req.month)) return true;
-
-                const rReqId = r.budgetRequestId || r.requestId;
-                if (rReqId && rReqId === req.id) return true;
-                if (req.month && r.date && r.date.startsWith(req.month)) return true;
-
-                return false;
-            });
-            if (reqHasApprovedReport) return;
-
             const unitKey = reqUnitId || reqFieldId || 'UNKNOWN';
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed
-                    
-                    const hasApprovedReport = (budgetReports || []).some(r => {
-                        if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                        const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
-                                           (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                        if (!isSameUnit) return false;
 
-                        if (item.componentId && r.componentId === item.componentId) {
-                            return true;
-                        }
+                    const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
+                    let reportedComp = 0;
+                    if (reqCompKey && reportedAmounts?.byRequestComponent?.[reqCompKey] !== undefined) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    } else {
+                        const matchingReports = (budgetReports || []).filter(r => {
+                            if (r.isDeleted || r.status === 'REJECTED') return false;
+                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
+                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                            if (!isSameUnit) return false;
 
-                        const reportName = (r.category || r.description || '').trim().toLowerCase();
-                        const itemName = (item.name || '').trim().toLowerCase();
-                        if (reportName && itemName && reportName === itemName) {
-                            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                            if (resolvedReq && resolvedReq.id === req.id) return true;
-                            const rReqId = r.budgetRequestId || r.requestId;
-                            if (!rReqId || rReqId === req.id) return true;
-                        }
-                        return false;
-                    });
-                    if (hasApprovedReport) return;
+                            if (item.componentId && r.componentId === item.componentId) return true;
 
-                    const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
-                    if (reportedComp < parseFloat(item.amount || 0)) {
+                            const reportName = (r.category || r.description || '').trim().toLowerCase();
+                            const itemName = (item.name || '').trim().toLowerCase();
+                            if (reportName && itemName && reportName === itemName) {
+                                const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                                if (resolved && resolved.id === req.id) return true;
+                                const rReqId = r.budgetRequestId || r.requestId;
+                                if (!rReqId || rReqId === req.id) return true;
+                            }
+                            return false;
+                        });
+                        reportedComp = matchingReports.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                    }
+
+                    const itemAmount = parseFloat(item.amount || 0);
+                    const sisa = itemAmount - reportedComp;
+
+                    if (sisa > 0) {
                         map[unitKey] = (map[unitKey] || 0) + 1;
                     }
                 });
