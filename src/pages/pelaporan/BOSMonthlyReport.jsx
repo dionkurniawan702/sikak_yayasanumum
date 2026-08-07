@@ -1011,7 +1011,7 @@ export default function BOSMonthlyReport() {
             .reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
     }, [requestsForYear, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
 
-    const totalSisa = useMemo(() => {
+    const totalPengeluaran = useMemo(() => {
         let items = pendingItems;
         if (pendingMonthFilter !== 'ALL') {
             items = items.filter(item => item.reqMonth === pendingMonthFilter);
@@ -1019,12 +1019,46 @@ export default function BOSMonthlyReport() {
         if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
             items = items.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
         }
-        return items.reduce((sum, item) => sum + Math.max(0, item.sisa || 0), 0);
+        return items.reduce((sum, item) => {
+            const itemAmount = parseFloat(item.amount || 0);
+            const itemSisa = Math.max(0, item.sisa || 0);
+            return sum + (itemAmount - itemSisa);
+        }, 0);
     }, [pendingItems, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
 
-    const totalLapor = useMemo(() => {
-        return Math.max(0, totalCair - totalSisa);
-    }, [totalCair, totalSisa]);
+    const totalPengembalian = useMemo(() => {
+        const approvedReqIdsInMonth = new Set(
+            requestsForYear
+                .filter(r => r.status === 'APPROVED')
+                .filter(r => pendingMonthFilter === 'ALL' || r.month === pendingMonthFilter)
+                .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter)
+                .map(r => r.id)
+        );
+
+        return (budgetReports || []).filter(r => {
+            if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
+            if (r.academicYearId !== globalAcademicYearId) return false;
+
+            const isBosReport = r.source === 'BOS' || r.planId?.endsWith('-BOS');
+            if (sourceMode === 'BOS' && !isBosReport) return false;
+            if (sourceMode === 'YAYASAN' && isBosReport) return false;
+
+            if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
+                if (r.unitId !== selectedUnitFilter && r.fieldId !== selectedUnitFilter) return false;
+            }
+
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (pendingMonthFilter !== 'ALL') {
+                if (rReqId) return approvedReqIdsInMonth.has(rReqId);
+                return r.date ? r.date.startsWith(pendingMonthFilter) : false;
+            }
+            return true;
+        }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+    }, [budgetReports, requestsForYear, pendingMonthFilter, isSuperAdmin, selectedUnitFilter, globalAcademicYearId, sourceMode]);
+
+    const totalSisa = useMemo(() => {
+        return Math.max(0, totalCair - totalPengeluaran - totalPengembalian);
+    }, [totalCair, totalPengeluaran, totalPengembalian]);
 
     const [editingDraftId, setEditingDraftId] = useState(null);
     const [formData, setFormData] = useState({
@@ -1661,18 +1695,22 @@ export default function BOSMonthlyReport() {
                                 <span>Statistik Laporan {pendingMonthFilter !== 'ALL' ? `(${monthOptions.find(m => m.id === pendingMonthFilter)?.label || pendingMonthFilter})` : ''}</span>
                                 <ArrowUpRight size={14} />
                             </h4>
-                            <div className="space-y-6">
+                            <div className="space-y-5">
                                 <div className="flex justify-between items-center">
                                     <span className="text-xs font-bold text-slate-400">Total Cair</span>
                                     <span className="text-sm font-black text-slate-700">{formatRupiah(totalCair)}</span>
                                 </div>
                                 <div className="flex justify-between items-center">
-                                    <span className="text-xs font-bold text-slate-400">Total Sudah Dilaporkan</span>
-                                    <span className="text-sm font-black text-emerald-600">{formatRupiah(totalLapor)}</span>
+                                    <span className="text-xs font-bold text-slate-400">Total Pengeluaran</span>
+                                    <span className="text-sm font-black text-emerald-600">{formatRupiah(totalPengeluaran)}</span>
                                 </div>
                                 <div className="flex justify-between items-center border-t border-slate-100 pt-4">
-                                    <span className="text-xs font-bold text-slate-400">Total Belum Dilaporkan</span>
+                                    <span className="text-xs font-bold text-slate-400">Total Sisa</span>
                                     <span className="text-sm font-black text-amber-500">{formatRupiah(totalSisa)}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-t border-slate-100 pt-4">
+                                    <span className="text-xs font-bold text-slate-400">Total Pengembalian</span>
+                                    <span className="text-sm font-black text-indigo-600">{formatRupiah(totalPengembalian)}</span>
                                 </div>
                             </div>
                         </div>
