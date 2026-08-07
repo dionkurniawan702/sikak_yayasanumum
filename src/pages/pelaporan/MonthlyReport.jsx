@@ -635,10 +635,7 @@ export default function MonthlyReport() {
                     }
 
                     const itemAmount = parseFloat(item.amount || 0);
-                    const sisa = itemAmount - reportedComp;
-
-                    // Skip items that have no remaining approved balance
-                    if (sisa <= 0) return;
+                    const sisa = Math.max(0, itemAmount - reportedComp);
 
                     items.push({
                         ...item,
@@ -795,39 +792,7 @@ export default function MonthlyReport() {
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return;
-
-                    const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
-                    let reportedComp = 0;
-                    if (reqCompKey && reportedAmounts?.approvedByRequestComponent?.[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.approvedByRequestComponent[reqCompKey];
-                    } else {
-                        const matchingReports = (budgetReports || []).filter(r => {
-                            if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
-                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                            if (!isSameUnit) return false;
-
-                            if (item.componentId && r.componentId === item.componentId) return true;
-
-                            const reportName = (r.category || r.description || '').trim().toLowerCase();
-                            const itemName = (item.name || '').trim().toLowerCase();
-                            if (reportName && itemName && reportName === itemName) {
-                                const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                                if (resolved && resolved.id === req.id) return true;
-                                const rReqId = r.budgetRequestId || r.requestId;
-                                if (!rReqId || rReqId === req.id) return true;
-                            }
-                            return false;
-                        });
-                        reportedComp = matchingReports.reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-                    }
-
-                    const itemAmount = parseFloat(item.amount || 0);
-                    const sisa = itemAmount - reportedComp;
-
-                    if (sisa > 0) {
-                        map[unitKey] = (map[unitKey] || 0) + 1;
-                    }
+                    map[unitKey] = (map[unitKey] || 0) + 1;
                 });
             } else {
                 const hasApprovedReport = (budgetReports || []).some(r => {
