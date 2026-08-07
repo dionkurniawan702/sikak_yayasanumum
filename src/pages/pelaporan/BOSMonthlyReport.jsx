@@ -1386,6 +1386,13 @@ export default function BOSMonthlyReport() {
     const handleApproveReport = async (report) => {
         if (window.confirm('Setujui laporan ini? Draf Jurnal (Menunggu COA) akan otomatis dibuat.')) {
             setProcessingId(report.id);
+            window.dispatchEvent(new CustomEvent('app-processing-start', { 
+                detail: { 
+                    title: 'Memproses ACC Superadmin...', 
+                    message: 'Mohon tunggu sebentar, Laporan Pengeluaran BOS sedang diverifikasi & disetujui...', 
+                    type: 'approving' 
+                } 
+            }));
             try {
                 const updated = { ...report, status: 'APPROVED', notified: false };
                 dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
@@ -1396,6 +1403,7 @@ export default function BOSMonthlyReport() {
                 alert('Gagal menyetujui laporan: ' + error.message);
             } finally {
                 setProcessingId(null);
+                window.dispatchEvent(new CustomEvent('app-processing-end'));
             }
         }
     };
@@ -1403,11 +1411,25 @@ export default function BOSMonthlyReport() {
     const handleRejectReport = async (report) => {
         if (window.confirm('Tolak laporan ini? Saldo unit akan dikembalikan.')) {
             setProcessingId(report.id);
-            const updated = { ...report, status: 'REJECTED', notified: false };
-            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-            setProcessingId(null);
-            alert('Laporan berhasil ditolak');
+            window.dispatchEvent(new CustomEvent('app-processing-start', { 
+                detail: { 
+                    title: 'Memproses Penolakan Laporan...', 
+                    message: 'Mohon tunggu sebentar, status penolakan laporan BOS sedang dikirim...', 
+                    type: 'rejecting' 
+                } 
+            }));
+            try {
+                const updated = { ...report, status: 'REJECTED', notified: false };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                alert('Laporan berhasil ditolak');
+            } catch (error) {
+                console.error(error);
+                alert('Gagal menolak laporan: ' + error.message);
+            } finally {
+                setProcessingId(null);
+                window.dispatchEvent(new CustomEvent('app-processing-end'));
+            }
         }
     };
 

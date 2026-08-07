@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import ProcessingModal from './components/ProcessingModal';
 const Dashboard = lazy(() => import('./pages/Dashboard'));
 const ChartOfAccounts = lazy(() => import('./pages/ChartOfAccounts'));
 const JournalEntry = lazy(() => import('./pages/JournalEntry'));
@@ -146,6 +147,7 @@ function AppContent() {
     const { state } = useApp();
     return (
         <BrowserRouter>
+            <ProcessingModal />
             {state.isInitialLoading && <InitialLoadingScreen />}
             <Suspense fallback={<PageLoader />}>
                 <Routes>

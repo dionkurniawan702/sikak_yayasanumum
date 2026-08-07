@@ -361,45 +361,67 @@ export default function MonthlyRequest() {
         return { approved, inProcess };
     }, [approvedComponents, filteredRequests]);
 
-    const handleCreateRequest = (e) => {
+    const handleCreateRequest = async (e) => {
         e.preventDefault();
         if (selectedComponents.length === 0) return alert('Pilih komponen belanja terlebih dahulu');
 
-        const selectedData = approvedComponents.filter(c => selectedComponents.includes(c.id));
-        const totalAmount = selectedData.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+        window.dispatchEvent(new CustomEvent('app-processing-start', { 
+            detail: { 
+                title: 'Mengirim Pengajuan Unit...', 
+                message: 'Mohon tunggu sebentar, Surat Permintaan Dana sedang diunggah dan dicatat ke server...', 
+                type: 'submitting' 
+            } 
+        }));
 
-        const newRequest = {
-            id: generateId('REQ'),
-            unitId: myUnitId || 'FOUNDATION',
-            fieldId: myFieldId,
-            academicYearId: globalAcademicYearId,
-            month: requestMonth, // Add target month
-            date: new Date().toISOString().split('T')[0],
-            status: 'PENDING',
-            totalAmount,
-            source: sourceMode, // Tag as YAYASAN or BOS
-            description: selectedData.length > 0 ? (selectedData[0].label || selectedData[0].name) : 'Pengajuan Dana',
-            items: selectedData.map(c => ({
-                componentId: c.id,
-                name: c.label || c.name,
-                amount: c.total,
-                volume: (parseFloat(c.harga || c.price) > 0) ? (parseFloat(c.total) / parseFloat(c.harga || c.price)) : (parseFloat(c.volume) || 1),
-                satuan: c.satuan || c.unit || '-',
-                harga: parseFloat(c.harga || c.price) || 0,
-                planId: c.planId,
-                expenseItemId: c.expenseItemId
-            }))
-        };
+        try {
+            const selectedData = approvedComponents.filter(c => selectedComponents.includes(c.id));
+            const totalAmount = selectedData.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
 
-        dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRequest });
-        api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newRequest }, state); // Immediate push
-        setShowRequestModal(false);
-        setSelectedComponents([]);
-        showToast('Permintaan dana berhasil diajukan!');
+            const newRequest = {
+                id: generateId('REQ'),
+                unitId: myUnitId || 'FOUNDATION',
+                fieldId: myFieldId,
+                academicYearId: globalAcademicYearId,
+                month: requestMonth, // Add target month
+                date: new Date().toISOString().split('T')[0],
+                status: 'PENDING',
+                totalAmount,
+                source: sourceMode, // Tag as YAYASAN or BOS
+                description: selectedData.length > 0 ? (selectedData[0].label || selectedData[0].name) : 'Pengajuan Dana',
+                items: selectedData.map(c => ({
+                    componentId: c.id,
+                    name: c.label || c.name,
+                    amount: c.total,
+                    volume: (parseFloat(c.harga || c.price) > 0) ? (parseFloat(c.total) / parseFloat(c.harga || c.price)) : (parseFloat(c.volume) || 1),
+                    satuan: c.satuan || c.unit || '-',
+                    harga: parseFloat(c.harga || c.price) || 0,
+                    planId: c.planId,
+                    expenseItemId: c.expenseItemId
+                }))
+            };
+
+            dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRequest });
+            await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newRequest }, state); // Immediate push
+            setShowRequestModal(false);
+            setSelectedComponents([]);
+            showToast('Permintaan dana berhasil diajukan!');
+        } catch (err) {
+            console.error('Error creating request:', err);
+            showToast('Gagal mengajukan permintaan dana', 'error');
+        } finally {
+            window.dispatchEvent(new CustomEvent('app-processing-end'));
+        }
     };
 
     const handleSaveReview = async () => {
         setProcessingId('saving-review');
+        window.dispatchEvent(new CustomEvent('app-processing-start', { 
+            detail: { 
+                title: 'Memproses ACC Superadmin...', 
+                message: 'Mohon tunggu sebentar, verifikasi persetujuan Surat Permintaan Dana sedang dicatat ke server...', 
+                type: 'approving' 
+            } 
+        }));
         try {
             const { req, accIds, tolakIds } = reviewRequest;
             
@@ -463,6 +485,7 @@ export default function MonthlyRequest() {
             showToast('Gagal memproses persetujuan.', 'error');
         } finally {
             setProcessingId(null);
+            window.dispatchEvent(new CustomEvent('app-processing-end'));
         }
     };
 
