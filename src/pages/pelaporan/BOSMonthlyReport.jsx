@@ -1003,62 +1003,48 @@ export default function BOSMonthlyReport() {
     const totalAset = filteredReports.filter(r => r.kategoriAset === 'ASET').length;
     const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET').length;
 
-    const totalCair = useMemo(() => {
+    const approvedReqsInFilter = useMemo(() => {
         return requestsForYear
             .filter(r => r.status === 'APPROVED')
             .filter(r => pendingMonthFilter === 'ALL' || r.month === pendingMonthFilter)
-            .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter)
-            .reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
+            .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter);
     }, [requestsForYear, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
 
+    const approvedReqIdsSet = useMemo(() => {
+        return new Set(approvedReqsInFilter.map(r => r.id));
+    }, [approvedReqsInFilter]);
+
+    const totalCair = useMemo(() => {
+        return approvedReqsInFilter.reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
+    }, [approvedReqsInFilter]);
+
     const totalPengeluaran = useMemo(() => {
-        let items = pendingItems;
-        if (pendingMonthFilter !== 'ALL') {
-            items = items.filter(item => item.reqMonth === pendingMonthFilter);
-        }
-        if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
-            items = items.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
-        }
-        return items.reduce((sum, item) => {
-            const itemAmount = parseFloat(item.amount || 0);
-            const itemSisa = Math.max(0, item.sisa || 0);
-            return sum + (itemAmount - itemSisa);
-        }, 0);
-    }, [pendingItems, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
-
-    const totalPengembalian = useMemo(() => {
-        const approvedReqIdsInMonth = new Set(
-            requestsForYear
-                .filter(r => r.status === 'APPROVED')
-                .filter(r => pendingMonthFilter === 'ALL' || r.month === pendingMonthFilter)
-                .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter)
-                .map(r => r.id)
-        );
-
-        return (budgetReports || []).filter(r => {
-            if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-            if (r.academicYearId !== globalAcademicYearId) return false;
-
-            const isBosReport = r.source === 'BOS' || r.planId?.endsWith('-BOS');
-            if (sourceMode === 'BOS' && !isBosReport) return false;
-            if (sourceMode === 'YAYASAN' && isBosReport) return false;
-
-            if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
-                if (r.unitId !== selectedUnitFilter && r.fieldId !== selectedUnitFilter) return false;
-            }
-
+        return baseReports.filter(r => {
+            if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
             const rReqId = r.budgetRequestId || r.requestId;
             if (pendingMonthFilter !== 'ALL') {
-                if (rReqId) return approvedReqIdsInMonth.has(rReqId);
+                if (rReqId) return approvedReqIdsSet.has(rReqId);
                 return r.date ? r.date.startsWith(pendingMonthFilter) : false;
             }
             return true;
         }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-    }, [budgetReports, requestsForYear, pendingMonthFilter, isSuperAdmin, selectedUnitFilter, globalAcademicYearId, sourceMode]);
+    }, [baseReports, pendingMonthFilter, approvedReqIdsSet]);
+
+    const totalPengembalian = useMemo(() => {
+        return baseReports.filter(r => {
+            if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (pendingMonthFilter !== 'ALL') {
+                if (rReqId) return approvedReqIdsSet.has(rReqId);
+                return r.date ? r.date.startsWith(pendingMonthFilter) : false;
+            }
+            return true;
+        }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+    }, [baseReports, pendingMonthFilter, approvedReqIdsSet]);
 
     const totalSisa = useMemo(() => {
-        return Math.max(0, totalCair - totalPengeluaran - totalPengembalian);
-    }, [totalCair, totalPengeluaran, totalPengembalian]);
+        return Math.max(0, totalCair - totalPengeluaran);
+    }, [totalCair, totalPengeluaran]);
 
     const [editingDraftId, setEditingDraftId] = useState(null);
     const [formData, setFormData] = useState({
