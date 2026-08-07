@@ -1,46 +1,33 @@
-const API_URL = 'https://dion-sikak-yayasanumum.0oh83a.easypanel.host/api';
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-async function checkData() {
-    try {
-        const res = await fetch(`${API_URL}/all-data`);
-        const json = await res.json();
-        
-        const data = json.data || json;
-        const reports = data.budgetReports || [];
-        const units = data.units || [];
-        const reqs = data.budgetRequests || [];
-        
-        console.log("Units:");
-        units.forEach(u => console.log(`- ID: ${u.id}, Name: ${u.name}`));
-        
-        const tkit2 = units.find(u => u.name.toLowerCase().includes("tkit 2") || u.name.toLowerCase().includes("tkit2"));
-        if (!tkit2) {
-            console.log("TKIT 2 not found even with lowercase check!");
-            return;
-        }
+async function main() {
+  const reports = await prisma.budgetReport.findMany({
+    where: { unitId: 'TKIT2', isDeleted: false }
+  });
+  console.log('--- REPORTS FOR TKIT2 (' + reports.length + ') ---');
+  reports.forEach(r => {
+    console.log({
+      id: r.id,
+      category: r.category,
+      amount: r.amount,
+      status: r.status,
+      budgetRequestId: r.budgetRequestId,
+      componentId: r.componentId,
+      date: r.date
+    });
+  });
 
-        console.log("TKIT 2 ID:", tkit2.id);
-        
-        const targetReports = reports.filter(r => r.unitId === tkit2.id);
-        console.log("\nREPORTS:");
-        targetReports.forEach(r => {
-            console.log(`ID: ${r.id}, Amount: ${r.amount}, Category: ${r.category}, PlanId: ${r.planId}, ComponentId: ${r.componentId}, ExpenseItemId: ${r.expenseItemId}, ReqId: ${r.budgetRequestId}`);
-        });
-
-        const targetReqs = reqs.filter(r => r.unitId === tkit2.id);
-        console.log("\nREQUESTS:");
-        targetReqs.forEach(r => {
-            console.log(`ReqID: ${r.id}, TotalAmount: ${r.totalAmount}, ExpenseItemId: ${r.expenseItemId}`);
-            if (r.items) {
-                r.items.forEach(i => {
-                    console.log(`  -> Item: ${i.name}, ComponentId: ${i.componentId}, PlanId: ${i.planId}, ExpenseItemId: ${i.expenseItemId}`);
-                });
-            }
-        });
-
-    } catch (err) {
-        console.error("Error:", err.message);
+  const requests = await prisma.budgetRequest.findMany({
+    where: { unitId: 'TKIT2', status: 'APPROVED' }
+  });
+  console.log('\n--- APPROVED REQUESTS FOR TKIT2 (' + requests.length + ') ---');
+  requests.forEach(req => {
+    console.log('Request ID:', req.id, 'Month:', req.month, 'Status:', req.status);
+    const items = typeof req.items === 'string' ? JSON.parse(req.items) : req.items;
+    if (items) {
+      items.forEach(i => console.log('   Item:', i.name, 'Amount:', i.amount, 'ComponentId:', i.componentId));
     }
+  });
 }
-
-checkData();
+main().catch(console.error).finally(() => prisma.$disconnect());
