@@ -46,6 +46,7 @@ function formatMonthLabel(monthStr) {
 function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     if (!report || !budgetRequests || budgetRequests.length === 0) return null;
 
+    // 1. Check matching componentId in approved budgetRequests
     if (report.componentId) {
         const found = budgetRequests.find(r => 
             r.status === 'APPROVED' && 
@@ -55,19 +56,22 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
         if (found) return found;
     }
 
+    // 2. Search for approved budgetRequest that actually contains this item by name (category or description)
+    const reportItemName = (report.category || report.description || '').trim().toLowerCase();
+    if (reportItemName) {
+        const foundByName = budgetRequests.find(r => 
+            r.status === 'APPROVED' &&
+            (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
+            r.items &&
+            r.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName)
+        );
+        if (foundByName) return foundByName;
+    }
+
+    // 3. Check exact budgetRequestId / requestId
     const rReqId = report.budgetRequestId || report.requestId;
     if (rReqId) {
         const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) return found;
-    }
-
-    if (report.category) {
-        const found = budgetRequests.find(r => 
-            r.status === 'APPROVED' &&
-            (r.unitId === report.unitId || r.fieldId === report.fieldId) &&
-            r.items &&
-            r.items.some(i => i.name === report.category)
-        );
         if (found) return found;
     }
 
@@ -1408,7 +1412,7 @@ export default function MonthlyReport() {
     };
 
     const handleEditDraft = (draft) => {
-        const req = budgetRequests.find(r => r.id === draft.budgetRequestId);
+        const req = resolveReportRequest(draft, budgetRequests, globalAcademicYearId) || budgetRequests.find(r => r.id === draft.budgetRequestId);
         if (!req) return alert("Data induk tidak ditemukan!");
         
         let item = { reqId: req.id, sisa: draft.amount, reqDescription: req.description, name: draft.category, reqUnitId: req.unitId, fieldId: req.fieldId };
