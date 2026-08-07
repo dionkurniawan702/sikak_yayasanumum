@@ -1003,9 +1003,28 @@ export default function BOSMonthlyReport() {
     const totalAset = filteredReports.filter(r => r.kategoriAset === 'ASET').length;
     const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET').length;
 
-    const totalCair = requestsForYear.filter(r => r.status === 'APPROVED').reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
-    const totalLapor = baseReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
-    const totalSisa = totalCair - totalLapor;
+    const totalCair = useMemo(() => {
+        return requestsForYear
+            .filter(r => r.status === 'APPROVED')
+            .filter(r => pendingMonthFilter === 'ALL' || r.month === pendingMonthFilter)
+            .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter)
+            .reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
+    }, [requestsForYear, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
+
+    const totalSisa = useMemo(() => {
+        let items = pendingItems;
+        if (pendingMonthFilter !== 'ALL') {
+            items = items.filter(item => item.reqMonth === pendingMonthFilter);
+        }
+        if (isSuperAdmin && selectedUnitFilter !== 'ALL') {
+            items = items.filter(item => item.reqUnitId === selectedUnitFilter || item.fieldId === selectedUnitFilter);
+        }
+        return items.reduce((sum, item) => sum + Math.max(0, item.sisa || 0), 0);
+    }, [pendingItems, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
+
+    const totalLapor = useMemo(() => {
+        return Math.max(0, totalCair - totalSisa);
+    }, [totalCair, totalSisa]);
 
     const [editingDraftId, setEditingDraftId] = useState(null);
     const [formData, setFormData] = useState({
@@ -1639,7 +1658,7 @@ export default function BOSMonthlyReport() {
 
                         <div className="card p-8">
                             <h4 className="font-black text-slate-900 uppercase text-[10px] tracking-widest mb-6 border-b border-slate-100 pb-4 flex items-center justify-between">
-                                <span>Statistik Laporan</span>
+                                <span>Statistik Laporan {pendingMonthFilter !== 'ALL' ? `(${monthOptions.find(m => m.id === pendingMonthFilter)?.label || pendingMonthFilter})` : ''}</span>
                                 <ArrowUpRight size={14} />
                             </h4>
                             <div className="space-y-6">
