@@ -564,8 +564,38 @@ export default function MonthlyReport() {
 
     const pendingItems = useMemo(() => {
         const items = [];
+
+        // Find the latest request month for each unit
+        const latestMonthByUnit = {};
+        requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
+            const uKey = req.unitId || req.fieldId || 'UNKNOWN';
+            if (req.month && (!latestMonthByUnit[uKey] || req.month > latestMonthByUnit[uKey])) {
+                latestMonthByUnit[uKey] = req.month;
+            }
+        });
+
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return; // Exclude closed requests
+
+            const uKey = req.unitId || req.fieldId || 'UNKNOWN';
+            const maxMonth = latestMonthByUnit[uKey] || '';
+
+            // Skip past months that have an approved report (June, July, etc.), keeping only current active month (August)
+            if (req.month && maxMonth && req.month < maxMonth) {
+                const isPastVerifiedMonth = (budgetReports || []).some(r => {
+                    if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                    const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) ||
+                                       (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                    if (!isSameUnit) return false;
+
+                    const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                    if (resolvedReq && (resolvedReq.id === req.id || resolvedReq.month === req.month)) return true;
+                    if (r.budgetRequestId === req.id || r.requestId === req.id) return true;
+                    if (req.month && r.date && r.date.startsWith(req.month)) return true;
+                    return false;
+                });
+                if (isPastVerifiedMonth) return;
+            }
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
@@ -717,6 +747,14 @@ export default function MonthlyReport() {
         });
 
         // 3. Count pending items per unit
+        const latestMonthByUnit = {};
+        requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
+            const uKey = req.unitId || req.fieldId || 'UNKNOWN';
+            if (req.month && (!latestMonthByUnit[uKey] || req.month > latestMonthByUnit[uKey])) {
+                latestMonthByUnit[uKey] = req.month;
+            }
+        });
+
         (budgetRequests || []).forEach(req => {
             if (req.academicYearId !== globalAcademicYearId || req.status !== 'APPROVED') return;
             const isBosRequest = req.source === 'BOS' || (req.items || []).some(item => item.planId?.endsWith('-BOS'));
@@ -730,6 +768,23 @@ export default function MonthlyReport() {
             const activeBalance = unitCair - unitUsed - unitReturned;
 
             if (activeBalance <= 0) return;
+
+            const maxMonth = latestMonthByUnit[unitKey] || '';
+            if (req.month && maxMonth && req.month < maxMonth) {
+                const isPastVerifiedMonth = (budgetReports || []).some(r => {
+                    if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                    const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) ||
+                                       (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                    if (!isSameUnit) return false;
+
+                    const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                    if (resolvedReq && (resolvedReq.id === req.id || resolvedReq.month === req.month)) return true;
+                    if (r.budgetRequestId === req.id || r.requestId === req.id) return true;
+                    if (req.month && r.date && r.date.startsWith(req.month)) return true;
+                    return false;
+                });
+                if (isPastVerifiedMonth) return;
+            }
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
