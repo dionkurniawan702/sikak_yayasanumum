@@ -1283,10 +1283,6 @@ export default function MonthlyReport() {
             .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter);
     }, [requestsForYear, pendingMonthFilter, isSuperAdmin, selectedUnitFilter]);
 
-    const approvedReqIdsSet = useMemo(() => {
-        return new Set(approvedReqsInFilter.map(r => r.id));
-    }, [approvedReqsInFilter]);
-
     const totalCair = useMemo(() => {
         return approvedReqsInFilter.reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
     }, [approvedReqsInFilter]);
@@ -1294,26 +1290,32 @@ export default function MonthlyReport() {
     const totalPengeluaran = useMemo(() => {
         return baseReports.filter(r => {
             if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-            const rReqId = r.budgetRequestId || r.requestId;
             if (pendingMonthFilter !== 'ALL') {
-                if (rReqId) return approvedReqIdsSet.has(rReqId);
+                const rReqId = r.budgetRequestId || r.requestId;
+                const req = budgetRequests.find(b => b.id === rReqId);
+                if (req) {
+                    return req.month === pendingMonthFilter;
+                }
                 return r.date ? r.date.startsWith(pendingMonthFilter) : false;
             }
             return true;
         }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-    }, [baseReports, pendingMonthFilter, approvedReqIdsSet]);
+    }, [baseReports, pendingMonthFilter, budgetRequests]);
 
     const totalPengembalian = useMemo(() => {
         return baseReports.filter(r => {
             if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-            const rReqId = r.budgetRequestId || r.requestId;
             if (pendingMonthFilter !== 'ALL') {
-                if (rReqId) return approvedReqIdsSet.has(rReqId);
+                const rReqId = r.budgetRequestId || r.requestId;
+                const req = budgetRequests.find(b => b.id === rReqId);
+                if (req) {
+                    return req.month === pendingMonthFilter;
+                }
                 return r.date ? r.date.startsWith(pendingMonthFilter) : false;
             }
             return true;
         }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-    }, [baseReports, pendingMonthFilter, approvedReqIdsSet]);
+    }, [baseReports, pendingMonthFilter, budgetRequests]);
 
     const totalSisa = useMemo(() => {
         return Math.max(0, totalCair - totalPengeluaran);
@@ -1325,22 +1327,23 @@ export default function MonthlyReport() {
             .filter(r => filterRequestMonth === 'ALL' || r.month === filterRequestMonth)
             .filter(r => !isSuperAdmin || selectedUnitFilter === 'ALL' || r.unitId === selectedUnitFilter || r.fieldId === selectedUnitFilter);
 
-        const approvedReqIdsHistorySet = new Set(approvedReqsInHistoryFilter.map(r => r.id));
-
         const totalCairHistory = approvedReqsInHistoryFilter.reduce((s, r) => s + parseFloat(r.totalAmount || 0), 0);
 
         const totalPengeluaranHistory = baseReports.filter(r => {
             if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-            const rReqId = r.budgetRequestId || r.requestId;
             if (filterRequestMonth !== 'ALL') {
-                if (rReqId) return approvedReqIdsHistorySet.has(rReqId);
+                const rReqId = r.budgetRequestId || r.requestId;
+                const req = budgetRequests.find(b => b.id === rReqId);
+                if (req) {
+                    return req.month === filterRequestMonth;
+                }
                 return r.date ? r.date.startsWith(filterRequestMonth) : false;
             }
             return true;
         }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
 
         return Math.max(0, totalCairHistory - totalPengeluaranHistory);
-    }, [requestsForYear, filterRequestMonth, isSuperAdmin, selectedUnitFilter, baseReports]);
+    }, [requestsForYear, filterRequestMonth, isSuperAdmin, selectedUnitFilter, baseReports, budgetRequests]);
 
     const [editingDraftId, setEditingDraftId] = useState(null);
     const [formData, setFormData] = useState({
