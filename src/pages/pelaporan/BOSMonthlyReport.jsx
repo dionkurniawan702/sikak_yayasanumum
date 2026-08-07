@@ -462,6 +462,17 @@ export default function BOSMonthlyReport() {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
                     
+                    // Skip items that have been verified (APPROVED) by Superadmin
+                    const hasApprovedReport = (budgetReports || []).some(r => {
+                        if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                        const rReqId = r.budgetRequestId || r.requestId;
+                        if (rReqId) {
+                            return rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true);
+                        }
+                        return item.componentId ? r.componentId === item.componentId : false;
+                    });
+                    if (hasApprovedReport) return;
+
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
@@ -491,6 +502,14 @@ export default function BOSMonthlyReport() {
                     });
                 });
             } else {
+                // Skip legacy requests that have been verified (APPROVED) by Superadmin
+                const hasApprovedReport = (budgetReports || []).some(r => {
+                    if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                    const rReqId = r.budgetRequestId || r.requestId;
+                    return rReqId === req.id;
+                });
+                if (hasApprovedReport) return;
+
                 const reqTotal = parseFloat(req.totalAmount || 0);
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
                 const sisa = reqTotal - reportedReq;
@@ -589,12 +608,30 @@ export default function BOSMonthlyReport() {
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed
+                    
+                    const hasApprovedReport = (budgetReports || []).some(r => {
+                        if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                        const rReqId = r.budgetRequestId || r.requestId;
+                        if (rReqId) {
+                            return rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true);
+                        }
+                        return item.componentId ? r.componentId === item.componentId : false;
+                    });
+                    if (hasApprovedReport) return;
+
                     const reportedComp = reportedAmounts.byComponent[item.componentId] || 0;
                     if (reportedComp < parseFloat(item.amount || 0)) {
                         map[unitKey] = (map[unitKey] || 0) + 1;
                     }
                 });
             } else {
+                const hasApprovedReport = (budgetReports || []).some(r => {
+                    if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                    const rReqId = r.budgetRequestId || r.requestId;
+                    return rReqId === req.id;
+                });
+                if (hasApprovedReport) return;
+
                 const reportedReq = reportedAmounts.byRequest[req.id] || 0;
                 if (reportedReq < parseFloat(req.totalAmount || 0)) {
                     map[unitKey] = (map[unitKey] || 0) + 1;
