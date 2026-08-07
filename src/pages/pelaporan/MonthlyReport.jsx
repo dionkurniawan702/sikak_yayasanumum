@@ -567,17 +567,6 @@ export default function MonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return; // Exclude closed requests
 
-            // Skip requests that have approved reports (verified by Superadmin)
-            const reqHasApprovedReport = (budgetReports || []).some(r => {
-                if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolvedReq && resolvedReq.id === req.id) return true;
-                const rReqId = r.budgetRequestId || r.requestId;
-                if (rReqId && rReqId === req.id) return true;
-                return false;
-            });
-            if (reqHasApprovedReport) return;
-
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return; // Skip closed items!
@@ -585,21 +574,21 @@ export default function MonthlyReport() {
                     // Skip items that have been verified (APPROVED) by Superadmin
                     const hasApprovedReport = (budgetReports || []).some(r => {
                         if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                        const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                        if (resolvedReq && resolvedReq.id === req.id) return true;
-                        const rReqId = r.budgetRequestId || r.requestId;
-                        if (rReqId && rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true)) {
-                            return true;
-                        }
+                        const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
+                                           (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                        if (!isSameUnit) return false;
+
                         if (item.componentId && r.componentId === item.componentId) {
                             return true;
                         }
+
                         const reportName = (r.category || r.description || '').trim().toLowerCase();
                         const itemName = (item.name || '').trim().toLowerCase();
                         if (reportName && itemName && reportName === itemName) {
-                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
-                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                            if (isSameUnit) return true;
+                            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                            if (resolvedReq && resolvedReq.id === req.id) return true;
+                            const rReqId = r.budgetRequestId || r.requestId;
+                            if (!rReqId || rReqId === req.id) return true;
                         }
                         return false;
                     });
@@ -749,36 +738,27 @@ export default function MonthlyReport() {
 
             if (activeBalance <= 0) return;
 
-            // Skip requests that have approved reports (verified by Superadmin)
-            const reqHasApprovedReport = (budgetReports || []).some(r => {
-                if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolvedReq && resolvedReq.id === req.id) return true;
-                const rReqId = r.budgetRequestId || r.requestId;
-                if (rReqId && rReqId === req.id) return true;
-                return false;
-            });
-            if (reqHasApprovedReport) return;
-
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
                     if (item.isClosed) return;
 
                     const hasApprovedReport = (budgetReports || []).some(r => {
                         if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                        const rReqId = r.budgetRequestId || r.requestId;
-                        if (rReqId && rReqId === req.id && (item.componentId ? r.componentId === item.componentId : true)) {
-                            return true;
-                        }
+                        const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
+                                           (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
+                        if (!isSameUnit) return false;
+
                         if (item.componentId && r.componentId === item.componentId) {
                             return true;
                         }
+
                         const reportName = (r.category || r.description || '').trim().toLowerCase();
                         const itemName = (item.name || '').trim().toLowerCase();
                         if (reportName && itemName && reportName === itemName) {
-                            const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
-                                               (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                            if (isSameUnit) return true;
+                            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                            if (resolvedReq && resolvedReq.id === req.id) return true;
+                            const rReqId = r.budgetRequestId || r.requestId;
+                            if (!rReqId || rReqId === req.id) return true;
                         }
                         return false;
                     });
