@@ -347,15 +347,20 @@ export default function BOSMonthlyReport() {
         const approvedMap = {};
         const reqMap = {};
         const reqApprovedMap = {};
+        const reqSettledMap = {};
         const byRequestComponent = {};
+        const approvedByRequestComponent = {};
+
+        const reqLookup = new Map();
+        (budgetRequests || []).forEach(br => reqLookup.set(br.id, br));
 
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED' && !r.isDeleted) {
                 // Backward-compatible componentId lookup if missing in old reports
                 let effectiveComponentId = r.componentId;
-                if (!effectiveComponentId && (r.budgetRequestId || r.requestId)) {
-                    const reqIdVal = r.budgetRequestId || r.requestId;
-                    const req = (budgetRequests || []).find(br => br.id === reqIdVal);
+                const rReqId = r.budgetRequestId || r.requestId;
+                if (!effectiveComponentId && rReqId) {
+                    const req = reqLookup.get(rReqId);
                     if (req && req.items) {
                         const match = req.items.find(item => 
                             item.name === r.category || 
@@ -380,7 +385,6 @@ export default function BOSMonthlyReport() {
                     }
                 }
                 
-                const rReqId = r.budgetRequestId || r.requestId;
                 if (rReqId) {
                     if (!reqMap[rReqId]) reqMap[rReqId] = 0;
                     reqMap[rReqId] += amt;
@@ -394,11 +398,29 @@ export default function BOSMonthlyReport() {
                         const reqCompKey = `${rReqId}_${effectiveComponentId}`;
                         if (!byRequestComponent[reqCompKey]) byRequestComponent[reqCompKey] = 0;
                         byRequestComponent[reqCompKey] += amt;
+
+                        if (r.status === 'APPROVED') {
+                            if (!approvedByRequestComponent[reqCompKey]) approvedByRequestComponent[reqCompKey] = 0;
+                            approvedByRequestComponent[reqCompKey] += amt;
+                        }
                     }
                 }
             }
         });
-        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, byRequestComponent };
+
+        // Include Pengembalian Dana (refund) reports towards request settlement
+        (budgetReports || []).forEach(r => {
+            if (r.status !== 'REJECTED' && !r.isDeleted && r.kategoriAset === 'PENGEMBALIAN') {
+                const amt = parseFloat(r.amount || 0);
+                const rReqId = r.budgetRequestId || r.requestId;
+                if (rReqId) {
+                    if (!reqSettledMap[rReqId]) reqSettledMap[rReqId] = 0;
+                    reqSettledMap[rReqId] += amt;
+                }
+            }
+        });
+
+        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, reqSettledMap, byRequestComponent, approvedByRequestComponent };
     }, [budgetReports, budgetRequests]);
 
     const getReportsCountForItem = (item) => {
@@ -526,11 +548,11 @@ export default function BOSMonthlyReport() {
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
-                    if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    if (reqCompKey && reportedAmounts?.approvedByRequestComponent && reportedAmounts.approvedByRequestComponent[reqCompKey] !== undefined) {
+                        reportedComp = reportedAmounts.approvedByRequestComponent[reqCompKey];
                     } else {
                         const matchingReports = (budgetReports || []).filter(r => {
-                            if (r.isDeleted || r.status === 'REJECTED') return false;
+                            if (r.status !== 'APPROVED' || r.isDeleted) return false;
                             const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
                                                (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
                             if (!isSameUnit) return false;
@@ -553,7 +575,7 @@ export default function BOSMonthlyReport() {
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisa = itemAmount - reportedComp;
 
-                    // Skip items that have no remaining balance
+                    // Skip items that have no remaining approved balance
                     if (sisa <= 0) return;
 
                     items.push({
@@ -702,11 +724,11 @@ export default function BOSMonthlyReport() {
 
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
-                    if (reqCompKey && reportedAmounts?.byRequestComponent?.[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    if (reqCompKey && reportedAmounts?.approvedByRequestComponent?.[reqCompKey] !== undefined) {
+                        reportedComp = reportedAmounts.approvedByRequestComponent[reqCompKey];
                     } else {
                         const matchingReports = (budgetReports || []).filter(r => {
-                            if (r.isDeleted || r.status === 'REJECTED') return false;
+                            if (r.status !== 'APPROVED' || r.isDeleted) return false;
                             const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
                                                (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
                             if (!isSameUnit) return false;
