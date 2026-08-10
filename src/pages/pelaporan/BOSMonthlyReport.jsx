@@ -384,9 +384,11 @@ export default function BOSMonthlyReport() {
 
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED' && !r.isDeleted) {
+                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
+
                 // Backward-compatible componentId lookup if missing in old reports
                 let effectiveComponentId = r.componentId;
-                const rReqId = r.budgetRequestId || r.requestId;
                 if (!effectiveComponentId && rReqId) {
                     const req = reqLookup.get(rReqId);
                     if (req && req.items) {
@@ -422,6 +424,9 @@ export default function BOSMonthlyReport() {
                         reqApprovedMap[rReqId] += amt;
                     }
 
+                    if (!reqSettledMap[rReqId]) reqSettledMap[rReqId] = 0;
+                    reqSettledMap[rReqId] += amt;
+
                     if (effectiveComponentId) {
                         const reqCompKey = `${rReqId}_${effectiveComponentId}`;
                         if (!byRequestComponent[reqCompKey]) byRequestComponent[reqCompKey] = 0;
@@ -440,7 +445,8 @@ export default function BOSMonthlyReport() {
         (budgetReports || []).forEach(r => {
             if (r.status !== 'REJECTED' && !r.isDeleted && r.kategoriAset === 'PENGEMBALIAN') {
                 const amt = parseFloat(r.amount || 0);
-                const rReqId = r.budgetRequestId || r.requestId;
+                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
                 if (rReqId) {
                     if (!reqSettledMap[rReqId]) reqSettledMap[rReqId] = 0;
                     reqSettledMap[rReqId] += amt;
