@@ -645,11 +645,11 @@ export default function MonthlyReport() {
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
-                    if (reqCompKey && reportedAmounts?.approvedByRequestComponent && reportedAmounts.approvedByRequestComponent[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.approvedByRequestComponent[reqCompKey];
+                    if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
                     } else {
                         const matchingReports = (budgetReports || []).filter(r => {
-                            if (r.status !== 'APPROVED' || r.isDeleted) return false;
+                            if (r.status === 'REJECTED' || r.isDeleted) return false;
                             const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) || 
                                                (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
                             if (!isSameUnit) return false;
