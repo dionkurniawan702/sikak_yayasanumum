@@ -29,14 +29,7 @@ function AsetBadge({ kategori, umurEkonomis }) {
 function resolveReportRequest(report, budgetRequests) {
     if (!report || !budgetRequests || budgetRequests.length === 0) return null;
 
-    // 1. Check exact budgetRequestId / requestId FIRST
-    const rReqId = report.budgetRequestId || report.requestId;
-    if (rReqId) {
-        const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) return found;
-    }
-
-    // 2. Check matching componentId in approved budgetRequests (matching unit if present)
+    // 1. Check exact matching componentId FIRST in approved budgetRequests
     if (report.componentId) {
         const found = budgetRequests.find(r => 
             r.status === 'APPROVED' && 
@@ -47,18 +40,39 @@ function resolveReportRequest(report, budgetRequests) {
         if (found) return found;
     }
 
-    // 3. Search by category
-    if (report.category) {
+    // 2. Check exact budgetRequestId if it exists AND its items contain the report item name/category
+    const rReqId = report.budgetRequestId || report.requestId;
+    const reportItemName = (report.category || report.description || '').trim().toLowerCase();
+
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) {
+            if (!reportItemName || !found.items || found.items.length === 0) {
+                return found;
+            }
+            const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
+            if (hasItem) return found;
+        }
+    }
+
+    // 3. Search for approved budgetRequest by category / name
+    if (reportItemName) {
         const found = budgetRequests.find(r => 
             r.status === 'APPROVED' &&
             (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
             r.items &&
-            r.items.some(i => (i.name || '').trim().toLowerCase() === (report.category || '').trim().toLowerCase())
+            r.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName)
         );
         if (found) return found;
     }
 
-    // 4. Fallback: match by date month and unit
+    // 4. Fallback: return budgetRequestId if matched
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) return found;
+    }
+
+    // 5. Fallback: match by date month and unit
     if (report.date) {
         const reportMonth = report.date.substring(0, 7);
         const foundByDate = budgetRequests.find(r => {
