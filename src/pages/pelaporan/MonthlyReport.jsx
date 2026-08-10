@@ -652,8 +652,6 @@ export default function MonthlyReport() {
 
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisa = Math.max(0, itemAmount - reportedComp);
-                    if (sisa <= 0) return; // Skip items that are already fully reported!
-
 
                     items.push({
                         ...item,
@@ -2059,13 +2057,20 @@ export default function MonthlyReport() {
                                     <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                     <div className="flex flex-col gap-2 mt-2 w-full">
                                         {!isSuperAdmin && (
-                                            <button
-                                                onClick={() => handleOpenReportForm(item)}
-                                                className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
-                                            >
-                                                <FileCheck size={16} />
-                                                <span>Buat Laporan</span>
-                                            </button>
+                                            item.sisa <= 0 ? (
+                                                <div className="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm">
+                                                    <CheckCircle2 size={15} />
+                                                    <span>100% Selesai Dilaporkan</span>
+                                                </div>
+                                            ) : (
+                                                <button
+                                                    onClick={() => handleOpenReportForm(item)}
+                                                    className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
+                                                >
+                                                    <FileCheck size={16} />
+                                                    <span>Buat Laporan</span>
+                                                </button>
+                                            )
                                         )}
                                         <button
                                             onClick={() => { setSelectedItemForReports(item); setShowReportsList(true); }}
