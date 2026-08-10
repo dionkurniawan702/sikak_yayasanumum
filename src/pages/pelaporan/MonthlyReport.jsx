@@ -597,20 +597,6 @@ export default function MonthlyReport() {
             const uKey = req.unitId || req.fieldId || 'UNKNOWN';
             const maxMonth = latestMonthByUnit[uKey] || '';
 
-            // Skip request months that have already been verified (APPROVED) by Superadmin
-            const isVerifiedMonth = (budgetReports || []).some(r => {
-                if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) ||
-                                   (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                if (!isSameUnit) return false;
-
-                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolvedReq && (resolvedReq.id === req.id || resolvedReq.month === req.month)) return true;
-                if (r.budgetRequestId === req.id || r.requestId === req.id) return true;
-                if (req.month && r.date && r.date.startsWith(req.month)) return true;
-                return false;
-            });
-            if (isVerifiedMonth) return;
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
@@ -781,19 +767,6 @@ export default function MonthlyReport() {
 
             if (activeBalance <= 0) return;
 
-            const isVerifiedMonth = (budgetReports || []).some(r => {
-                if (r.status !== 'APPROVED' || r.isDeleted) return false;
-                const isSameUnit = (r.unitId && (r.unitId === req.unitId || r.unitId === req.fieldId)) ||
-                                   (r.fieldId && (r.fieldId === req.unitId || r.fieldId === req.fieldId));
-                if (!isSameUnit) return false;
-
-                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolvedReq && (resolvedReq.id === req.id || resolvedReq.month === req.month)) return true;
-                if (r.budgetRequestId === req.id || r.requestId === req.id) return true;
-                if (req.month && r.date && r.date.startsWith(req.month)) return true;
-                return false;
-            });
-            if (isVerifiedMonth) return;
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
