@@ -46,7 +46,14 @@ function formatMonthLabel(monthStr) {
 function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     if (!report || !budgetRequests || budgetRequests.length === 0) return null;
 
-    // 1. Check exact matching componentId FIRST in approved budgetRequests
+    // 1. Check exact budgetRequestId if present FIRST
+    const rReqId = report.budgetRequestId || report.requestId;
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) return found;
+    }
+
+    // 2. Check exact matching componentId in approved budgetRequests
     if (report.componentId) {
         const found = budgetRequests.find(r => 
             r.status === 'APPROVED' && 
@@ -57,20 +64,7 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
         if (found) return found;
     }
 
-    // 2. Check exact budgetRequestId if it exists AND its items contain the report item name/category
-    const rReqId = report.budgetRequestId || report.requestId;
     const reportItemName = (report.category || report.description || '').trim().toLowerCase();
-
-    if (rReqId) {
-        const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) {
-            if (!reportItemName || !found.items || found.items.length === 0) {
-                return found;
-            }
-            const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
-            if (hasItem) return found;
-        }
-    }
 
     // 3. Search for approved budgetRequest that actually contains this item by name (category or description)
     if (reportItemName) {
@@ -83,10 +77,19 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
         if (foundByName) return foundByName;
     }
 
-    // 4. Fallback: return budgetRequestId if matched
-    if (rReqId) {
-        const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) return found;
+    // 4. Special handling for PENGEMBALIAN (Refund) reports:
+    // If a refund report is created in month M (e.g. August) without explicit request link,
+    // match the previous month's approved request (July) for that unit!
+    if (report.kategoriAset === 'PENGEMBALIAN' && report.date) {
+        const reportMonth = report.date.substring(0, 7);
+        const approvedReqs = budgetRequests.filter(r => {
+            const isSameUnit = (r.unitId && (r.unitId === report.unitId || r.unitId === report.fieldId)) ||
+                               (r.fieldId && (r.fieldId === report.unitId || r.fieldId === report.fieldId));
+            return isSameUnit && r.status === 'APPROVED' && (!globalAcademicYearId || r.academicYearId === globalAcademicYearId);
+        }).sort((a, b) => (b.month || '').localeCompare(a.month || ''));
+
+        const prevMonthReq = approvedReqs.find(r => r.month < reportMonth);
+        if (prevMonthReq) return prevMonthReq;
     }
 
     // 5. Fallback: match by date month and unit
