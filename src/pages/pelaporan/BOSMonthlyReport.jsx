@@ -549,6 +549,11 @@ export default function BOSMonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return;
 
+            // Skip requests that are fully reported & settled
+            const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
+            const reqTotal = parseFloat(req.totalAmount || 0);
+            if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+
             const uKey = req.unitId || req.fieldId || 'UNKNOWN';
             const maxMonth = latestMonthByUnit[uKey] || '';
 
@@ -586,6 +591,8 @@ export default function BOSMonthlyReport() {
 
                     const itemAmount = parseFloat(item.amount || 0);
                     const sisa = Math.max(0, itemAmount - reportedComp);
+                    if (sisa <= 0) return; // Skip items that are already fully reported!
+
 
                     items.push({
                         ...item,
@@ -701,13 +708,11 @@ export default function BOSMonthlyReport() {
 
             if (activeBalance <= 0) return;
 
-            const latestMonthByUnit = {};
-            requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
-                const uKey = req.unitId || req.fieldId || 'UNKNOWN';
-                if (req.month && (!latestMonthByUnit[uKey] || req.month > latestMonthByUnit[uKey])) {
-                    latestMonthByUnit[uKey] = req.month;
-                }
-            });
+            // Skip requests that are fully reported & settled
+            const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
+            const reqTotal = parseFloat(req.totalAmount || 0);
+            if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+
 
 
 
