@@ -81,17 +81,36 @@ export default function ExpenseProgramReport() {
             return false;
         });
 
-        // Map of Component ID -> Program ID
+        // Extract all components from filtered RAB Plans
         const componentToProgramMap = new Map();
-        const componentPaguMap = new Map();
+        const allExtractedComponents = [];
 
         filteredRabPlans.forEach(plan => {
-            (plan.components || []).forEach(comp => {
-                if (comp.programId) {
-                    componentToProgramMap.set(comp.id, comp.programId);
-                    const pagu = parseFloat(comp.totalAmount || (comp.amount * (comp.volume || 1)) || 0);
-                    componentPaguMap.set(comp.id, (componentPaguMap.get(comp.id) || 0) + pagu);
-                }
+            const uName = plan.unitId === 'FOUNDATION' ? 'Yayasan' : (units.find(u => u.id === plan.unitId)?.name || 'Yayasan');
+            Object.entries(plan.expense || {}).forEach(([itemId, rawItemPlans]) => {
+                const itemPlans = Array.isArray(rawItemPlans) ? rawItemPlans : (rawItemPlans && typeof rawItemPlans === 'object' ? [rawItemPlans] : []);
+                itemPlans.forEach(p => {
+                    (p.components || []).forEach(comp => {
+                        let pagu = parseFloat(comp.total || comp.totalAmount || 0);
+                        if (!pagu && comp.harga) {
+                            pagu = parseFloat(comp.harga || 0) * parseFloat(comp.kali || comp.volume || 1);
+                        }
+                        if (!pagu && comp.months) {
+                            pagu = Object.values(comp.months).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
+                        }
+
+                        if (comp.programId) {
+                            componentToProgramMap.set(comp.id, comp.programId);
+                        }
+
+                        allExtractedComponents.push({
+                            ...comp,
+                            name: comp.name || comp.label || '—',
+                            unitName: uName,
+                            pagu
+                        });
+                    });
+                });
             });
         });
 
@@ -125,24 +144,9 @@ export default function ExpenseProgramReport() {
 
         // Process each program
         return activeExpensePrograms.map(prog => {
-            // Calculate total RAB Pagu for this program
-            let totalPagu = 0;
-            const programComponents = [];
-
-            filteredRabPlans.forEach(plan => {
-                const uName = plan.unitId === 'FOUNDATION' ? 'Yayasan' : (units.find(u => u.id === plan.unitId)?.name || 'Yayasan');
-                (plan.components || []).forEach(comp => {
-                    if (comp.programId === prog.id) {
-                        const pagu = parseFloat(comp.totalAmount || (comp.amount * (comp.volume || 1)) || 0);
-                        totalPagu += pagu;
-                        programComponents.push({
-                            ...comp,
-                            unitName: uName,
-                            pagu
-                        });
-                    }
-                });
-            });
+            // Find components belonging to this program
+            const programComponents = allExtractedComponents.filter(c => c.programId === prog.id);
+            const totalPagu = programComponents.reduce((s, c) => s + c.pagu, 0);
 
             // Find all reports belonging to this program
             const progReports = filteredReports.filter(r => {
@@ -191,6 +195,10 @@ export default function ExpenseProgramReport() {
                 reports: reportListWithDetails
             };
         }).filter(p => {
+            // Only include programs that have non-zero amounts (RAB pagu, realisasi, or pengembalian)
+            const hasData = p.totalPagu > 0 || p.totalRealisasi > 0 || p.totalPengembalian > 0;
+            if (!hasData) return false;
+
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 return p.name.toLowerCase().includes(term) || (p.code && p.code.toLowerCase().includes(term));
