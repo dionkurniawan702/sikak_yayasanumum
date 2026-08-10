@@ -4,7 +4,7 @@ import {
     LayoutDashboard, BookOpen, FileText, BookMarked,
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
-    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout,
+    History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout, FolderKanban,
     ChevronDown, ChevronRight
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -169,6 +169,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
                         { path: '/pelaporan/bulanan', label: 'Pengeluaran Yayasan', icon: FileText },
                         { path: '/pelaporan/realisasi-bos', label: 'Pengeluaran BOS', icon: Landmark },
+                        { path: '/pelaporan/program-belanja', label: 'Laporan Program Belanja', icon: FolderKanban },
                         { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked }
                     ]
                 },
@@ -244,6 +245,7 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/pelaporan/arsip-permintaan', label: 'Arsip Permintaan', icon: History },
                         { path: '/pelaporan/bulanan', label: 'Pengeluaran Yayasan', icon: FileText },
                         ...(hasBos ? [{ path: '/pelaporan/realisasi-bos', label: 'Pengeluaran BOS', icon: Landmark }] : []),
+                        { path: '/pelaporan/program-belanja', label: 'Laporan Program Belanja', icon: FolderKanban },
                         { path: '/pelaporan/arsip-laporan', label: 'Arsip Laporan', icon: BookMarked }
                     ]
                 }

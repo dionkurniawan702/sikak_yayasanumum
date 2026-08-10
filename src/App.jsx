@@ -46,6 +46,7 @@ const BOSRecipientUnitManagement = lazy(() => import('./pages/anggaran/BOSRecipi
 const BOSDatabase = lazy(() => import('./pages/anggaran/BOSDatabase'));
 const BOSSaldo = lazy(() => import('./pages/pelaporan/BOSSaldo'));
 const BOSMonthlyReport = lazy(() => import('./pages/pelaporan/BOSMonthlyReport'));
+const ExpenseProgramReport = lazy(() => import('./pages/pelaporan/ExpenseProgramReport'));
 const UserManual = lazy(() => import('./pages/anggaran/UserManual'));
 import GenericMasterManagement from './components/GenericMasterManagement';
 import {
@@ -196,6 +197,7 @@ function AppContent() {
                     <Route path="pelaporan/realisasi-bos" element={<BOSMonthlyReport />} />
                     <Route path="pelaporan/arsip-laporan" element={<ArchiveReports />} />
                     <Route path="pelaporan/ketersediaan" element={<FundAvailability />} />
+                    <Route path="pelaporan/program-belanja" element={<ExpenseProgramReport />} />
 
                     <Route path="anggaran/dashboard-siswa" element={<StudentDashboard />} />
                     <Route path="anggaran/siswa" element={<StudentDatabase />} />
