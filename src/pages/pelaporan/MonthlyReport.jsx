@@ -46,14 +46,7 @@ function formatMonthLabel(monthStr) {
 function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     if (!report || !budgetRequests || budgetRequests.length === 0) return null;
 
-    // 1. Check exact budgetRequestId if present FIRST
-    const rReqId = report.budgetRequestId || report.requestId;
-    if (rReqId) {
-        const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) return found;
-    }
-
-    // 2. Check exact matching componentId in approved budgetRequests
+    // 1. Check exact matching componentId FIRST in approved budgetRequests
     if (report.componentId) {
         const found = budgetRequests.find(r => 
             r.status === 'APPROVED' && 
@@ -64,7 +57,21 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
         if (found) return found;
     }
 
+    const rReqId = report.budgetRequestId || report.requestId;
     const reportItemName = (report.category || report.description || '').trim().toLowerCase();
+
+    // 2. Check exact budgetRequestId if it exists AND its items contain the report item name/category
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) {
+            if (!reportItemName || !found.items || found.items.length === 0) {
+                if (report.kategoriAset !== 'PENGEMBALIAN') return found;
+            } else {
+                const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
+                if (hasItem) return found;
+            }
+        }
+    }
 
     // 3. Search for approved budgetRequest that actually contains this item by name (category or description)
     if (reportItemName) {
@@ -78,9 +85,12 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     }
 
     // 4. Special handling for PENGEMBALIAN (Refund) reports:
-    // If a refund report is created in month M (e.g. August) without explicit request link,
-    // match the previous month's approved request (July) for that unit!
     if (report.kategoriAset === 'PENGEMBALIAN' && report.date) {
+        if (rReqId) {
+            const found = budgetRequests.find(r => r.id === rReqId);
+            if (found) return found;
+        }
+
         const reportMonth = report.date.substring(0, 7);
         const approvedReqs = budgetRequests.filter(r => {
             const isSameUnit = (r.unitId && (r.unitId === report.unitId || r.unitId === report.fieldId)) ||
@@ -92,7 +102,13 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
         if (prevMonthReq) return prevMonthReq;
     }
 
-    // 5. Fallback: match by date month and unit
+    // 5. Fallback: return budgetRequestId if matched
+    if (rReqId) {
+        const found = budgetRequests.find(r => r.id === rReqId);
+        if (found) return found;
+    }
+
+    // 6. Fallback: match by date month and unit
     if (report.date) {
         const reportMonth = report.date.substring(0, 7);
         const foundByDate = budgetRequests.find(r => {
