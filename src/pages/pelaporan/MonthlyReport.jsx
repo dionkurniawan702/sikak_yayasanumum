@@ -2686,40 +2686,42 @@ export default function MonthlyReport() {
                         <div className="overflow-y-auto flex-1 custom-scrollbar">
                             <form id="report-form" onSubmit={handleReportSubmit} className="p-8 space-y-6">
 
-                                {/* Selector Surat Permintaan Dana (Bulan Permintaan) */}
+                                {/* Information Card: Surat Permintaan Dana (Terkunci Otomatis) */}
                                 <div>
                                     <label className="form-label font-bold text-slate-700 mb-1 flex items-center justify-between">
-                                        <span>Surat Permintaan Dana / Bulan Permintaan <span className="text-rose-500">*</span></span>
-                                        <span className="text-[10px] text-slate-400 font-normal">Tentukan bulan permintaan induk dari nota ini</span>
+                                        <span>Surat Permintaan Dana / Bulan Permintaan</span>
+                                        <span className="text-[10px] text-slate-400 font-medium bg-slate-100 px-2 py-0.5 rounded-full flex items-center gap-1">
+                                            🔒 Otomatis Terkunci
+                                        </span>
                                     </label>
-                                    <select
-                                        className="form-input font-bold text-xs bg-slate-50 text-slate-800 border-slate-200"
-                                        value={selectedRequest?.reqId || ''}
-                                        onChange={(e) => {
-                                            const chosenReqId = e.target.value;
-                                            const chosenReq = budgetRequests.find(r => r.id === chosenReqId);
-                                            if (chosenReq) {
-                                                setSelectedRequest(prev => ({
-                                                    ...prev,
-                                                    reqId: chosenReq.id,
-                                                    reqMonth: chosenReq.month,
-                                                    reqDate: chosenReq.date,
-                                                    reqDescription: chosenReq.description,
-                                                    reqUnitId: chosenReq.unitId,
-                                                    fieldId: chosenReq.fieldId
-                                                }));
-                                            }
-                                        }}
-                                        required
-                                    >
-                                        {budgetRequests
-                                            .filter(r => r.status === 'APPROVED' && (selectedRequest?.reqUnitId ? (r.unitId === selectedRequest.reqUnitId || r.fieldId === selectedRequest.reqUnitId) : true))
-                                            .map(r => (
-                                                <option key={r.id} value={r.id}>
-                                                    {formatMonthLabel(r.month)} • REQ: {r.id} — {r.description || 'Pengajuan Dana'} (Total Cair: {formatRupiah(r.totalAmount)})
-                                                </option>
-                                            ))}
-                                    </select>
+                                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-black text-xs flex-shrink-0">
+                                                {selectedRequest?.reqMonth ? formatMonthLabel(selectedRequest.reqMonth).split(' ')[0].substring(0, 3).toUpperCase() : 'REQ'}
+                                            </div>
+                                            <div className="min-w-0">
+                                                <div className="text-xs font-black text-slate-800 flex items-center gap-2 flex-wrap">
+                                                    <span>{formatMonthLabel(selectedRequest?.reqMonth)}</span>
+                                                    <span className="text-[10px] font-mono font-bold text-slate-500 bg-white px-2 py-0.5 rounded border border-slate-200">
+                                                        {selectedRequest?.reqId}
+                                                    </span>
+                                                </div>
+                                                <div className="text-[11px] text-slate-500 font-medium truncate max-w-md">
+                                                    {selectedRequest?.reqDescription || selectedRequest?.name || 'Pengajuan Dana Induk'}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {(() => {
+                                            const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
+                                            if (!parentReq) return null;
+                                            return (
+                                                <div className="text-right flex-shrink-0">
+                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Total Cair</span>
+                                                    <span className="text-xs font-black text-slate-700">{formatRupiah(parentReq.totalAmount || parentReq.amount)}</span>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
                                 </div>
 
                                 {/* Row 1: Tanggal + Nomor Nota */}
