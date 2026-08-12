@@ -847,35 +847,71 @@ export default function FundAvailability() {
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-slate-100 text-sm">
-                                                    {card.itemsDetail.map((item, idx) => (
-                                                        <tr key={idx} className="hover:bg-slate-50 transition-colors">
-                                                            <td className="py-4 px-4 font-bold text-slate-800">
-                                                                {item.name}
+                                                    {card.itemsDetail.map((item, idx) => {
+                                                        const isReturned = card.reqReturned > 0 && item.sisaAmt > 0;
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                                                                <td className="py-4 px-4 font-bold text-slate-800">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <span>{item.name}</span>
+                                                                        {isReturned && (
+                                                                            <span className="text-[10px] font-semibold text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-md border border-indigo-100 italic">
+                                                                                (Sisa {formatRupiah(item.sisaAmt)} sudah dikembalikan)
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="py-4 px-4 font-semibold text-slate-600">
+                                                                    {formatRupiah(item.itemAmt)}
+                                                                </td>
+                                                                <td className="py-4 px-4 font-semibold text-rose-600">
+                                                                    {formatRupiah(item.usedAmt)}
+                                                                </td>
+                                                                <td className="py-4 px-4">
+                                                                    <span className={`font-black text-base ${isReturned ? 'text-indigo-600' : item.sisaAmt > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
+                                                                        {formatRupiah(item.sisaAmt)}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-4 px-4 text-center">
+                                                                    {item.sisaAmt <= 0 ? (
+                                                                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black">
+                                                                            ✅ Tuntas 100%
+                                                                        </span>
+                                                                    ) : isReturned ? (
+                                                                        <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black border border-indigo-200 shadow-sm">
+                                                                            ↩️ Sisa Dikembalikan
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-black">
+                                                                            ⏳ Tersisa {formatRupiah(item.sisaAmt)}
+                                                                        </span>
+                                                                    )}
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                    {card.reqReturned > 0 && (
+                                                        <tr className="bg-indigo-50/60 font-bold border-t-2 border-indigo-200">
+                                                            <td className="py-4 px-4 font-black text-indigo-900 flex items-center gap-2">
+                                                                <span className="text-base">💸</span>
+                                                                <span>Pengembalian Sisa Dana (Dikembalikan ke Kas Yayasan)</span>
                                                             </td>
-                                                            <td className="py-4 px-4 font-semibold text-slate-600">
-                                                                {formatRupiah(item.itemAmt)}
+                                                            <td className="py-4 px-4 text-slate-400 font-medium">
+                                                                —
                                                             </td>
-                                                            <td className="py-4 px-4 font-semibold text-rose-600">
-                                                                {formatRupiah(item.usedAmt)}
+                                                            <td className="py-4 px-4 font-black text-indigo-600">
+                                                                {formatRupiah(card.reqReturned)}
                                                             </td>
-                                                            <td className="py-4 px-4">
-                                                                <span className={`font-black text-base ${item.sisaAmt > 0 ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                                    {formatRupiah(item.sisaAmt)}
-                                                                </span>
+                                                            <td className="py-4 px-4 font-black text-emerald-600">
+                                                                Rp 0
                                                             </td>
                                                             <td className="py-4 px-4 text-center">
-                                                                {item.sisaAmt <= 0 ? (
-                                                                    <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-xs font-black">
-                                                                        ✅ Tuntas 100%
-                                                                    </span>
-                                                                ) : (
-                                                                    <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-black">
-                                                                        ⏳ Tersisa {formatRupiah(item.sisaAmt)}
-                                                                    </span>
-                                                                )}
+                                                                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black border border-indigo-200 shadow-sm">
+                                                                    ✨ Setor Kas Yayasan
+                                                                </span>
                                                             </td>
                                                         </tr>
-                                                    ))}
+                                                    )}
                                                 </tbody>
                                             </table>
                                         </div>
