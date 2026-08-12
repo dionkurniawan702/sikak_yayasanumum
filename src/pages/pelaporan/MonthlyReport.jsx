@@ -2668,14 +2668,19 @@ export default function MonthlyReport() {
                                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Maksimal Lapor (Sisa Pengajuan)</p>
                                 <span className="text-lg font-black text-blue-700">
                                     {(() => {
-                                        const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
-                                        if (!parentReq) return 'Rp 0';
-                                        const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
-                                        const totalReportedForReq = (budgetReports || [])
-                                            .filter(r => r.budgetRequestId === selectedRequest?.reqId && r.status !== 'REJECTED' && !r.isDeleted)
-                                            .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
-                                        const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
-                                        const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
+                                         const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
+                                         if (!parentReq) return 'Rp 0';
+                                         const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
+                                         const totalReportedForReq = (budgetReports || [])
+                                             .filter(r => {
+                                                 if (r.status === 'REJECTED' || r.isDeleted) return false;
+                                                 const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                                                 if (resolved) return resolved.id === selectedRequest?.reqId;
+                                                 return r.budgetRequestId === selectedRequest?.reqId;
+                                             })
+                                             .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+                                         const currentDraftAmount = editingDraftId ? parseFloat(budgetReports.find(r => r.id === editingDraftId)?.amount || 0) : 0;
+                                         const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
                                         return formatRupiah(sisaDanaPengajuan);
                                     })()}
                                 </span>
