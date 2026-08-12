@@ -8,7 +8,7 @@ async function main() {
             body: JSON.stringify({ username: 'adminpdk', password: 'admin123' })
         });
         const loginJson = await loginRes.json();
-        const token = loginJson.data.token;
+        const token = loginJson.data?.token;
 
         const dataRes = await fetch(`${API_URL}/all-data`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -16,16 +16,18 @@ async function main() {
         const dataJson = await dataRes.json();
         const state = dataJson.data;
 
-        console.log('--- Academic Years in API ---');
-        console.log(state.academicYears.map(y => ({ id: y.id, name: y.name, isCurrent: y.isCurrent })));
+        const { budgetRequests = [], budgetReports = [], units = [], globalAcademicYearId } = state;
+        const taudUnit = units.find(u => u.name && u.name.toUpperCase().includes('TAUD'));
 
-        console.log('\n--- Plans AcademicYearId Distinct in API ---');
-        const rabPlans = state.rabPlans || [];
-        const planYears = new Set(rabPlans.map(p => p.academicYearId));
-        console.log(Array.from(planYears));
+        console.log('globalAcademicYearId:', globalAcademicYearId);
+
+        const sampleReport = budgetReports.find(r => r.unitId === taudUnit.id);
+        console.log('Sample TAUD Report academicYearId:', sampleReport?.academicYearId);
+        console.log('Sample TAUD Request academicYearId:', budgetRequests.find(r => r.unitId === taudUnit.id)?.academicYearId);
 
     } catch (err) {
-        console.error('Error:', err.message);
+        console.error(err);
     }
 }
+
 main();

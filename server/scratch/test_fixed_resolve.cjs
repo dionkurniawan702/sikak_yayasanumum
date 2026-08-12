@@ -1,169 +1,120 @@
 const API_URL = 'https://dion-sikak-yayasanumum.0oh83a.easypanel.host/api';
 
-// FIXED resolveReportRequest function: check budgetRequestId FIRST!
-function resolveReportRequestFixed(report, budgetRequests, globalAcademicYearId) {
-    if (!report || !budgetRequests || budgetRequests.length === 0) return null;
-
-    // 1. Check exact budgetRequestId / requestId FIRST!
-    const rReqId = report.budgetRequestId || report.requestId;
-    if (rReqId) {
-        const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) return found;
-    }
-
-    // 2. Check matching componentId in approved budgetRequests
-    if (report.componentId) {
-        const found = budgetRequests.find(r => 
-            r.status === 'APPROVED' && 
-            r.items && 
-            r.items.some(i => i.componentId === report.componentId)
-        );
-        if (found) return found;
-    }
-
-    // 3. Search for approved budgetRequest that actually contains this item by name (category or description)
-    const reportItemName = (report.category || report.description || '').trim().toLowerCase();
-    if (reportItemName) {
-        const foundByName = budgetRequests.find(r => 
-            r.status === 'APPROVED' &&
-            (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
-            r.items &&
-            r.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName)
-        );
-        if (foundByName) return foundByName;
-    }
-
-    // 4. Fallback: match by date month and unit
-    if (report.date) {
-        const reportMonth = report.date.slice(0, 7);
-        const match = budgetRequests.find(r => {
-            if (globalAcademicYearId && r.academicYearId !== globalAcademicYearId) return false;
-            const isSameUnit = (r.unitId && r.unitId === report.unitId) || (r.fieldId && r.fieldId === report.fieldId);
-            return isSameUnit && r.month === reportMonth;
-        });
-        if (match) return match;
-    }
-
-    return null;
-}
-
-// ORIGINAL resolveReportRequest function (buggy)
-function resolveReportRequestBuggy(report, budgetRequests, globalAcademicYearId) {
-    if (!report || !budgetRequests || budgetRequests.length === 0) return null;
-
-    if (report.componentId) {
-        const found = budgetRequests.find(r => 
-            r.status === 'APPROVED' && 
-            r.items && 
-            r.items.some(i => i.componentId === report.componentId)
-        );
-        if (found) return found;
-    }
-
-    const reportItemName = (report.category || report.description || '').trim().toLowerCase();
-    if (reportItemName) {
-        const foundByName = budgetRequests.find(r => 
-            r.status === 'APPROVED' &&
-            (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
-            r.items &&
-            r.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName)
-        );
-        if (foundByName) return foundByName;
-    }
-
-    const rReqId = report.budgetRequestId || report.requestId;
-    if (rReqId) {
-        const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) return found;
-    }
-
-    return null;
-}
-
 async function main() {
-    const loginRes = await fetch(`${API_URL}/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: 'adminpdk', password: 'admin123' })
-    });
-    const loginJson = await loginRes.json();
-    const token = loginJson.data?.token;
+    try {
+        const loginRes = await fetch(`${API_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: 'adminpdk', password: 'admin123' })
+        });
+        const loginJson = await loginRes.json();
+        const token = loginJson.data?.token;
 
-    const dataRes = await fetch(`${API_URL}/all-data`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const dataJson = await dataRes.json();
-    const state = dataJson.data;
+        const dataRes = await fetch(`${API_URL}/all-data`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const dataJson = await dataRes.json();
+        const state = dataJson.data;
 
-    const { budgetRequests = [], budgetReports = [], units = [] } = state;
-    const activeYear = (state.academicYears || []).find(y => y.isCurrent || y.status === 'Aktif');
-    const globalAcademicYearId = activeYear ? activeYear.id : state.globalAcademicYearId;
+        const { budgetRequests = [], budgetReports = [], units = [] } = state;
+        const globalAcademicYearId = 'AY-ID-MO8GWIG3-JDK';
+        const taudUnit = units.find(u => u.name && u.name.toUpperCase().includes('TAUD'));
 
-    const mitUnit = units.find(u => u.name && u.name.toLowerCase().includes('mit'));
-    const myUnitId = mitUnit.id;
+        // FIXED resolveReportRequest:
+        function resolveReportRequestFixed(report) {
+            if (!report || !budgetRequests || budgetRequests.length === 0) return null;
 
-    const pendingMonthFilter = '2026-06';
+            // 1. If exact budgetRequestId or requestId is specified, ALWAYS prefer it!
+            const rReqId = report.budgetRequestId || report.requestId;
+            if (rReqId) {
+                const found = budgetRequests.find(r => r.id === rReqId);
+                if (found) return found;
+            }
 
-    const baseReports = (budgetReports || []).filter(rel => {
-        if (rel.academicYearId && globalAcademicYearId && rel.academicYearId !== globalAcademicYearId) return false;
-        const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
-        if (isBosReport) return false;
-        return rel.unitId === myUnitId;
-    });
+            // 2. Check exact matching componentId in approved budgetRequests
+            if (report.componentId) {
+                const found = budgetRequests.find(r => 
+                    r.status === 'APPROVED' && 
+                    (report.unitId ? (r.unitId === report.unitId || r.fieldId === report.unitId) : true) &&
+                    r.items && 
+                    r.items.some(i => i.componentId === report.componentId)
+                );
+                if (found) return found;
+            }
 
-    console.log('=== BUGGY RESOLVE OUTPUT FOR JUNE 2026 ===');
-    const totalPengeluaranBuggy = baseReports.filter(r => {
-        if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-        if (pendingMonthFilter !== 'ALL') {
-            const req = resolveReportRequestBuggy(r, budgetRequests, globalAcademicYearId);
-            if (req) return req.month === pendingMonthFilter;
-            return r.date ? r.date.startsWith(pendingMonthFilter) : false;
+            const reportItemName = (report.category || report.description || '').trim().toLowerCase();
+
+            // 3. Search for approved budgetRequest by category / name matching month/date if possible
+            if (report.date) {
+                const reportMonth = report.date.substring(0, 7);
+                const foundByDateAndName = budgetRequests.find(r => {
+                    const isSameUnit = (r.unitId && (r.unitId === report.unitId || r.unitId === report.fieldId)) ||
+                                       (r.fieldId && (r.fieldId === report.unitId || r.fieldId === report.fieldId));
+                    return isSameUnit && r.status === 'APPROVED' && r.month === reportMonth &&
+                           r.items && r.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
+                });
+                if (foundByDateAndName) return foundByDateAndName;
+            }
+
+            // 4. Fallback: match by date month and unit
+            if (report.date) {
+                const reportMonth = report.date.substring(0, 7);
+                const foundByDate = budgetRequests.find(r => {
+                    const isSameUnit = (r.unitId && (r.unitId === report.unitId || r.unitId === report.fieldId)) ||
+                                       (r.fieldId && (r.fieldId === report.unitId || r.fieldId === report.fieldId));
+                    return isSameUnit && r.status === 'APPROVED' && r.month === reportMonth;
+                });
+                if (foundByDate) return foundByDate;
+            }
+
+            return null;
         }
-        return true;
-    }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
 
-    const totalPengembalianBuggy = baseReports.filter(r => {
-        if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-        if (pendingMonthFilter !== 'ALL') {
-            const req = resolveReportRequestBuggy(r, budgetRequests, globalAcademicYearId);
-            if (req) return req.month === pendingMonthFilter;
-            return r.date ? r.date.startsWith(pendingMonthFilter) : false;
-        }
-        return true;
-    }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+        // Test with FIXED resolveReportRequest for June 2026:
+        const baseReportsFixed = budgetReports.filter(r => {
+            if (r.academicYearId !== globalAcademicYearId || r.isDeleted || r.status === 'REJECTED') return false;
+            const req = resolveReportRequestFixed(r);
+            const isBos = (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+            if (isBos) return false;
+            if (r.unitId !== taudUnit.id) return false;
+            return true;
+        });
 
-    console.log(`Buggy totalPengeluaran: ${totalPengeluaranBuggy}`);
-    console.log(`Buggy totalPengembalian: ${totalPengembalianBuggy}`);
+        const selectedMonth = '2026-06';
+        const activeReportsFilteredFixed = baseReportsFixed.filter(r => {
+            const req = resolveReportRequestFixed(r);
+            if (req) return req.month === selectedMonth;
+            return r.date ? r.date.startsWith(selectedMonth) : false;
+        });
 
-    console.log('\n=== FIXED RESOLVE OUTPUT FOR JUNE 2026 ===');
-    const totalPengeluaranFixed = baseReports.filter(r => {
-        if (r.kategoriAset === 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-        if (pendingMonthFilter !== 'ALL') {
-            const req = resolveReportRequestFixed(r, budgetRequests, globalAcademicYearId);
-            if (req) return req.month === pendingMonthFilter;
-            return r.date ? r.date.startsWith(pendingMonthFilter) : false;
-        }
-        return true;
-    }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+        let topCardTotalUsedFixed = 0;
+        activeReportsFilteredFixed.forEach(r => {
+            if (r.kategoriAset !== 'PENGEMBALIAN' && r.status === 'APPROVED') {
+                topCardTotalUsedFixed += parseFloat(r.amount || 0);
+            }
+        });
 
-    const totalPengembalianFixed = baseReports.filter(r => {
-        if (r.kategoriAset !== 'PENGEMBALIAN' || r.status === 'REJECTED' || r.isDeleted) return false;
-        if (pendingMonthFilter !== 'ALL') {
-            const req = resolveReportRequestFixed(r, budgetRequests, globalAcademicYearId);
-            if (req) return req.month === pendingMonthFilter;
-            return r.date ? r.date.startsWith(pendingMonthFilter) : false;
-        }
-        return true;
-    }).reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
+        console.log('=== WITH FIXED resolveReportRequest ===');
+        console.log('June activeReportsFiltered count:', activeReportsFilteredFixed.length);
+        console.log('Top Card TOTAL REALISASI (statUsed):', topCardTotalUsedFixed);
 
-    const juneReq = budgetRequests.find(r => r.unitId === myUnitId && (r.month === '2026-06' || r.month === 'Juni 2026'));
-    const totalCair = juneReq ? parseFloat(juneReq.totalAmount || 0) : 0;
-    const totalSisaFixed = Math.max(0, totalCair - totalPengeluaranFixed - totalPengembalianFixed);
+        const juneReq = budgetRequests.find(r => r.unitId === taudUnit.id && r.month === '2026-06' && r.status === 'APPROVED');
+        const targetReportsFixed = activeReportsFilteredFixed.filter(r => r.status === 'APPROVED');
+        const matchingReportsFixed = targetReportsFixed.filter(r => {
+            if (r.kategoriAset === 'PENGEMBALIAN') return false;
+            if (r.budgetRequestId === juneReq.id || r.requestId === juneReq.id) return true;
+            if (juneReq.month && r.date && r.date.startsWith(juneReq.month)) return true;
+            return false;
+        });
+        const lowerCardReqUsedFixed = matchingReportsFixed.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
 
-    console.log(`Fixed Total Cair: ${totalCair}`);
-    console.log(`Fixed Total Pengeluaran: ${totalPengeluaranFixed}`);
-    console.log(`Fixed Total Pengembalian: ${totalPengembalianFixed}`);
-    console.log(`Fixed Total Sisa (Total Cair - Total Pengeluaran - Total Pengembalian): ${totalSisaFixed}`);
+        console.log('Lower Card REALISASI (KELUAR):', lowerCardReqUsedFixed);
+        console.log('Sisa Saldo (78.252.000 - ' + lowerCardReqUsedFixed + '):', 78252000 - lowerCardReqUsedFixed);
+        console.log('ARE THEY EQUAL?', topCardTotalUsedFixed === lowerCardReqUsedFixed);
+
+    } catch (err) {
+        console.error(err);
+    }
 }
 
 main();
