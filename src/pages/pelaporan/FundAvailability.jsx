@@ -350,10 +350,8 @@ export default function FundAvailability() {
             const matchingReports = targetReports.filter(r => {
                 if (r.kategoriAset === 'PENGEMBALIAN') return false;
                 const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                if (resolved && resolved.id === req.id) return true;
-                if (r.budgetRequestId === req.id || r.requestId === req.id) return true;
-                if (req.month && r.date && r.date.startsWith(req.month)) return true;
-                return false;
+                if (resolved) return resolved.id === req.id;
+                return r.date ? r.date.startsWith(req.month) : false;
             });
 
             const itemsDetail = reqItems.map(item => {
