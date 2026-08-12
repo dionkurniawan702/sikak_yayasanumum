@@ -378,7 +378,7 @@ export default function FundAvailability() {
             });
 
             const reqApproved = itemsDetail.reduce((s, i) => s + i.itemAmt, 0) || (parseFloat(req.totalAmount) || 0);
-            const reqUsed = itemsDetail.reduce((s, i) => s + i.usedAmt, 0);
+            const reqUsed = matchingReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
             
             // Check for approved returns for this request
             const reqReturned = targetReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && (r.budgetRequestId === req.id || r.requestId === req.id)).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
