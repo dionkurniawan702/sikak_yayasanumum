@@ -713,8 +713,8 @@ export default function FundAvailability() {
                                         key={field.id}
                                         name={field.name}
                                         type="field"
-                                        requests={baseRequests.filter(r => r.fieldId === field.id && !r.unitId)}
-                                        reports={baseReports.filter(r => r.fieldId === field.id && !r.unitId)}
+                                        requests={baseRequests.filter(r => r.fieldId === field.id)}
+                                        reports={baseReports.filter(r => r.fieldId === field.id)}
                                         selectedMonth={selectedMonth}
                                         budgetRequests={budgetRequests}
                                         globalAcademicYearId={globalAcademicYearId}
