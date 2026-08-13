@@ -479,7 +479,14 @@ export default function BOSMonthlyReport() {
     const getReportsCountForItem = (item) => {
         if (!item) return 0;
         return (budgetReports || []).filter(r => {
-            if (r.isDeleted || r.status === 'REJECTED') return false;
+            if (!r || r.isDeleted || r.status === 'REJECTED') return false;
+
+            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+            const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
+
+            if (rReqId && item.reqId && rReqId !== item.reqId) {
+                return false;
+            }
 
             if (item.componentId && r.componentId && item.componentId === r.componentId) {
                 return true;
@@ -490,13 +497,11 @@ export default function BOSMonthlyReport() {
             const iName = (item.name || '').trim().toLowerCase();
 
             if (iName && (rCat === iName || rDesc === iName)) {
-                const isSameUnit = !r.unitId || (item.reqUnitId && (r.unitId === item.reqUnitId || r.fieldId === item.reqUnitId));
-                if (isSameUnit) return true;
+                return true;
             }
 
-            const rReqId = r.budgetRequestId || r.requestId;
-            if (rReqId && item.reqId && rReqId === item.reqId) {
-                if (!r.componentId && !r.category) return true;
+            if (rReqId && item.reqId && rReqId === item.reqId && !r.componentId && !r.category) {
+                return true;
             }
 
             return false;
@@ -507,7 +512,14 @@ export default function BOSMonthlyReport() {
         if (!selectedItemForReports) return [];
         const item = selectedItemForReports;
         return (budgetReports || []).filter(r => {
-            if (r.isDeleted) return false;
+            if (!r || r.isDeleted) return false;
+
+            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+            const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
+
+            if (rReqId && item.reqId && rReqId !== item.reqId) {
+                return false;
+            }
 
             if (item.componentId && r.componentId && item.componentId === r.componentId) {
                 return true;
@@ -518,18 +530,16 @@ export default function BOSMonthlyReport() {
             const iName = (item.name || '').trim().toLowerCase();
 
             if (iName && (rCat === iName || rDesc === iName)) {
-                const isSameUnit = !r.unitId || (item.reqUnitId && (r.unitId === item.reqUnitId || r.fieldId === item.reqUnitId));
-                if (isSameUnit) return true;
+                return true;
             }
 
-            const rReqId = r.budgetRequestId || r.requestId;
-            if (rReqId && item.reqId && rReqId === item.reqId) {
-                if (!r.componentId && !r.category) return true;
+            if (rReqId && item.reqId && rReqId === item.reqId && !r.componentId && !r.category) {
+                return true;
             }
 
             return false;
         });
-    }, [selectedItemForReports, budgetReports, budgetRequests]);
+    }, [selectedItemForReports, budgetReports, budgetRequests, globalAcademicYearId]);
 
     const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
