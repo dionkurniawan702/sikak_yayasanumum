@@ -1777,61 +1777,6 @@ export default function BOSMonthlyReport() {
                                             <div className={`h-full ${terpakaiPct > 100 ? 'bg-rose-500' : 'bg-emerald-500'} rounded-full transition-all`} style={{ width: `${Math.min(Math.max(terpakaiPct, 0), 100)}%` }} />
                                         </div>
                                     </div>
-                                    
-                                    {/* LOCAL DRAFTS SECTION */}
-                                    {(() => {
-                                        const localDrafts = draftReports.filter(d => {
-                                             if (item.componentId && d.componentId && item.componentId === d.componentId) return true;
-                                             const dCat = (d.category || '').trim().toLowerCase();
-                                             const dDesc = (d.description || '').trim().toLowerCase();
-                                             const iName = (item.name || '').trim().toLowerCase();
-                                             if (iName && (dCat === iName || dDesc === iName)) return true;
-                                             if ((d.budgetRequestId === item.reqId || d.requestId === item.reqId) && (!d.componentId && !d.category)) return true;
-                                             return false;
-                                         });
-                                        if (localDrafts.length === 0) return null;
-                                        return (
-                                            <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200">
-                                                <div className="flex items-center justify-between mb-3 border-b border-amber-200/50 pb-2">
-                                                    <h5 className="font-black text-amber-900 text-xs flex items-center gap-1.5 uppercase tracking-widest">
-                                                        <Package size={14} /> Draft Nota
-                                                    </h5>
-                                                    <button onClick={() => {
-                                                        if (window.confirm(`Ajukan ${localDrafts.length} draft laporan ini ke Superadmin?`)) {
-                                                            localDrafts.forEach(draft => {
-                                                                const updated = { ...draft, status: 'PENDING' };
-                                                                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-                                                                api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
-                                                            });
-                                                        }
-                                                    }} className="px-3 py-1 bg-amber-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-600 transition-colors shadow-sm shadow-amber-500/20">
-                                                        Ajukan Draft
-                                                    </button>
-                                                </div>
-                                                <div className="space-y-2">
-                                                    {localDrafts.map(draft => (
-                                                        <div key={draft.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-amber-100 shadow-sm">
-                                                            <div>
-                                                                <p className="text-xs font-bold text-slate-800">{draft.description}</p>
-                                                                <p className="text-[9px] text-slate-500 font-bold uppercase tracking-widest mt-0.5">Nota: {draft.nomorNota || '-'} | Vol: {draft.volume} {draft.satuan}</p>
-                                                            </div>
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-black text-amber-600 text-xs">{formatRupiah(parseFloat(draft.amount || 0))}</span>
-                                                                <div className="flex items-center gap-1">
-                                                                    <button onClick={() => handleEditDraft(draft)} className="text-emerald-500 hover:text-emerald-700 p-1.5 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors" title="Edit">
-                                                                        <Edit2 size={12} strokeWidth={3} />
-                                                                    </button>
-                                                                    <button onClick={() => handleDeleteDraft(draft.id)} className="text-rose-500 hover:text-rose-700 p-1.5 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors" title="Hapus">
-                                                                        <Trash2 size={12} strokeWidth={3} />
-                                                                    </button>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })()}
                                 </div>
 
                                 <div className="text-right shrink-0">
