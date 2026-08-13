@@ -1355,7 +1355,12 @@ export default function BOSMonthlyReport() {
 
         const totalApproved = parseFloat(parentReq.totalAmount || parentReq.amount || 0);
         const totalReportedForReq = (budgetReports || [])
-            .filter(r => r.budgetRequestId === selectedRequest.reqId && r.status !== 'REJECTED' && !r.isDeleted)
+            .filter(r => {
+                if (r.status === 'REJECTED' || r.isDeleted) return false;
+                const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                if (resolved) return resolved.id === selectedRequest.reqId;
+                return r.budgetRequestId === selectedRequest.reqId;
+            })
             .reduce((sum, r) => sum + parseFloat(r.amount || 0), 0);
 
         const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
