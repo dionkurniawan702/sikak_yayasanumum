@@ -632,7 +632,7 @@ export default function BOSMonthlyReport() {
                     }
 
                     const itemAmount = parseFloat(item.amount || 0);
-                    const sisa = Math.max(0, itemAmount - reportedComp);
+                    const sisa = itemAmount - reportedComp;
 
                     items.push({
                         ...item,

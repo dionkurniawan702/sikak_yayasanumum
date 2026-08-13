@@ -14,7 +14,7 @@ export function formatRupiah(angka) {
         minimumFractionDigits: 0,
         maximumFractionDigits: 0,
     }).format(abs);
-    return angka < 0 ? `(${formatted})` : formatted;
+    return angka < 0 ? `- ${formatted}` : formatted;
 }
 
 /**
