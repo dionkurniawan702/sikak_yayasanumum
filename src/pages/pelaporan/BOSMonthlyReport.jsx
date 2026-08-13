@@ -477,50 +477,57 @@ export default function BOSMonthlyReport() {
     }, [budgetReports, budgetRequests]);
 
     const getReportsCountForItem = (item) => {
+        if (!item) return 0;
         return (budgetReports || []).filter(r => {
             if (r.isDeleted || r.status === 'REJECTED') return false;
-            let effectiveComponentId = r.componentId;
-            const rReqId = r.budgetRequestId || r.requestId;
 
-            if (!effectiveComponentId && rReqId) {
-                const req = (budgetRequests || []).find(br => br.id === rReqId);
-                if (req && req.items) {
-                    const match = req.items.find(ri => 
-                        ri.name === r.category || 
-                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
-                        ri.name?.toLowerCase() === r.description?.toLowerCase()
-                    );
-                    if (match) {
-                        effectiveComponentId = match.componentId;
-                    }
-                }
+            if (item.componentId && r.componentId && item.componentId === r.componentId) {
+                return true;
             }
-            if (rReqId && item.reqId) {
-                return rReqId === item.reqId && (effectiveComponentId ? effectiveComponentId === item.componentId : true);
+
+            const rCat = (r.category || '').trim().toLowerCase();
+            const rDesc = (r.description || '').trim().toLowerCase();
+            const iName = (item.name || '').trim().toLowerCase();
+
+            if (iName && (rCat === iName || rDesc === iName)) {
+                const isSameUnit = !r.unitId || (item.reqUnitId && (r.unitId === item.reqUnitId || r.fieldId === item.reqUnitId));
+                if (isSameUnit) return true;
             }
-            return effectiveComponentId === item.componentId || (!effectiveComponentId && r.budgetRequestId === item.reqId);
+
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (rReqId && item.reqId && rReqId === item.reqId) {
+                if (!r.componentId && !r.category) return true;
+            }
+
+            return false;
         }).length;
     };
 
     const itemReports = useMemo(() => {
         if (!selectedItemForReports) return [];
+        const item = selectedItemForReports;
         return (budgetReports || []).filter(r => {
             if (r.isDeleted) return false;
-            let effectiveComponentId = r.componentId;
-            if (!effectiveComponentId && r.budgetRequestId) {
-                const req = (budgetRequests || []).find(br => br.id === r.budgetRequestId);
-                if (req && req.items) {
-                    const match = req.items.find(ri => 
-                        ri.name === r.category || 
-                        ri.name?.toLowerCase() === r.category?.toLowerCase() ||
-                        ri.name?.toLowerCase() === r.description?.toLowerCase()
-                    );
-                    if (match) {
-                        effectiveComponentId = match.componentId;
-                    }
-                }
+
+            if (item.componentId && r.componentId && item.componentId === r.componentId) {
+                return true;
             }
-            return effectiveComponentId === selectedItemForReports.componentId || (!effectiveComponentId && r.budgetRequestId === selectedItemForReports.reqId);
+
+            const rCat = (r.category || '').trim().toLowerCase();
+            const rDesc = (r.description || '').trim().toLowerCase();
+            const iName = (item.name || '').trim().toLowerCase();
+
+            if (iName && (rCat === iName || rDesc === iName)) {
+                const isSameUnit = !r.unitId || (item.reqUnitId && (r.unitId === item.reqUnitId || r.fieldId === item.reqUnitId));
+                if (isSameUnit) return true;
+            }
+
+            const rReqId = r.budgetRequestId || r.requestId;
+            if (rReqId && item.reqId && rReqId === item.reqId) {
+                if (!r.componentId && !r.category) return true;
+            }
+
+            return false;
         });
     }, [selectedItemForReports, budgetReports, budgetRequests]);
 
@@ -1773,7 +1780,15 @@ export default function BOSMonthlyReport() {
                                     
                                     {/* LOCAL DRAFTS SECTION */}
                                     {(() => {
-                                        const localDrafts = draftReports.filter(d => item.componentId ? d.componentId === item.componentId : d.budgetRequestId === item.reqId);
+                                        const localDrafts = draftReports.filter(d => {
+                                             if (item.componentId && d.componentId && item.componentId === d.componentId) return true;
+                                             const dCat = (d.category || '').trim().toLowerCase();
+                                             const dDesc = (d.description || '').trim().toLowerCase();
+                                             const iName = (item.name || '').trim().toLowerCase();
+                                             if (iName && (dCat === iName || dDesc === iName)) return true;
+                                             if ((d.budgetRequestId === item.reqId || d.requestId === item.reqId) && (!d.componentId && !d.category)) return true;
+                                             return false;
+                                         });
                                         if (localDrafts.length === 0) return null;
                                         return (
                                             <div className="mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200">
