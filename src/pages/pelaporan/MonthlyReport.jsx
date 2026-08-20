@@ -558,8 +558,21 @@ export default function MonthlyReport() {
                 return false;
             }
 
-            if (item.componentId && r.componentId && item.componentId === r.componentId) {
-                return true;
+            if (item.componentId) {
+                if (r.componentId) {
+                    return item.componentId === r.componentId;
+                }
+                const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
+                if (req && req.items) {
+                    const rCat = (r.category || '').trim().toLowerCase();
+                    const rDesc = (r.description || '').trim().toLowerCase();
+                    const match = req.items.find(ri => {
+                        const riName = (ri.name || '').trim().toLowerCase();
+                        return riName && (riName === rCat || riName === rDesc);
+                    });
+                    return match && match.componentId === item.componentId;
+                }
+                return false;
             }
 
             const rCat = (r.category || '').trim().toLowerCase();
@@ -591,8 +604,21 @@ export default function MonthlyReport() {
                 return false;
             }
 
-            if (item.componentId && r.componentId && item.componentId === r.componentId) {
-                return true;
+            if (item.componentId) {
+                if (r.componentId) {
+                    return item.componentId === r.componentId;
+                }
+                const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
+                if (req && req.items) {
+                    const rCat = (r.category || '').trim().toLowerCase();
+                    const rDesc = (r.description || '').trim().toLowerCase();
+                    const match = req.items.find(ri => {
+                        const riName = (ri.name || '').trim().toLowerCase();
+                        return riName && (riName === rCat || riName === rDesc);
+                    });
+                    return match && match.componentId === item.componentId;
+                }
+                return false;
             }
 
             const rCat = (r.category || '').trim().toLowerCase();
@@ -677,8 +703,8 @@ export default function MonthlyReport() {
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
-                    if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    if (reqCompKey && reportedAmounts?.byRequestComponent) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey] || 0;
                     } else {
                         const matchingReports = (budgetReports || []).filter(r => {
                             if (r.status === 'REJECTED' || r.isDeleted) return false;
@@ -2030,7 +2056,14 @@ export default function MonthlyReport() {
                             <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-blue-200 transition-all border-l-8 border-l-blue-600">
                                 <div className="flex-1">
                                     <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                                        <h4 className="font-black text-slate-900 text-xl">{item.name}</h4>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="font-black text-slate-900 text-xl">{item.name}</h4>
+                                            {item.volume && item.satuan && item.harga && (
+                                                <span className="text-xs font-bold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-lg border border-slate-200">
+                                                    {item.volume} {item.satuan} @ {formatRupiah(item.harga)}
+                                                </span>
+                                            )}
+                                        </div>
                                         {item.sisa <= 0 && (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider">
                                                 <CheckCircle2 size={12} /> Selesai / Lunas

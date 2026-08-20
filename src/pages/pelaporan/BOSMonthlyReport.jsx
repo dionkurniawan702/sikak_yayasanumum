@@ -488,8 +488,21 @@ export default function BOSMonthlyReport() {
                 return false;
             }
 
-            if (item.componentId && r.componentId && item.componentId === r.componentId) {
-                return true;
+            if (item.componentId) {
+                if (r.componentId) {
+                    return item.componentId === r.componentId;
+                }
+                const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
+                if (req && req.items) {
+                    const rCat = (r.category || '').trim().toLowerCase();
+                    const rDesc = (r.description || '').trim().toLowerCase();
+                    const match = req.items.find(ri => {
+                        const riName = (ri.name || '').trim().toLowerCase();
+                        return riName && (riName === rCat || riName === rDesc);
+                    });
+                    return match && match.componentId === item.componentId;
+                }
+                return false;
             }
 
             const rCat = (r.category || '').trim().toLowerCase();
@@ -521,8 +534,21 @@ export default function BOSMonthlyReport() {
                 return false;
             }
 
-            if (item.componentId && r.componentId && item.componentId === r.componentId) {
-                return true;
+            if (item.componentId) {
+                if (r.componentId) {
+                    return item.componentId === r.componentId;
+                }
+                const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
+                if (req && req.items) {
+                    const rCat = (r.category || '').trim().toLowerCase();
+                    const rDesc = (r.description || '').trim().toLowerCase();
+                    const match = req.items.find(ri => {
+                        const riName = (ri.name || '').trim().toLowerCase();
+                        return riName && (riName === rCat || riName === rDesc);
+                    });
+                    return match && match.componentId === item.componentId;
+                }
+                return false;
             }
 
             const rCat = (r.category || '').trim().toLowerCase();
@@ -607,8 +633,8 @@ export default function BOSMonthlyReport() {
                     const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
                     let reportedComp = 0;
 
-                    if (reqCompKey && reportedAmounts?.byRequestComponent && reportedAmounts.byRequestComponent[reqCompKey] !== undefined) {
-                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey];
+                    if (reqCompKey && reportedAmounts?.byRequestComponent) {
+                        reportedComp = reportedAmounts.byRequestComponent[reqCompKey] || 0;
                     } else {
                         const matchingReports = (budgetReports || []).filter(r => {
                             if (r.status === 'REJECTED' || r.isDeleted) return false;
