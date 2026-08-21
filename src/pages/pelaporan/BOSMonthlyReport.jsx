@@ -1793,7 +1793,12 @@ export default function BOSMonthlyReport() {
                                         )}
                                     </div>
                                     <div className="flex flex-wrap items-center gap-3 text-slate-400 text-xs font-bold">
-                                        <span className="flex items-center gap-1"><History size={14} /> {item.reqDate}</span>
+                                        <span className="flex items-center gap-1" title="Tanggal pembuatan surat pengajuan"><History size={14} /> Tgl Buat: {item.reqDate ? item.reqDate.split('T')[0] : '—'}</span>
+                                        {item.reqMonth && (
+                                            <span className="flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-full text-[10px] font-black border border-emerald-100">
+                                                <Calendar size={12} /> Permintaan: {item.reqMonth}
+                                            </span>
+                                        )}
                                         <span className="flex items-center gap-1 font-black text-emerald-600 italic">REQ: {item.reqId.slice(0, 8)}</span>
                                         {isSuperAdmin && unitName && (
                                             <span className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-black">
