@@ -11,13 +11,27 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
 
     const [targetYear, targetMonthNum] = targetMonth.split('-').map(Number);
 
+    // Helper for matching entity (fieldId or unitId)
+    const isSameEntity = (item) => {
+        if (!item) return false;
+        if (fieldId) {
+            // Target is a Field (e.g. SARPRAS)
+            return item.fieldId === fieldId || item.unitId === fieldId;
+        }
+        if (unitId && unitId !== 'FOUNDATION') {
+            // Target is a specific Unit (e.g. SDIT 1)
+            return item.unitId === unitId || item.fieldId === unitId;
+        }
+        if (unitId === 'FOUNDATION') {
+            return item.unitId === 'FOUNDATION' || (!item.unitId && !item.fieldId);
+        }
+        return false;
+    };
+
     // Find all approved requests in the same academic year for prior months
     const priorRequests = budgetRequests.filter(r => {
-        if (r.status !== 'APPROVED') return false;
-        if (r.isDeleted) return false;
-        if (unitId && r.unitId !== unitId) return false;
-        if (fieldId && r.fieldId !== fieldId) return false;
-        if (!r.month) return false;
+        if (r.status !== 'APPROVED' || r.isDeleted || !r.month) return false;
+        if (!isSameEntity(r)) return false;
 
         const [rYear, rMonthNum] = r.month.split('-').map(Number);
         if (rYear < targetYear) return true;
@@ -28,28 +42,41 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
     if (priorRequests.length === 0) return { hasUnreturned: false, amount: 0 };
 
     const totalCair = priorRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
-    
     const priorRequestIds = priorRequests.map(r => r.id);
+
+    // Find all approved expenses for prior months / requests
     const priorReports = budgetReports.filter(r => {
-        if (r.status !== 'APPROVED') return false;
-        if (r.isDeleted) return false;
+        if (r.status !== 'APPROVED' || r.isDeleted) return false;
         if (r.kategoriAset === 'PENGEMBALIAN') return false;
-        return priorRequestIds.includes(r.budgetRequestId);
+        if (!isSameEntity(r)) return false;
+
+        // Matches if explicitly linked to a prior request OR if report date month < targetMonth
+        if (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId)) return true;
+        if (r.requestId && priorRequestIds.includes(r.requestId)) return true;
+        if (r.date) {
+            const reportMonth = r.date.substring(0, 7);
+            if (reportMonth < targetMonth) return true;
+        }
+        return false;
     });
     const totalUsed = priorReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
+    // Find all approved returns
     const approvedReturns = budgetReports.filter(r => {
-        if (r.status !== 'APPROVED') return false;
-        if (r.isDeleted) return false;
-        if (r.kategoriAset !== 'PENGEMBALIAN') return false;
-        if (unitId && r.unitId !== unitId) return false;
-        if (fieldId && r.fieldId !== fieldId) return false;
+        if (r.status !== 'APPROVED' || r.isDeleted) return false;
+        if (r.kategoriAset === 'PENGEMBALIAN') return false;
+        if (!isSameEntity(r)) return false;
+
+        if (r.date) {
+            const returnMonth = r.date.substring(0, 7);
+            if (returnMonth > targetMonth) return false;
+        }
         return true;
     });
     const totalReturned = approvedReturns.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
-    const unreturned = totalCair - totalUsed - totalReturned;
-    if (unreturned > 0) {
+    const unreturned = Math.max(0, totalCair - totalUsed - totalReturned);
+    if (unreturned > 100) {
         return { hasUnreturned: true, amount: unreturned };
     }
     return { hasUnreturned: false, amount: 0 };
