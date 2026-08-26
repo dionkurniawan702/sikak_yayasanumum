@@ -815,12 +815,17 @@ router.put('/budget-requests/:id', async (req, res) => {
 
                     const approvedReturns = await prisma.budgetReport.findMany({
                         where: {
-                            unitId: unitId || null,
-                            fieldId: fieldId || null,
-                            academicYearId: academicYearId,
-                            kategoriAset: 'PENGEMBALIAN',
                             status: 'APPROVED',
-                            isDeleted: false
+                            isDeleted: false,
+                            kategoriAset: 'PENGEMBALIAN',
+                            OR: [
+                                { budgetRequestId: { in: priorRequestIds } },
+                                { requestId: { in: priorRequestIds } },
+                                {
+                                    academicYearId: academicYearId,
+                                    ...(fieldId ? { fieldId: fieldId } : (unitId ? { unitId: unitId } : {}))
+                                }
+                            ]
                         }
                     });
                     const totalReturned = approvedReturns.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);

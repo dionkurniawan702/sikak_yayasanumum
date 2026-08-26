@@ -508,7 +508,7 @@ export default function MonthlyRequest() {
             setReviewRequest(null);
         } catch (err) {
             console.error(err);
-            showToast('Gagal memproses persetujuan.', 'error');
+            showToast(`Gagal memproses persetujuan: ${err.message || 'Terjadi kesalahan pada server.'}`, 'error');
         } finally {
             setProcessingId(null);
             window.dispatchEvent(new CustomEvent('app-processing-end'));
