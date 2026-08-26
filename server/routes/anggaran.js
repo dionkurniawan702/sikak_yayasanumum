@@ -820,7 +820,6 @@ router.put('/budget-requests/:id', async (req, res) => {
                             kategoriAset: 'PENGEMBALIAN',
                             OR: [
                                 { budgetRequestId: { in: priorRequestIds } },
-                                { requestId: { in: priorRequestIds } },
                                 {
                                     academicYearId: academicYearId,
                                     ...(fieldId ? { fieldId: fieldId } : (unitId ? { unitId: unitId } : {}))
