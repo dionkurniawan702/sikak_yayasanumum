@@ -1139,6 +1139,18 @@ export default function FundAvailability() {
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                     required
                                 />
+                                {returnForm.budgetRequestId && (() => {
+                                    const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
+                                    if (chosen && chosen.reqSisa > 0 && parseFloat(returnForm.amount || 0) !== chosen.reqSisa) {
+                                        const diff = chosen.reqSisa - parseFloat(returnForm.amount || 0);
+                                        return (
+                                            <span className="text-[11px] font-bold text-amber-700 mt-1.5 block bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                                                ⚠️ Nominal pengembalian ({formatRupiah(parseFloat(returnForm.amount || 0))}) berbeda dari sisa pagu ({formatRupiah(chosen.reqSisa)}). {diff > 0 ? `Selisih ${formatRupiah(diff)} akan tetap tercatat sebagai sisa di Statistik Laporan.` : ''}
+                                            </span>
+                                        );
+                                    }
+                                    return null;
+                                })()}
                                 <span className="text-[10px] font-bold text-indigo-600 mt-1 block">
                                     Maksimal total sisa saldo: {formatRupiah(statBalance)}
                                 </span>
