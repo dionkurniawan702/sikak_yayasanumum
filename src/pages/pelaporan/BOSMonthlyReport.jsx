@@ -410,14 +410,23 @@ export default function BOSMonthlyReport() {
                 let effectiveComponentId = r.componentId;
                 if (!effectiveComponentId && rReqId) {
                     const req = reqLookup.get(rReqId);
-                    if (req && req.items) {
-                        const match = req.items.find(item => 
-                            item.name === r.category || 
-                            item.name?.toLowerCase() === r.category?.toLowerCase() ||
-                            item.name?.toLowerCase() === r.description?.toLowerCase()
-                        );
-                        if (match) {
-                            effectiveComponentId = match.componentId;
+                    if (req && req.items && req.items.length > 0) {
+                        const rCat = (r.category || r.description || '').trim().toLowerCase();
+                        const matchingItems = req.items.filter(item => {
+                            const iName = (item.name || '').trim().toLowerCase();
+                            return iName && (iName === rCat || rCat.includes(iName) || iName.includes(rCat));
+                        });
+                        if (matchingItems.length === 1) {
+                            effectiveComponentId = matchingItems[0].componentId || matchingItems[0].id;
+                        } else if (matchingItems.length > 1) {
+                            // Find item that still has remaining budget capacity or fill sequentially
+                            const candidate = matchingItems.find(item => {
+                                const cId = item.componentId || item.id;
+                                const reqCompKey = `${rReqId}_${cId}`;
+                                const currentUsed = byRequestComponent[reqCompKey] || 0;
+                                return currentUsed < parseFloat(item.amount || 0);
+                            }) || matchingItems[matchingItems.length - 1];
+                            effectiveComponentId = candidate.componentId || candidate.id;
                         }
                     }
                 }
@@ -478,6 +487,7 @@ export default function BOSMonthlyReport() {
 
     const getReportsCountForItem = (item) => {
         if (!item) return 0;
+        const itemCompId = item.componentId || item.id;
         return (budgetReports || []).filter(r => {
             if (!r || r.isDeleted || r.status === 'REJECTED') return false;
 
@@ -488,19 +498,22 @@ export default function BOSMonthlyReport() {
                 return false;
             }
 
-            if (item.componentId) {
+            if (itemCompId) {
                 if (r.componentId) {
-                    return item.componentId === r.componentId;
+                    return itemCompId === r.componentId;
                 }
                 const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
-                if (req && req.items) {
-                    const rCat = (r.category || '').trim().toLowerCase();
-                    const rDesc = (r.description || '').trim().toLowerCase();
-                    const match = req.items.find(ri => {
+                if (req && req.items && req.items.length > 0) {
+                    const rCat = (r.category || r.description || '').trim().toLowerCase();
+                    const matchingItems = req.items.filter(ri => {
                         const riName = (ri.name || '').trim().toLowerCase();
-                        return riName && (riName === rCat || riName === rDesc);
+                        return riName && (riName === rCat || rCat.includes(riName) || riName.includes(rCat));
                     });
-                    return match && match.componentId === item.componentId;
+                    if (matchingItems.length === 1) {
+                        return (matchingItems[0].componentId || matchingItems[0].id) === itemCompId;
+                    } else if (matchingItems.length > 1) {
+                        return matchingItems.some(mi => (mi.componentId || mi.id) === itemCompId);
+                    }
                 }
                 return false;
             }
@@ -524,6 +537,7 @@ export default function BOSMonthlyReport() {
     const itemReports = useMemo(() => {
         if (!selectedItemForReports) return [];
         const item = selectedItemForReports;
+        const itemCompId = item.componentId || item.id;
         return (budgetReports || []).filter(r => {
             if (!r || r.isDeleted) return false;
 
@@ -534,19 +548,22 @@ export default function BOSMonthlyReport() {
                 return false;
             }
 
-            if (item.componentId) {
+            if (itemCompId) {
                 if (r.componentId) {
-                    return item.componentId === r.componentId;
+                    return itemCompId === r.componentId;
                 }
                 const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
-                if (req && req.items) {
-                    const rCat = (r.category || '').trim().toLowerCase();
-                    const rDesc = (r.description || '').trim().toLowerCase();
-                    const match = req.items.find(ri => {
+                if (req && req.items && req.items.length > 0) {
+                    const rCat = (r.category || r.description || '').trim().toLowerCase();
+                    const matchingItems = req.items.filter(ri => {
                         const riName = (ri.name || '').trim().toLowerCase();
-                        return riName && (riName === rCat || riName === rDesc);
+                        return riName && (riName === rCat || rCat.includes(riName) || riName.includes(rCat));
                     });
-                    return match && match.componentId === item.componentId;
+                    if (matchingItems.length === 1) {
+                        return (matchingItems[0].componentId || matchingItems[0].id) === itemCompId;
+                    } else if (matchingItems.length > 1) {
+                        return matchingItems.some(mi => (mi.componentId || mi.id) === itemCompId);
+                    }
                 }
                 return false;
             }
@@ -984,7 +1001,7 @@ export default function BOSMonthlyReport() {
                     const newReport = {
                         id: `REL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
                         budgetRequestId: item.reqId,
-                        componentId: item.componentId || null,
+                        componentId: item.componentId || item.id || null,
                         expenseItemId: item.expenseItemId || null,
                         category: item.name,
                         date: dateVal,
