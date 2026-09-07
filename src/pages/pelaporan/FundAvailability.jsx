@@ -37,8 +37,9 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     if (rReqId) {
         const found = budgetRequests.find(r => r.id === rReqId);
         if (found) {
+            if (report.kategoriAset === 'PENGEMBALIAN') return found;
             if (!reportItemName || !found.items || found.items.length === 0) {
-                if (report.kategoriAset !== 'PENGEMBALIAN') return found;
+                return found;
             } else {
                 const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
                 if (hasItem) return found;
@@ -345,7 +346,7 @@ export default function FundAvailability() {
         const approvedReqs = activeRequestsFiltered.filter(r => r.status === 'APPROVED');
         const targetReports = activeReportsFiltered.filter(r => r.status === 'APPROVED');
 
-        return approvedReqs.map(req => {
+        const initialCards = approvedReqs.map(req => {
             const reqItems = req.items || [];
             const matchingReports = targetReports.filter(r => {
                 if (r.kategoriAset === 'PENGEMBALIAN') return false;
@@ -379,12 +380,80 @@ export default function FundAvailability() {
 
             const reqApproved = itemsDetail.reduce((s, i) => s + i.itemAmt, 0) || (parseFloat(req.totalAmount) || 0);
             const reqUsed = matchingReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-            
-            // Check for approved returns for this request
-            const reqReturned = targetReports.filter(r => r.kategoriAset === 'PENGEMBALIAN' && (r.budgetRequestId === req.id || r.requestId === req.id)).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            const initialSisa = Math.max(0, reqApproved - reqUsed);
+
+            return {
+                req,
+                itemsDetail,
+                reqApproved,
+                reqUsed,
+                initialSisa,
+                reqReturned: 0
+            };
+        });
+
+        // Collect all approved returns for this entity (from baseReports to ensure refunds made in subsequent months are captured)
+        const relevantReturns = (baseReports || []).filter(r => r.kategoriAset === 'PENGEMBALIAN' && r.status === 'APPROVED');
+
+        // Pass 1: Direct matches
+        relevantReturns.forEach(ret => {
+            const retAmt = parseFloat(ret.amount || 0);
+            if (retAmt <= 0) return;
+
+            const resolvedReq = resolveReportRequest(ret, budgetRequests, globalAcademicYearId);
+            const targetCard = initialCards.find(c =>
+                (ret.budgetRequestId && c.req.id === ret.budgetRequestId) ||
+                (ret.requestId && c.req.id === ret.requestId) ||
+                (resolvedReq && c.req.id === resolvedReq.id)
+            );
+
+            if (targetCard) {
+                targetCard.reqReturned += retAmt;
+            }
+        });
+
+        // Pass 2: Re-distribute any surplus or unassigned returns to requests of the same unit that still have remaining sisa
+        let surplusReturned = 0;
+        initialCards.forEach(c => {
+            if (c.reqReturned > c.initialSisa) {
+                surplusReturned += (c.reqReturned - c.initialSisa);
+                c.reqReturned = c.initialSisa;
+            }
+        });
+
+        relevantReturns.forEach(ret => {
+            const retAmt = parseFloat(ret.amount || 0);
+            const resolvedReq = resolveReportRequest(ret, budgetRequests, globalAcademicYearId);
+            const isDirectMatched = initialCards.some(c =>
+                (ret.budgetRequestId && c.req.id === ret.budgetRequestId) ||
+                (ret.requestId && c.req.id === ret.requestId) ||
+                (resolvedReq && c.req.id === resolvedReq.id)
+            );
+            if (!isDirectMatched) {
+                const isMyUnit = (myUnitId && (ret.unitId === myUnitId || ret.fieldId === myUnitId)) ||
+                                 (myFieldId && (ret.fieldId === myFieldId || ret.unitId === myFieldId)) ||
+                                 isSuperAdmin;
+                if (isMyUnit) {
+                    surplusReturned += retAmt;
+                }
+            }
+        });
+
+        if (surplusReturned > 0) {
+            initialCards.forEach(c => {
+                const deficit = Math.max(0, c.initialSisa - c.reqReturned);
+                if (deficit > 0 && surplusReturned > 0) {
+                    const alloc = Math.min(surplusReturned, deficit);
+                    c.reqReturned += alloc;
+                    surplusReturned -= alloc;
+                }
+            });
+        }
+
+        return initialCards.map(c => {
+            const { req, reqApproved, reqUsed, reqReturned, itemsDetail } = c;
             const reqSisa = Math.max(0, reqApproved - reqUsed - reqReturned);
             const reqPct = reqApproved > 0 ? (reqUsed / reqApproved) * 100 : 0;
-
             const uName = units?.find(u => u.id === req.unitId)?.name || fields?.find(f => f.id === req.fieldId)?.name || 'Yayasan';
 
             return {
@@ -401,7 +470,7 @@ export default function FundAvailability() {
                 itemsDetail
             };
         });
-    }, [activeRequestsFiltered, activeReportsFiltered, units, fields]);
+    }, [activeRequestsFiltered, activeReportsFiltered, baseReports, budgetRequests, globalAcademicYearId, myUnitId, myFieldId, isSuperAdmin, units, fields]);
 
     // ── Aggregation of categories for normal users (Filtered by month)
     const categoryList = useMemo(() => {

@@ -64,8 +64,9 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     if (rReqId) {
         const found = budgetRequests.find(r => r.id === rReqId);
         if (found) {
+            if (report.kategoriAset === 'PENGEMBALIAN') return found;
             if (!reportItemName || !found.items || found.items.length === 0) {
-                if (report.kategoriAset !== 'PENGEMBALIAN') return found;
+                return found;
             } else {
                 const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
                 if (hasItem) return found;

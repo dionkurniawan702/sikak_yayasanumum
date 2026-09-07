@@ -64,8 +64,12 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
     // Find all approved returns
     const approvedReturns = budgetReports.filter(r => {
         if (r.status !== 'APPROVED' || r.isDeleted) return false;
-        if (r.kategoriAset === 'PENGEMBALIAN') return false;
+        if (r.kategoriAset !== 'PENGEMBALIAN') return false;
         if (!isSameEntity(r)) return false;
+
+        // If explicitly linked to a prior request, count it
+        if (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId)) return true;
+        if (r.requestId && priorRequestIds.includes(r.requestId)) return true;
 
         if (r.date) {
             const returnMonth = r.date.substring(0, 7);
