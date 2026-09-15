@@ -5,11 +5,12 @@ import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
 
 // ─── Helper to Check Prior Unreturned Balances ───────────────────────────────
-function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
+function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSource = 'YAYASAN') {
     const { budgetRequests, budgetReports } = state;
-    if (!targetMonth) return { hasUnreturned: false, amount: 0 };
+    if (!targetMonth) return { hasUnreturned: false, amount: 0, isBos: false };
 
     const [targetYear, targetMonthNum] = targetMonth.split('-').map(Number);
+    const isTargetBos = targetSource === 'BOS';
 
     // Helper for matching entity (fieldId or unitId)
     const isSameEntity = (item) => {
@@ -28,10 +29,14 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
         return false;
     };
 
-    // Find all approved requests in the same academic year for prior months
+    // Find all approved requests in the same academic year for prior months matching target source
     const priorRequests = budgetRequests.filter(r => {
         if (r.status !== 'APPROVED' || r.isDeleted || !r.month) return false;
         if (!isSameEntity(r)) return false;
+
+        const isBosRequest = r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'));
+        if (isTargetBos && !isBosRequest) return false;
+        if (!isTargetBos && isBosRequest) return false;
 
         const [rYear, rMonthNum] = r.month.split('-').map(Number);
         if (rYear < targetYear) return true;
@@ -39,16 +44,20 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
         return false;
     });
 
-    if (priorRequests.length === 0) return { hasUnreturned: false, amount: 0 };
+    if (priorRequests.length === 0) return { hasUnreturned: false, amount: 0, isBos: isTargetBos };
 
     const totalCair = priorRequests.reduce((sum, r) => sum + (parseFloat(r.totalAmount) || 0), 0);
     const priorRequestIds = priorRequests.map(r => r.id);
 
-    // Find all approved expenses for prior months / requests
+    // Find all approved expenses for prior months / requests matching target source
     const priorReports = budgetReports.filter(r => {
         if (r.status !== 'APPROVED' || r.isDeleted) return false;
         if (r.kategoriAset === 'PENGEMBALIAN') return false;
         if (!isSameEntity(r)) return false;
+
+        const isBosReport = r.source === 'BOS' || r.planId?.endsWith('-BOS') || (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId));
+        if (isTargetBos && !isBosReport) return false;
+        if (!isTargetBos && isBosReport) return false;
 
         // Matches if explicitly linked to a prior request OR if report date month < targetMonth
         if (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId)) return true;
@@ -61,11 +70,15 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
     });
     const totalUsed = priorReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
-    // Find all approved returns
+    // Find all approved returns matching target source
     const approvedReturns = budgetReports.filter(r => {
         if (r.status !== 'APPROVED' || r.isDeleted) return false;
         if (r.kategoriAset !== 'PENGEMBALIAN') return false;
         if (!isSameEntity(r)) return false;
+
+        const isBosReport = r.source === 'BOS' || r.planId?.endsWith('-BOS') || (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId));
+        if (isTargetBos && !isBosReport) return false;
+        if (!isTargetBos && isBosReport) return false;
 
         // If explicitly linked to a prior request, count it
         if (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId)) return true;
@@ -81,9 +94,9 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth) {
 
     const unreturned = Math.max(0, totalCair - totalUsed - totalReturned);
     if (unreturned > 100) {
-        return { hasUnreturned: true, amount: unreturned };
+        return { hasUnreturned: true, amount: unreturned, isBos: isTargetBos };
     }
-    return { hasUnreturned: false, amount: 0 };
+    return { hasUnreturned: false, amount: 0, isBos: isTargetBos };
 }
 
 export default function MonthlyRequest() {
@@ -443,7 +456,7 @@ export default function MonthlyRequest() {
         }
     };
 
-    const handleSaveReview = async () => {
+    const handleSaveReview = async (bypassBalance = false) => {
         setProcessingId('saving-review');
         window.dispatchEvent(new CustomEvent('app-processing-start', { 
             detail: { 
@@ -463,7 +476,7 @@ export default function MonthlyRequest() {
             if (accItems.length === req.items.length) {
                 const updated = { ...req, status: 'APPROVED', notified: false };
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
             } 
             // If all are TOLAK
             else if (tolakItems.length === req.items.length) {
@@ -481,13 +494,13 @@ export default function MonthlyRequest() {
                         const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
                         const updated = { ...req, status: 'APPROVED', items: accItems, totalAmount: accTotal, notified: false };
                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
+                        await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
                     } else {
                         // Create a NEW request for the APPROVED items
                         const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
                         const newAcc = { ...req, id: generateId('REQ') + '-ACC', status: 'APPROVED', items: accItems, totalAmount: accTotal, notified: false };
                         dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newAcc });
-                        await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newAcc }, state);
+                        await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: { ...newAcc, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
                     }
                 }
                 
@@ -1233,16 +1246,17 @@ export default function MonthlyRequest() {
                         </div>
 
                         {(() => {
-                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month);
+                            const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
+                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource);
                             if (!superadminUnreturnedInfo.hasUnreturned) return null;
                             return (
                                 <div className="mx-10 mt-6 p-5 bg-rose-50 rounded-2xl border border-rose-200 flex items-start gap-3 text-rose-800">
                                     <AlertCircle className="shrink-0 text-rose-600 mt-0.5" size={20} />
-                                    <div>
+                                    <div className="flex-1">
                                         <h5 className="font-black text-xs uppercase tracking-widest text-rose-900 mb-1">Pencairan Ditangguhkan (Blocked)</h5>
-                                        <p className="text-xs font-semibold">
-                                            Unit/Bidang pemohon memiliki sisa saldo bulan sebelumnya yang belum dikembalikan sebesar <span className="font-black">{formatRupiah(superadminUnreturnedInfo.amount)}</span>.
-                                            Pencairan dana ditangguhkan sampai sisa saldo dikembalikan ke Yayasan dan disetujui.
+                                        <p className="text-xs font-semibold leading-relaxed">
+                                            Unit/Bidang pemohon memiliki sisa saldo dana <b>{superadminUnreturnedInfo.isBos ? 'BOS' : 'Yayasan'}</b> bulan sebelumnya yang belum dipertanggungjawabkan/dikembalikan sebesar <span className="font-black text-rose-700">{formatRupiah(superadminUnreturnedInfo.amount)}</span>.
+                                            Pencairan otomatis ditangguhkan sampai sisa saldo dikembalikan dan disetujui.
                                         </p>
                                     </div>
                                 </div>
@@ -1292,25 +1306,50 @@ export default function MonthlyRequest() {
                             </div>
                         </div>
 
-                        <div className="p-10 bg-white border-t border-slate-100 flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Di-ACC</p>
-                                <h3 className="text-3xl font-black text-emerald-600 italic tracking-tighter">
-                                    {formatRupiah(reviewRequest.req.items.filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}
-                                </h3>
-                            </div>
-                            <div className="flex gap-4">
-                                <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
-                                <button
-                                    onClick={handleSaveReview}
-                                    disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month).hasUnreturned}
-                                    className="btn bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all"
-                                >
-                                    {processingId === 'saving-review' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                                    SIMPAN PERSETUJUAN
-                                </button>
-                            </div>
-                        </div>
+                        {(() => {
+                            const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
+                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource);
+                            const hasBlock = superadminUnreturnedInfo.hasUnreturned;
+
+                            return (
+                                <div className="p-10 bg-white border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Di-ACC</p>
+                                        <h3 className="text-3xl font-black text-emerald-600 italic tracking-tighter">
+                                            {formatRupiah(reviewRequest.req.items.filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}
+                                        </h3>
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 items-center">
+                                        <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                                        
+                                        {isSuperAdmin && hasBlock && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    const confirmed = window.confirm(`PERINGATAN SUPERADMIN:\n\nUnit ini masih memiliki sisa saldo ${superadminUnreturnedInfo.isBos ? 'BOS' : 'Yayasan'} sebesar ${formatRupiah(superadminUnreturnedInfo.amount)} dari bulan sebelumnya.\n\nApakah Anda yakin ingin melakukan BYPASS pemblokiran dan tetap menyetujui (ACC) pencairan dana ini?`);
+                                                    if (confirmed) handleSaveReview(true);
+                                                }}
+                                                disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0)}
+                                                className="btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
+                                                title="Izinkan persetujuan darurat meskipun ada sisa saldo belum kembali"
+                                            >
+                                                {processingId === 'saving-review' ? <Loader2 size={16} className="animate-spin" /> : <AlertCircle size={16} />}
+                                                BYPASS BLOKIR & SETUJUI
+                                            </button>
+                                        )}
+
+                                        <button
+                                            onClick={() => handleSaveReview(false)}
+                                            disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || hasBlock}
+                                            className="btn bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all"
+                                        >
+                                            {processingId === 'saving-review' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                            SIMPAN PERSETUJUAN
+                                        </button>
+                                    </div>
+                                </div>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

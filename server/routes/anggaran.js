@@ -779,15 +779,21 @@ router.put('/budget-requests/:id', async (req, res) => {
             return res.status(404).json({ error: 'Pengajuan dana tidak ditemukan.' });
         }
 
+        // Check for bypass balance check (emergency override by Super Admin)
+        const bypassBalanceCheck = data.bypassBalanceCheck === true;
+        delete data.bypassBalanceCheck;
+
         // Enforce unreturned balance check when status is transitioning to APPROVED
-        if (data.status === 'APPROVED' && existing.status !== 'APPROVED') {
+        if (data.status === 'APPROVED' && existing.status !== 'APPROVED' && !bypassBalanceCheck) {
             const unitId = data.unitId !== undefined ? data.unitId : existing.unitId;
             const fieldId = data.fieldId !== undefined ? data.fieldId : existing.fieldId;
             const academicYearId = data.academicYearId !== undefined ? data.academicYearId : existing.academicYearId;
             const month = data.month !== undefined ? data.month : existing.month;
+            const reqSource = (data.source !== undefined ? data.source : existing.source) || 'YAYASAN';
+            const isTargetBos = reqSource === 'BOS';
 
             if (month) {
-                // Find all approved requests in the same academic year for prior months
+                // Find all approved requests in the same academic year for prior months matching the source
                 const priorRequests = await prisma.budgetRequest.findMany({
                     where: {
                         unitId: unitId || null,
@@ -795,7 +801,8 @@ router.put('/budget-requests/:id', async (req, res) => {
                         academicYearId: academicYearId,
                         status: 'APPROVED',
                         isDeleted: false,
-                        month: { lt: month }
+                        month: { lt: month },
+                        ...(isTargetBos ? { source: 'BOS' } : { OR: [{ source: 'YAYASAN' }, { source: null }] })
                     }
                 });
 
@@ -818,6 +825,7 @@ router.put('/budget-requests/:id', async (req, res) => {
                             status: 'APPROVED',
                             isDeleted: false,
                             kategoriAset: 'PENGEMBALIAN',
+                            ...(isTargetBos ? { source: 'BOS' } : { OR: [{ source: 'YAYASAN' }, { source: null }] }),
                             OR: [
                                 { budgetRequestId: { in: priorRequestIds } },
                                 {
@@ -830,9 +838,9 @@ router.put('/budget-requests/:id', async (req, res) => {
                     const totalReturned = approvedReturns.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
                     const unreturned = totalCair - totalUsed - totalReturned;
-                    if (unreturned > 0) {
+                    if (unreturned > 100) {
                         return res.status(400).json({
-                            error: `Pencairan ditangguhkan: Unit/Bidang memiliki sisa saldo dari bulan sebelumnya yang belum dikembalikan sebesar Rp ${unreturned.toLocaleString('id-ID')}. Harap kembalikan sisa saldo terlebih dahulu.`
+                            error: `Pencairan ditangguhkan: Unit/Bidang memiliki sisa saldo dana ${isTargetBos ? 'BOS' : 'Yayasan'} dari bulan sebelumnya yang belum dikembalikan sebesar Rp ${Math.round(unreturned).toLocaleString('id-ID')}. Harap kembalikan sisa saldo terlebih dahulu.`
                         });
                     }
                 }
@@ -918,7 +926,7 @@ router.post('/budget-reports', async (req, res) => {
         const {
             id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
-            buktiTeks, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, status, planId
+            buktiTeks, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, status, planId, source
         } = req.body;
         const prisma = getPrisma(req);
 
@@ -944,6 +952,7 @@ router.post('/budget-reports', async (req, res) => {
                     fieldId: fieldId || null,
                     academicYearId: academicYearId || null,
                     category: category || null,
+                    source: source || null,
                     // New fields
                     buktiTeks: buktiTeks || null,
                     nomorNota: nomorNota || null,
@@ -968,7 +977,7 @@ router.post('/budget-reports', async (req, res) => {
             }
 
             // 3. Create Journal Entry (Only if report status is APPROVED)
-            if (report.status === 'APPROVED') {
+            if (status === 'APPROVED') {
                 let targetName = 'Yayasan';
                 if (unitId) {
                     const u = await tx.unit.findUnique({ where: { id: unitId } });
@@ -979,11 +988,23 @@ router.post('/budget-reports', async (req, res) => {
                 }
 
                 let resolvedProgramId = null;
-                if (category) {
-                    const p = await tx.program.findFirst({
-                        where: { category, isDeleted: false }
-                    });
-                    if (p) resolvedProgramId = p.id;
+                let journalDescription = '';
+                
+                if (kategoriAset === 'PENGEMBALIAN') {
+                    const isBos = source === 'BOS' || (planId && planId.endsWith('-BOS'));
+                    journalDescription = isBos
+                        ? `Pengembalian Sisa Dana BOS: ${targetName}${description ? ` (${description})` : ''}`
+                        : `Pengembalian Sisa Dana: ${targetName}${description ? ` (${description})` : ''}`;
+                    resolvedProgramId = 'PRG-GEN';
+                } else {
+                    const expName = expenseItem?.name || description || 'Pengeluaran';
+                    journalDescription = `Realisasi: ${expName} - ${targetName}${description ? ` (${description})` : ''}`;
+                    if (category) {
+                        const p = await tx.program.findFirst({
+                            where: { category: category, isDeleted: false }
+                        });
+                        if (p) resolvedProgramId = p.id;
+                    }
                 }
 
                 const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
@@ -991,15 +1012,12 @@ router.post('/budget-reports', async (req, res) => {
                 
                 const creditAccount = '';
                 const creditName = 'MENUNGGU COA (Kredit)';
-                
-                const expName = expenseItem?.name || description || 'Pengeluaran';
-                const descriptionText = description ? ` (${description})` : '';
 
                 const journal = await tx.journal.create({
                     data: {
                         date: date ? new Date(date) : new Date(),
                         name: targetName,
-                        description: `Realisasi: ${expName} - ${targetName}${descriptionText}`,
+                        description: journalDescription,
                         reference: nomorNota || (planId ? planId : `REPORT-${report.id.substring(0, 8)}`),
                         proof: buktiTeks || null,
                         programId: resolvedProgramId,
@@ -1021,12 +1039,10 @@ router.post('/budget-reports', async (req, res) => {
                 });
 
                 // Update report with journal info
-                const updatedReport = await tx.budgetReport.update({
+                await tx.budgetReport.update({
                     where: { id: report.id },
                     data: { journalId: journal.id }
                 });
-
-                return updatedReport;
             }
 
             return report;
@@ -1042,7 +1058,7 @@ router.put('/budget-reports/:id', async (req, res) => {
     try {
         const ALLOWED_FIELDS = [
             'status', 'amount', 'description', 'date', 'expenseItemId',
-            'unitId', 'fieldId', 'academicYearId', 'category',
+            'unitId', 'fieldId', 'academicYearId', 'category', 'source',
             'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
             'kategoriAset', 'umurEkonomis', 'isDeleted', 'planId', 'budgetRequestId'
         ];
@@ -1091,7 +1107,10 @@ router.put('/budget-reports/:id', async (req, res) => {
                 let journalDescription = '';
                 
                 if (updated.kategoriAset === 'PENGEMBALIAN') {
-                    journalDescription = `Pengembalian Sisa Dana: ${targetName}${updated.description ? ` (${updated.description})` : ''}`;
+                    const isBos = updated.source === 'BOS' || (updated.planId && updated.planId.endsWith('-BOS'));
+                    journalDescription = isBos
+                        ? `Pengembalian Sisa Dana BOS: ${targetName}${updated.description ? ` (${updated.description})` : ''}`
+                        : `Pengembalian Sisa Dana: ${targetName}${updated.description ? ` (${updated.description})` : ''}`;
                     resolvedProgramId = 'PRG-GEN';
                 } else {
                     const expName = expenseItem?.name || updated.description || 'Pengeluaran';

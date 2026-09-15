@@ -355,6 +355,17 @@ export default function BOSMonthlyReport() {
     const [pendingMonthFilter, setPendingMonthFilter] = useState('ALL');
     const [statusFilter, setStatusFilter] = useState('ALL'); // 'ALL', 'FILLED', 'NOT_FILLED'
 
+    // Return of remaining BOS funds
+    const [showReturnModal, setShowReturnModal] = useState(false);
+    const [returnForm, setReturnForm] = useState({
+        amount: '',
+        date: new Date().toISOString().split('T')[0],
+        description: '',
+        buktiTeks: '',
+        budgetRequestId: ''
+    });
+    const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
+
     const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
 
     const monthOptions = useMemo(() => {
@@ -1535,6 +1546,76 @@ export default function BOSMonthlyReport() {
         }
     };
 
+    const handleOpenReturnModal = () => {
+        const reqWithSisa = approvedReqsInFilter.find(r => {
+            const rTotal = parseFloat(r.totalAmount || 0);
+            const rSettled = reportedAmounts?.byRequest?.[r.id] || 0;
+            return rTotal - rSettled > 0;
+        });
+
+        setReturnForm({
+            amount: totalSisa > 0 ? totalSisa : '',
+            date: new Date().toISOString().split('T')[0],
+            description: `Pengembalian Sisa Dana Kas BOS${pendingMonthFilter !== 'ALL' ? ` Bulan ${formatMonthLabel(pendingMonthFilter)}` : ''}`,
+            buktiTeks: '',
+            budgetRequestId: reqWithSisa ? reqWithSisa.id : ''
+        });
+        setShowReturnModal(true);
+    };
+
+    const handleSubmitReturn = async (e) => {
+        e.preventDefault();
+        const amt = parseFloat(returnForm.amount);
+        if (isNaN(amt) || amt <= 0) return alert('Nominal pengembalian tidak valid!');
+
+        const targetUnitId = myUnitId || (selectedUnitFilter !== 'ALL' ? selectedUnitFilter : null);
+        if (!targetUnitId && !isSuperAdmin) {
+            return alert('Unit tidak teridentifikasi!');
+        }
+
+        setIsSubmittingReturn(true);
+        window.dispatchEvent(new CustomEvent('app-processing-start', { 
+            detail: { 
+                title: 'Mengirim Pengembalian Dana BOS...', 
+                message: 'Mohon tunggu sebentar, pengajuan pengembalian sisa dana BOS sedang dicatat...', 
+                type: 'submitting' 
+            } 
+        }));
+
+        try {
+            const newReturn = {
+                id: 'RET-BOS-' + Date.now().toString(36).toUpperCase(),
+                unitId: targetUnitId || (selectedUnitFilter !== 'ALL' ? selectedUnitFilter : 'FOUNDATION'),
+                fieldId: myFieldId || null,
+                budgetRequestId: returnForm.budgetRequestId || null,
+                requestId: returnForm.budgetRequestId || null,
+                academicYearId: globalAcademicYearId,
+                date: returnForm.date || new Date().toISOString().split('T')[0],
+                amount: amt,
+                description: returnForm.description || 'Pengembalian Sisa Dana Kas BOS',
+                buktiTeks: returnForm.buktiTeks || null,
+                kategoriAset: 'PENGEMBALIAN',
+                source: 'BOS',
+                category: 'Pengembalian Sisa Dana BOS',
+                status: isSuperAdmin ? 'APPROVED' : 'PENDING',
+                notified: false
+            };
+
+            dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
+            await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+
+            setShowReturnModal(false);
+            setReturnForm({ amount: '', date: new Date().toISOString().split('T')[0], description: '', buktiTeks: '', budgetRequestId: '' });
+            alert(isSuperAdmin ? 'Pengembalian dana BOS berhasil dicatat dan disetujui!' : 'Pengembalian dana BOS berhasil diajukan dan menunggu ACC Superadmin.');
+        } catch (err) {
+            console.error('Error submitting return:', err);
+            alert('Gagal mencatat pengembalian dana BOS: ' + err.message);
+        } finally {
+            setIsSubmittingReturn(false);
+            window.dispatchEvent(new CustomEvent('app-processing-end'));
+        }
+    };
+
     const handleExportExcel = () => {
         if (filteredReports.length === 0) return alert("Tidak ada data untuk diekspor");
 
@@ -1944,6 +2025,22 @@ export default function BOSMonthlyReport() {
                                     <span className="text-sm font-black text-indigo-600">{formatRupiah(totalPengembalian)}</span>
                                 </div>
                             </div>
+
+                            {/* Tombol Pengembalian Sisa Dana BOS */}
+                            {(!isSuperAdmin || selectedUnitFilter !== 'ALL') && (
+                                <div className="border-t border-slate-100 pt-6 mt-6">
+                                    <button
+                                        onClick={handleOpenReturnModal}
+                                        className="w-full py-3.5 px-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                                    >
+                                        <FileCheck size={16} />
+                                        Pengembalian Sisa BOS
+                                    </button>
+                                    <p className="text-[10px] text-slate-400 text-center mt-2 italic font-medium">
+                                        Kembalikan sisa kas tunai ke Rekening BOS unit
+                                    </p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -2648,6 +2745,170 @@ export default function BOSMonthlyReport() {
                                 <span>Simpan Nota (Draft)</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Pengembalian Sisa Dana BOS */}
+            {showReturnModal && (
+                <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm animate-in fade-in" onClick={() => setShowReturnModal(false)} />
+                    <div className="bg-white rounded-[2.5rem] max-w-lg w-full p-8 shadow-2xl space-y-6 relative z-10 animate-in zoom-in-95 border border-slate-100">
+                        <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shadow-inner">
+                                    <FileCheck size={22} />
+                                </div>
+                                <div>
+                                    <h3 className="font-black text-slate-900 text-lg">Pengembalian Sisa BOS</h3>
+                                    <p className="text-[11px] font-bold text-slate-400">Setor kas tunai kembali ke Rekening Bank BOS Unit</p>
+                                </div>
+                            </div>
+                            <button onClick={() => setShowReturnModal(false)} className="text-slate-400 hover:text-slate-600 p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmitReturn} className="space-y-4">
+                            {/* Pilihan Surat REQ / Bulan Permintaan */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                    Surat Permintaan Dana Terkait (Opsional)
+                                </label>
+                                <select
+                                    value={returnForm.budgetRequestId || ''}
+                                    onChange={e => {
+                                        const reqId = e.target.value;
+                                        const chosenReq = approvedReqsInFilter.find(r => r.id === reqId);
+                                        if (chosenReq) {
+                                            const rSettled = reportedAmounts?.byRequest?.[chosenReq.id] || 0;
+                                            const rTotal = parseFloat(chosenReq.totalAmount || 0);
+                                            const rSisa = Math.max(0, rTotal - rSettled);
+                                            setReturnForm(prev => ({
+                                                ...prev,
+                                                budgetRequestId: reqId,
+                                                amount: rSisa > 0 ? rSisa : prev.amount,
+                                                description: `Pengembalian Sisa Dana Kas BOS ${formatMonthLabel(chosenReq.month)} (${chosenReq.id.slice(-8)})`
+                                            }));
+                                        } else {
+                                            setReturnForm(prev => ({ ...prev, budgetRequestId: reqId }));
+                                        }
+                                    }}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                >
+                                    <option value="">-- Semua Permintaan / Tanpa Referensi Khusus --</option>
+                                    {approvedReqsInFilter.map(req => {
+                                        const rSettled = reportedAmounts?.byRequest?.[req.id] || 0;
+                                        const rTotal = parseFloat(req.totalAmount || 0);
+                                        const rSisa = Math.max(0, rTotal - rSettled);
+                                        return (
+                                            <option key={req.id} value={req.id}>
+                                                {formatMonthLabel(req.month)} - REQ [{req.id.slice(-8)}] (Sisa Pagu: {formatRupiah(rSisa)})
+                                            </option>
+                                        );
+                                    })}
+                                </select>
+                            </div>
+
+                            {/* Nominal Pengembalian */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                    Nominal Pengembalian (Rp) <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="number"
+                                    value={returnForm.amount}
+                                    onChange={e => setReturnForm(prev => ({ ...prev, amount: e.target.value }))}
+                                    placeholder="Contoh: 500000"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-black text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    required
+                                />
+                                <div className="flex justify-between items-center mt-1.5 px-1">
+                                    <span className="text-[10px] font-bold text-emerald-600">
+                                        Total Sisa Saldo: {formatRupiah(totalSisa)}
+                                    </span>
+                                    {totalSisa > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setReturnForm(prev => ({ ...prev, amount: totalSisa }))}
+                                            className="text-[10px] font-black text-indigo-600 hover:text-indigo-800 underline uppercase tracking-wider"
+                                        >
+                                            Set Sesuai Total Sisa
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tanggal Pengembalian */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                    Tanggal Penyetoran / Pengembalian <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="date"
+                                    value={returnForm.date}
+                                    onChange={e => setReturnForm(prev => ({ ...prev, date: e.target.value }))}
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    required
+                                />
+                            </div>
+
+                            {/* Bukti Transaksi */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                    Bukti Penyetoran / Mutasi Bank BOS <span className="text-rose-500">*</span>
+                                </label>
+                                <input
+                                    type="text"
+                                    value={returnForm.buktiTeks}
+                                    onChange={e => setReturnForm(prev => ({ ...prev, buktiTeks: e.target.value }))}
+                                    placeholder="Contoh: Slip Setor Bank / Mutasi Rekening BOS TRX-8910"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    required
+                                />
+                            </div>
+
+                            {/* Keterangan */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                                    Keterangan Detail
+                                </label>
+                                <textarea
+                                    value={returnForm.description}
+                                    onChange={e => setReturnForm(prev => ({ ...prev, description: e.target.value }))}
+                                    placeholder="Catatan tambahan mengenai pengembalian sisa dana BOS..."
+                                    rows="2"
+                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                />
+                            </div>
+
+                            {/* Info Note */}
+                            <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-start gap-2.5">
+                                <CheckCircle2 size={16} className="text-emerald-600 mt-0.5 shrink-0" />
+                                <p className="text-[11px] text-emerald-800 font-medium leading-relaxed">
+                                    Pengembalian dana BOS akan {isSuperAdmin ? 'langsung diverifikasi dan memotong sisa saldo kas unit' : 'dikirim ke Superadmin untuk diverifikasi (ACC)'}. Setelah disetujui, sisa saldo unit akan berkurang dan pemblokiran permintaan dana bulan berikutnya akan terbuka.
+                                </p>
+                            </div>
+
+                            {/* Tombol Aksi */}
+                            <div className="pt-3 flex gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowReturnModal(false)}
+                                    className="flex-1 py-3.5 bg-slate-100 text-slate-600 rounded-2xl font-black text-xs hover:bg-slate-200 uppercase tracking-widest transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSubmittingReturn}
+                                    className="flex-1 py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20 disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+                                >
+                                    {isSubmittingReturn ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                    Simpan Pengembalian
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}

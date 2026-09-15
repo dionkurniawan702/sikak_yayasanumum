@@ -24,7 +24,7 @@ function BOSUnitRow({ unit, allocations, reports, budgetRequests, bosStages, bos
         
         // FILTER: ONLY BOS
         const req = budgetRequests.find(br => br.id === r.budgetRequestId);
-        return (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+        return r.source === 'BOS' || r.planId?.endsWith('-BOS') || (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
     });
     const totalRealized = unitReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
     const saldo = totalAllocated - totalRealized;
@@ -172,7 +172,7 @@ export default function BOSSaldo() {
             
             // FILTER: ONLY BOS
             const req = budgetRequests.find(br => br.id === r.budgetRequestId);
-            return (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
+            return r.source === 'BOS' || r.planId?.endsWith('-BOS') || (req?.items || []).some(item => item.planId?.endsWith('-BOS'));
         });
         const realized = yearReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         return { totalAllocated: allocated, totalRealized: realized, totalSaldo: allocated - realized };
