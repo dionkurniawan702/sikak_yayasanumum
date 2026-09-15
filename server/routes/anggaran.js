@@ -822,7 +822,7 @@ router.put('/budget-requests/:id', async (req, res) => {
 
                     const approvedReturns = await prisma.budgetReport.findMany({
                         where: {
-                            status: 'APPROVED',
+                            status: { in: ['APPROVED', 'PENDING'] },
                             isDeleted: false,
                             kategoriAset: 'PENGEMBALIAN',
                             ...(isTargetBos ? { source: 'BOS' } : { OR: [{ source: 'YAYASAN' }, { source: null }] }),

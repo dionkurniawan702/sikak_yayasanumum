@@ -5,10 +5,11 @@ import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
 
 // ─── Helper to Check Prior Unreturned Balances ───────────────────────────────
-function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSource = 'YAYASAN') {
-    const { budgetRequests, budgetReports } = state;
+function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSource = 'YAYASAN', academicYearId = null) {
+    const { budgetRequests = [], budgetReports = [], globalAcademicYearId } = state;
     if (!targetMonth) return { hasUnreturned: false, amount: 0, isBos: false };
 
+    const effectiveYearId = academicYearId || globalAcademicYearId;
     const [targetYear, targetMonthNum] = targetMonth.split('-').map(Number);
     const isTargetBos = targetSource === 'BOS';
 
@@ -16,11 +17,9 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
     const isSameEntity = (item) => {
         if (!item) return false;
         if (fieldId) {
-            // Target is a Field (e.g. SARPRAS)
             return item.fieldId === fieldId || item.unitId === fieldId;
         }
         if (unitId && unitId !== 'FOUNDATION') {
-            // Target is a specific Unit (e.g. SDIT 1)
             return item.unitId === unitId || item.fieldId === unitId;
         }
         if (unitId === 'FOUNDATION') {
@@ -29,12 +28,30 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
         return false;
     };
 
+    // Helper to check if a request or report is BOS
+    const checkIsBos = (item) => {
+        if (!item) return false;
+        if (item.source === 'BOS') return true;
+        if (item.planId?.endsWith('-BOS')) return true;
+        if ((item.items || []).some(i => i.planId?.endsWith('-BOS'))) return true;
+        if (item.category?.toLowerCase().includes('bos')) return true;
+        if (item.id?.startsWith('RET-BOS-')) return true;
+        if (item.budgetRequestId) {
+            const parentReq = budgetRequests.find(b => b.id === item.budgetRequestId);
+            if (parentReq && (parentReq.source === 'BOS' || (parentReq.items || []).some(i => i.planId?.endsWith('-BOS')))) {
+                return true;
+            }
+        }
+        return false;
+    };
+
     // Find all approved requests in the same academic year for prior months matching target source
     const priorRequests = budgetRequests.filter(r => {
         if (r.status !== 'APPROVED' || r.isDeleted || !r.month) return false;
         if (!isSameEntity(r)) return false;
+        if (effectiveYearId && r.academicYearId && r.academicYearId !== effectiveYearId) return false;
 
-        const isBosRequest = r.source === 'BOS' || (r.items || []).some(item => item.planId?.endsWith('-BOS'));
+        const isBosRequest = checkIsBos(r);
         if (isTargetBos && !isBosRequest) return false;
         if (!isTargetBos && isBosRequest) return false;
 
@@ -54,8 +71,9 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
         if (r.status !== 'APPROVED' || r.isDeleted) return false;
         if (r.kategoriAset === 'PENGEMBALIAN') return false;
         if (!isSameEntity(r)) return false;
+        if (effectiveYearId && r.academicYearId && r.academicYearId !== effectiveYearId) return false;
 
-        const isBosReport = r.source === 'BOS' || r.planId?.endsWith('-BOS') || (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId));
+        const isBosReport = checkIsBos(r);
         if (isTargetBos && !isBosReport) return false;
         if (!isTargetBos && isBosReport) return false;
 
@@ -70,13 +88,14 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
     });
     const totalUsed = priorReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
-    // Find all approved returns matching target source
+    // Find all returns (approved or pending verification) matching target source
     const approvedReturns = budgetReports.filter(r => {
-        if (r.status !== 'APPROVED' || r.isDeleted) return false;
+        if (r.status === 'REJECTED' || r.isDeleted) return false;
         if (r.kategoriAset !== 'PENGEMBALIAN') return false;
         if (!isSameEntity(r)) return false;
+        if (effectiveYearId && r.academicYearId && r.academicYearId !== effectiveYearId) return false;
 
-        const isBosReport = r.source === 'BOS' || r.planId?.endsWith('-BOS') || (r.budgetRequestId && priorRequestIds.includes(r.budgetRequestId));
+        const isBosReport = checkIsBos(r);
         if (isTargetBos && !isBosReport) return false;
         if (!isTargetBos && isBosReport) return false;
 
@@ -93,10 +112,14 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
     const totalReturned = approvedReturns.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
 
     const unreturned = Math.max(0, totalCair - totalUsed - totalReturned);
-    if (unreturned > 100) {
-        return { hasUnreturned: true, amount: unreturned, isBos: isTargetBos };
-    }
-    return { hasUnreturned: false, amount: 0, isBos: isTargetBos };
+    return {
+        hasUnreturned: unreturned > 100,
+        amount: unreturned,
+        totalCair,
+        totalUsed,
+        totalReturned,
+        isBos: isTargetBos
+    };
 }
 
 export default function MonthlyRequest() {
@@ -1123,7 +1146,7 @@ export default function MonthlyRequest() {
                         </div>
 
                         {(() => {
-                            const unreturnedInfo = getUnreturnedBalanceInfo(state, myUnitId || 'FOUNDATION', myFieldId, requestMonth);
+                            const unreturnedInfo = getUnreturnedBalanceInfo(state, myUnitId || 'FOUNDATION', myFieldId, requestMonth, sourceMode, globalAcademicYearId);
                             if (!unreturnedInfo.hasUnreturned) return null;
                             return (
                                 <div className="mx-10 mt-6 p-4 bg-amber-50 rounded-2xl border border-amber-200 flex items-start gap-3 text-amber-800">
@@ -1247,7 +1270,7 @@ export default function MonthlyRequest() {
 
                         {(() => {
                             const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
-                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource);
+                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource, reviewRequest.req.academicYearId);
                             if (!superadminUnreturnedInfo.hasUnreturned) return null;
                             return (
                                 <div className="mx-10 mt-6 p-5 bg-rose-50 rounded-2xl border border-rose-200 flex items-start gap-3 text-rose-800">
@@ -1308,7 +1331,7 @@ export default function MonthlyRequest() {
 
                         {(() => {
                             const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
-                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource);
+                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource, reviewRequest.req.academicYearId);
                             const hasBlock = superadminUnreturnedInfo.hasUnreturned;
 
                             return (
@@ -1322,24 +1345,8 @@ export default function MonthlyRequest() {
                                     <div className="flex flex-wrap gap-3 items-center">
                                         <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
                                         
-                                        {isSuperAdmin && hasBlock && (
-                                            <button
-                                                type="button"
-                                                onClick={() => {
-                                                    const confirmed = window.confirm(`PERINGATAN SUPERADMIN:\n\nUnit ini masih memiliki sisa saldo ${superadminUnreturnedInfo.isBos ? 'BOS' : 'Yayasan'} sebesar ${formatRupiah(superadminUnreturnedInfo.amount)} dari bulan sebelumnya.\n\nApakah Anda yakin ingin melakukan BYPASS pemblokiran dan tetap menyetujui (ACC) pencairan dana ini?`);
-                                                    if (confirmed) handleSaveReview(true);
-                                                }}
-                                                disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0)}
-                                                className="btn bg-amber-500 hover:bg-amber-600 text-white px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2 shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
-                                                title="Izinkan persetujuan darurat meskipun ada sisa saldo belum kembali"
-                                            >
-                                                {processingId === 'saving-review' ? <Loader2 size={16} className="animate-spin" /> : <AlertCircle size={16} />}
-                                                BYPASS BLOKIR & SETUJUI
-                                            </button>
-                                        )}
-
                                         <button
-                                            onClick={() => handleSaveReview(false)}
+                                            onClick={() => handleSaveReview()}
                                             disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || hasBlock}
                                             className="btn bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all"
                                         >
