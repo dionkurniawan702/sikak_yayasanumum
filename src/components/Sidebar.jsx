@@ -93,17 +93,43 @@ export default function Sidebar({ isOpen, onClose }) {
         return 0;
     }, [state.budgetReports, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
 
-    // Calculate Notifications for Pengembalian Saldo
-    const pendingReturnCount = React.useMemo(() => {
+    const isBosReturn = (r) => {
+        return r.kategoriAset === 'PENGEMBALIAN' && (
+            r.source === 'BOS' ||
+            r.planId?.endsWith('-BOS') ||
+            r.category?.toLowerCase().includes('bos') ||
+            r.description?.toLowerCase().includes('bos') ||
+            r.id?.startsWith('RET-BOS-')
+        );
+    };
+
+    // Calculate Notifications for Pengembalian Saldo Yayasan
+    const pendingReturnYayasanCount = React.useMemo(() => {
         if (!state.budgetReports) return 0;
         if (isSuperAdmin) {
-            return state.budgetReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').length;
+            return state.budgetReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN' && !isBosReturn(r)).length;
         }
         if (isAdminUnit || isAdminField) {
             return state.budgetReports.filter(r => {
                 const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
                     (isAdminField && r.fieldId === currentUser.fieldId);
-                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && r.kategoriAset === 'PENGEMBALIAN' && !r.notified;
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && r.kategoriAset === 'PENGEMBALIAN' && !isBosReturn(r) && !r.notified;
+            }).length;
+        }
+        return 0;
+    }, [state.budgetReports, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
+
+    // Calculate Notifications for Pengembalian Saldo BOS
+    const pendingReturnBosCount = React.useMemo(() => {
+        if (!state.budgetReports) return 0;
+        if (isSuperAdmin) {
+            return state.budgetReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN' && isBosReturn(r)).length;
+        }
+        if (isAdminUnit || isAdminField) {
+            return state.budgetReports.filter(r => {
+                const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
+                    (isAdminField && r.fieldId === currentUser.fieldId);
+                return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && r.kategoriAset === 'PENGEMBALIAN' && isBosReturn(r) && !r.notified;
             }).length;
         }
         return 0;
@@ -279,9 +305,9 @@ export default function Sidebar({ isOpen, onClose }) {
         return {
             'PERENCANAAN (RAB)': pendingRabYayasanCount + pendingRabBosCount,
             'REALISASI ANGGARAN': pendingFundRequestCount + pendingReportCount,
-            'DASHBOARD & SALDO': pendingReturnCount
+            'DASHBOARD & SALDO': pendingReturnYayasanCount + pendingReturnBosCount
         };
-    }, [pendingRabYayasanCount, pendingRabBosCount, pendingFundRequestCount, pendingReportCount, pendingReturnCount]);
+    }, [pendingRabYayasanCount, pendingRabBosCount, pendingFundRequestCount, pendingReportCount, pendingReturnYayasanCount, pendingReturnBosCount]);
 
     // Auto-expand groups that contain the active route
     useEffect(() => {
@@ -459,9 +485,14 @@ export default function Sidebar({ isOpen, onClose }) {
                                                     {pendingReportCount}
                                                 </span>
                                             )}
-                                            {item.label === 'Saldo Yayasan' && pendingReturnCount > 0 && (
+                                            {item.label === 'Saldo Yayasan' && pendingReturnYayasanCount > 0 && (
                                                 <span className="bg-blue-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-blue-500/40">
-                                                    {pendingReturnCount}
+                                                    {pendingReturnYayasanCount}
+                                                </span>
+                                            )}
+                                            {item.label === 'Saldo BOS' && pendingReturnBosCount > 0 && (
+                                                <span className="bg-blue-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-blue-500/40">
+                                                    {pendingReturnBosCount}
                                                 </span>
                                             )}
                                         </NavLink>

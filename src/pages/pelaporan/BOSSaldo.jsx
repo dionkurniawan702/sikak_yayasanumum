@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { 
     Landmark, TrendingDown, Wallet, Building2, ChevronDown, ChevronRight, 
     Calendar, Search, AlertCircle, CheckCircle2, Clock, FileCheck, RotateCcw, 
@@ -632,6 +632,23 @@ export default function BOSSaldo() {
         const realized = yearReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         return { totalAllocated: allocated, totalRealized: realized, totalSaldo: allocated - realized };
     }, [bosAllocations, budgetReports, budgetRequests, selectedYearId]);
+
+    // Clear notifications for unit when viewing this page (local state update only)
+    useEffect(() => {
+        if (!isSuperAdmin && budgetReports && currentUser?.unitId) {
+            const unnotified = budgetReports.filter(r => {
+                const isMine = r.unitId === currentUser.unitId;
+                const isBos = r.source === 'BOS' || r.planId?.endsWith('-BOS') || r.category?.toLowerCase().includes('bos') || r.description?.toLowerCase().includes('bos') || r.id?.startsWith('RET-BOS-');
+                return isMine && r.kategoriAset === 'PENGEMBALIAN' && isBos && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+            });
+            if (unnotified.length > 0) {
+                unnotified.forEach(r => {
+                    const updated = { ...r, notified: true };
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                });
+            }
+        }
+    }, [isSuperAdmin, budgetReports, currentUser?.unitId, dispatch]);
 
     const globalPct = totalAllocated > 0 ? Math.min(100, Math.round((totalRealized / totalAllocated) * 100)) : 0;
 
