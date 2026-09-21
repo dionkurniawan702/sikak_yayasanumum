@@ -5,7 +5,7 @@ import {
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
     History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout, FolderKanban,
-    ChevronDown, ChevronRight
+    ChevronDown, ChevronRight, BookCheck
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRemote, api } from '../services/api';
@@ -221,7 +221,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
                         { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
                         { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
-                        { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen }
+                        { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen },
+                        { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck }
                     ]
                 },
                 {
@@ -293,7 +294,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 title: 'PENGATURAN',
                 items: [
                     { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
-                    { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen }
+                    { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen },
+                    { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck }
                 ]
             });
         }
