@@ -165,6 +165,60 @@ export const api = {
                 case 'ADD_ASSET':
                     await syncItem('assets', null, payload, 'POST');
                     break;
+                case 'EDIT_ASSET':
+                    await syncItem('assets', payload.id, payload, 'PUT');
+                    break;
+                case 'DELETE_ASSET':
+                    await syncItem('assets', payload, null, 'DELETE');
+                    break;
+                case 'IMPORT_ASSETS': {
+                    if (Array.isArray(payload)) {
+                        for (const item of payload) {
+                            try {
+                                await syncItem('assets', null, item, 'POST');
+                            } catch (e) {
+                                console.error('[Sync Import Asset Error]', e.message);
+                            }
+                        }
+                    }
+                    break;
+                }
+                case 'ADD_ASSET_CATEGORY':
+                    await syncItem('asset-categories', null, payload, 'POST');
+                    break;
+                case 'EDIT_ASSET_CATEGORY':
+                    await syncItem('asset-categories', payload.id, payload, 'PUT');
+                    break;
+                case 'DELETE_ASSET_CATEGORY':
+                    await syncItem('asset-categories', payload, null, 'DELETE');
+                    break;
+                case 'ADD_ASSET_VENDOR':
+                    await syncItem('asset-vendors', null, payload, 'POST');
+                    break;
+                case 'EDIT_ASSET_VENDOR':
+                    await syncItem('asset-vendors', payload.id, payload, 'PUT');
+                    break;
+                case 'DELETE_ASSET_VENDOR':
+                    await syncItem('asset-vendors', payload, null, 'DELETE');
+                    break;
+                case 'ADD_ASSET_ROOM':
+                    await syncItem('asset-rooms', null, payload, 'POST');
+                    break;
+                case 'EDIT_ASSET_ROOM':
+                    await syncItem('asset-rooms', payload.id, payload, 'PUT');
+                    break;
+                case 'DELETE_ASSET_ROOM':
+                    await syncItem('asset-rooms', payload, null, 'DELETE');
+                    break;
+                case 'ADD_ASSET_PIC':
+                    await syncItem('asset-pics', null, payload, 'POST');
+                    break;
+                case 'EDIT_ASSET_PIC':
+                    await syncItem('asset-pics', payload.id, payload, 'PUT');
+                    break;
+                case 'DELETE_ASSET_PIC':
+                    await syncItem('asset-pics', payload, null, 'DELETE');
+                    break;
                 case 'ADD_PROGRAM':
                     await syncItem('programs', null, payload, 'POST');
                     break;

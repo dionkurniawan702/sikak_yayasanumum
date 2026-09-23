@@ -49,6 +49,7 @@ const BOSMonthlyReport = lazy(() => import('./pages/pelaporan/BOSMonthlyReport')
 const ExpenseProgramReport = lazy(() => import('./pages/pelaporan/ExpenseProgramReport'));
 const UserManual = lazy(() => import('./pages/anggaran/UserManual'));
 const SOPKeuangan = lazy(() => import('./pages/anggaran/SOPKeuangan'));
+const AssetSettings = lazy(() => import('./pages/anggaran/AssetSettings'));
 import GenericMasterManagement from './components/GenericMasterManagement';
 import {
     Calendar,
@@ -250,6 +251,8 @@ function AppContent() {
                     <Route path="anggaran/petunjuk" element={<UserManual />} />
                     <Route path="anggaran/sop-keuangan" element={<SOPKeuangan />} />
                     <Route path="pengaturan/sop-keuangan" element={<SOPKeuangan />} />
+                    <Route path="anggaran/pengaturan-aset" element={<AssetSettings />} />
+                    <Route path="pengaturan/aset" element={<AssetSettings />} />
                 </Route>
                 </Routes>
             </Suspense>

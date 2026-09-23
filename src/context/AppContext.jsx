@@ -1,5 +1,5 @@
 import { createContext, useContext, useReducer, useEffect } from 'react';
-import { initialAccounts, initialJournals, initialAssets, initialPrograms, initialIncomeItems, initialExpenseItems, initialAcademicYears, initialStudentStatuses, initialStudents } from '../data/seedData';
+import { initialAccounts, initialJournals, initialAssets, initialPrograms, initialIncomeItems, initialExpenseItems, initialAcademicYears, initialStudentStatuses, initialStudents, initialAssetCategories, initialAssetVendors, initialAssetRooms, initialAssetPics } from '../data/seedData';
 import { generateId } from '../utils/format';
 import { isRemote, api } from '../services/api';
 
@@ -9,6 +9,10 @@ const defaultState = {
     accounts: initialAccounts,
     journals: initialJournals,
     assets: initialAssets,
+    assetCategories: initialAssetCategories,
+    assetVendors: initialAssetVendors,
+    assetRooms: initialAssetRooms,
+    assetPics: initialAssetPics,
     programs: initialPrograms,
     expensePrograms: [],
     budgets: [],
@@ -115,6 +119,20 @@ function loadState() {
                     ...j,
                     entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : j.entries
                 }));
+            }
+
+            // Fallback for asset settings
+            if (!merged.assetCategories || merged.assetCategories.length === 0) {
+                merged.assetCategories = initialAssetCategories;
+            }
+            if (!merged.assetVendors || merged.assetVendors.length === 0) {
+                merged.assetVendors = initialAssetVendors;
+            }
+            if (!merged.assetRooms || merged.assetRooms.length === 0) {
+                merged.assetRooms = initialAssetRooms;
+            }
+            if (!merged.assetPics || merged.assetPics.length === 0) {
+                merged.assetPics = initialAssetPics;
             }
 
             // Migration: Standardize 'Saldo Dana' to 'Aset Neto'
@@ -361,6 +379,11 @@ function appReducer(state, action) {
                 bosPosList: serverData.bosPosList || state.bosPosList || [],
                 bosAllocations: serverData.bosAllocations || state.bosAllocations || [],
 
+                assetCategories: (serverData.assetCategories && serverData.assetCategories.length > 0) ? serverData.assetCategories : (state.assetCategories || []),
+                assetVendors: (serverData.assetVendors && serverData.assetVendors.length > 0) ? serverData.assetVendors : (state.assetVendors || []),
+                assetRooms: (serverData.assetRooms && serverData.assetRooms.length > 0) ? serverData.assetRooms : (state.assetRooms || []),
+                assetPics: (serverData.assetPics && serverData.assetPics.length > 0) ? serverData.assetPics : (state.assetPics || []),
+
                 users: serverData.users || state.users || [],
                 currentUser: state.currentUser,
                 isOnline: true,
@@ -491,8 +514,63 @@ function appReducer(state, action) {
                 journals: state.journals.filter(j => j.id !== action.payload)
             };
             break;
-        case 'ADD_ASSET':
-            newState = { ...state, assets: [...state.assets, { ...action.payload, id: generateId('AST'), depreciationHistory: [] }] };
+        case 'ADD_ASSET': {
+            const assetId = action.payload.id || generateId('AST');
+            newState = { ...state, assets: [...state.assets, { ...action.payload, id: assetId, depreciationHistory: [] }] };
+            break;
+        }
+        case 'EDIT_ASSET':
+            newState = { ...state, assets: state.assets.map(a => a.id === action.payload.id ? { ...a, ...action.payload } : a) };
+            break;
+        case 'DELETE_ASSET':
+            newState = { ...state, assets: state.assets.filter(a => a.id !== action.payload) };
+            break;
+        case 'IMPORT_ASSETS':
+            newState = { ...state, assets: [...state.assets, ...action.payload] };
+            break;
+
+        // Master Kategori Aset
+        case 'ADD_ASSET_CATEGORY':
+            newState = { ...state, assetCategories: [...(state.assetCategories || []), { ...action.payload, id: action.payload.id || generateId('ACAT') }] };
+            break;
+        case 'EDIT_ASSET_CATEGORY':
+            newState = { ...state, assetCategories: (state.assetCategories || []).map(c => c.id === action.payload.id ? { ...c, ...action.payload } : c) };
+            break;
+        case 'DELETE_ASSET_CATEGORY':
+            newState = { ...state, assetCategories: (state.assetCategories || []).filter(c => c.id !== action.payload) };
+            break;
+
+        // Master Vendor Aset
+        case 'ADD_ASSET_VENDOR':
+            newState = { ...state, assetVendors: [...(state.assetVendors || []), { ...action.payload, id: action.payload.id || generateId('AVEN') }] };
+            break;
+        case 'EDIT_ASSET_VENDOR':
+            newState = { ...state, assetVendors: (state.assetVendors || []).map(v => v.id === action.payload.id ? { ...v, ...action.payload } : v) };
+            break;
+        case 'DELETE_ASSET_VENDOR':
+            newState = { ...state, assetVendors: (state.assetVendors || []).filter(v => v.id !== action.payload) };
+            break;
+
+        // Master Ruangan / Lokasi Aset
+        case 'ADD_ASSET_ROOM':
+            newState = { ...state, assetRooms: [...(state.assetRooms || []), { ...action.payload, id: action.payload.id || generateId('ARM') }] };
+            break;
+        case 'EDIT_ASSET_ROOM':
+            newState = { ...state, assetRooms: (state.assetRooms || []).map(r => r.id === action.payload.id ? { ...r, ...action.payload } : r) };
+            break;
+        case 'DELETE_ASSET_ROOM':
+            newState = { ...state, assetRooms: (state.assetRooms || []).filter(r => r.id !== action.payload) };
+            break;
+
+        // Master PIC Aset
+        case 'ADD_ASSET_PIC':
+            newState = { ...state, assetPics: [...(state.assetPics || []), { ...action.payload, id: action.payload.id || generateId('APIC') }] };
+            break;
+        case 'EDIT_ASSET_PIC':
+            newState = { ...state, assetPics: (state.assetPics || []).map(p => p.id === action.payload.id ? { ...p, ...action.payload } : p) };
+            break;
+        case 'DELETE_ASSET_PIC':
+            newState = { ...state, assetPics: (state.assetPics || []).filter(p => p.id !== action.payload) };
             break;
         case 'ADD_PROGRAM':
             newState = { ...state, programs: [...state.programs, { ...action.payload, id: generateId('PRG') }] };

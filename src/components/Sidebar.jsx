@@ -5,7 +5,7 @@ import {
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
     History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout, FolderKanban,
-    ChevronDown, ChevronRight, BookCheck
+    ChevronDown, ChevronRight, BookCheck, Tag
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRemote, api } from '../services/api';
@@ -222,7 +222,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/anggaran/master-bos', label: 'Master BOS', icon: ShieldCheck },
                         { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
                         { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen },
-                        { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck }
+                        { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck },
+                        { path: '/anggaran/pengaturan-aset', label: 'Pengaturan Aset', icon: Tag }
                     ]
                 },
                 {
@@ -295,7 +296,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 items: [
                     { path: '/anggaran/master-program', label: 'Program Belanja', icon: Layout },
                     { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen },
-                    { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck }
+                    { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck },
+                    { path: '/anggaran/pengaturan-aset', label: 'Pengaturan Aset', icon: Tag }
                 ]
             });
         }

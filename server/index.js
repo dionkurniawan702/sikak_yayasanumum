@@ -315,6 +315,97 @@ const getPrisma = () => {
                 } catch (journalMigrationErr) {
                     console.error('[Migration Error] Failed to retroactively create journals:', journalMigrationErr.message);
                 }
+
+                // --- AUTO MIGRATION: ASSET COLUMNS & MASTER TABLES ---
+                try {
+                    console.log('[Migration] Checking assets table schema...');
+                    const assetCols = await prisma.$queryRawUnsafe('DESCRIBE `assets`');
+                    const existingColNames = assetCols.map(c => c.Field.toLowerCase());
+
+                    const neededColumns = [
+                        { name: 'code', sql: 'ALTER TABLE `assets` ADD COLUMN `code` VARCHAR(255) NULL' },
+                        { name: 'brand', sql: 'ALTER TABLE `assets` ADD COLUMN `brand` VARCHAR(255) NULL' },
+                        { name: 'vendor', sql: 'ALTER TABLE `assets` ADD COLUMN `vendor` VARCHAR(255) NULL' },
+                        { name: 'pic', sql: 'ALTER TABLE `assets` ADD COLUMN `pic` VARCHAR(255) NULL' },
+                        { name: 'fundSource', sql: 'ALTER TABLE `assets` ADD COLUMN `fundSource` VARCHAR(50) DEFAULT "Yayasan"' },
+                        { name: 'condition', sql: 'ALTER TABLE `assets` ADD COLUMN `condition` VARCHAR(50) DEFAULT "BAIK"' },
+                        { name: 'acquisitionStatus', sql: 'ALTER TABLE `assets` ADD COLUMN `acquisitionStatus` VARCHAR(100) DEFAULT "Beli Baru"' },
+                        { name: 'unitId', sql: 'ALTER TABLE `assets` ADD COLUMN `unitId` VARCHAR(255) NULL' },
+                        { name: 'assetRoom', sql: 'ALTER TABLE `assets` ADD COLUMN `assetRoom` VARCHAR(255) NULL' }
+                    ];
+
+                    for (const col of neededColumns) {
+                        if (!existingColNames.includes(col.name.toLowerCase())) {
+                            console.log(`[Migration] Adding column ${col.name} to assets table...`);
+                            await prisma.$executeRawUnsafe(col.sql);
+                            console.log(`[Migration] Added column ${col.name} to assets.`);
+                        }
+                    }
+
+                    // Master tables creation
+                    await prisma.$executeRawUnsafe(`
+                        CREATE TABLE IF NOT EXISTS \`asset_categories\` (
+                            \`id\` VARCHAR(191) NOT NULL PRIMARY KEY,
+                            \`name\` VARCHAR(255) NOT NULL,
+                            \`code\` VARCHAR(50) NULL,
+                            \`economicLife\` INT NULL DEFAULT 4,
+                            \`description\` TEXT NULL,
+                            \`isDeleted\` BOOLEAN NOT NULL DEFAULT FALSE
+                        ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                    `);
+
+                    await prisma.$executeRawUnsafe(`
+                        CREATE TABLE IF NOT EXISTS \`asset_vendors\` (
+                            \`id\` VARCHAR(191) NOT NULL PRIMARY KEY,
+                            \`name\` VARCHAR(255) NOT NULL,
+                            \`phone\` VARCHAR(100) NULL,
+                            \`address\` TEXT NULL,
+                            \`note\` TEXT NULL,
+                            \`isDeleted\` BOOLEAN NOT NULL DEFAULT FALSE
+                        ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                    `);
+
+                    await prisma.$executeRawUnsafe(`
+                        CREATE TABLE IF NOT EXISTS \`asset_rooms\` (
+                            \`id\` VARCHAR(191) NOT NULL PRIMARY KEY,
+                            \`name\` VARCHAR(255) NOT NULL,
+                            \`unitId\` VARCHAR(191) NULL,
+                            \`description\` TEXT NULL,
+                            \`isDeleted\` BOOLEAN NOT NULL DEFAULT FALSE
+                        ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                    `);
+
+                    await prisma.$executeRawUnsafe(`
+                        CREATE TABLE IF NOT EXISTS \`asset_pics\` (
+                            \`id\` VARCHAR(191) NOT NULL PRIMARY KEY,
+                            \`name\` VARCHAR(255) NOT NULL,
+                            \`role\` VARCHAR(255) NULL,
+                            \`unitId\` VARCHAR(191) NULL,
+                            \`phone\` VARCHAR(100) NULL,
+                            \`isDeleted\` BOOLEAN NOT NULL DEFAULT FALSE
+                        ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+                    `);
+
+                    // Seed default categories if empty
+                    const catCount = await prisma.assetCategory.count();
+                    if (catCount === 0) {
+                        console.log('[Migration] Seeding initial asset categories...');
+                        const initialCategories = [
+                            { id: 'ACAT-1', name: 'Furnitur', code: 'FU', economicLife: 4, description: 'Meja, kursi, lemari, rak, dll' },
+                            { id: 'ACAT-2', name: 'Elektronik', code: 'EL', economicLife: 4, description: 'Komputer, laptop, proyektor, printer, AC' },
+                            { id: 'ACAT-3', name: 'Inventaris Lainnya', code: 'INV', economicLife: 4, description: 'Peralatan kantor, sound system, dll' },
+                            { id: 'ACAT-4', name: 'Kendaraan', code: 'KD', economicLife: 8, description: 'Mobil, motor dinas operasional' },
+                            { id: 'ACAT-5', name: 'Bangunan', code: 'BG', economicLife: 20, description: 'Gedung sekolah, kantor, musholla' },
+                            { id: 'ACAT-6', name: 'Tanah', code: 'TN', economicLife: 0, description: 'Tanah wakaf / milik yayasan' }
+                        ];
+                        for (const cat of initialCategories) {
+                            await prisma.assetCategory.create({ data: cat });
+                        }
+                    }
+                    console.log('[Migration] Asset columns & master tables successfully verified.');
+                } catch (assetMigrationErr) {
+                    console.error('[Migration Error] Asset migration failed:', assetMigrationErr.message);
+                }
             } catch (err) {
                 console.error('[Cleanup Error]', err.message);
             }
@@ -495,6 +586,7 @@ app.post('/api/sync', async (req, res) => {
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
             budgetRequests, budgetReports, classes, rabPlans,
             bosStages, bosPosList, bosAllocations,
+            assetCategories, assetVendors, assetRooms, assetPics,
             isPurge = false
         } = req.body;
 
@@ -520,6 +612,27 @@ app.post('/api/sync', async (req, res) => {
                     let cleanItem = { ...item, isDeleted: !!item.isDeleted };
 
                     // Model-specific cleaning
+                    if (model === 'asset') {
+                        if (cleanItem.cost !== undefined) cleanItem.cost = parseFloat(cleanItem.cost) || 0;
+                        if (cleanItem.residualValue !== undefined) cleanItem.residualValue = parseFloat(cleanItem.residualValue) || 0;
+                        if (cleanItem.usefulLifeMonths !== undefined) {
+                            cleanItem.usefulLifeMonths = parseInt(cleanItem.usefulLifeMonths, 10) || 0;
+                        } else if (cleanItem.economicLife !== undefined) {
+                            cleanItem.usefulLifeMonths = (parseInt(cleanItem.economicLife, 10) || 4) * 12;
+                        }
+                        if (cleanItem.acquisitionDate) {
+                            try {
+                                const d = new Date(cleanItem.acquisitionDate);
+                                cleanItem.acquisitionDate = isNaN(d.getTime()) ? null : d;
+                            } catch (e) {
+                                cleanItem.acquisitionDate = null;
+                            }
+                        }
+                        delete cleanItem.economicLife;
+                    }
+                    if (model === 'assetCategory') {
+                        if (cleanItem.economicLife !== undefined) cleanItem.economicLife = parseInt(cleanItem.economicLife, 10) || 4;
+                    }
                     if (model === 'program') {
                         const name = (item.name || '').toLowerCase();
                         const isExpense = name.includes('ekskul') || name.includes('konsumsi') ||
@@ -648,6 +761,10 @@ app.post('/api/sync', async (req, res) => {
                 await batchUpsert(tx, 'account', accounts);
                 await batchUpsert(tx, 'journal', journals);
                 await batchUpsert(tx, 'asset', assets);
+                await batchUpsert(tx, 'assetCategory', assetCategories);
+                await batchUpsert(tx, 'assetVendor', assetVendors);
+                await batchUpsert(tx, 'assetRoom', assetRooms);
+                await batchUpsert(tx, 'assetPic', assetPics);
                 await batchUpsert(tx, 'program', programs);
                 await batchUpsert(tx, 'expenseProgram', expensePrograms);
                 await tx.$executeRawUnsafe('SET FOREIGN_KEY_CHECKS = 1');
@@ -828,7 +945,8 @@ app.get('/api/all-data', async (req, res) => {
             accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
-            budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations
+            budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations,
+            assetCategories, assetVendors, assetRooms, assetPics
         ] = await Promise.all([
             client.account.findMany({ where: { isDeleted: false }, orderBy: { code: 'asc' } }),
             
@@ -895,7 +1013,11 @@ app.get('/api/all-data', async (req, res) => {
 
             client.bosStage.findMany({ where: { isDeleted: false } }),
             client.bosPos.findMany({ where: { isDeleted: false } }),
-            client.bosAllocation.findMany({ where: { isDeleted: false } })
+            client.bosAllocation.findMany({ where: { isDeleted: false } }),
+            client.assetCategory.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
+            client.assetVendor.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
+            client.assetRoom.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
+            client.assetPic.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => [])
         ]);
 
         res.json({
@@ -904,7 +1026,8 @@ app.get('/api/all-data', async (req, res) => {
                 accounts, journals, assets, programs, expensePrograms, users, budgets,
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses,
-                budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations
+                budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations,
+                assetCategories, assetVendors, assetRooms, assetPics
             }
         });
     } catch (error) {

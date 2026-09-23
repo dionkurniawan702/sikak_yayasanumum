@@ -57,16 +57,25 @@ model Journal {
 }
 
 model Asset {
-  id                   String   @id @default(uuid())
+  id                   String    @id @default(uuid())
+  code                 String?
   name                 String
+  brand                String?
+  vendor               String?
   category             String?
-  description          String?  @db.Text
+  description          String?   @db.Text
   acquisitionDate      DateTime?
-  cost                 Decimal? @db.Decimal(15, 2)
+  acquisitionStatus    String?   @default("Beli Baru")
+  cost                 Decimal?  @db.Decimal(15, 2)
   usefulLifeMonths     Int?
-  residualValue        Decimal? @db.Decimal(15, 2)
-  status               String?  @default("Tersedia")
-  isDeleted            Boolean  @default(false)
+  residualValue        Decimal?  @db.Decimal(15, 2)
+  pic                  String?
+  fundSource           String?   @default("Yayasan")
+  condition            String?   @default("BAIK")
+  status               String?   @default("Tersedia")
+  unitId               String?
+  assetRoom            String?
+  isDeleted            Boolean   @default(false)
 
   @@map("assets")
 }
@@ -442,4 +451,47 @@ model BosAllocation {
   updatedAt       DateTime    @default(now()) @updatedAt
 
   @@map("bos_allocations")
+}
+
+model AssetCategory {
+  id           String   @id @default(uuid())
+  name         String
+  code         String?
+  economicLife Int?     @default(4)
+  description  String?  @db.Text
+  isDeleted    Boolean  @default(false)
+
+  @@map("asset_categories")
+}
+
+model AssetVendor {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String?
+  address   String?  @db.Text
+  note      String?  @db.Text
+  isDeleted Boolean  @default(false)
+
+  @@map("asset_vendors")
+}
+
+model AssetRoom {
+  id          String   @id @default(uuid())
+  name        String
+  unitId      String?
+  description String?  @db.Text
+  isDeleted   Boolean  @default(false)
+
+  @@map("asset_rooms")
+}
+
+model AssetPic {
+  id        String   @id @default(uuid())
+  name      String
+  role      String?
+  unitId    String?
+  phone     String?
+  isDeleted Boolean  @default(false)
+
+  @@map("asset_pics")
 }

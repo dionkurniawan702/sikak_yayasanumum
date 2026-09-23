@@ -105,6 +105,27 @@ router.post('/journals', async (req, res) => {
 });
 
 // --- ASSETS ---
+const cleanAssetData = (body) => {
+    const data = { ...body };
+    if (data.cost !== undefined) data.cost = parseFloat(data.cost) || 0;
+    if (data.residualValue !== undefined) data.residualValue = parseFloat(data.residualValue) || 0;
+    if (data.usefulLifeMonths !== undefined) {
+        data.usefulLifeMonths = parseInt(data.usefulLifeMonths, 10) || 0;
+    } else if (data.economicLife !== undefined) {
+        data.usefulLifeMonths = (parseInt(data.economicLife, 10) || 4) * 12;
+    }
+    if (data.acquisitionDate) {
+        try {
+            const d = new Date(data.acquisitionDate);
+            data.acquisitionDate = isNaN(d.getTime()) ? new Date() : d;
+        } catch (e) {
+            data.acquisitionDate = new Date();
+        }
+    }
+    delete data.economicLife;
+    return data;
+};
+
 router.get('/assets', async (req, res) => {
     try {
         const data = await getPrisma(req).asset.findMany({ where: { isDeleted: false } });
@@ -116,7 +137,8 @@ router.get('/assets', async (req, res) => {
 
 router.post('/assets', async (req, res) => {
     try {
-        const data = await getPrisma(req).asset.create({ data: req.body });
+        const payload = cleanAssetData(req.body);
+        const data = await getPrisma(req).asset.create({ data: payload });
         res.json({ data });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -125,9 +147,10 @@ router.post('/assets', async (req, res) => {
 
 router.put('/assets/:id', async (req, res) => {
     try {
+        const payload = cleanAssetData(req.body);
         const data = await getPrisma(req).asset.update({
             where: { id: req.params.id },
-            data: { ...req.body, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
+            data: { ...payload, isDeleted: req.body.isDeleted !== undefined ? req.body.isDeleted : undefined }
         });
         res.json({ data });
     } catch (error) {
@@ -142,6 +165,202 @@ router.delete('/assets/:id', async (req, res) => {
             await getPrisma(req).asset.delete({ where: { id: req.params.id } });
         } else {
             await getPrisma(req).asset.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- ASSET MASTER: CATEGORIES ---
+router.get('/asset-categories', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetCategory.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/asset-categories', async (req, res) => {
+    try {
+        const clean = { ...req.body };
+        if (clean.economicLife !== undefined) clean.economicLife = parseInt(clean.economicLife, 10) || 4;
+        const data = await getPrisma(req).assetCategory.create({ data: clean });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/asset-categories/:id', async (req, res) => {
+    try {
+        const clean = { ...req.body };
+        if (clean.economicLife !== undefined) clean.economicLife = parseInt(clean.economicLife, 10) || 4;
+        const data = await getPrisma(req).assetCategory.update({
+            where: { id: req.params.id },
+            data: clean
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/asset-categories/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+        if (isPermanent) {
+            await getPrisma(req).assetCategory.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).assetCategory.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- ASSET MASTER: VENDORS ---
+router.get('/asset-vendors', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetVendor.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/asset-vendors', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetVendor.create({ data: req.body });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/asset-vendors/:id', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetVendor.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/asset-vendors/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+        if (isPermanent) {
+            await getPrisma(req).assetVendor.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).assetVendor.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- ASSET MASTER: ROOMS ---
+router.get('/asset-rooms', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetRoom.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/asset-rooms', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetRoom.create({ data: req.body });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/asset-rooms/:id', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetRoom.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/asset-rooms/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+        if (isPermanent) {
+            await getPrisma(req).assetRoom.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).assetRoom.update({
+                where: { id: req.params.id },
+                data: { isDeleted: true }
+            });
+        }
+        res.json({ message: 'Success' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// --- ASSET MASTER: PICS ---
+router.get('/asset-pics', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetPic.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.post('/asset-pics', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetPic.create({ data: req.body });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/asset-pics/:id', async (req, res) => {
+    try {
+        const data = await getPrisma(req).assetPic.update({
+            where: { id: req.params.id },
+            data: req.body
+        });
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/asset-pics/:id', async (req, res) => {
+    try {
+        const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
+        if (isPermanent) {
+            await getPrisma(req).assetPic.delete({ where: { id: req.params.id } });
+        } else {
+            await getPrisma(req).assetPic.update({
                 where: { id: req.params.id },
                 data: { isDeleted: true }
             });

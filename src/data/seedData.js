@@ -78,6 +78,37 @@ export const initialJournals = [];
 // Aset Tetap Awal
 export const initialAssets = [];
 
+// Master Pengaturan Aset
+export const initialAssetCategories = [
+    { id: 'ACAT-FU', name: 'Furnitur', code: 'FU', economicLife: 4, description: 'Meja, kursi, lemari, rak, loker, dsb.' },
+    { id: 'ACAT-EL', name: 'Elektronik', code: 'EL', economicLife: 4, description: 'Laptop, PC, AC, printer, sound system, proyektor, dsb.' },
+    { id: 'ACAT-INV', name: 'Inventaris', code: 'INV', economicLife: 1, description: 'Papan prestasi, alat kebersihan, perlengkapan belajar, dispenser, dsb.' },
+    { id: 'ACAT-KD', name: 'Kendaraan', code: 'KD', economicLife: 8, description: 'Mobil operasional, motor, bus sekolah, dsb.' },
+    { id: 'ACAT-BG', name: 'Bangunan', code: 'BG', economicLife: 20, description: 'Gedung sekolah, asrama, kantor yayasan, dsb.' },
+    { id: 'ACAT-TN', name: 'Tanah', code: 'TN', economicLife: 0, description: 'Tanah wakaf dan tanah milik yayasan' },
+];
+
+export const initialAssetVendors = [
+    { id: 'AVEN-1', name: 'Informa', phone: '-', address: 'Padang' },
+    { id: 'AVEN-2', name: 'Azia Furnitur', phone: '-', address: 'Padang' },
+    { id: 'AVEN-3', name: 'Max-Indo', phone: '-', address: 'Padang' },
+    { id: 'AVEN-4', name: 'Muda Berkah', phone: '-', address: 'Padang' },
+    { id: 'AVEN-5', name: 'Batu Bajad', phone: '-', address: 'Padang' },
+];
+
+export const initialAssetRooms = [
+    { id: 'ARM-1', name: 'Ruang TU', description: 'Tata Usaha' },
+    { id: 'ARM-2', name: 'Ruang Guru', description: 'Kantor Majelis Guru' },
+    { id: 'ARM-3', name: 'Lab Komputer', description: 'Laboratorium Komputer & Multimedia' },
+    { id: 'ARM-4', name: 'Ruang Kelas', description: 'Ruang Kelas Belajar' },
+    { id: 'ARM-5', name: 'Perpustakaan', description: 'Perpustakaan Unit' },
+];
+
+export const initialAssetPics = [
+    { id: 'APIC-1', name: 'Siti Nurfadhilah', role: 'Staff TU' },
+    { id: 'APIC-2', name: 'Novi Hendri', role: 'Sarpras' },
+];
+
 // Item Penerimaan
 export const initialIncomeItems = [
     { id: 'INC-001', name: 'Gedung' },
