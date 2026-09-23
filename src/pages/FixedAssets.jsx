@@ -228,6 +228,20 @@ export default function FixedAssets() {
         if (!form.name.trim()) return alert('Nama aset wajib diisi!');
         if (!form.code.trim()) return alert('Kode aset wajib diisi!');
 
+        // Validasi Duplikasi Kode Aset
+        const trimmedCode = form.code.trim().toUpperCase();
+        if (trimmedCode !== '-') {
+            const duplicate = (assets || []).find(a => 
+                !a.isDeleted && 
+                a.code && 
+                a.code.trim().toUpperCase() === trimmedCode &&
+                (!editingAsset || a.id !== editingAsset.id)
+            );
+            if (duplicate) {
+                return alert(`Kode Aset "${form.code.trim()}" sudah ada di database (digunakan oleh: "${duplicate.name}"). Harap gunakan kode aset unik agar data tidak ganda.`);
+            }
+        }
+
         const costVal = parseFloat(form.cost) || 0;
         const ecoVal = parseInt(form.economicLife, 10) || 0;
         const resVal = parseFloat(form.residualValue) || 0;
@@ -357,7 +371,10 @@ export default function FixedAssets() {
                 }
 
                 let importedCount = 0;
+                let updatedCount = 0;
                 const newAssets = [];
+                const updatedAssets = [];
+                const processedCodes = new Set();
 
                 data.forEach((row, idx) => {
                     // Flexible key mapping
@@ -411,35 +428,80 @@ export default function FixedAssets() {
                     const sumberDana = getCol(['Sumber Dana', 'Sumber Da', 'Sumber', 'Dana']) || 'Yayasan';
                     const kondisi = (getCol(['Kondisi', 'Status Kondisi']) || 'BAIK').toUpperCase();
 
-                    newAssets.push({
-                        id: generateId('AST'),
-                        code: String(kode).trim(),
-                        name: String(nama).trim(),
-                        brand: String(merek).trim(),
-                        vendor: String(vendor).trim(),
-                        acquisitionDate: formattedDate,
-                        acquisitionStatus: String(statusPerolehan).trim(),
-                        cost: isNaN(harga) ? 0 : harga,
-                        residualValue: 0,
-                        economicLife: 4,
-                        usefulLifeMonths: 48,
-                        pic: String(pic).trim(),
-                        category: String(kategori).trim(),
-                        fundSource: String(sumberDana).trim(),
-                        condition: kondisi,
-                        unitId: myUnitId || (units[0]?.id || null),
-                        status: 'Tersedia'
-                    });
-                    importedCount++;
+                    const cleanCode = String(kode).trim();
+                    const upperCode = cleanCode.toUpperCase();
+
+                    // Cek apakah aset dengan kode ini sudah ada di database saat ini
+                    const existingAsset = (cleanCode && cleanCode !== '-')
+                        ? (assets || []).find(a => !a.isDeleted && a.code && a.code.trim().toUpperCase() === upperCode)
+                        : null;
+
+                    if (existingAsset) {
+                        // Perbarui data aset yang sudah ada agar tidak terjadi data dobel
+                        const updated = {
+                            ...existingAsset,
+                            name: String(nama).trim(),
+                            brand: String(merek).trim(),
+                            vendor: String(vendor).trim(),
+                            acquisitionDate: formattedDate,
+                            acquisitionStatus: String(statusPerolehan).trim(),
+                            cost: isNaN(harga) ? (existingAsset.cost || 0) : harga,
+                            pic: String(pic).trim(),
+                            category: String(kategori).trim(),
+                            fundSource: String(sumberDana).trim(),
+                            condition: kondisi
+                        };
+                        updatedAssets.push(updated);
+                        updatedCount++;
+                    } else if (cleanCode !== '-' && processedCodes.has(upperCode)) {
+                        // Jika dalam 1 file Excel ada kode yang sama berulang, lewati agar tidak dobel
+                        console.warn(`[Import Excel] Kode duplikat dalam file dilewati: ${cleanCode}`);
+                    } else {
+                        if (cleanCode && cleanCode !== '-') processedCodes.add(upperCode);
+                        newAssets.push({
+                            id: generateId('AST'),
+                            code: cleanCode,
+                            name: String(nama).trim(),
+                            brand: String(merek).trim(),
+                            vendor: String(vendor).trim(),
+                            acquisitionDate: formattedDate,
+                            acquisitionStatus: String(statusPerolehan).trim(),
+                            cost: isNaN(harga) ? 0 : harga,
+                            residualValue: 0,
+                            economicLife: 4,
+                            usefulLifeMonths: 48,
+                            pic: String(pic).trim(),
+                            category: String(kategori).trim(),
+                            fundSource: String(sumberDana).trim(),
+                            condition: kondisi,
+                            unitId: myUnitId || (units[0]?.id || null),
+                            status: 'Tersedia'
+                        });
+                        importedCount++;
+                    }
                 });
 
-                if (importedCount > 0) {
+                if (newAssets.length > 0) {
                     dispatch({ type: 'IMPORT_ASSETS', payload: newAssets });
                     // Sync each to api
                     newAssets.forEach(item => {
                         api.pushAction({ type: 'ADD_ASSET', payload: item }, state);
                     });
-                    alert(`Berhasil mengimpor ${importedCount} data aset ke Database Aset!`);
+                }
+
+                if (updatedAssets.length > 0) {
+                    updatedAssets.forEach(item => {
+                        dispatch({ type: 'EDIT_ASSET', payload: item });
+                        api.pushAction({ type: 'EDIT_ASSET', payload: item }, state);
+                    });
+                }
+
+                if (importedCount > 0 || updatedCount > 0) {
+                    let msg = `Proses Impor Berhasil!`;
+                    if (importedCount > 0) msg += `\n• ${importedCount} aset baru ditambahkan.`;
+                    if (updatedCount > 0) msg += `\n• ${updatedCount} aset yang sudah ada diperbarui datanya.`;
+                    msg += `\n\nSeluruh data terverifikasi dan tidak ada duplikasi data.`;
+                    alert(msg);
                 } else {
                     alert('Tidak ada data valid yang dapat diimpor. Pastikan header kolom sesuai.');
                 }

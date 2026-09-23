@@ -30,10 +30,6 @@ export default function JournalEntry() {
     const [reference, setReference] = useState('');
     const [proof, setProof] = useState('');
     const [phoneNumber, setPhoneNumber] = useState('');
-    const [economicLife, setEconomicLife] = useState('');
-    const [assetPosition, setAssetPosition] = useState('');
-    const [assetRoom, setAssetRoom] = useState('');
-    const [assetCondition, setAssetCondition] = useState('');
     const [programId, setProgramId] = useState('PRG-GEN');
     
 
@@ -281,10 +277,6 @@ export default function JournalEntry() {
         setPhoneNumber(journal.phoneNumber || '');
         
 
-        setEconomicLife(journal.economicLife || '');
-        setAssetPosition(journal.assetPosition || '');
-        setAssetRoom(journal.assetRoom || '');
-        setAssetCondition(journal.assetCondition || '');
         setProgramId(journal.programId || 'PRG-GEN');
         setRows(journal.entries.map(e => ({
             accountId: e.accountId,
@@ -312,8 +304,7 @@ export default function JournalEntry() {
 
         const payload = { 
             date, name, description, entries, reference, proof, 
-            phoneNumber, economicLife, programId,
-            assetPosition, assetRoom, assetCondition
+            phoneNumber, programId
         };
 
 
