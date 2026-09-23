@@ -952,14 +952,24 @@ export default function FixedAssets() {
                             {/* Baris 2: Kode Aset & Tanggal Perolehan */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="md:col-span-2">
-                                    <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                                        Kode Aset / Inventaris <span className="text-rose-500">*</span>
-                                    </label>
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
+                                            Kode Aset / Inventaris <span className="text-rose-500">*</span>
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() => setForm({ ...form, code: generateAssetCode(form.category, form.unitId, form.acquisitionDate) })}
+                                            className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2 py-0.5 rounded-md border border-indigo-200 transition-colors"
+                                            title="Klik untuk membuat nomor kode aset otomatis berformat DEI.[UNIT].[KAT].[TAHUN].[NO]"
+                                        >
+                                            <Sparkles size={11} /> Generate Otomatis
+                                        </button>
+                                    </div>
                                     <input
                                         type="text"
                                         value={form.code}
                                         onChange={e => setForm({ ...form, code: e.target.value })}
-                                        placeholder="Contoh: DEI.MIT.FU.2019.0064"
+                                        placeholder="Ketik manual atau klik 'Generate Otomatis'"
                                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 focus:bg-white"
                                         required
                                     />
