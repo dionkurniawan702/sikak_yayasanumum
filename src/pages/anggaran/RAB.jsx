@@ -131,6 +131,8 @@ function RABContent() {
         bosStages = [],
         bosPosList = [],
         bosAllocations = [],
+        assetCategories = [],
+        assetRooms = [],
         currentUser,
         budgetReports = []
     } = state;
@@ -140,9 +142,15 @@ function RABContent() {
     const isAdminBidang = currentUser?.role === 'admin_bidang';
     const currentUserUnit = units.find(u => u.id === currentUser?.unitId);
     const isBosRecipient = isSuperAdmin || isAdminBidang || (currentUserUnit && currentUserUnit.receivesBos);
+    const userField = fields.find(f => f.id === currentUser?.fieldId);
+    const isSarprasAdmin = isSuperAdmin || (isAdminBidang && (userField?.name?.toLowerCase().includes('sarana') || userField?.name?.toLowerCase().includes('sarpras')));
 
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
+    const activeYearObj = academicYears.find(a => a.id === selectedYearId);
+    const activeYearName = activeYearObj?.name || '';
+    const isSarprasRequiredYear = activeYearName >= '2027-2028';
+
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
     const [showDashboard, setShowDashboard] = useState(isSuperAdmin);
     const [activeTab, setActiveTab] = useState('EXPENSE'); // EXPENSE | REVIEW (for admin)
@@ -218,7 +226,13 @@ function RABContent() {
         harga: 0,
         programId: '',
         semester: '1',
-        months: {}
+        months: {},
+        isAsset: false,
+        assetCategory: '',
+        assetRoom: '',
+        assetProcurementType: 'BARU',
+        sarprasStatus: null,
+        sarprasNotes: ''
     });
     const [editingCompIdx, setEditingCompIdx] = useState(null);
     const [showCompModal, setShowCompModal] = useState(false);
@@ -1030,6 +1044,11 @@ function RABContent() {
             return;
         }
 
+        if (entryForm.isAsset && isSarprasRequiredYear && !entryForm.assetCategory) {
+            setMessage({ type: 'error', text: 'Untuk TA 2027-2028 ke atas, Kategori Aset wajib dipilih untuk rencana pembelian aset!' });
+            return;
+        }
+
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 0) * (parseFloat(entryForm.harga) || 0);
         
@@ -1047,13 +1066,30 @@ function RABContent() {
             newStatus = (currentPlan?.status === 'APPROVED' || currentPlan?.status === 'PENDING') ? currentPlan.status : 'DRAFT';
         }
 
+        let newSarprasStatus = entryForm.sarprasStatus;
+        if (entryForm.isAsset) {
+            if (isSarprasRequiredYear) {
+                if (!newSarprasStatus) newSarprasStatus = 'PENDING';
+            } else {
+                newSarprasStatus = 'APPROVED';
+            }
+        } else {
+            newSarprasStatus = null;
+        }
+
         const newComp = {
             ...entryForm,
             volume: parseFloat(entryForm.volume),
             kali: parseFloat(entryForm.kali),
             harga: parseFloat(entryForm.harga),
             total,
-            status: newStatus
+            status: newStatus,
+            isAsset: !!entryForm.isAsset,
+            assetCategory: entryForm.isAsset ? (entryForm.assetCategory || '') : '',
+            assetRoom: entryForm.isAsset ? (entryForm.assetRoom || '') : '',
+            assetProcurementType: entryForm.isAsset ? (entryForm.assetProcurementType || 'BARU') : 'BARU',
+            sarprasStatus: newSarprasStatus,
+            sarprasNotes: entryForm.sarprasNotes || ''
         };
 
         setCurrentPlan(prev => {
@@ -1123,7 +1159,13 @@ function RABContent() {
             harga: 0,
             programId: '',
             semester: '1',
-            months: {}
+            months: {},
+            isAsset: false,
+            assetCategory: '',
+            assetRoom: '',
+            assetProcurementType: 'BARU',
+            sarprasStatus: null,
+            sarprasNotes: ''
         });
         setEditingCompIdx(null);
         setShowCompModal(false);
@@ -1733,6 +1775,52 @@ function RABContent() {
         } catch (error) {
             console.error('Failed to persist RAB plan:', error);
             throw error;
+        }
+    };
+
+    const handleSarprasApproveComponent = async (itemId, planId, compIdx, newStatus, notes = '') => {
+        try {
+            setIsSaving(true);
+            const type = activeTab === 'INCOME' ? 'income' : 'expense';
+            const plans = currentPlan[type][itemId] || [];
+            const updatedPlans = plans.map(p => {
+                if (p.id !== planId) return p;
+                const components = [...(p.components || [])];
+                if (components[compIdx]) {
+                    components[compIdx] = {
+                        ...components[compIdx],
+                        sarprasStatus: newStatus,
+                        sarprasNotes: notes || ''
+                    };
+                }
+                return { ...p, components };
+            });
+
+            const nextPlan = {
+                ...currentPlan,
+                [type]: { ...currentPlan[type], [itemId]: updatedPlans }
+            };
+            setCurrentPlan(nextPlan);
+
+            const dbPlan = {
+                id: currentPlanId,
+                academicYearId: selectedYearId,
+                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                income: nextPlan.income,
+                expense: nextPlan.expense,
+                status: nextPlan.status,
+                rejectionReason: nextPlan.rejectionReason,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUser?.username
+            };
+            await persistPlanToServer(dbPlan);
+            setMessage({ type: 'success', text: `Rincian aset berhasil di-${newStatus === 'APPROVED' ? 'ACC oleh Sarpras' : 'tolak Sarpras'}` });
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Gagal memperbarui status Sarpras: ' + err.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 3500);
         }
     };
 
@@ -4440,7 +4528,7 @@ function RABContent() {
                                                                     <Package size={40} className="mx-auto text-slate-300 mb-4 opacity-30" />
                                                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-50">Belum ada rincian belanja</p>
                                                                     <button
-                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
+                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                         className="mt-6 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all mx-auto inline-flex items-center gap-2"
                                                                     >
                                                                         <Plus size={16} strokeWidth={3} /> Tambah Rincian Pertama
@@ -4472,6 +4560,60 @@ function RABContent() {
                                                                                     <div className="flex-1">
                                                                                         <h4 className="font-black text-slate-800 text-base mb-2">{comp.label}</h4>
                                                                                         <div className="flex flex-wrap items-center gap-3">
+                                                                                            {comp.isAsset && (
+                                                                                                <>
+                                                                                                    <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
+                                                                                                        <Package size={11} className="text-indigo-600" /> {comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset Sarpras'}
+                                                                                                    </span>
+                                                                                                    {comp.sarprasStatus === 'APPROVED' ? (
+                                                                                                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            <CheckCircle2 size={11} /> ACC Sarpras
+                                                                                                        </span>
+                                                                                                    ) : comp.sarprasStatus === 'REJECTED' ? (
+                                                                                                        <span className="text-[9px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md flex items-center gap-1" title={comp.sarprasNotes || ''}>
+                                                                                                            <XCircle size={11} /> Ditolak Sarpras
+                                                                                                        </span>
+                                                                                                    ) : (
+                                                                                                        <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            ⏳ Menunggu Sarpras
+                                                                                                        </span>
+                                                                                                    )}
+                                                                                                    {isSarprasAdmin && (
+                                                                                                        <div className="flex items-center gap-1.5 ml-1">
+                                                                                                            {comp.sarprasStatus !== 'APPROVED' && (
+                                                                                                                <button
+                                                                                                                    type="button"
+                                                                                                                    onClick={(e) => {
+                                                                                                                        e.stopPropagation();
+                                                                                                                        handleSarprasApproveComponent(itemId, item.id, idx, 'APPROVED');
+                                                                                                                    }}
+                                                                                                                    className="px-2 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 shadow-sm transition-all"
+                                                                                                                    title="ACC Spesifikasi Aset oleh Sarpras"
+                                                                                                                >
+                                                                                                                    <CheckCircle2 size={10} /> ACC Sarpras
+                                                                                                                </button>
+                                                                                                            )}
+                                                                                                            {comp.sarprasStatus !== 'REJECTED' && (
+                                                                                                                <button
+                                                                                                                    type="button"
+                                                                                                                    onClick={(e) => {
+                                                                                                                        e.stopPropagation();
+                                                                                                                        const reason = window.prompt('Masukkan catatan penolakan / revisi Sarpras:', comp.sarprasNotes || '');
+                                                                                                                        if (reason !== null) {
+                                                                                                                            handleSarprasApproveComponent(itemId, item.id, idx, 'REJECTED', reason);
+                                                                                                                        }
+                                                                                                                    }}
+                                                                                                                    className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-lg text-[9px] font-black uppercase tracking-wider flex items-center gap-1 transition-all"
+                                                                                                                    title="Tolak / Beri Catatan Revisi Sarpras"
+                                                                                                                >
+                                                                                                                    <XCircle size={10} /> Tolak Sarpras
+                                                                                                                </button>
+                                                                                                            )}
+                                                                                                        </div>
+                                                                                                    )}
+                                                                                                    <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                                                                                </>
+                                                                                            )}
                                                                                             <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md line-clamp-1 max-w-[200px]">{allPrograms.find(p => p.id === comp.programId)?.name || 'Tanpa Program'}</span>
                                                                                             <span className="w-1 h-1 rounded-full bg-slate-200" />
                                                                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vol: {comp.volume} {comp.satuan} &times; {comp.kali}</span>
@@ -4517,7 +4659,7 @@ function RABContent() {
                                                                                                     </div>
                                                                                                     <button
                                                                                                         onClick={() => {
-                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp });
+                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp });
                                                                                                             setEditingCompIdx(idx);
                                                                                                             setIsReadOnlyComp(true);
                                                                                                             setShowCompModal(true);
@@ -4539,7 +4681,7 @@ function RABContent() {
                                                                                                 </div>
                                                                                             ) : (
                                                                                                 <>
-                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
                                                                                                     <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
                                                                                                     {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
                                                                                                     {isSuperAdmin && (isApproved || isPending) && (
@@ -4563,7 +4705,7 @@ function RABContent() {
                                                                     <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
                                                                         <div className="flex items-center gap-5">
                                                                             <button
-                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
+                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                                 className="w-14 h-14 flex items-center justify-center bg-blue-600 text-white rounded-[1.25rem] shadow-lg shadow-blue-200 hover:scale-105 transition-all"
                                                                             >
                                                                                 <Plus size={24} strokeWidth={3} />
@@ -4769,6 +4911,131 @@ function RABContent() {
                                                                     </div>
                                                                 </div>
                                                             )}
+
+                                                            {/* Opsi Pengadaan Aset / Sarpras */}
+                                                            <div className={`p-5 rounded-2xl border-2 transition-all ${entryForm.isAsset ? 'bg-indigo-50/70 border-indigo-200 shadow-sm' : 'bg-slate-50 border-slate-100'}`}>
+                                                                <div className="flex items-center justify-between">
+                                                                    <div className="flex items-center gap-3">
+                                                                        <div className={`w-9 h-9 rounded-xl flex items-center justify-center transition-colors ${entryForm.isAsset ? 'bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'bg-slate-200 text-slate-500'}`}>
+                                                                            <Package size={18} />
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="text-xs font-black text-slate-800 tracking-tight block">Pembelian Bersifat Aset</span>
+                                                                            <span className="text-[10px] font-bold text-slate-400">Pengadaan peralatan/sarana prasarana yang dicatat ke buku inventaris aset</span>
+                                                                        </div>
+                                                                    </div>
+                                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                                        <input 
+                                                                            type="checkbox" 
+                                                                            disabled={isReadOnlyComp} 
+                                                                            checked={!!entryForm.isAsset} 
+                                                                            onChange={e => setEntryForm({ 
+                                                                                ...entryForm, 
+                                                                                isAsset: e.target.checked,
+                                                                                assetCategory: e.target.checked ? (entryForm.assetCategory || assetCategories[0]?.name || '') : ''
+                                                                            })} 
+                                                                            className="sr-only peer" 
+                                                                        />
+                                                                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                                                                    </label>
+                                                                </div>
+
+                                                                {entryForm.isAsset && (
+                                                                    <div className="mt-4 pt-4 border-t border-indigo-100 space-y-4 animate-in fade-in duration-200">
+                                                                        {/* Tahun Ajaran Notice */}
+                                                                        <div className={`p-3.5 rounded-xl flex items-start gap-2.5 text-[10px] font-medium leading-relaxed ${isSarprasRequiredYear ? 'bg-amber-50 text-amber-900 border border-amber-200' : 'bg-blue-50 text-blue-900 border border-blue-100'}`}>
+                                                                            <Info size={15} className={`shrink-0 mt-0.5 ${isSarprasRequiredYear ? 'text-amber-600' : 'text-blue-600'}`} />
+                                                                            <div>
+                                                                                {isSarprasRequiredYear ? (
+                                                                                    <span><strong>Mulai TA 2027-2028:</strong> Rencana pembelian aset ini wajib diverifikasi dan di-ACC oleh <strong>Bidang Sarana Prasarana</strong> sebelum pengesahan final.</span>
+                                                                                ) : (
+                                                                                    <span><strong>Masa Transisi ({activeYearObj?.name || 'Tahun Berjalan'}):</strong> Pembelian aset tetap dapat direncanakan, status verifikasi Sarpras otomatis disetujui (tidak mengunci).</span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                            {/* Dropdown Kategori Aset */}
+                                                                            <div className="space-y-1">
+                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
+                                                                                    Kategori Aset {isSarprasRequiredYear && <span className="text-rose-500">*</span>}
+                                                                                </label>
+                                                                                <select 
+                                                                                    disabled={isReadOnlyComp} 
+                                                                                    className="w-full p-3 bg-white border-2 border-indigo-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all disabled:opacity-75"
+                                                                                    value={entryForm.assetCategory || ''} 
+                                                                                    onChange={e => setEntryForm({ ...entryForm, assetCategory: e.target.value })}
+                                                                                >
+                                                                                    <option value="">— Pilih Kategori Aset —</option>
+                                                                                    {assetCategories.map(cat => (
+                                                                                        <option key={cat.id || cat.name} value={cat.name}>
+                                                                                            {cat.name} {cat.economicLife ? `(Umur: ${cat.economicLife} thn)` : ''}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+
+                                                                            {/* Dropdown / Input Ruangan */}
+                                                                            <div className="space-y-1">
+                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
+                                                                                    Rencana Penempatan / Ruangan
+                                                                                </label>
+                                                                                <input 
+                                                                                    type="text" 
+                                                                                    readOnly={isReadOnlyComp} 
+                                                                                    list="asset-rooms-list"
+                                                                                    placeholder="Contoh: Lab Komputer, Kantor TU, Kelas..."
+                                                                                    className="w-full p-3 bg-white border-2 border-indigo-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all disabled:opacity-75"
+                                                                                    value={entryForm.assetRoom || ''} 
+                                                                                    onChange={e => setEntryForm({ ...entryForm, assetRoom: e.target.value })}
+                                                                                />
+                                                                                <datalist id="asset-rooms-list">
+                                                                                    {assetRooms.filter(r => !r.isDeleted).map(r => (
+                                                                                        <option key={r.id} value={r.name} />
+                                                                                    ))}
+                                                                                </datalist>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Sifat Pengadaan */}
+                                                                        <div className="space-y-1.5">
+                                                                            <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">Sifat Pengadaan Aset</label>
+                                                                            <div className="flex gap-2">
+                                                                                {[
+                                                                                    { id: 'BARU', label: 'Penambahan Aset Baru' },
+                                                                                    { id: 'PENGGANTIAN', label: 'Penggantian Aset Rusak' }
+                                                                                ].map(opt => (
+                                                                                    <button
+                                                                                        key={opt.id}
+                                                                                        type="button"
+                                                                                        disabled={isReadOnlyComp}
+                                                                                        onClick={() => setEntryForm({ ...entryForm, assetProcurementType: opt.id })}
+                                                                                        className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black tracking-tight transition-all border ${entryForm.assetProcurementType === opt.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50/50'}`}
+                                                                                    >
+                                                                                        {opt.label}
+                                                                                    </button>
+                                                                                ))}
+                                                                            </div>
+                                                                        </div>
+
+                                                                        {/* Status ACC Sarpras Badge if already reviewed */}
+                                                                        {entryForm.sarprasStatus && (
+                                                                            <div className="p-3 bg-white rounded-xl border border-indigo-100 flex items-center justify-between text-xs">
+                                                                                <span className="font-bold text-slate-500">Status Verifikasi Sarpras:</span>
+                                                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                                                                                    entryForm.sarprasStatus === 'APPROVED' ? 'bg-emerald-100 text-emerald-700' :
+                                                                                    entryForm.sarprasStatus === 'REJECTED' ? 'bg-rose-100 text-rose-700' :
+                                                                                    'bg-amber-100 text-amber-700'
+                                                                                }`}>
+                                                                                    {entryForm.sarprasStatus === 'APPROVED' ? '✓ Disetujui Sarpras' :
+                                                                                     entryForm.sarprasStatus === 'REJECTED' ? '✕ Ditolak Sarpras' :
+                                                                                     '⏳ Menunggu Telaah Sarpras'}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
 
                                                             <div className="space-y-2">
                                                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic ml-1">Catatan / Justifikasi</label>
