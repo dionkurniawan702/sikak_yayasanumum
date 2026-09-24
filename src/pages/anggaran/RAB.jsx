@@ -150,7 +150,7 @@ function RABContent() {
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
     const activeYearObj = academicYears.find(a => a.id === selectedYearId);
     const activeYearName = activeYearObj?.name || '';
-    const isSarprasRequiredYear = activeYearName >= '2027-2028';
+    const isSarprasRequiredYear = activeYearName >= '2026-2027';
 
     const [selectedUnitId, setSelectedUnitId] = useState('FOUNDATION');
     const [showDashboard, setShowDashboard] = useState(isSuperAdmin);
@@ -1048,11 +1048,11 @@ function RABContent() {
 
         if (entryForm.isAsset && isSarprasRequiredYear) {
             if (!entryForm.assetName || !entryForm.assetName.trim()) {
-                setMessage({ type: 'error', text: 'Untuk TA 2027-2028 ke atas, Nama Aset wajib diisi untuk rencana pembelian aset!' });
+                setMessage({ type: 'error', text: `Untuk TA ${activeYearName || '2026-2027'}, Nama Aset wajib diisi untuk rencana pembelian aset!` });
                 return;
             }
             if (!entryForm.assetCategory) {
-                setMessage({ type: 'error', text: 'Untuk TA 2027-2028 ke atas, Kategori Aset wajib dipilih untuk rencana pembelian aset!' });
+                setMessage({ type: 'error', text: `Untuk TA ${activeYearName || '2026-2027'}, Kategori Aset wajib dipilih untuk rencana pembelian aset!` });
                 return;
             }
         }
@@ -1077,7 +1077,13 @@ function RABContent() {
         let newSarprasStatus = entryForm.sarprasStatus;
         if (entryForm.isAsset) {
             if (isSarprasRequiredYear) {
-                if (!newSarprasStatus) newSarprasStatus = 'PENDING';
+                if (editingCompIdx === null) {
+                    // Pengajuan baru: wajib verifikasi Sarpras
+                    newSarprasStatus = 'PENDING';
+                } else if (!newSarprasStatus) {
+                    // Rincian lama yang sudah ada sebelumnya: otomatis disetujui
+                    newSarprasStatus = 'APPROVED';
+                }
             } else {
                 newSarprasStatus = 'APPROVED';
             }
@@ -4576,17 +4582,17 @@ function RABContent() {
                                                                                                     <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
                                                                                                         <Package size={11} className="text-indigo-600" /> {comp.assetName ? `${comp.assetName} (${comp.assetCategory || 'Aset'})` : (comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset Sarpras')}
                                                                                                     </span>
-                                                                                                    {comp.sarprasStatus === 'APPROVED' ? (
-                                                                                                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                                                                            <CheckCircle2 size={11} /> ACC Sarpras
+                                                                                                    {comp.sarprasStatus === 'PENDING' ? (
+                                                                                                        <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            ⏳ Menunggu Sarpras
                                                                                                         </span>
                                                                                                     ) : comp.sarprasStatus === 'REJECTED' ? (
                                                                                                         <span className="text-[9px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md flex items-center gap-1" title={comp.sarprasNotes || ''}>
                                                                                                             <XCircle size={11} /> Ditolak Sarpras
                                                                                                         </span>
                                                                                                     ) : (
-                                                                                                        <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                                                                            ⏳ Menunggu Sarpras
+                                                                                                        <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            <CheckCircle2 size={11} /> ACC Sarpras
                                                                                                         </span>
                                                                                                     )}
                                                                                                     {isSarprasAdmin && (
@@ -4670,7 +4676,7 @@ function RABContent() {
                                                                                                     </div>
                                                                                                     <button
                                                                                                         onClick={() => {
-                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: comp.assetName || comp.namaAset || comp.label || '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' });
+                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' });
                                                                                                             setEditingCompIdx(idx);
                                                                                                             setIsReadOnlyComp(true);
                                                                                                             setShowCompModal(true);
@@ -4692,7 +4698,7 @@ function RABContent() {
                                                                                                 </div>
                                                                                             ) : (
                                                                                                 <>
-                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: comp.assetName || comp.namaAset || comp.label || '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
                                                                                                     <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
                                                                                                     {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
                                                                                                     {isSuperAdmin && (isApproved || isPending) && (
@@ -4959,7 +4965,7 @@ function RABContent() {
                                                                             <Info size={15} className={`shrink-0 mt-0.5 ${isSarprasRequiredYear ? 'text-amber-600' : 'text-blue-600'}`} />
                                                                             <div>
                                                                                 {isSarprasRequiredYear ? (
-                                                                                    <span><strong>Mulai TA 2027-2028:</strong> Rencana pembelian aset ini wajib diverifikasi dan di-ACC oleh <strong>Bidang Sarana Prasarana</strong> sebelum pengesahan final.</span>
+                                                                                    <span><strong>Ketentuan TA {activeYearObj?.name || '2026-2027'}:</strong> Rencana pembelian aset baru wajib diverifikasi dan di-ACC oleh <strong>Bidang Sarana Prasarana</strong>. Rincian anggaran lama yang sudah berjalan tetap berlaku (otomatis disetujui).</span>
                                                                                 ) : (
                                                                                     <span><strong>Masa Transisi ({activeYearObj?.name || 'Tahun Berjalan'}):</strong> Pembelian aset tetap dapat direncanakan, status verifikasi Sarpras otomatis disetujui (tidak mengunci).</span>
                                                                                 )}

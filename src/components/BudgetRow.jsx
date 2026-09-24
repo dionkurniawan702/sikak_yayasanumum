@@ -226,11 +226,6 @@ export default function BudgetRow({
                                                             📦 {comp.assetName || comp.namaAset ? `${comp.assetName || comp.namaAset} (${comp.assetCategory || 'Aset'})` : (comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset')}
                                                         </span>
                                                     )}
-                                                    {comp.isAsset && comp.sarprasStatus === 'APPROVED' && (
-                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200 whitespace-nowrap">
-                                                            ✓ ACC Sarpras
-                                                        </span>
-                                                    )}
                                                     {comp.isAsset && comp.sarprasStatus === 'PENDING' && (
                                                         <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 border border-amber-200 whitespace-nowrap">
                                                             ⏳ Sarpras
@@ -239,6 +234,11 @@ export default function BudgetRow({
                                                     {comp.isAsset && comp.sarprasStatus === 'REJECTED' && (
                                                         <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 border border-rose-200 whitespace-nowrap" title={comp.sarprasNotes || ''}>
                                                             ✕ Tolak Sarpras
+                                                        </span>
+                                                    )}
+                                                    {comp.isAsset && comp.sarprasStatus !== 'PENDING' && comp.sarprasStatus !== 'REJECTED' && (
+                                                        <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200 whitespace-nowrap">
+                                                            ✓ ACC Sarpras
                                                         </span>
                                                     )}
                                                     {/* Status Dinamis */}
