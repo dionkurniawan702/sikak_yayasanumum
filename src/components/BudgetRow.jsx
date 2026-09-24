@@ -223,7 +223,7 @@ export default function BudgetRow({
                                                     {/* Aset & Sarpras Pills */}
                                                     {comp.isAsset && (
                                                         <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 whitespace-nowrap">
-                                                            📦 {comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset'}
+                                                            📦 {comp.assetName || comp.namaAset ? `${comp.assetName || comp.namaAset} (${comp.assetCategory || 'Aset'})` : (comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset')}
                                                         </span>
                                                     )}
                                                     {comp.isAsset && comp.sarprasStatus === 'APPROVED' && (

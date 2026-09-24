@@ -1316,6 +1316,10 @@ const ensureBudgetOperationalColumns = async () => {
         if (!repFields.includes('harga')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN harga DECIMAL(15,2)');
         if (!repFields.includes('kategoriAset')) await client.$executeRawUnsafe("ALTER TABLE `budget_reports` ADD COLUMN kategoriAset VARCHAR(50) DEFAULT 'NON_ASET'");
         if (!repFields.includes('umurEkonomis')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN umurEkonomis INT');
+        if (!repFields.includes('namaAset')) {
+            console.log(`[Self-Healing] Adding namaAset column to budget_reports...`);
+            await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN namaAset VARCHAR(255)');
+        }
         if (!repFields.includes('status')) {
             console.log(`[Self-Healing] Adding status column to budget_reports...`);
             await client.$executeRawUnsafe("ALTER TABLE `budget_reports` ADD COLUMN status VARCHAR(191) DEFAULT 'PENDING'");

@@ -133,6 +133,7 @@ function RABContent() {
         bosAllocations = [],
         assetCategories = [],
         assetRooms = [],
+        assets = [],
         currentUser,
         budgetReports = []
     } = state;
@@ -228,6 +229,7 @@ function RABContent() {
         semester: '1',
         months: {},
         isAsset: false,
+        assetName: '',
         assetCategory: '',
         assetRoom: '',
         assetProcurementType: 'BARU',
@@ -1044,9 +1046,15 @@ function RABContent() {
             return;
         }
 
-        if (entryForm.isAsset && isSarprasRequiredYear && !entryForm.assetCategory) {
-            setMessage({ type: 'error', text: 'Untuk TA 2027-2028 ke atas, Kategori Aset wajib dipilih untuk rencana pembelian aset!' });
-            return;
+        if (entryForm.isAsset && isSarprasRequiredYear) {
+            if (!entryForm.assetName || !entryForm.assetName.trim()) {
+                setMessage({ type: 'error', text: 'Untuk TA 2027-2028 ke atas, Nama Aset wajib diisi untuk rencana pembelian aset!' });
+                return;
+            }
+            if (!entryForm.assetCategory) {
+                setMessage({ type: 'error', text: 'Untuk TA 2027-2028 ke atas, Kategori Aset wajib dipilih untuk rencana pembelian aset!' });
+                return;
+            }
         }
 
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
@@ -1085,6 +1093,8 @@ function RABContent() {
             total,
             status: newStatus,
             isAsset: !!entryForm.isAsset,
+            assetName: entryForm.isAsset ? (entryForm.assetName || entryForm.label || '') : '',
+            namaAset: entryForm.isAsset ? (entryForm.assetName || entryForm.label || '') : '',
             assetCategory: entryForm.isAsset ? (entryForm.assetCategory || '') : '',
             assetRoom: entryForm.isAsset ? (entryForm.assetRoom || '') : '',
             assetProcurementType: entryForm.isAsset ? (entryForm.assetProcurementType || 'BARU') : 'BARU',
@@ -1161,6 +1171,7 @@ function RABContent() {
             semester: '1',
             months: {},
             isAsset: false,
+            assetName: '',
             assetCategory: '',
             assetRoom: '',
             assetProcurementType: 'BARU',
@@ -4563,7 +4574,7 @@ function RABContent() {
                                                                                             {comp.isAsset && (
                                                                                                 <>
                                                                                                     <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
-                                                                                                        <Package size={11} className="text-indigo-600" /> {comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset Sarpras'}
+                                                                                                        <Package size={11} className="text-indigo-600" /> {comp.assetName ? `${comp.assetName} (${comp.assetCategory || 'Aset'})` : (comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset Sarpras')}
                                                                                                     </span>
                                                                                                     {comp.sarprasStatus === 'APPROVED' ? (
                                                                                                         <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
@@ -4659,7 +4670,7 @@ function RABContent() {
                                                                                                     </div>
                                                                                                     <button
                                                                                                         onClick={() => {
-                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp });
+                                                                                                            setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: comp.assetName || comp.namaAset || comp.label || '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' });
                                                                                                             setEditingCompIdx(idx);
                                                                                                             setIsReadOnlyComp(true);
                                                                                                             setShowCompModal(true);
@@ -4681,7 +4692,7 @@ function RABContent() {
                                                                                                 </div>
                                                                                             ) : (
                                                                                                 <>
-                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
+                                                                                                    <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: comp.assetName || comp.namaAset || comp.label || '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
                                                                                                     <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
                                                                                                     {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
                                                                                                     {isSuperAdmin && (isApproved || isPending) && (
@@ -4705,7 +4716,7 @@ function RABContent() {
                                                                     <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
                                                                         <div className="flex items-center gap-5">
                                                                             <button
-                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
+                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                                 className="w-14 h-14 flex items-center justify-center bg-blue-600 text-white rounded-[1.25rem] shadow-lg shadow-blue-200 hover:scale-105 transition-all"
                                                                             >
                                                                                 <Plus size={24} strokeWidth={3} />
@@ -4932,6 +4943,7 @@ function RABContent() {
                                                                             onChange={e => setEntryForm({ 
                                                                                 ...entryForm, 
                                                                                 isAsset: e.target.checked,
+                                                                                assetName: e.target.checked ? (entryForm.assetName || entryForm.label || '') : '',
                                                                                 assetCategory: e.target.checked ? (entryForm.assetCategory || assetCategories[0]?.name || '') : ''
                                                                             })} 
                                                                             className="sr-only peer" 
@@ -4952,6 +4964,27 @@ function RABContent() {
                                                                                     <span><strong>Masa Transisi ({activeYearObj?.name || 'Tahun Berjalan'}):</strong> Pembelian aset tetap dapat direncanakan, status verifikasi Sarpras otomatis disetujui (tidak mengunci).</span>
                                                                                 )}
                                                                             </div>
+                                                                        </div>
+
+                                                                        {/* Input Nama Aset */}
+                                                                        <div className="space-y-1">
+                                                                            <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
+                                                                                Nama Aset {isSarprasRequiredYear && <span className="text-rose-500">*</span>}
+                                                                            </label>
+                                                                            <input 
+                                                                                type="text" 
+                                                                                readOnly={isReadOnlyComp} 
+                                                                                list="asset-names-datalist"
+                                                                                placeholder="Contoh: Laptop Core i7, Proyektor Epson, PC Lab, Meja..."
+                                                                                className="w-full p-3 bg-white border-2 border-indigo-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all disabled:opacity-75"
+                                                                                value={entryForm.assetName || ''} 
+                                                                                onChange={e => setEntryForm({ ...entryForm, assetName: e.target.value })}
+                                                                            />
+                                                                            <datalist id="asset-names-datalist">
+                                                                                {assets.filter(a => !a.isDeleted).map((a, idx) => (
+                                                                                    <option key={a.id || idx} value={a.name} />
+                                                                                ))}
+                                                                            </datalist>
                                                                         </div>
 
                                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

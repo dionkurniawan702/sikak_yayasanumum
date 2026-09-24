@@ -400,6 +400,7 @@ model BudgetReport {
   diskon          Decimal?      @db.Decimal(15, 2)
   kategoriAset    String?       @default("NON_ASET")
   umurEkonomis    Int?
+  namaAset        String?
 
   @@map("budget_reports")
 }

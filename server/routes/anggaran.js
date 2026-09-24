@@ -926,7 +926,7 @@ router.post('/budget-reports', async (req, res) => {
         const {
             id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
-            buktiTeks, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, status, planId, source
+            buktiTeks, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, namaAset, assetName, status, planId, source
         } = req.body;
         const prisma = getPrisma(req);
 
@@ -962,6 +962,7 @@ router.post('/budget-reports', async (req, res) => {
                     diskon: diskon ? parseFloat(diskon) : null,
                     kategoriAset: kategoriAset || 'NON_ASET',
                     umurEkonomis: umurEkonomis ? parseInt(umurEkonomis) : null,
+                    namaAset: namaAset || assetName || null,
                     status: status || 'PENDING',
                     planId: planId || null,
                 }
@@ -1060,7 +1061,7 @@ router.put('/budget-reports/:id', async (req, res) => {
             'status', 'amount', 'description', 'date', 'expenseItemId',
             'unitId', 'fieldId', 'academicYearId', 'category', 'source',
             'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
-            'kategoriAset', 'umurEkonomis', 'isDeleted', 'planId', 'budgetRequestId'
+            'kategoriAset', 'umurEkonomis', 'namaAset', 'isDeleted', 'planId', 'budgetRequestId'
         ];
 
         const data = {};
