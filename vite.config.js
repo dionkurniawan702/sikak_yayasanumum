@@ -10,7 +10,7 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': {
-                target: 'https://dion-sikak-yayasanumum.0oh83a.easypanel.host',
+                target: 'https://sikad.dareliman.or.id',
                 changeOrigin: true,
             }
         }
