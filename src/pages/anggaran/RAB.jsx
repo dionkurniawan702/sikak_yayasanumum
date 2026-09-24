@@ -145,7 +145,14 @@ function RABContent() {
     const currentUserUnit = units.find(u => u.id === currentUser?.unitId);
     const isBosRecipient = isSuperAdmin || isAdminBidang || (currentUserUnit && currentUserUnit.receivesBos);
     const userField = fields.find(f => f.id === currentUser?.fieldId);
-    const isSarprasAdmin = isSuperAdmin || (isAdminBidang && (userField?.name?.toLowerCase().includes('sarana') || userField?.name?.toLowerCase().includes('sarpras')));
+    const isSarprasAdmin = isSuperAdmin || (isAdminBidang && (
+        userField?.name?.toLowerCase().includes('sarana') ||
+        userField?.name?.toLowerCase().includes('sarpras') ||
+        currentUser?.name?.toLowerCase().includes('sarana') ||
+        currentUser?.name?.toLowerCase().includes('sarpras') ||
+        currentUser?.username?.toLowerCase().includes('sarana') ||
+        currentUser?.username?.toLowerCase().includes('sarpras')
+    ));
 
     const selectedYearId = state.globalAcademicYearId || '';
     const setSelectedYearId = (id) => dispatch({ type: 'SET_GLOBAL_YEAR', payload: id });
@@ -270,7 +277,11 @@ function RABContent() {
         if (!isSarprasAdmin && !isSuperAdmin) return [];
         const list = [];
         (rabPlans || []).forEach(plan => {
-            if (selectedYearId && plan.academicYearId && plan.academicYearId !== selectedYearId) {
+            const isYearMatch = !selectedYearId || 
+                plan.academicYearId === selectedYearId || 
+                plan.id?.startsWith(selectedYearId) ||
+                (activeYearName && (plan.id?.includes(activeYearName) || plan.academicYearId === activeYearName));
+            if (!isYearMatch) {
                 return;
             }
 
@@ -313,7 +324,7 @@ function RABContent() {
                                             itemId,
                                             expenseItemName,
                                             subGroupId: group.id,
-                                            subGroupName: group.name,
+                                            subGroupName: group.name || group.description || 'Rincian Anggaran',
                                             compIdx,
                                             component: comp,
                                             sarprasStatus: comp.sarprasStatus || (isSarprasRequiredYear ? 'APPROVED' : 'APPROVED')

@@ -33,7 +33,11 @@ export default function Sidebar({ isOpen, onClose }) {
 
     const isSarprasUser = isSuperAdmin || (isAdminField && (
         currentUserField?.name?.toLowerCase().includes('sarana') ||
-        currentUserField?.name?.toLowerCase().includes('sarpras')
+        currentUserField?.name?.toLowerCase().includes('sarpras') ||
+        currentUser?.name?.toLowerCase().includes('sarana') ||
+        currentUser?.name?.toLowerCase().includes('sarpras') ||
+        currentUser?.username?.toLowerCase().includes('sarana') ||
+        currentUser?.username?.toLowerCase().includes('sarpras')
     ));
 
     const hasBos = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
