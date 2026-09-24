@@ -6,7 +6,8 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
-    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, CheckSquare, Search
+    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, CheckSquare, Search,
+    ExternalLink, CheckCheck
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -176,6 +177,13 @@ function RABContent() {
     const [filterProgram, setFilterProgram] = useState(null); // programId
     const [isAddendumMode, setIsAddendumMode] = useState(false);
 
+    // States for Sarpras Asset Verification View
+    const [sarprasFilterStatus, setSarprasFilterStatus] = useState('PENDING'); // PENDING | APPROVED | REJECTED | ALL
+    const [sarprasFilterUnit, setSarprasFilterUnit] = useState('ALL');
+    const [sarprasSearchQuery, setSarprasSearchQuery] = useState('');
+    const [rejectModalItem, setRejectModalItem] = useState(null);
+    const [rejectModalReason, setRejectModalReason] = useState('');
+
     const revisionPlanId = `${selectedYearId}-${selectedUnitId}-REVISION-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
     const revisionPlan = useMemo(() => (rabPlans || []).find(p => p.id === revisionPlanId), [rabPlans, revisionPlanId]);
     const hasRevision = !!revisionPlan;
@@ -256,6 +264,152 @@ function RABContent() {
         });
         return map;
     }, [budgetReports]);
+
+    // Gather all asset items from all units/bidang for Sarpras verification
+    const allSarprasAssets = useMemo(() => {
+        if (!isSarprasAdmin && !isSuperAdmin) return [];
+        const list = [];
+        (rabPlans || []).forEach(plan => {
+            if (selectedYearId && plan.academicYearId && plan.academicYearId !== selectedYearId) {
+                return;
+            }
+
+            let ownerName = 'Yayasan';
+            let ownerType = 'YAYASAN';
+            let rawUnitId = 'FOUNDATION';
+            if (plan.unitId && plan.unitId !== 'FOUNDATION') {
+                const u = units.find(unit => unit.id === plan.unitId);
+                ownerName = u ? u.name : plan.unitId;
+                ownerType = 'UNIT';
+                rawUnitId = plan.unitId;
+            } else if (plan.fieldId) {
+                const f = fields.find(field => field.id === plan.fieldId);
+                ownerName = f ? f.name : plan.fieldId;
+                ownerType = 'BIDANG';
+                rawUnitId = `FIELD-${plan.fieldId}`;
+            }
+
+            const isBos = plan.id?.endsWith('-BOS') || plan.sourceOfFunds === 'BOS';
+            const sourceLabel = isBos ? 'BOS' : 'Yayasan';
+
+            if (plan.expense && typeof plan.expense === 'object') {
+                Object.entries(plan.expense).forEach(([itemId, groupList]) => {
+                    const expenseItemDef = expenseItems.find(ei => ei.id === itemId);
+                    const expenseItemName = expenseItemDef?.name || itemId;
+
+                    if (Array.isArray(groupList)) {
+                        groupList.forEach((group) => {
+                            if (Array.isArray(group?.components)) {
+                                group.components.forEach((comp, compIdx) => {
+                                    if (comp && comp.isAsset) {
+                                        list.push({
+                                            planId: plan.id,
+                                            planAcademicYearId: plan.academicYearId,
+                                            planStatus: plan.status,
+                                            unitId: rawUnitId,
+                                            ownerName,
+                                            ownerType,
+                                            sourceLabel,
+                                            itemId,
+                                            expenseItemName,
+                                            subGroupId: group.id,
+                                            subGroupName: group.name,
+                                            compIdx,
+                                            component: comp,
+                                            sarprasStatus: comp.sarprasStatus || (isSarprasRequiredYear ? 'APPROVED' : 'APPROVED')
+                                        });
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+        return list;
+    }, [isSarprasAdmin, isSuperAdmin, rabPlans, selectedYearId, units, fields, expenseItems, isSarprasRequiredYear]);
+
+    const pendingSarprasCount = useMemo(() => {
+        return allSarprasAssets.filter(item => item.component?.sarprasStatus === 'PENDING').length;
+    }, [allSarprasAssets]);
+
+    const sarprasStats = useMemo(() => {
+        let totalNominal = 0;
+        let pendingCount = 0;
+        let pendingNominal = 0;
+        let approvedCount = 0;
+        let approvedNominal = 0;
+        let rejectedCount = 0;
+
+        allSarprasAssets.forEach(item => {
+            const tot = parseFloat(item.component?.total) || 0;
+            totalNominal += tot;
+            const st = item.component?.sarprasStatus;
+            if (st === 'PENDING') {
+                pendingCount++;
+                pendingNominal += tot;
+            } else if (st === 'APPROVED') {
+                approvedCount++;
+                approvedNominal += tot;
+            } else if (st === 'REJECTED') {
+                rejectedCount++;
+            }
+        });
+
+        return {
+            totalCount: allSarprasAssets.length,
+            totalNominal,
+            pendingCount,
+            pendingNominal,
+            approvedCount,
+            approvedNominal,
+            rejectedCount
+        };
+    }, [allSarprasAssets]);
+
+    const uniqueAssetUnits = useMemo(() => {
+        const map = new Map();
+        allSarprasAssets.forEach(item => {
+            if (!map.has(item.unitId)) {
+                map.set(item.unitId, {
+                    id: item.unitId,
+                    name: item.ownerName,
+                    type: item.ownerType
+                });
+            }
+        });
+        return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+    }, [allSarprasAssets]);
+
+    const filteredSarprasAssets = useMemo(() => {
+        return allSarprasAssets.filter(item => {
+            const comp = item.component;
+
+            if (sarprasFilterStatus === 'PENDING') {
+                if (comp.sarprasStatus !== 'PENDING') return false;
+            } else if (sarprasFilterStatus === 'APPROVED') {
+                if (comp.sarprasStatus !== 'APPROVED') return false;
+            } else if (sarprasFilterStatus === 'REJECTED') {
+                if (comp.sarprasStatus !== 'REJECTED') return false;
+            }
+
+            if (sarprasFilterUnit !== 'ALL') {
+                if (item.unitId !== sarprasFilterUnit) return false;
+            }
+
+            if (sarprasSearchQuery.trim()) {
+                const q = sarprasSearchQuery.toLowerCase();
+                const matchName = (comp.assetName || comp.namaAset || '').toLowerCase().includes(q);
+                const matchLabel = (comp.label || '').toLowerCase().includes(q);
+                const matchOwner = (item.ownerName || '').toLowerCase().includes(q);
+                const matchRoom = (comp.assetRoom || '').toLowerCase().includes(q);
+                const matchCat = (comp.assetCategory || '').toLowerCase().includes(q);
+                if (!matchName && !matchLabel && !matchOwner && !matchRoom && !matchCat) return false;
+            }
+
+            return true;
+        });
+    }, [allSarprasAssets, sarprasFilterStatus, sarprasFilterUnit, sarprasSearchQuery]);
 
     const validatePlan = (plan) => {
         // 1. Gather all component IDs present in the new plan
@@ -1795,50 +1949,134 @@ function RABContent() {
         }
     };
 
-    const handleSarprasApproveComponent = async (itemId, planId, compIdx, newStatus, notes = '') => {
+    const handleSarprasActionOnAnyPlan = async (targetPlanId, itemId, subGroupId, compIdx, newStatus, notes = '') => {
         try {
             setIsSaving(true);
-            const type = activeTab === 'INCOME' ? 'income' : 'expense';
-            const plans = currentPlan[type][itemId] || [];
-            const updatedPlans = plans.map(p => {
-                if (p.id !== planId) return p;
-                const components = [...(p.components || [])];
-                if (components[compIdx]) {
-                    components[compIdx] = {
-                        ...components[compIdx],
-                        sarprasStatus: newStatus,
-                        sarprasNotes: notes || ''
-                    };
-                }
-                return { ...p, components };
-            });
+            const targetPlan = (rabPlans || []).find(p => p.id === targetPlanId);
+            if (!targetPlan) {
+                throw new Error('RAB target tidak ditemukan');
+            }
 
-            const nextPlan = {
-                ...currentPlan,
-                [type]: { ...currentPlan[type], [itemId]: updatedPlans }
+            const newExpense = { ...(targetPlan.expense || {}) };
+            const groups = [...(newExpense[itemId] || [])];
+            const groupIndex = groups.findIndex(g => g.id === subGroupId);
+            if (groupIndex === -1) {
+                throw new Error('Kelompok rincian anggaran tidak ditemukan');
+            }
+
+            const targetGroup = { ...groups[groupIndex] };
+            const components = [...(targetGroup.components || [])];
+            if (!components[compIdx]) {
+                throw new Error('Komponen aset tidak ditemukan');
+            }
+
+            components[compIdx] = {
+                ...components[compIdx],
+                sarprasStatus: newStatus,
+                sarprasNotes: notes || ''
             };
-            setCurrentPlan(nextPlan);
+            targetGroup.components = components;
+            groups[groupIndex] = targetGroup;
+            newExpense[itemId] = groups;
 
-            const dbPlan = {
-                id: currentPlanId,
-                academicYearId: selectedYearId,
-                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                income: nextPlan.income,
-                expense: nextPlan.expense,
-                status: nextPlan.status,
-                rejectionReason: nextPlan.rejectionReason,
+            const updatedPlan = {
+                ...targetPlan,
+                expense: newExpense,
                 updatedAt: new Date().toISOString(),
                 updatedBy: currentUser?.username
             };
-            await persistPlanToServer(dbPlan);
-            setMessage({ type: 'success', text: `Rincian aset berhasil di-${newStatus === 'APPROVED' ? 'ACC oleh Sarpras' : 'tolak Sarpras'}` });
+
+            // If targetPlan is the active editing plan, keep currentPlan in sync
+            if (targetPlanId === currentPlanId) {
+                setCurrentPlan(prev => ({
+                    ...prev,
+                    expense: newExpense
+                }));
+            }
+
+            await persistPlanToServer(updatedPlan);
+            setMessage({
+                type: 'success',
+                text: `Rincian aset "${components[compIdx].assetName || components[compIdx].label}" berhasil di-${newStatus === 'APPROVED' ? 'ACC Sarpras' : 'tolak Sarpras'}`
+            });
+            setRejectModalItem(null);
+            setRejectModalReason('');
         } catch (err) {
             setMessage({ type: 'error', text: 'Gagal memperbarui status Sarpras: ' + err.message });
         } finally {
             setIsSaving(false);
             setTimeout(() => setMessage(null), 3500);
         }
+    };
+
+    const handleBatchApproveSarprasAssets = async (itemsToApprove) => {
+        if (!itemsToApprove || itemsToApprove.length === 0) return;
+        if (!window.confirm(`Yakin ingin menyetujui (ACC) sekaligus ${itemsToApprove.length} item pengadaan aset ini?`)) return;
+
+        try {
+            setIsSaving(true);
+            const itemsByPlan = {};
+            itemsToApprove.forEach(item => {
+                if (!itemsByPlan[item.planId]) itemsByPlan[item.planId] = [];
+                itemsByPlan[item.planId].push(item);
+            });
+
+            for (const [planId, items] of Object.entries(itemsByPlan)) {
+                const targetPlan = (rabPlans || []).find(p => p.id === planId);
+                if (!targetPlan) continue;
+
+                const newExpense = { ...(targetPlan.expense || {}) };
+
+                items.forEach(it => {
+                    const groups = [...(newExpense[it.itemId] || [])];
+                    const gIdx = groups.findIndex(g => g.id === it.subGroupId);
+                    if (gIdx !== -1) {
+                        const grp = { ...groups[gIdx] };
+                        const comps = [...(grp.components || [])];
+                        if (comps[it.compIdx]) {
+                            comps[it.compIdx] = {
+                                ...comps[it.compIdx],
+                                sarprasStatus: 'APPROVED',
+                                sarprasNotes: ''
+                            };
+                            grp.components = comps;
+                            groups[gIdx] = grp;
+                            newExpense[it.itemId] = groups;
+                        }
+                    }
+                });
+
+                const updatedPlan = {
+                    ...targetPlan,
+                    expense: newExpense,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser?.username
+                };
+
+                if (planId === currentPlanId) {
+                    setCurrentPlan(prev => ({
+                        ...prev,
+                        expense: newExpense
+                    }));
+                }
+
+                await persistPlanToServer(updatedPlan);
+            }
+
+            setMessage({
+                type: 'success',
+                text: `Berhasil meng-ACC ${itemsToApprove.length} rincian aset!`
+            });
+        } catch (err) {
+            setMessage({ type: 'error', text: 'Gagal melakukan ACC masal: ' + err.message });
+        } finally {
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 3500);
+        }
+    };
+
+    const handleSarprasApproveComponent = async (itemId, planId, compIdx, newStatus, notes = '') => {
+        return handleSarprasActionOnAnyPlan(currentPlanId, itemId, planId, compIdx, newStatus, notes);
     };
 
 
@@ -3352,6 +3590,442 @@ function RABContent() {
         );
     };
 
+    const renderSarprasAssetVerificationView = () => {
+        return (
+            <div className="space-y-8 animate-in fade-in duration-500">
+                {/* Header Information Banner */}
+                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 rounded-[2.5rem] border border-slate-800 text-white shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+                    <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                        <div className="flex items-start gap-4">
+                            <div className="p-4 bg-amber-500/20 text-amber-400 rounded-2xl border border-amber-500/30 shrink-0">
+                                <Package size={32} />
+                            </div>
+                            <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                    <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                        Bidang Sarana Prasarana
+                                    </span>
+                                    <span className="text-slate-400 text-xs font-bold">
+                                        TA {activeYearName || 'Aktif'}
+                                    </span>
+                                </div>
+                                <h3 className="text-2xl font-black tracking-tight text-white">
+                                    Verifikasi Pengadaan Aset Seluruh Unit & Bidang
+                                </h3>
+                                <p className="text-slate-300 text-xs mt-1 max-w-2xl leading-relaxed">
+                                    Verifikasi dan berikan persetujuan (ACC) rencana pengadaan barang bersifat aset dari seluruh unit pendidikan dan bidang yayasan agar pengadaan tercatat rapi dan terpantau sebelum realisasi anggaran.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Batch Action if any pending */}
+                        {sarprasStats.pendingCount > 0 && (
+                            <div className="flex items-center gap-3 shrink-0">
+                                <button
+                                    onClick={() => {
+                                        const pendingItems = filteredSarprasAssets.filter(i => i.component?.sarprasStatus === 'PENDING');
+                                        handleBatchApproveSarprasAssets(pendingItems);
+                                    }}
+                                    disabled={isSaving || filteredSarprasAssets.filter(i => i.component?.sarprasStatus === 'PENDING').length === 0}
+                                    className="px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                                >
+                                    <CheckCircle2 size={16} />
+                                    <span>ACC Semua Menunggu ({filteredSarprasAssets.filter(i => i.component?.sarprasStatus === 'PENDING').length})</span>
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* 4 Quick Stat Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    {/* Card 1: Total Pengajuan */}
+                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-slate-400 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Total Usulan Aset</span>
+                            <Package size={18} className="text-slate-400" />
+                        </div>
+                        <div>
+                            <div className="text-2xl font-black text-slate-900">{sarprasStats.totalCount} <span className="text-sm font-bold text-slate-400">item</span></div>
+                            <div className="text-xs font-bold text-slate-500 mt-1">{formatRupiah(sarprasStats.totalNominal)}</div>
+                        </div>
+                    </div>
+
+                    {/* Card 2: Menunggu ACC */}
+                    <div className={`p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between transition-all ${
+                        sarprasStats.pendingCount > 0 ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-slate-100'
+                    }`}>
+                        <div className="flex items-center justify-between mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-amber-700">Menunggu ACC Sarpras</span>
+                            <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+                        </div>
+                        <div>
+                            <div className="text-2xl font-black text-amber-900">{sarprasStats.pendingCount} <span className="text-sm font-bold text-amber-600">item</span></div>
+                            <div className="text-xs font-bold text-amber-700 mt-1">{formatRupiah(sarprasStats.pendingNominal)}</div>
+                        </div>
+                    </div>
+
+                    {/* Card 3: Disetujui ACC */}
+                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-emerald-600 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Disetujui (ACC)</span>
+                            <CheckCircle2 size={18} />
+                        </div>
+                        <div>
+                            <div className="text-2xl font-black text-emerald-700">{sarprasStats.approvedCount} <span className="text-sm font-bold text-slate-400">item</span></div>
+                            <div className="text-xs font-bold text-slate-500 mt-1">{formatRupiah(sarprasStats.approvedNominal)}</div>
+                        </div>
+                    </div>
+
+                    {/* Card 4: Ditolak */}
+                    <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col justify-between">
+                        <div className="flex items-center justify-between text-rose-600 mb-2">
+                            <span className="text-[10px] font-black uppercase tracking-widest">Ditolak Sarpras</span>
+                            <XCircle size={18} />
+                        </div>
+                        <div>
+                            <div className="text-2xl font-black text-rose-700">{sarprasStats.rejectedCount} <span className="text-sm font-bold text-slate-400">item</span></div>
+                            <div className="text-xs font-bold text-slate-400 mt-1">Perlu revisi unit</div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Filter & Search Bar */}
+                <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm space-y-4">
+                    <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+                        {/* Status Tabs */}
+                        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100/80 rounded-2xl overflow-x-auto shrink-0">
+                            {[
+                                { id: 'ALL', label: 'Semua', count: sarprasStats.totalCount },
+                                { id: 'PENDING', label: '⏳ Menunggu ACC', count: sarprasStats.pendingCount },
+                                { id: 'APPROVED', label: '✓ Disetujui', count: sarprasStats.approvedCount },
+                                { id: 'REJECTED', label: '✕ Ditolak', count: sarprasStats.rejectedCount }
+                            ].map(tab => (
+                                <button
+                                    key={tab.id}
+                                    onClick={() => setSarprasFilterStatus(tab.id)}
+                                    className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all whitespace-nowrap flex items-center gap-2 ${
+                                        sarprasFilterStatus === tab.id
+                                            ? 'bg-white text-slate-900 shadow-sm'
+                                            : 'text-slate-500 hover:text-slate-800'
+                                    }`}
+                                >
+                                    <span>{tab.label}</span>
+                                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${
+                                        sarprasFilterStatus === tab.id
+                                            ? (tab.id === 'PENDING' ? 'bg-amber-100 text-amber-700' : 'bg-slate-900 text-white')
+                                            : 'bg-slate-200/80 text-slate-600'
+                                    }`}>
+                                        {tab.count}
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Search and Unit Filter */}
+                        <div className="flex flex-1 items-center gap-3">
+                            <div className="relative flex-1">
+                                <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    type="text"
+                                    placeholder="Cari nama aset, nama barang, unit, ruangan..."
+                                    value={sarprasSearchQuery}
+                                    onChange={(e) => setSarprasSearchQuery(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
+                                />
+                                {sarprasSearchQuery && (
+                                    <button
+                                        onClick={() => setSarprasSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                                    >
+                                        <X size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            <select
+                                value={sarprasFilterUnit}
+                                onChange={(e) => setSarprasFilterUnit(e.target.value)}
+                                className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-black text-slate-700 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 shrink-0"
+                            >
+                                <option value="ALL">Semua Unit & Bidang</option>
+                                {uniqueAssetUnits.map(u => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.type === 'BIDANG' ? `Bidang: ${u.name}` : u.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Asset Table */}
+                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black uppercase tracking-[0.15em] text-slate-400">
+                                    <th className="py-4 px-6 w-12 text-center">No</th>
+                                    <th className="py-4 px-6">Unit / Bidang</th>
+                                    <th className="py-4 px-6">Mata Anggaran</th>
+                                    <th className="py-4 px-6">Nama Aset & Spesifikasi</th>
+                                    <th className="py-4 px-6 text-right">Vol & Harga</th>
+                                    <th className="py-4 px-6 text-right">Total Anggaran</th>
+                                    <th className="py-4 px-6 text-center">Status Sarpras</th>
+                                    <th className="py-4 px-6 text-center">Aksi Sarpras</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs">
+                                {filteredSarprasAssets.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-16 text-center">
+                                            <div className="flex flex-col items-center justify-center gap-3">
+                                                <div className="p-4 bg-amber-50 text-amber-500 rounded-2xl">
+                                                    <Package size={36} />
+                                                </div>
+                                                <p className="font-bold text-slate-600 text-sm">Tidak Ada Rincian Aset yang Sesuai</p>
+                                                <p className="text-slate-400 text-xs max-w-sm">
+                                                    {sarprasFilterStatus === 'PENDING'
+                                                        ? 'Semua pengajuan aset sudah diverifikasi oleh Sarpras. Tidak ada antrean yang menunggu ACC.'
+                                                        : 'Belum ada usulan pengadaan aset yang sesuai dengan kriteria pencarian / filter Anda.'}
+                                                </p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredSarprasAssets.map((item, idx) => {
+                                        const comp = item.component;
+                                        const assetDisplayName = comp.assetName || comp.namaAset || comp.label;
+                                        const isDifferentLabel = comp.label && comp.label !== assetDisplayName;
+                                        const st = comp.sarprasStatus;
+
+                                        return (
+                                            <tr key={`${item.planId}-${item.itemId}-${item.subGroupId}-${item.compIdx}`} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="py-4 px-6 text-center font-bold text-slate-400">
+                                                    {idx + 1}
+                                                </td>
+
+                                                {/* Unit / Bidang & Fund Source */}
+                                                <td className="py-4 px-6">
+                                                    <div className="font-black text-slate-900 tracking-tight flex items-center gap-1.5">
+                                                        <span>{item.ownerName}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
+                                                            item.sourceLabel === 'BOS' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                                        }`}>
+                                                            {item.sourceLabel}
+                                                        </span>
+                                                        <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                                            {item.ownerType}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Mata Anggaran */}
+                                                <td className="py-4 px-6">
+                                                    <p className="font-bold text-slate-800">{item.expenseItemName}</p>
+                                                    <p className="text-[10px] text-slate-400 font-medium truncate max-w-xs">{item.subGroupName}</p>
+                                                </td>
+
+                                                {/* Asset Details */}
+                                                <td className="py-4 px-6">
+                                                    <div className="font-black text-slate-900 text-sm flex items-center gap-2">
+                                                        <Package size={14} className="text-amber-500 shrink-0" />
+                                                        <span>{assetDisplayName}</span>
+                                                    </div>
+                                                    {isDifferentLabel && (
+                                                        <p className="text-[11px] text-slate-500 font-medium mt-0.5 italic">
+                                                            Rincian RAB: "{comp.label}"
+                                                        </p>
+                                                    )}
+                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                                                        {comp.assetCategory && (
+                                                            <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md border border-slate-200">
+                                                                🏷️ {comp.assetCategory}
+                                                            </span>
+                                                        )}
+                                                        {comp.assetRoom && (
+                                                            <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200">
+                                                                📍 {comp.assetRoom}
+                                                            </span>
+                                                        )}
+                                                        <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
+                                                            comp.assetProcurementType === 'PENGGANTIAN' ? 'bg-amber-100 text-amber-800' :
+                                                            comp.assetProcurementType === 'TAMBAHAN' ? 'bg-purple-100 text-purple-800' :
+                                                            'bg-blue-100 text-blue-800'
+                                                        }`}>
+                                                            {comp.assetProcurementType || 'BARU'}
+                                                        </span>
+                                                    </div>
+                                                </td>
+
+                                                {/* Volume & Harga */}
+                                                <td className="py-4 px-6 text-right">
+                                                    <p className="font-bold text-slate-800">
+                                                        {comp.volume} {comp.satuan || 'Unit'} {comp.kali > 1 ? `x ${comp.kali}` : ''}
+                                                    </p>
+                                                    <p className="text-[10px] text-slate-400">@ {formatRupiah(comp.harga)}</p>
+                                                </td>
+
+                                                {/* Total */}
+                                                <td className="py-4 px-6 text-right font-black text-slate-900 text-sm">
+                                                    {formatRupiah(comp.total)}
+                                                </td>
+
+                                                {/* Sarpras Status */}
+                                                <td className="py-4 px-6 text-center">
+                                                    {st === 'PENDING' ? (
+                                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-full font-black text-[10px] animate-pulse">
+                                                            ⏳ Menunggu ACC
+                                                        </span>
+                                                    ) : st === 'REJECTED' ? (
+                                                        <div className="flex flex-col items-center">
+                                                            <span className="inline-flex items-center gap-1 px-3 py-1 bg-rose-50 text-rose-700 border border-rose-200 rounded-full font-black text-[10px]" title={comp.sarprasNotes || ''}>
+                                                                <XCircle size={12} /> Ditolak Sarpras
+                                                            </span>
+                                                            {comp.sarprasNotes && (
+                                                                <p className="text-[10px] text-rose-600 font-semibold mt-1 max-w-[180px] truncate" title={comp.sarprasNotes}>
+                                                                    "{comp.sarprasNotes}"
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full font-black text-[10px]">
+                                                            <CheckCircle2 size={12} /> Disetujui (ACC)
+                                                        </span>
+                                                    )}
+                                                </td>
+
+                                                {/* Actions */}
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center justify-center gap-1.5">
+                                                        {st !== 'APPROVED' && (
+                                                            <button
+                                                                onClick={() => handleSarprasActionOnAnyPlan(item.planId, item.itemId, item.subGroupId, item.compIdx, 'APPROVED')}
+                                                                disabled={isSaving}
+                                                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-[10px] uppercase tracking-wider shadow-sm transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50"
+                                                                title="Setujui (ACC) Usulan Aset Ini"
+                                                            >
+                                                                <CheckCircle2 size={12} />
+                                                                <span>ACC</span>
+                                                            </button>
+                                                        )}
+
+                                                        {st !== 'REJECTED' && (
+                                                            <button
+                                                                onClick={() => {
+                                                                    setRejectModalItem(item);
+                                                                    setRejectModalReason(comp.sarprasNotes || '');
+                                                                }}
+                                                                disabled={isSaving}
+                                                                className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1 active:scale-95 disabled:opacity-50"
+                                                                title="Tolak Usulan Aset Ini"
+                                                            >
+                                                                <XCircle size={12} />
+                                                                <span>Tolak</span>
+                                                            </button>
+                                                        )}
+
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedUnitId(item.unitId);
+                                                                setFundSourceFilter(item.sourceLabel);
+                                                                setActiveTab('EXPENSE');
+                                                            }}
+                                                            className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                                                            title="Buka RAB Unit Ini"
+                                                        >
+                                                            <ExternalLink size={15} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                {/* Rejection Modal */}
+                {rejectModalItem && (
+                    <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[2500] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                        <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 max-w-lg w-full p-8 relative overflow-hidden animate-in zoom-in-95 duration-200">
+                            <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-3 bg-rose-50 text-rose-600 rounded-2xl">
+                                        <XCircle size={22} />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-black text-slate-900 text-base">Tolak Pengajuan Aset</h4>
+                                        <p className="text-slate-400 text-xs font-bold">Berikan alasan agar unit dapat merevisi usulan</p>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => { setRejectModalItem(null); setRejectModalReason(''); }}
+                                    className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+                                >
+                                    <X size={18} />
+                                </button>
+                            </div>
+
+                            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-5 space-y-1">
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Unit / Bidang: <span className="text-slate-900 font-black">{rejectModalItem.ownerName}</span></div>
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Aset: <span className="text-slate-900 font-black">{rejectModalItem.component?.assetName || rejectModalItem.component?.label}</span></div>
+                                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Anggaran: <span className="text-emerald-700 font-black">{formatRupiah(rejectModalItem.component?.total)}</span></div>
+                            </div>
+
+                            <div className="space-y-2 mb-6">
+                                <label className="text-xs font-black uppercase tracking-wider text-slate-700">
+                                    Catatan / Alasan Penolakan Sarpras <span className="text-rose-500">*</span>
+                                </label>
+                                <textarea
+                                    rows={4}
+                                    placeholder="Contoh: Spesifikasi unit terlalu tinggi, stok di gudang masih mencukupi, atau mohon koordinasi langsung dengan Sarpras..."
+                                    value={rejectModalReason}
+                                    onChange={(e) => setRejectModalReason(e.target.value)}
+                                    className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-medium focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 leading-relaxed"
+                                    autoFocus
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => { setRejectModalItem(null); setRejectModalReason(''); }}
+                                    className="px-5 py-3 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={!rejectModalReason.trim() || isSaving}
+                                    onClick={() => {
+                                        handleSarprasActionOnAnyPlan(
+                                            rejectModalItem.planId,
+                                            rejectModalItem.itemId,
+                                            rejectModalItem.subGroupId,
+                                            rejectModalItem.compIdx,
+                                            'REJECTED',
+                                            rejectModalReason
+                                        );
+                                    }}
+                                    className="px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-rose-200 transition-all disabled:opacity-50 flex items-center gap-2"
+                                >
+                                    <XCircle size={14} />
+                                    <span>Konfirmasi Tolak Usulan</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     const renderBudgetTable = (type, labelText) => {
         const isIncome = type === 'income';
         const items = isIncome ? filteredIncomeItems : filteredExpenseItems;
@@ -4261,10 +4935,42 @@ function RABContent() {
                         </div>
                     </div>
 
+                    {/* Sarpras Pending Asset Notification Banner */}
+                    {isSarprasAdmin && pendingSarprasCount > 0 && activeTab !== 'SARPRAS_ASSETS' && (
+                        <div className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-[2rem] p-6 text-white shadow-xl shadow-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner shrink-0">
+                                    <Package size={28} className="text-white animate-bounce" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-white/25 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-50 border border-white/20">
+                                            Perhatian Sarpras
+                                        </span>
+                                        <span className="text-xs font-bold text-amber-100">TA {activeYearName || '2026-2027'}</span>
+                                    </div>
+                                    <h4 className="text-base font-black tracking-tight text-white mt-1">
+                                        Ada {pendingSarprasCount} Pengajuan Aset Baru Menunggu Verifikasi Sarpras!
+                                    </h4>
+                                    <p className="text-xs text-amber-100/90 font-medium">
+                                        Unit/bidang telah mengajukan rincian pengadaan aset. Silakan lakukan verifikasi dan persetujuan agar perencanaan aset terdata rapi.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setActiveTab('SARPRAS_ASSETS')}
+                                className="px-6 py-3.5 bg-white text-amber-800 font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-amber-50 hover:shadow-xl transition-all shrink-0 flex items-center gap-2 active:scale-95"
+                            >
+                                <Package size={16} className="text-amber-600" />
+                                Buka Verifikasi Aset ({pendingSarprasCount})
+                            </button>
+                        </div>
+                    )}
+
                     {/* Content Component */}
                     <div className="w-full flex-1 bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
                         {/* Tab Switcher */}
-                        <div className="bg-slate-50/50 flex border-b border-slate-100">
+                        <div className="bg-slate-50/50 flex border-b border-slate-100 overflow-x-auto">
                             <button
                                 onClick={() => setActiveTab('EXPENSE')}
                                 className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'EXPENSE' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
@@ -4287,11 +4993,34 @@ function RABContent() {
                                     </div>
                                 </button>
                             )}
+                            {isSarprasAdmin && (
+                                <button
+                                    onClick={() => setActiveTab('SARPRAS_ASSETS')}
+                                    className={`px-8 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'SARPRAS_ASSETS' ? 'text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    {activeTab === 'SARPRAS_ASSETS' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-amber-600" />}
+                                    <div className="flex items-center gap-2">
+                                        <Package size={16} />
+                                        <span>Verifikasi Aset Unit</span>
+                                        {pendingSarprasCount > 0 && (
+                                            <span className="bg-amber-500 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-amber-500/50">
+                                                {pendingSarprasCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                </button>
+                            )}
                         </div>
 
                         {/* Content Area */}
                         <div className="flex-1 p-8 lg:p-12">
-                            {activeTab === 'REVIEW' ? renderReviewView() : renderBudgetTable(activeTab === 'INCOME' ? 'income' : 'expense', activeTab === 'INCOME' ? 'Sumber Pendapatan' : 'Mata Anggaran (Biaya)')}
+                            {activeTab === 'SARPRAS_ASSETS' ? (
+                                renderSarprasAssetVerificationView()
+                            ) : activeTab === 'REVIEW' ? (
+                                renderReviewView()
+                            ) : (
+                                renderBudgetTable(activeTab === 'INCOME' ? 'income' : 'expense', activeTab === 'INCOME' ? 'Sumber Pendapatan' : 'Mata Anggaran (Biaya)')
+                            )}
                         </div>
                     </div>
                 </div>

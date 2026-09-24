@@ -27,7 +27,40 @@ export default function Sidebar({ isOpen, onClose }) {
         state.units?.find(u => u.id === currentUser?.unitId)
         , [state.units, currentUser]);
 
+    const currentUserField = React.useMemo(() =>
+        state.fields?.find(f => f.id === currentUser?.fieldId)
+        , [state.fields, currentUser]);
+
+    const isSarprasUser = isSuperAdmin || (isAdminField && (
+        currentUserField?.name?.toLowerCase().includes('sarana') ||
+        currentUserField?.name?.toLowerCase().includes('sarpras')
+    ));
+
     const hasBos = isSuperAdmin || (currentUserUnit && currentUserUnit.receivesBos);
+
+    // Calculate Notifications for Pending Sarpras Asset Procurement
+    const pendingSarprasAssetCount = React.useMemo(() => {
+        if (!isSarprasUser || !state.rabPlans) return 0;
+        let count = 0;
+        state.rabPlans.forEach(plan => {
+            if (plan.expense && typeof plan.expense === 'object') {
+                Object.values(plan.expense).forEach(itemList => {
+                    if (Array.isArray(itemList)) {
+                        itemList.forEach(group => {
+                            if (Array.isArray(group?.components)) {
+                                group.components.forEach(comp => {
+                                    if (comp && comp.isAsset && comp.sarprasStatus === 'PENDING') {
+                                        count++;
+                                    }
+                                });
+                            }
+                        });
+                    }
+                });
+            }
+        });
+        return count;
+    }, [isSarprasUser, state.rabPlans]);
 
     // Calculate Notifications for RAB Yayasan
     const pendingRabYayasanCount = React.useMemo(() => {
@@ -307,11 +340,11 @@ export default function Sidebar({ isOpen, onClose }) {
 
     const groupNotificationCounts = React.useMemo(() => {
         return {
-            'PERENCANAAN (RAB)': pendingRabYayasanCount + pendingRabBosCount,
+            'PERENCANAAN (RAB)': pendingRabYayasanCount + pendingRabBosCount + pendingSarprasAssetCount,
             'REALISASI ANGGARAN': pendingFundRequestCount + pendingReportCount,
             'DASHBOARD & SALDO': pendingReturnYayasanCount + pendingReturnBosCount
         };
-    }, [pendingRabYayasanCount, pendingRabBosCount, pendingFundRequestCount, pendingReportCount, pendingReturnYayasanCount, pendingReturnBosCount]);
+    }, [pendingRabYayasanCount, pendingRabBosCount, pendingSarprasAssetCount, pendingFundRequestCount, pendingReportCount, pendingReturnYayasanCount, pendingReturnBosCount]);
 
     // Auto-expand groups that contain the active route
     useEffect(() => {
@@ -472,6 +505,11 @@ export default function Sidebar({ isOpen, onClose }) {
                                             {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
                                                 <span className="bg-rose-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-rose-500/40">
                                                     {pendingRabYayasanCount}
+                                                </span>
+                                            )}
+                                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingSarprasAssetCount > 0 && (
+                                                <span className="bg-amber-500 text-white text-[10px] font-black px-2.5 py-1 rounded-full animate-pulse shadow-lg shadow-amber-500/40 flex items-center gap-1" title={`${pendingSarprasAssetCount} Pengajuan Aset Menunggu Verifikasi Sarpras`}>
+                                                    📦 {pendingSarprasAssetCount}
                                                 </span>
                                             )}
                                             {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
