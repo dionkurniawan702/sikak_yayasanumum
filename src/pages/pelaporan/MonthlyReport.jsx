@@ -257,25 +257,27 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 <span>Tarik Ajuan</span>
                             </button>
                         )}
-                        {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onEdit && onDelete && (
-                            <>
-                                {report.kategoriAset !== 'PENGEMBALIAN' && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); onEdit(); }}
-                                        className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
-                                        title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
-                                    >
-                                        <Edit2 size={14} />
-                                    </button>
-                                )}
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); onDelete(); }}
-                                    className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
-                                    title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
-                                >
-                                    <Trash2 size={14} />
-                                </button>
-                            </>
+                        {/* Edit button: for unit (DRAFT/REJECTED) and for Superadmin (all reports except PENGEMBALIAN) */}
+                        {report.kategoriAset !== 'PENGEMBALIAN' && onEdit && (
+                            (!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED')) ||
+                            isSuperAdmin
+                        ) && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                                className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+                                title={isSuperAdmin ? (report.status === 'APPROVED' ? 'Edit / Sesuaikan Nota (Otomatis Update Jurnal)' : 'Edit Nota') : (report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft')}
+                            >
+                                <Edit2 size={14} />
+                            </button>
+                        )}
+                        {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onDelete && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                            >
+                                <Trash2 size={14} />
+                            </button>
                         )}
                         {isSuperAdmin && onDelete && (
                             <button
@@ -347,6 +349,14 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                             {isSuperAdmin && (
                                 <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
                                     <div className="flex gap-3 justify-end">
+                                        {report.kategoriAset !== 'PENGEMBALIAN' && onEdit && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onEdit(); }} 
+                                                className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-indigo-600 hover:!bg-indigo-50 hover:!border-indigo-200 shadow-sm flex items-center gap-1.5"
+                                            >
+                                                <Edit2 size={12} className="inline-block" /> Edit Nota {report.status === 'APPROVED' ? '(Auto-Sync Jurnal)' : ''}
+                                            </button>
+                                        )}
                                         {report.status === 'APPROVED' && onCancelApproval && (
                                             <button 
                                                 onClick={(e) => { e.stopPropagation(); onCancelApproval(); }} 
@@ -363,7 +373,7 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                                 className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Hapus Laporan Permanen"
                                             >
-                                                <Trash2 size={12} className="inline-block" /> Hapus Laporan
+                                                <Trash2 size={12} className="inline-block" /> Hapus Laporan Permanen
                                             </button>
                                         )}
                                     </div>
@@ -733,6 +743,19 @@ export default function MonthlyReport() {
             const reqTotal = parseFloat(req.totalAmount || 0);
             if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
+            // Bagi Unit (non-superadmin): jika pengajuan dana bulan ini sudah dilaporkan & ada pengembalian sisa dana (PENGEMBALIAN),
+            // maka bagi unit dianggap sudah tuntas pelaporannya. Sisa / penyesuaian hanya muncul bagi Super Admin.
+            if (!isSuperAdmin) {
+                const hasRefundReport = (budgetReports || []).some(r => {
+                    if (r.status === 'REJECTED' || r.isDeleted) return false;
+                    if (r.kategoriAset !== 'PENGEMBALIAN') return false;
+                    const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                    const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
+                    return rReqId === req.id || ((r.unitId === req.unitId || r.fieldId === req.fieldId) && (r.date?.substring(0, 7) === req.month));
+                });
+                if (hasRefundReport) return;
+            }
+
             const uKey = req.unitId || req.fieldId || 'UNKNOWN';
             const maxMonth = latestMonthByUnit[uKey] || '';
 
@@ -910,6 +933,18 @@ export default function MonthlyReport() {
             const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
             const reqTotal = parseFloat(req.totalAmount || 0);
             if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+
+            // Bagi Unit (non-superadmin): sembunyikan jika sudah ada pengembalian sisa dana
+            if (!isSuperAdmin) {
+                const hasRefundReport = (budgetReports || []).some(r => {
+                    if (r.status === 'REJECTED' || r.isDeleted) return false;
+                    if (r.kategoriAset !== 'PENGEMBALIAN') return false;
+                    const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                    const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
+                    return rReqId === req.id || ((r.unitId === req.unitId || r.fieldId === req.fieldId) && (r.date?.substring(0, 7) === req.month));
+                });
+                if (hasRefundReport) return;
+            }
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
@@ -1620,7 +1655,17 @@ export default function MonthlyReport() {
         const req = resolveReportRequest(draft, budgetRequests, globalAcademicYearId) || budgetRequests.find(r => r.id === draft.budgetRequestId);
         if (!req) return alert("Data induk tidak ditemukan!");
         
-        let item = { reqId: req.id, sisa: draft.amount, reqDescription: req.description, name: draft.category, reqUnitId: req.unitId, fieldId: req.fieldId };
+        let item = { 
+            reqId: req.id, 
+            sisa: parseFloat(draft.amount || 0), 
+            reqDescription: req.description, 
+            name: draft.category, 
+            reqUnitId: draft.unitId || req.unitId, 
+            fieldId: draft.fieldId || req.fieldId, 
+            expenseItemId: draft.expenseItemId || req.expenseItemId, 
+            planId: draft.planId || req.planId, 
+            componentId: draft.componentId 
+        };
         if (draft.componentId) {
             const reqItem = req.items?.find(i => i.componentId === draft.componentId);
             if (reqItem) {
@@ -1709,15 +1754,25 @@ export default function MonthlyReport() {
         const sisaDanaPengajuan = totalApproved - totalReportedForReq + currentDraftAmount;
         
         if (parseFloat(formData.amount) > sisaDanaPengajuan) {
-            return alert(`Jumlah realisasi tidak boleh melebihi sisa total pengajuan dana (${formatRupiah(sisaDanaPengajuan)}).`);
+            if (!isSuperAdmin) {
+                return alert(`Jumlah realisasi tidak boleh melebihi sisa total pengajuan dana (${formatRupiah(sisaDanaPengajuan)}).`);
+            } else {
+                if (!window.confirm(`PERINGATAN SUPERADMIN: Jumlah realisasi (${formatRupiah(parseFloat(formData.amount))}) melebihi sisa plafon pengajuan (${formatRupiah(sisaDanaPengajuan)}).\n\nApakah Anda yakin ingin tetap menyimpan penyesuaian nota ini?`)) {
+                    return;
+                }
+            }
         }
+
+        const effectiveStatus = editingReport 
+            ? editingReport.status 
+            : (isSuperAdmin ? 'APPROVED' : 'DRAFT');
 
         const reportData = {
             id: editingDraftId || `REL-${Date.now()}`,
             requestId: selectedRequest.reqId,
             budgetRequestId: selectedRequest.reqId,
             componentId: selectedRequest.componentId,
-            unitId: selectedRequest.reqUnitId,
+            unitId: selectedRequest.reqUnitId || selectedRequest.unitId,
             fieldId: selectedRequest.fieldId,
             academicYearId: globalAcademicYearId,
             planId: selectedRequest.planId,
@@ -1735,7 +1790,8 @@ export default function MonthlyReport() {
             diskon: formData.diskon,
             kategoriAset: formData.kategoriAset,
             umurEkonomis: formData.kategoriAset === 'ASET' ? formData.umurEkonomis : null,
-            status: 'DRAFT',
+            status: effectiveStatus,
+            journalId: editingReport?.journalId || null,
             expenseItemId: selectedRequest.expenseItemId
         };
 
@@ -2813,6 +2869,19 @@ export default function MonthlyReport() {
                                                                 </div>
                                                             ) : isSuperAdmin ? (
                                                                 <div className="flex items-center justify-center gap-1.5">
+                                                                    {report.kategoriAset !== 'PENGEMBALIAN' && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setShowReportsList(false);
+                                                                                handleEditDraft(report);
+                                                                            }}
+                                                                            className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                                            title="Edit / Sesuaikan Nota (Otomatis Update Jurnal)"
+                                                                        >
+                                                                            <Edit2 size={14} />
+                                                                        </button>
+                                                                    )}
                                                                     {report.status === 'APPROVED' && (
                                                                         <button
                                                                             onClick={(e) => {
@@ -2876,7 +2945,11 @@ export default function MonthlyReport() {
                         {/* Modal Header */}
                         <div className="p-8 border-b border-slate-100 flex justify-between items-start flex-shrink-0">
                             <div>
-                                <h2 className="text-2xl font-black text-slate-900">Laporan Penggunaan Dana</h2>
+                                <h2 className="text-2xl font-black text-slate-900">
+                                    {editingDraftId 
+                                        ? (isSuperAdmin ? 'Edit / Sesuaikan Nota Pengeluaran' : 'Edit Laporan Pengeluaran') 
+                                        : (isSuperAdmin ? 'Input Nota Pengeluaran (Superadmin)' : 'Laporan Penggunaan Dana')}
+                                </h2>
                                 <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Ref: {selectedRequest?.description}</p>
                             </div>
                             <div className="text-right">
@@ -3114,7 +3187,11 @@ export default function MonthlyReport() {
                             <button type="button" onClick={() => setShowReportForm(false)} className="btn btn-secondary flex-1">Batal</button>
                             <button type="submit" form="report-form" className="btn btn-primary flex-1 shadow-blue-500/20">
                                 <Save size={18} />
-                                <span>Simpan Nota (Draft)</span>
+                                <span>
+                                    {editingDraftId 
+                                        ? (isSuperAdmin ? 'Simpan Perubahan Nota' : 'Simpan Perubahan (Draft)') 
+                                        : (isSuperAdmin ? 'Simpan & Setujui Nota' : 'Simpan Nota (Draft)')}
+                                </span>
                             </button>
                         </div>
                     </div>

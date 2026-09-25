@@ -1183,19 +1183,26 @@ router.put('/budget-reports/:id', async (req, res) => {
                     where: { id: updated.journalId },
                     data: { isDeleted: true }
                 }).catch(() => {});
-            } else if (data.amount !== undefined && updated.journalId) {
-                // If amount changed (e.g. editing a DRAFT), update the journal entries
+            } else if (updated.journalId && (data.amount !== undefined || data.date !== undefined || data.nomorNota !== undefined || data.description !== undefined)) {
+                // If amount or fields changed on an APPROVED report, automatically keep journal in sync
                 const journal = await tx.journal.findUnique({ where: { id: updated.journalId } });
                 if (journal && journal.entries) {
                     const entries = typeof journal.entries === 'string' ? JSON.parse(journal.entries) : journal.entries;
-                    const newEntries = entries.map(entry => ({
+                    const newEntries = data.amount !== undefined ? entries.map(entry => ({
                         ...entry,
                         debit: entry.debit > 0 ? parseFloat(data.amount) : 0,
                         credit: entry.credit > 0 ? parseFloat(data.amount) : 0
-                    }));
+                    })) : entries;
+                    
+                    const journalUpdateData = { entries: newEntries };
+                    if (data.date) journalUpdateData.date = new Date(data.date);
+                    if (data.nomorNota) journalUpdateData.reference = data.nomorNota;
+                    if (data.buktiTeks !== undefined) journalUpdateData.proof = data.buktiTeks;
+                    if (data.description) journalUpdateData.description = `Realisasi: ${data.description}`;
+
                     await tx.journal.update({
                         where: { id: journal.id },
-                        data: { entries: newEntries }
+                        data: journalUpdateData
                     }).catch(() => {});
                 }
             }
