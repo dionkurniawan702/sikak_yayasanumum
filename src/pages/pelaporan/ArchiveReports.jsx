@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, Building2, Gem, Search, CheckCircle, Clock, Archive, FileText, Filter, Download, Package, Layers, FileCheck } from 'lucide-react';
+import { Calendar, Building2, Gem, Search, CheckCircle, Clock, Archive, FileText, Filter, Download, Package, Layers, FileCheck, Receipt, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
@@ -245,6 +245,8 @@ export default function ArchiveReports() {
             if (filterKategori !== 'ALL') {
                 if (filterKategori === 'NON_ASET') {
                     if (item.kategoriAset === 'ASET' || item.kategoriAset === 'PENGEMBALIAN') return false;
+                } else if (filterKategori === 'EXPENSE_ONLY') {
+                    if (item.kategoriAset === 'PENGEMBALIAN') return false;
                 } else {
                     if (item.kategoriAset !== filterKategori) return false;
                 }
@@ -274,8 +276,28 @@ export default function ArchiveReports() {
         return archiveData.reduce((sum, item) => sum + item.amountNum, 0);
     }, [archiveData]);
 
+    const totalPengeluaranNota = useMemo(() => {
+        return archiveData
+            .filter(r => r.kategoriAset !== 'PENGEMBALIAN')
+            .reduce((sum, item) => sum + item.amountNum, 0);
+    }, [archiveData]);
+
+    const totalPengembalian = useMemo(() => {
+        return archiveData
+            .filter(r => r.kategoriAset === 'PENGEMBALIAN')
+            .reduce((sum, item) => sum + item.amountNum, 0);
+    }, [archiveData]);
+
+    const countPengeluaranNota = useMemo(() => {
+        return archiveData.filter(r => r.kategoriAset !== 'PENGEMBALIAN').length;
+    }, [archiveData]);
+
+    const countPengembalian = useMemo(() => {
+        return archiveData.filter(r => r.kategoriAset === 'PENGEMBALIAN').length;
+    }, [archiveData]);
+
     const totalAset = useMemo(() => archiveData.filter(r => r.kategoriAset === 'ASET').length, [archiveData]);
-    const totalNonAset = archiveData.length - totalAset;
+    const totalNonAset = useMemo(() => archiveData.filter(r => r.kategoriAset !== 'ASET' && r.kategoriAset !== 'PENGEMBALIAN').length, [archiveData]);
 
     const exportToExcel = () => {
         if (archiveData.length === 0) return alert("Tidak ada data untuk diekspor");
@@ -314,13 +336,26 @@ export default function ArchiveReports() {
             ]);
         });
 
-        // Add a row for total
+        // Add summary rows
         const totalDiskon = archiveData.reduce((sum, item) => sum + parseFloat(item.diskon || 0), 0);
         const totalAmount = archiveData.reduce((sum, item) => sum + item.amountNum, 0);
+
+        const rowNota = Array(12).fill("");
+        rowNota[0] = "TOTAL PENGELUARAN (NOTA BELANJA)";
+        rowNota[10] = totalDiskon;
+        rowNota[11] = totalPengeluaranNota;
+        wsData.push(rowNota);
+
+        if (totalPengembalian > 0) {
+            const rowRefund = Array(12).fill("");
+            rowRefund[0] = "TOTAL PENGEMBALIAN SISA DANA";
+            rowRefund[11] = totalPengembalian;
+            wsData.push(rowRefund);
+        }
+
         const totalRow = Array(12).fill("");
-        totalRow[0] = "TOTAL";
-        totalRow[10] = totalDiskon;   // index 10 is Potongan / Diskon (Rp)
-        totalRow[11] = totalAmount;  // index 11 is Jumlah Realisasi (Rp)
+        totalRow[0] = "TOTAL REALISASI KESELURUHAN";
+        totalRow[11] = totalAmount;
         wsData.push(totalRow);
 
         const ws = XLSX.utils.aoa_to_sheet(wsData);
@@ -347,69 +382,118 @@ export default function ArchiveReports() {
     return (
         <div className="p-4 md:p-8 animate-in text-slate-900 pb-20 bg-slate-50 min-h-screen">
             {/* Header Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-                <div className="lg:col-span-3 bg-gradient-to-br from-indigo-800 to-slate-900 rounded-[40px] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform">
-                        <Archive size={160} />
+            <div className="bg-gradient-to-br from-indigo-800 to-slate-900 rounded-[36px] p-6 md:p-8 text-white shadow-2xl relative overflow-hidden group mb-6">
+                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                    <Archive size={140} />
+                </div>
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div>
+                        <h1 className="text-2xl md:text-3xl font-black mb-1">Arsip Laporan Realisasi</h1>
+                        <p className="text-blue-100/70 font-medium uppercase text-[10px] tracking-widest italic">
+                            RIWAYAT PENGELUARAN FINAL • TA {currentYear?.name || '-'}
+                        </p>
                     </div>
-                    <div className="relative z-10 flex flex-col h-full justify-between">
-                        <div>
-                            <h1 className="text-3xl font-black mb-1">Arsip Laporan Realisasi</h1>
-                            <p className="text-blue-100/70 font-medium mb-6 uppercase text-[10px] tracking-widest italic">
-                                RIWAYAT PENGELUARAN FINAL • TA {currentYear?.name || '-'}
-                            </p>
 
-                            <div className="flex flex-wrap gap-4 items-center bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 inline-flex">
-                                <div className="flex bg-slate-900/40 p-1 rounded-xl">
-                                    <button 
-                                        onClick={() => setSourceMode('YAYASAN')}
-                                        className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-xl' : 'text-white/60 hover:text-white'}`}
-                                    >
-                                        <Building2 size={12} className="inline mr-2" />
-                                        Yayasan
-                                    </button>
-                                    {(!myFieldId || isSuperAdmin) && (
-                                        <button 
-                                            onClick={() => setSourceMode('BOS')}
-                                            className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-emerald-500 text-white shadow-xl' : 'text-white/60 hover:text-white'}`}
-                                        >
-                                            <Gem size={12} className="inline mr-2" />
-                                            BOS
-                                        </button>
-                                    )}
-                                </div>
-                                
-                                <div className="w-px h-8 bg-white/20 mx-2 hidden md:block"></div>
-
-                                <div className="relative">
-                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={14} />
-                                    <input
-                                        type="text"
-                                        placeholder="Cari nota, deskripsi..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="bg-white/10 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-white/50 focus:bg-white/20 focus:outline-none transition-all w-full md:w-48"
-                                    />
-                                </div>
-
-                                <button
-                                    onClick={exportToExcel}
-                                    className="px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-lg"
+                    <div className="flex flex-wrap gap-3 items-center bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20">
+                        <div className="flex bg-slate-900/40 p-1 rounded-xl">
+                            <button 
+                                onClick={() => setSourceMode('YAYASAN')}
+                                className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                            >
+                                <Building2 size={12} className="inline mr-2" />
+                                Yayasan
+                            </button>
+                            {(!myFieldId || isSuperAdmin) && (
+                                <button 
+                                    onClick={() => setSourceMode('BOS')}
+                                    className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-emerald-500 text-white shadow-xl' : 'text-white/60 hover:text-white'}`}
                                 >
-                                    <Download size={14} className="inline mr-2" /> Export Excel
+                                    <Gem size={12} className="inline mr-2" />
+                                    BOS
                                 </button>
-                            </div>
+                            )}
                         </div>
+                        
+                        <div className="w-px h-8 bg-white/20 mx-1 hidden md:block"></div>
+
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/50" size={14} />
+                            <input
+                                type="text"
+                                placeholder="Cari nota, deskripsi..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-white/10 border border-white/10 rounded-xl pl-9 pr-4 py-2 text-xs text-white placeholder:text-white/50 focus:bg-white/20 focus:outline-none transition-all w-full md:w-48"
+                            />
+                        </div>
+
+                        <button
+                            onClick={exportToExcel}
+                            className="px-5 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-lg"
+                        >
+                            <Download size={14} className="inline mr-2" /> Export Excel
+                        </button>
                     </div>
                 </div>
+            </div>
 
-                <div className="card p-8 bg-white rounded-[40px] flex flex-col items-center justify-center text-center shadow-xl border-slate-100">
-                    <div className="w-16 h-16 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center mb-4">
-                        <FileText size={32} />
+            {/* Statistic Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                {/* Card 1: Pengeluaran Sesuai Nota */}
+                <div className="card p-6 bg-white rounded-[32px] shadow-xl border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:border-indigo-200 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <Receipt size={24} />
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            Sesuai Nota Belanja
+                        </span>
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Realisasi (Filter)</p>
-                    <h2 className="text-2xl font-black text-slate-900 italic tracking-tighter">{formatRupiah(totalAmount)}</h2>
-                    <p className="text-[10px] font-bold text-slate-400 mt-2">{archiveData.length} Laporan ({totalAset} Aset / {totalNonAset} Non)</p>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Pengeluaran (Nota)</p>
+                        <h2 className="text-2xl font-black text-indigo-600 italic tracking-tight">{formatRupiah(totalPengeluaranNota)}</h2>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-3 pt-3 border-t border-slate-100">
+                        {countPengeluaranNota} Nota Belanja ({totalAset} Aset • {totalNonAset} Non-Aset)
+                    </p>
+                </div>
+
+                {/* Card 2: Pengembalian Sisa Kas */}
+                <div className="card p-6 bg-white rounded-[32px] shadow-xl border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:border-violet-200 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="w-12 h-12 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center shadow-inner">
+                            <RotateCcw size={24} />
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-violet-50 text-violet-700 border border-violet-200">
+                            Setor Kas Yayasan
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pengembalian Sisa Dana</p>
+                        <h2 className="text-2xl font-black text-violet-600 italic tracking-tight">{formatRupiah(totalPengembalian)}</h2>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-3 pt-3 border-t border-slate-100">
+                        {countPengembalian} Bukti Pengembalian Kas
+                    </p>
+                </div>
+
+                {/* Card 3: Total Realisasi (Filter) */}
+                <div className="card p-6 bg-white rounded-[32px] shadow-xl border border-slate-100 flex flex-col justify-between relative overflow-hidden group hover:border-slate-300 transition-all">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="w-12 h-12 bg-slate-100 text-slate-700 rounded-2xl flex items-center justify-center shadow-inner">
+                            <Archive size={24} />
+                        </div>
+                        <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest bg-slate-100 text-slate-600 border border-slate-200">
+                            Total Filter
+                        </span>
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Realisasi (Filter)</p>
+                        <h2 className="text-2xl font-black text-slate-900 italic tracking-tight">{formatRupiah(totalAmount)}</h2>
+                    </div>
+                    <p className="text-[10px] font-bold text-slate-400 mt-3 pt-3 border-t border-slate-100">
+                        {archiveData.length} Total Data Transaksi Terfilter
+                    </p>
                 </div>
             </div>
 
@@ -469,7 +553,8 @@ export default function ArchiveReports() {
                         onChange={(e) => setFilterKategori(e.target.value)}
                         className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-[10px] font-black text-slate-600 uppercase tracking-widest focus:ring-2 focus:ring-indigo-100 outline-none cursor-pointer"
                     >
-                        <option value="ALL">Semua Kategori</option>
+                        <option value="ALL">Semua Kategori (Belanja + Sisa Kas)</option>
+                        <option value="EXPENSE_ONLY">Khusus Nota Pengeluaran (Belanja Saja)</option>
                         <option value="NON_ASET">Non Aset (Operasional)</option>
                         <option value="ASET">Pembelian Aset</option>
                         <option value="PENGEMBALIAN">Pengembalian Sisa Dana</option>
@@ -585,18 +670,42 @@ export default function ArchiveReports() {
                                 ))
                             )}
                             
-                            {/* Total Row */}
+                            {/* Total Rows Breakdown */}
                             {archiveData.length > 0 && (
-                                <tr className="bg-slate-50">
-                                    <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-4 text-right text-xs font-black text-slate-800 uppercase tracking-widest border-t-2 border-slate-200">
-                                        Total Realisasi Filtered
-                                    </td>
-                                    <td className="px-6 py-4 text-right border-t-2 border-slate-200 border-l border-l-slate-200">
-                                        <span className="text-lg font-black text-indigo-700 italic">
-                                            {formatRupiah(totalAmount)}
-                                        </span>
-                                    </td>
-                                </tr>
+                                <>
+                                    <tr className="bg-slate-50/80 border-t-2 border-slate-200">
+                                        <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-3 text-right text-[11px] font-black text-indigo-700 uppercase tracking-widest">
+                                            Jumlah Pengeluaran (Sesuai Nota Belanja):
+                                        </td>
+                                        <td className="px-6 py-3 text-right border-l border-l-slate-200">
+                                            <span className="text-sm font-black text-indigo-700 italic font-mono">
+                                                {formatRupiah(totalPengeluaranNota)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {totalPengembalian > 0 && (
+                                        <tr className="bg-slate-50/80 border-t border-slate-200">
+                                            <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-3 text-right text-[11px] font-black text-violet-700 uppercase tracking-widest">
+                                                Jumlah Pengembalian Sisa Dana (Setor Kas):
+                                            </td>
+                                            <td className="px-6 py-3 text-right border-l border-l-slate-200">
+                                                <span className="text-sm font-black text-violet-700 italic font-mono">
+                                                    {formatRupiah(totalPengembalian)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    )}
+                                    <tr className="bg-slate-100 border-t-2 border-slate-300">
+                                        <td colSpan={isSuperAdmin ? 8 : 7} className="px-6 py-4 text-right text-xs font-black text-slate-900 uppercase tracking-widest">
+                                            Total Realisasi Keseluruhan (Filter):
+                                        </td>
+                                        <td className="px-6 py-4 text-right border-l border-l-slate-300">
+                                            <span className="text-base font-black text-slate-900 italic font-mono">
+                                                {formatRupiah(totalAmount)}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </>
                             )}
                         </tbody>
                     </table>
