@@ -743,18 +743,6 @@ export default function MonthlyReport() {
             const reqTotal = parseFloat(req.totalAmount || 0);
             if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
-            // Bagi Unit (non-superadmin): jika pengajuan dana bulan ini sudah dilaporkan & ada pengembalian sisa dana (PENGEMBALIAN),
-            // maka bagi unit dianggap sudah tuntas pelaporannya. Sisa / penyesuaian hanya muncul bagi Super Admin.
-            if (!isSuperAdmin) {
-                const hasRefundReport = (budgetReports || []).some(r => {
-                    if (r.status === 'REJECTED' || r.isDeleted) return false;
-                    if (r.kategoriAset !== 'PENGEMBALIAN') return false;
-                    const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                    const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
-                    return rReqId === req.id || ((r.unitId === req.unitId || r.fieldId === req.fieldId) && (r.date?.substring(0, 7) === req.month));
-                });
-                if (hasRefundReport) return;
-            }
 
             const uKey = req.unitId || req.fieldId || 'UNKNOWN';
             const maxMonth = latestMonthByUnit[uKey] || '';
@@ -934,17 +922,6 @@ export default function MonthlyReport() {
             const reqTotal = parseFloat(req.totalAmount || 0);
             if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
-            // Bagi Unit (non-superadmin): sembunyikan jika sudah ada pengembalian sisa dana
-            if (!isSuperAdmin) {
-                const hasRefundReport = (budgetReports || []).some(r => {
-                    if (r.status === 'REJECTED' || r.isDeleted) return false;
-                    if (r.kategoriAset !== 'PENGEMBALIAN') return false;
-                    const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-                    const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
-                    return rReqId === req.id || ((r.unitId === req.unitId || r.fieldId === req.fieldId) && (r.date?.substring(0, 7) === req.month));
-                });
-                if (hasRefundReport) return;
-            }
 
             if (req.items && req.items.length > 0) {
                 req.items.forEach(item => {
