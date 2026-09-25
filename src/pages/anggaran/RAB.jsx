@@ -1493,6 +1493,24 @@ function RABContent() {
         if (!plan) return;
 
         const newComps = [...(plan.components || [])];
+
+        // Validasi Ketat: Jika TA >= 2026-2027, rincian bertipe Aset harus di-ACC Sarpras terlebih dahulu
+        if (isSarprasRequiredYear) {
+            const blockedAssets = [];
+            draftIndexes.forEach(idx => {
+                const c = newComps[idx];
+                if (c && c.isAsset && c.sarprasStatus !== 'APPROVED') {
+                    const stLabel = c.sarprasStatus === 'REJECTED' ? 'Ditolak Sarpras' : 'Menunggu ACC Sarpras';
+                    blockedAssets.push(`"${c.assetName || c.label || 'Aset'}" (${stLabel})`);
+                }
+            });
+
+            if (blockedAssets.length > 0) {
+                alert(`PENGAJUAN DITAHAN:\n\nTerdapat ${blockedAssets.length} rincian belanja aset yang belum disetujui (ACC) oleh Bidang Sarana Prasarana:\n\n${blockedAssets.map(a => `• ${a}`).join('\n')}\n\nSilakan tunggu verifikasi/persetujuan dari Sarpras atau perbaiki rincian aset terlebih dahulu sebelum mengajukan ke Yayasan.`);
+                return;
+            }
+        }
+
         draftIndexes.forEach(idx => {
             if (newComps[idx]) {
                 newComps[idx] = { ...newComps[idx], status: 'PENDING' };
@@ -1503,18 +1521,23 @@ function RABContent() {
         const newPlans = [...plans];
         newPlans[planIndex] = updatedPlan;
 
-        // Sweep ALL expense items: mark all DRAFT/REJECTED components as PENDING
+        // Sweep ALL expense items: mark eligible DRAFT/REJECTED components as PENDING
+        // (Rincian aset yang belum di-ACC Sarpras tetap dipertahankan sebagai DRAFT)
         const sweepedExpense = { ...currentPlan.expense };
         Object.keys(sweepedExpense).forEach(itemId => {
             const itemPlans = sweepedExpense[itemId];
             if (Array.isArray(itemPlans)) {
                 sweepedExpense[itemId] = itemPlans.map(p => ({
                     ...p,
-                    components: (p.components || []).map(c =>
-                        (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status)
-                            ? { ...c, status: 'PENDING' }
-                            : c
-                    )
+                    components: (p.components || []).map(c => {
+                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) {
+                            if (c.isAsset && isSarprasRequiredYear && c.sarprasStatus !== 'APPROVED') {
+                                return c; // Jangan ajukan aset yang belum di-ACC Sarpras
+                            }
+                            return { ...c, status: 'PENDING' };
+                        }
+                        return c;
+                    })
                 }));
             }
         });
@@ -2229,6 +2252,34 @@ function RABContent() {
         setIsSaving(true);
         const planId = currentPlanId;
 
+        // Validasi Ketat: Jika TA >= 2026-2027, cek seluruh belanja apakah ada aset yang belum di-ACC Sarpras
+        if (isSarprasRequiredYear) {
+            const unapprovedAssets = [];
+            Object.values(currentPlan?.expense || {}).forEach(plans => {
+                const plansArr = Array.isArray(plans) ? plans : [plans];
+                plansArr.forEach(p => {
+                    (p?.components || []).forEach(c => {
+                        if (c && c.isAsset && (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status)) {
+                            if (c.sarprasStatus !== 'APPROVED') {
+                                const stLabel = c.sarprasStatus === 'REJECTED' ? 'Ditolak Sarpras' : 'Menunggu ACC Sarpras';
+                                unapprovedAssets.push(`"${c.assetName || c.label || 'Aset'}" (${stLabel})`);
+                            }
+                        }
+                    });
+                });
+            });
+
+            if (unapprovedAssets.length > 0) {
+                setMessage({
+                    type: 'error',
+                    text: `PENGAJUAN DITAHAN: Terdapat ${unapprovedAssets.length} rincian belanja aset yang belum disetujui Sarpras (${unapprovedAssets.slice(0, 2).join(', ')}${unapprovedAssets.length > 2 ? '...' : ''}). Harap tunggu persetujuan Sarpras terlebih dahulu.`
+                });
+                setIsSaving(false);
+                setTimeout(() => setMessage(null), 8000);
+                return;
+            }
+        }
+
         // Automatically sweep and update all DRAFT/REJECTED components in both income and expense to PENDING
         const updatedExpense = { ...currentPlan.expense };
         Object.keys(updatedExpense).forEach(itemId => {
@@ -2553,6 +2604,49 @@ function RABContent() {
             let currentPlanUpdated = null;
             
             const modifiedPlans = new Map();
+
+            // Validasi Ketat untuk Aksi SUBMIT (Pengajuan ke Yayasan): Aset wajib di-ACC Sarpras
+            if (action === 'SUBMIT' && isSarprasRequiredYear) {
+                const unapprovedSelectedAssets = [];
+                for (const [planSubId, items] of Object.entries(selectionsByPlan)) {
+                    const foundMainPlan = rabPlans.find(p => {
+                        if (p.id === planSubId) return true;
+                        const nextExpense = p.expense || {};
+                        return Object.values(nextExpense).some(plansArr => 
+                            Array.isArray(plansArr) && plansArr.some(subP => subP.id === planSubId)
+                        );
+                    });
+                    if (!foundMainPlan) continue;
+                    const nextExpense = foundMainPlan.expense || {};
+                    items.forEach(({ itemId: rawItemId, pIdx, cIdx }) => {
+                        let itemId = rawItemId;
+                        if (rawItemId.startsWith('COMP-')) {
+                            const foundKey = Object.keys(nextExpense).find(k => {
+                                if (Array.isArray(nextExpense[k])) {
+                                    return nextExpense[k].some(subP => subP.id === planSubId);
+                                }
+                                return false;
+                            });
+                            if (foundKey) itemId = foundKey;
+                        }
+                        let rawPlanItems = nextExpense[itemId];
+                        let planItems = Array.isArray(rawPlanItems) ? rawPlanItems : [rawPlanItems];
+                        const actualPIdx = planItems.findIndex(subP => subP.id === planSubId);
+                        const targetIdx = actualPIdx !== -1 ? actualPIdx : pIdx;
+                        const comp = planItems[targetIdx]?.components?.[cIdx];
+                        if (comp && comp.isAsset && comp.sarprasStatus !== 'APPROVED') {
+                            const stLabel = comp.sarprasStatus === 'REJECTED' ? 'Ditolak Sarpras' : 'Menunggu ACC Sarpras';
+                            unapprovedSelectedAssets.push(`"${comp.assetName || comp.label || 'Aset'}" (${stLabel})`);
+                        }
+                    });
+                }
+
+                if (unapprovedSelectedAssets.length > 0) {
+                    alert(`PENGAJUAN DITAHAN:\n\nTerdapat ${unapprovedSelectedAssets.length} rincian belanja aset yang dipilih belum disetujui oleh Bidang Sarpras:\n\n${unapprovedSelectedAssets.map(a => `• ${a}`).join('\n')}\n\nSilakan tunggu persetujuan (ACC) Sarpras terlebih dahulu.`);
+                    setIsSaving(false);
+                    return;
+                }
+            }
 
             for (const [planSubId, items] of Object.entries(selectionsByPlan)) {
                 // Find the main plan where plan.expense has a sub-plan with id === planSubId
@@ -5224,24 +5318,39 @@ function RABContent() {
 
                                                     return (
                                                         <>
-                                                            {draftIndexes.length > 0 && (
-                                                                <div className="card p-6 bg-amber-50 border-amber-200 shadow-sm rounded-3xl">
-                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                                                        <div>
-                                                                            <h3 className="font-black text-amber-900 text-lg flex items-center gap-2">
-                                                                                <Package size={18} /> Rincian Belum Diajukan (Draft)
-                                                                            </h3>
-                                                                            <p className="text-xs text-amber-700 font-medium mt-1">Ada {draftIndexes.length} rincian yang belum dikirim. Klik tombol di bawah untuk mengajukan RAB ini ke Yayasan untuk direview.</p>
+                                                            {draftIndexes.length > 0 && (() => {
+                                                                const pendingSarprasDrafts = draftIndexes.filter(idx => {
+                                                                    const c = comps[idx];
+                                                                    return c && c.isAsset && isSarprasRequiredYear && c.sarprasStatus !== 'APPROVED';
+                                                                });
+                                                                const hasUnapprovedAssets = pendingSarprasDrafts.length > 0;
+
+                                                                return (
+                                                                    <div className={`card p-6 border shadow-sm rounded-3xl ${hasUnapprovedAssets ? 'bg-amber-50/80 border-amber-200' : 'bg-blue-50/70 border-blue-200'}`}>
+                                                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                                                            <div>
+                                                                                <h3 className="font-black text-slate-900 text-lg flex items-center gap-2">
+                                                                                    <Package size={18} className={hasUnapprovedAssets ? 'text-amber-600' : 'text-blue-600'} /> Rincian Belum Diajukan (Draft)
+                                                                                </h3>
+                                                                                <p className="text-xs text-slate-600 font-medium mt-1">
+                                                                                    Ada {draftIndexes.length} rincian yang belum dikirim ke Yayasan.
+                                                                                    {hasUnapprovedAssets && (
+                                                                                        <span className="block mt-1 text-amber-700 font-bold">
+                                                                                            ⚠️ Perhatian: {pendingSarprasDrafts.length} rincian belanja aset masih menunggu verifikasi/ACC dari Bidang Sarpras sebelum bisa diajukan ke Yayasan.
+                                                                                        </span>
+                                                                                    )}
+                                                                                </p>
+                                                                            </div>
+                                                                            <button 
+                                                                                onClick={() => handleAjukanDraftsInModal(draftIndexes)}
+                                                                                className={`px-5 py-3 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md transition-colors shrink-0 flex items-center gap-2 ${hasUnapprovedAssets ? 'bg-amber-600 hover:bg-amber-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                                                            >
+                                                                                <Send size={16} /> Ajukan RAB ke Yayasan
+                                                                            </button>
                                                                         </div>
-                                                                        <button 
-                                                                            onClick={() => handleAjukanDraftsInModal(draftIndexes)}
-                                                                            className="px-5 py-3 bg-amber-500 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-600 transition-colors shrink-0 flex items-center gap-2"
-                                                                        >
-                                                                            <Send size={16} /> Ajukan RAB ke Yayasan
-                                                                        </button>
                                                                     </div>
-                                                                </div>
-                                                            )}
+                                                                );
+                                                            })()}
 
                                                             {/* Search and Filters Bar */}
                                                             {comps.length > 0 && (
@@ -5440,7 +5549,15 @@ function RABContent() {
                                                                                                 <>
                                                                                                     <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
                                                                                                     <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
-                                                                                                    {isDraft && <button onClick={() => handleAjukanDraftsInModal([idx])} className="p-2 bg-amber-500 text-white hover:bg-amber-600 rounded-xl transition-colors shadow-sm ml-1" title="Ajukan Rincian Ini"><Send size={16} /></button>}
+                                                                                                    {isDraft && (
+                                                                                                        <button 
+                                                                                                            onClick={() => handleAjukanDraftsInModal([idx])} 
+                                                                                                            className={`p-2 rounded-xl transition-colors shadow-sm ml-1 ${comp.isAsset && isSarprasRequiredYear && comp.sarprasStatus !== 'APPROVED' ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'bg-amber-500 text-white hover:bg-amber-600'}`} 
+                                                                                                            title={comp.isAsset && isSarprasRequiredYear && comp.sarprasStatus !== 'APPROVED' ? 'Menunggu ACC Sarpras sebelum dapat diajukan ke Yayasan' : 'Ajukan Rincian Ini'}
+                                                                                                        >
+                                                                                                            <Send size={16} />
+                                                                                                        </button>
+                                                                                                    )}
                                                                                                     {isSuperAdmin && (isApproved || isPending) && (
                                                                                                         <button
                                                                                                             onClick={() => handleSuperAdminCancelComponent(idx)}

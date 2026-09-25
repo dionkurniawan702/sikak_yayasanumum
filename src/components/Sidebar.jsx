@@ -104,6 +104,29 @@ export default function Sidebar({ isOpen, onClose }) {
         if (isSuperAdmin) {
             return state.budgetRequests.filter(r => r.status === 'PENDING').length;
         }
+        if (isSarprasUser) {
+            // Count pending requests from ANY unit that contain asset items with pending Sarpras status
+            let sarprasAssetReqCount = 0;
+            state.budgetRequests.forEach(r => {
+                if (r.status === 'REJECTED' || r.isDeleted) return;
+                const hasPendingAsset = (r.items || []).some(item => {
+                    const isAsset = Boolean(item.isAsset);
+                    const st = item.sarprasStatus || (isAsset ? 'PENDING' : null);
+                    return isAsset && st === 'PENDING';
+                });
+                if (hasPendingAsset) sarprasAssetReqCount++;
+            });
+
+            // Also include notifications for requests initiated by Sarpras bidang itself
+            let ownNotifiedCount = 0;
+            if (isAdminField) {
+                ownNotifiedCount = state.budgetRequests.filter(r => {
+                    const isMine = r.fieldId === currentUser?.fieldId;
+                    return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
+                }).length;
+            }
+            return sarprasAssetReqCount + ownNotifiedCount;
+        }
         if (isAdminUnit || isAdminField) {
             return state.budgetRequests.filter(r => {
                 const isMine = (isAdminUnit && r.unitId === currentUser.unitId) ||
@@ -112,7 +135,7 @@ export default function Sidebar({ isOpen, onClose }) {
             }).length;
         }
         return 0;
-    }, [state.budgetRequests, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
+    }, [state.budgetRequests, isSuperAdmin, isSarprasUser, isAdminUnit, isAdminField, currentUser]);
 
     // Calculate Notifications for Laporan Realisasi
     const pendingReportCount = React.useMemo(() => {

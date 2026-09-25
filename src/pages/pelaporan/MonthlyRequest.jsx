@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -222,6 +222,175 @@ export default function MonthlyRequest() {
     const myUnitId = currentUser?.unitId;
     const myFieldId = currentUser?.fieldId;
 
+    const userField = fields.find(f => f.id === currentUser?.fieldId);
+    const isSarprasUser = isSuperAdmin || (currentUser && (
+        currentUser.fieldId === 'sarpras' ||
+        currentUser.fieldId === 'SARPRAS' ||
+        currentUser.unitId === 'sarpras' ||
+        currentUser.unitId === 'SARPRAS' ||
+        currentUser.role === 'sarpras' ||
+        (currentUser.role === 'admin_bidang' && (
+            userField?.name?.toLowerCase().includes('sarana') ||
+            userField?.name?.toLowerCase().includes('sarpras') ||
+            currentUser?.name?.toLowerCase().includes('sarana') ||
+            currentUser?.name?.toLowerCase().includes('sarpras') ||
+            currentUser?.username?.toLowerCase().includes('sarana') ||
+            currentUser?.username?.toLowerCase().includes('sarpras')
+        ))
+    ));
+    const isSarprasOnly = Boolean(isSarprasUser && !isSuperAdmin);
+
+    const [sarprasViewTab, setSarprasViewTab] = useState(isSarprasOnly ? 'VERIFIKASI_ASET' : 'REGULAR');
+    const [sarprasReviewModal, setSarprasReviewModal] = useState(null);
+
+    // Helper to determine if an item is an asset
+    const isItemAsset = useCallback((item) => {
+        if (item.isAsset !== undefined) return Boolean(item.isAsset);
+        if (rabPlans && Array.isArray(rabPlans)) {
+            for (const plan of rabPlans) {
+                if (item.planId && plan.id !== item.planId) continue;
+                for (const rawPlans of Object.values(plan.expense || {})) {
+                    const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [rawPlans] : []);
+                    for (const p of plansArr) {
+                        for (const comp of p?.components || []) {
+                            if (comp.id === item.componentId || comp.label === item.name || comp.name === item.name) {
+                                if (comp.isAsset) return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        return false;
+    }, [rabPlans]);
+
+    // Helper to get item's Sarpras status
+    const getItemSarprasStatus = useCallback((item, parentReq) => {
+        if (!isItemAsset(item)) return 'APPROVED';
+        if (item.sarprasStatus) return item.sarprasStatus;
+        if (parentReq?.status === 'APPROVED') return 'APPROVED';
+        return 'PENDING';
+    }, [isItemAsset]);
+
+    // Helper to check if request has any asset item
+    const requestHasAsset = useCallback((req) => {
+        if (req.hasAsset !== undefined) return Boolean(req.hasAsset);
+        return (req.items || []).some(i => isItemAsset(i));
+    }, [isItemAsset]);
+
+    // Requests with pending assets that need Sarpras verification
+    const pendingSarprasFundRequests = useMemo(() => {
+        return (budgetRequests || []).filter(req => {
+            if (req.status === 'REJECTED' || req.isDeleted) return false;
+            return (req.items || []).some(item => isItemAsset(item) && getItemSarprasStatus(item, req) === 'PENDING');
+        });
+    }, [budgetRequests, isItemAsset, getItemSarprasStatus]);
+
+    const pendingSarprasFundCount = pendingSarprasFundRequests.length;
+
+    // Requests containing assets for Sarpras view
+    const sarprasAssetRequests = useMemo(() => {
+        return (budgetRequests || []).filter(req => {
+            if (req.isDeleted) return false;
+            if (!requestHasAsset(req)) return false;
+
+            // Status Filter
+            if (filterStatus === 'PENDING') {
+                const hasPending = (req.items || []).some(i => isItemAsset(i) && getItemSarprasStatus(i, req) === 'PENDING');
+                if (!hasPending) return false;
+            } else if (filterStatus === 'APPROVED') {
+                const allApp = (req.items || []).filter(i => isItemAsset(i)).every(i => getItemSarprasStatus(i, req) === 'APPROVED');
+                if (!allApp) return false;
+            } else if (filterStatus === 'REJECTED') {
+                const hasRej = (req.items || []).some(i => isItemAsset(i) && getItemSarprasStatus(i, req) === 'REJECTED');
+                if (!hasRej) return false;
+            }
+
+            // Unit Filter
+            if (filterUnit !== 'NONE' && filterUnit !== 'ALL') {
+                if (req.unitId !== filterUnit && req.fieldId !== filterUnit) return false;
+            }
+
+            return true;
+        }).sort((a, b) => new Date(b.date) - new Date(a.date));
+    }, [budgetRequests, requestHasAsset, isItemAsset, getItemSarprasStatus, filterStatus, filterUnit]);
+
+    const handleOpenSarprasReview = (req) => {
+        const itemDecisions = {};
+        (req.items || []).forEach(item => {
+            if (isItemAsset(item)) {
+                itemDecisions[item.componentId] = {
+                    status: getItemSarprasStatus(item, req),
+                    notes: item.sarprasNotes || ''
+                };
+            }
+        });
+        setSarprasReviewModal({
+            req,
+            itemDecisions
+        });
+    };
+
+    const handleSaveSarprasModal = async () => {
+        if (!sarprasReviewModal) return;
+        setProcessingId('saving-sarpras-review');
+        window.dispatchEvent(new CustomEvent('app-processing-start', { 
+            detail: { 
+                title: 'Menyimpan Verifikasi Sarpras...', 
+                message: 'Mohon tunggu sebentar, verifikasi Sarpras sedang dicatat ke server...', 
+                type: 'approving' 
+            } 
+        }));
+
+        try {
+            const { req, itemDecisions } = sarprasReviewModal;
+            const updatedItems = (req.items || []).map(item => {
+                if (isItemAsset(item) && itemDecisions[item.componentId]) {
+                    const dec = itemDecisions[item.componentId];
+                    return {
+                        ...item,
+                        sarprasStatus: dec.status,
+                        sarprasNotes: dec.notes || '',
+                        sarprasVerifiedAt: new Date().toISOString(),
+                        sarprasVerifiedBy: currentUser?.username || 'sarpras'
+                    };
+                }
+                return item;
+            });
+
+            const assetItems = updatedItems.filter(i => isItemAsset(i));
+            let overallSarpras = 'APPROVED';
+            if (assetItems.length > 0) {
+                const allApp = assetItems.every(i => i.sarprasStatus === 'APPROVED');
+                const allRej = assetItems.every(i => i.sarprasStatus === 'REJECTED');
+                if (allApp) overallSarpras = 'APPROVED';
+                else if (allRej) overallSarpras = 'REJECTED';
+                else overallSarpras = 'PARTIAL';
+            }
+
+            const updatedReq = {
+                ...req,
+                items: updatedItems,
+                hasAsset: true,
+                sarprasStatus: overallSarpras,
+                sarprasVerifiedAt: new Date().toISOString(),
+                sarprasVerifiedBy: currentUser?.username || 'sarpras'
+            };
+
+            dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updatedReq });
+            await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updatedReq }, state);
+
+            showToast('Verifikasi aset Sarpras berhasil disimpan!');
+            setSarprasReviewModal(null);
+        } catch (err) {
+            console.error('Error saving sarpras review:', err);
+            showToast('Gagal menyimpan verifikasi Sarpras: ' + err.message, 'error');
+        } finally {
+            setProcessingId(null);
+            window.dispatchEvent(new CustomEvent('app-processing-end'));
+        }
+    };
+
     // Clear notifications for unit admin when they visit (local state update only, no background network push)
     React.useEffect(() => {
         if (!isSuperAdmin && budgetRequests?.length > 0) {
@@ -442,6 +611,7 @@ export default function MonthlyRequest() {
         try {
             const selectedData = approvedComponents.filter(c => selectedComponents.includes(c.id));
             const totalAmount = selectedData.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+            const hasAsset = selectedData.some(c => Boolean(c.isAsset));
 
             const newRequest = {
                 id: generateId('REQ'),
@@ -454,16 +624,28 @@ export default function MonthlyRequest() {
                 totalAmount,
                 source: sourceMode, // Tag as YAYASAN or BOS
                 description: selectedData.length > 0 ? (selectedData[0].label || selectedData[0].name) : 'Pengajuan Dana',
-                items: selectedData.map(c => ({
-                    componentId: c.id,
-                    name: c.label || c.name,
-                    amount: c.total,
-                    volume: (parseFloat(c.harga || c.price) > 0) ? (parseFloat(c.total) / parseFloat(c.harga || c.price)) : (parseFloat(c.volume) || 1),
-                    satuan: c.satuan || c.unit || '-',
-                    harga: parseFloat(c.harga || c.price) || 0,
-                    planId: c.planId,
-                    expenseItemId: c.expenseItemId
-                }))
+                hasAsset: hasAsset,
+                sarprasStatus: hasAsset ? 'PENDING' : 'APPROVED',
+                items: selectedData.map(c => {
+                    const isAsset = Boolean(c.isAsset);
+                    return {
+                        componentId: c.id,
+                        name: c.label || c.name,
+                        amount: c.total,
+                        volume: (parseFloat(c.harga || c.price) > 0) ? (parseFloat(c.total) / parseFloat(c.harga || c.price)) : (parseFloat(c.volume) || 1),
+                        satuan: c.satuan || c.unit || '-',
+                        harga: parseFloat(c.harga || c.price) || 0,
+                        planId: c.planId,
+                        expenseItemId: c.expenseItemId,
+                        isAsset: isAsset,
+                        assetCategory: c.assetCategory || '',
+                        assetRoom: c.assetRoom || '',
+                        assetProcurementType: c.assetProcurementType || 'BARU',
+                        assetName: c.assetName || c.namaAset || c.label || c.name || '',
+                        sarprasStatus: isAsset ? 'PENDING' : 'APPROVED',
+                        sarprasNotes: ''
+                    };
+                })
             };
 
             dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRequest });
@@ -490,6 +672,17 @@ export default function MonthlyRequest() {
         }));
         try {
             const { req, accIds, tolakIds } = reviewRequest;
+
+            // Peringatan Keuangan: Periksa apakah ada item belanja aset yang belum di-ACC Sarpras
+            const unapprovedAssetsAcc = req.items.filter(i => accIds.includes(i.componentId) && isItemAsset(i) && getItemSarprasStatus(i, req) !== 'APPROVED');
+            if (unapprovedAssetsAcc.length > 0) {
+                const proceed = window.confirm(`PERHATIAN SARPRAS:\n\nTerdapat ${unapprovedAssetsAcc.length} rincian belanja aset yang belum disetujui (ACC) oleh Bidang Sarana Prasarana:\n\n${unapprovedAssetsAcc.map(a => `• ${a.name} (${getItemSarprasStatus(a, req) === 'REJECTED' ? 'Ditolak Sarpras' : 'Menunggu ACC Sarpras'})`).join('\n')}\n\nApakah Anda (Superadmin/Keuangan) yakin tetap ingin mencairkan dana untuk aset tersebut?`);
+                if (!proceed) {
+                    setProcessingId(null);
+                    window.dispatchEvent(new CustomEvent('app-processing-end'));
+                    return;
+                }
+            }
             
             const accItems = req.items.filter(i => accIds.includes(i.componentId));
             const tolakItems = req.items.filter(i => tolakIds.includes(i.componentId));
@@ -860,11 +1053,70 @@ export default function MonthlyRequest() {
                 </div>
             </div>
 
+            {/* Sarpras Pending Asset Notification Banner */}
+            {isSarprasUser && pendingSarprasFundCount > 0 && sarprasViewTab !== 'VERIFIKASI_ASET' && (
+                <div className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-[2rem] p-6 text-white shadow-xl shadow-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-400/40 mb-8 animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner shrink-0">
+                            <Package size={28} className="text-white animate-bounce" />
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="bg-white/25 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-50 border border-white/20">
+                                    Perhatian Sarpras
+                                </span>
+                                <span className="text-xs font-bold text-amber-100">Realisasi Anggaran</span>
+                            </div>
+                            <h4 className="text-base font-black tracking-tight text-white mt-1">
+                                Ada {pendingSarprasFundCount} Permintaan Dana Belanja Aset Menunggu Verifikasi Sarpras!
+                            </h4>
+                            <p className="text-xs text-amber-100/90 font-medium">
+                                Unit/bidang telah mengajukan pencairan dana untuk pengadaan aset. Silakan lakukan verifikasi teknis aset sebelum dana dicairkan.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setSarprasViewTab('VERIFIKASI_ASET')}
+                        className="px-6 py-3.5 bg-white text-amber-800 font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-amber-50 hover:shadow-xl transition-all shrink-0 flex items-center gap-2 active:scale-95"
+                    >
+                        <Package size={16} className="text-amber-600" />
+                        Buka Verifikasi Aset ({pendingSarprasFundCount})
+                    </button>
+                </div>
+            )}
+
+            {/* Sarpras Tab Switcher */}
+            {isSarprasUser && (
+                <div className="flex bg-slate-100 p-1.5 rounded-2xl mb-6 w-fit gap-1 border border-slate-200">
+                    <button
+                        onClick={() => setSarprasViewTab('REGULAR')}
+                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 ${sarprasViewTab === 'REGULAR' ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        <Send size={14} />
+                        <span>Permintaan Dana Bidang</span>
+                    </button>
+                    <button
+                        onClick={() => setSarprasViewTab('VERIFIKASI_ASET')}
+                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2 ${sarprasViewTab === 'VERIFIKASI_ASET' ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        <Package size={14} />
+                        <span>Verifikasi Aset Unit</span>
+                        {pendingSarprasFundCount > 0 && (
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-black ${sarprasViewTab === 'VERIFIKASI_ASET' ? 'bg-white text-amber-600' : 'bg-amber-500 text-white animate-pulse'}`}>
+                                {pendingSarprasFundCount}
+                            </span>
+                        )}
+                    </button>
+                </div>
+            )}
+
             {/* Request History */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-3">
                     <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg"><Calendar size={18} /></div>
-                    <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">Riwayat Permintaan Dana</h3>
+                    <h3 className="font-black text-slate-900 uppercase text-xs tracking-widest">
+                        {sarprasViewTab === 'VERIFIKASI_ASET' ? 'Daftar Pengajuan Dana Aset dari Seluruh Unit/Bidang' : 'Riwayat Permintaan Dana'}
+                    </h3>
                 </div>
                 
                 {/* Filters */}
@@ -898,7 +1150,103 @@ export default function MonthlyRequest() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+            {sarprasViewTab === 'VERIFIKASI_ASET' ? (
+                /* ── TAB VERIFIKASI ASET KHUSUS SARPRAS ── */
+                <div className="grid grid-cols-1 gap-4">
+                    {sarprasAssetRequests.length === 0 ? (
+                        <div className="p-20 text-center bg-white/40 backdrop-blur-md rounded-[32px] border-2 border-dashed border-slate-200">
+                            <Package size={48} className="mx-auto text-amber-300 mb-3" />
+                            <h4 className="text-base font-black text-slate-700">Tidak Ada Permintaan Dana Pengadaan Aset</h4>
+                            <p className="text-xs text-slate-400 mt-1">Belum ada unit atau bidang yang mengajukan pencairan dana pembelian aset untuk filter saat ini.</p>
+                        </div>
+                    ) : (
+                        sarprasAssetRequests.map(req => {
+                            const assetItems = (req.items || []).filter(i => isItemAsset(i));
+                            const totalAssetNominal = assetItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+                            const pendingCount = assetItems.filter(i => getItemSarprasStatus(i, req) === 'PENDING').length;
+                            const approvedCount = assetItems.filter(i => getItemSarprasStatus(i, req) === 'APPROVED').length;
+                            const rejectedCount = assetItems.filter(i => getItemSarprasStatus(i, req) === 'REJECTED').length;
+                            const unitName = units.find(u => u.id === req.unitId)?.name || fields.find(f => f.id === req.fieldId)?.name || (req.unitId === 'FOUNDATION' ? 'YAYASAN' : 'Unit');
+
+                            return (
+                                <div key={req.id} className="card p-6 bg-white hover:shadow-2xl transition-all border-2 border-slate-100 hover:border-amber-200 rounded-[2rem] group relative overflow-hidden">
+                                    <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${pendingCount > 0 ? 'bg-amber-500 animate-pulse' : (rejectedCount > 0 ? 'bg-rose-500' : 'bg-emerald-500')}`} />
+                                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                                        <div className="space-y-2">
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-xl text-xs font-black uppercase tracking-wider border border-indigo-100">
+                                                    {unitName}
+                                                </span>
+                                                <span className="text-xs font-bold text-slate-400">
+                                                    Bulan: <b>{req.month}</b> • Tanggal: <b>{req.date}</b>
+                                                </span>
+                                                <span className="text-[10px] font-mono text-slate-400 bg-slate-100 px-2 py-0.5 rounded-lg">
+                                                    {req.id}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-lg font-black text-slate-900">
+                                                {req.description || 'Pengajuan Dana Pembelian Aset'}
+                                            </h4>
+                                            
+                                            {/* Preview Rincian Barang Aset */}
+                                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                <span className="text-xs font-semibold text-slate-500 mr-1">Rincian Aset ({assetItems.length}):</span>
+                                                {assetItems.slice(0, 3).map((ai, aIdx) => (
+                                                    <span key={aIdx} className="text-[11px] font-bold px-2 py-0.5 rounded-lg bg-slate-50 text-slate-700 border border-slate-200">
+                                                        {ai.name} ({ai.volume || 1} {ai.satuan || 'Unit'})
+                                                    </span>
+                                                ))}
+                                                {assetItems.length > 3 && (
+                                                    <span className="text-[10px] text-slate-400 font-bold">+{assetItems.length - 3} lainnya</span>
+                                                )}
+                                            </div>
+
+                                            {/* Status Badges */}
+                                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                {pendingCount > 0 && (
+                                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200 animate-pulse flex items-center gap-1">
+                                                        <Clock size={10} /> {pendingCount} Menunggu ACC Sarpras
+                                                    </span>
+                                                )}
+                                                {approvedCount > 0 && (
+                                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 flex items-center gap-1">
+                                                        <CheckCircle size={10} /> {approvedCount} Disetujui Sarpras
+                                                    </span>
+                                                )}
+                                                {rejectedCount > 0 && (
+                                                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-200 flex items-center gap-1">
+                                                        <XCircle size={10} /> {rejectedCount} Ditolak Sarpras
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center gap-6 self-end lg:self-center">
+                                            <div className="text-right">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">
+                                                    Total Dana Aset
+                                                </p>
+                                                <h4 className="text-2xl font-black text-amber-600 italic tracking-tighter">
+                                                    {formatRupiah(totalAssetNominal)}
+                                                </h4>
+                                            </div>
+                                            <button
+                                                onClick={() => handleOpenSarprasReview(req)}
+                                                className="px-6 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 active:scale-95"
+                                            >
+                                                <Package size={16} />
+                                                <span>Verifikasi Aset</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })
+                    )}
+                </div>
+            ) : (
+                /* ── TAB REGULAR RIWAYAT PERMINTAAN DANA ── */
+                <div className="grid grid-cols-1 gap-4">
                 {filteredRequests.length === 0 ? (
                     <div className="p-20 text-center bg-white/40 backdrop-blur-md rounded-[32px] border-2 border-dashed border-slate-200">
                         {isSuperAdmin && filterUnit === 'NONE' ? (
@@ -944,7 +1292,7 @@ export default function MonthlyRequest() {
                                                 <div>
                                                     <button 
                                                         onClick={() => {
-                                                            setExpandedCards(prev => ({...prev, [req.id]: !prev[req.id]}));
+                                                             setExpandedCards(prev => ({...prev, [req.id]: !prev[req.id]}));
                                                         }}
                                                         className="flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-lg hover:bg-indigo-100 transition-colors"
                                                     >
@@ -959,6 +1307,11 @@ export default function MonthlyRequest() {
                                                                     <div className="flex items-center gap-3">
                                                                         <span className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></span>
                                                                         <span className="font-bold text-slate-700">{item.name}</span>
+                                                                        {isItemAsset(item) && (
+                                                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                                                                ASET
+                                                                            </span>
+                                                                        )}
                                                                     </div>
                                                                     <span className="font-black text-slate-500 italic text-[11px] whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm">{formatRupiah(item.amount)}</span>
                                                                 </div>
@@ -970,6 +1323,22 @@ export default function MonthlyRequest() {
                                                 <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
                                             )}
                                         </div>
+
+                                        {/* Status Aset Indicator */}
+                                        {requestHasAsset(req) && (() => {
+                                            const assetItems = (req.items || []).filter(i => isItemAsset(i));
+                                            const allApproved = assetItems.length > 0 && assetItems.every(i => getItemSarprasStatus(i, req) === 'APPROVED');
+                                            const hasRejected = assetItems.some(i => getItemSarprasStatus(i, req) === 'REJECTED');
+                                            return (
+                                                <div className="flex items-center gap-2 mb-2">
+                                                    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${allApproved ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : hasRejected ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'}`}>
+                                                        <Package size={12} />
+                                                        {allApproved ? 'Aset Disetujui Sarpras' : hasRejected ? 'Aset Ditolak Sarpras' : `Aset Menunggu Sarpras (${assetItems.filter(i => getItemSarprasStatus(i, req) === 'PENDING').length})`}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })()}
+
                                         {isSuperAdmin && (
                                             <div className="flex items-center gap-2 mb-2">
                                                 <div className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded text-[9px] font-black uppercase tracking-widest border border-slate-200">
@@ -991,7 +1360,7 @@ export default function MonthlyRequest() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-10">
+                                <div className="flex items-center gap-6">
                                     <div className="text-right">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 italic">Nominal Pengajuan</p>
                                         <h4 className="text-2xl font-black text-slate-900 italic tracking-tighter">{formatRupiah(req.totalAmount)}</h4>
@@ -1001,6 +1370,16 @@ export default function MonthlyRequest() {
                                         {req.status}
                                     </div>
                                     <div className="flex items-center gap-2">
+                                        {(isSarprasUser || isSuperAdmin) && requestHasAsset(req) && req.status !== 'REJECTED' && (
+                                            <button
+                                                onClick={() => handleOpenSarprasReview(req)}
+                                                className="p-3 bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white rounded-xl transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest border border-amber-200"
+                                                title="Verifikasi Aset oleh Sarpras"
+                                            >
+                                                <Package size={16} />
+                                                VERIFIKASI ASET
+                                            </button>
+                                        )}
                                         {isSuperAdmin && req.status === 'PENDING' && (
                                             <button
                                                 onClick={() => setReviewRequest({ req, accIds: [], tolakIds: [] })}
@@ -1078,6 +1457,7 @@ export default function MonthlyRequest() {
                     ))
                 )}
             </div>
+            )}
 
             {/* Modal Pengajuan Baru */}
             {showRequestModal && (
@@ -1301,6 +1681,20 @@ export default function MonthlyRequest() {
                                                 <div>
                                                     <h4 className="font-black text-lg tracking-tight leading-tight mb-1">{item.name}</h4>
                                                     <p className={`text-[12px] font-bold ${isAcc ? 'text-emerald-600' : isTolak ? 'text-rose-600' : 'text-slate-500'}`}>{formatRupiah(item.amount)}</p>
+                                                    {isItemAsset(item) && (() => {
+                                                        const st = getItemSarprasStatus(item, reviewRequest.req);
+                                                        return (
+                                                            <div className="mt-1 flex items-center gap-2">
+                                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black border ${st === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : st === 'REJECTED' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
+                                                                    <Package size={10} />
+                                                                    {st === 'APPROVED' ? '✓ Disetujui Sarpras' : st === 'REJECTED' ? `✕ Ditolak Sarpras ${item.sarprasNotes ? `(${item.sarprasNotes})` : ''}` : '⏳ Menunggu ACC Sarpras'}
+                                                                </span>
+                                                                {isAcc && st !== 'APPROVED' && (
+                                                                    <span className="text-[9px] text-amber-600 font-bold">⚠️ Belum ACC Sarpras</span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </div>
                                             <div className="flex gap-3">
@@ -1357,6 +1751,181 @@ export default function MonthlyRequest() {
                                 </div>
                             );
                         })()}
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Verifikasi Aset untuk Sarpras */}
+            {sarprasReviewModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto">
+                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setSarprasReviewModal(null)} />
+                    <div className="relative bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 w-full max-w-4xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="p-8 bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md">
+                                    <Package size={28} className="text-white" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-white/25 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-50">
+                                            Verifikasi Aset Sarpras
+                                        </span>
+                                        <span className="text-xs font-bold text-amber-100">
+                                            {sarprasReviewModal.req.month} • {units.find(u => u.id === sarprasReviewModal.req.unitId)?.name || fields.find(f => f.id === sarprasReviewModal.req.fieldId)?.name || 'Unit'}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-xl font-black mt-1">
+                                        Persetujuan Belanja Aset — Permintaan Dana
+                                    </h3>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSarprasReviewModal(null)}
+                                className="p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+                            >
+                                <XCircle size={24} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-8 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200/60">
+                                <div>
+                                    <h4 className="font-black text-slate-800 text-sm uppercase tracking-wider">
+                                        Daftar Rincian Pengadaan Aset
+                                    </h4>
+                                    <p className="text-xs text-slate-500 mt-0.5">
+                                        Silakan periksa spesifikasi barang dan tentukan persetujuan sebelum dana dicairkan oleh Keuangan.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const newDecisions = { ...sarprasReviewModal.itemDecisions };
+                                        Object.keys(newDecisions).forEach(id => {
+                                            newDecisions[id] = { status: 'APPROVED', notes: '' };
+                                        });
+                                        setSarprasReviewModal(prev => ({ ...prev, itemDecisions: newDecisions }));
+                                    }}
+                                    className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-wider transition-colors shadow-sm flex items-center gap-2 shrink-0 self-start sm:self-auto"
+                                >
+                                    <Check size={14} strokeWidth={3} />
+                                    ACC Semua Aset
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {(sarprasReviewModal.req.items || []).filter(i => isItemAsset(i)).map((item, idx) => {
+                                    const decision = sarprasReviewModal.itemDecisions[item.componentId] || { status: 'PENDING', notes: '' };
+                                    const isAcc = decision.status === 'APPROVED';
+                                    const isRej = decision.status === 'REJECTED';
+
+                                    return (
+                                        <div
+                                            key={item.componentId || idx}
+                                            className={`p-5 rounded-2xl border-2 transition-all bg-white ${isAcc ? 'border-emerald-400 bg-emerald-50/20' : isRej ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200'}`}
+                                        >
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                <div className="space-y-1">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="font-black text-base text-slate-900">{item.name}</span>
+                                                        {item.assetCategory && (
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                                                                {item.assetCategory}
+                                                            </span>
+                                                        )}
+                                                        {item.assetRoom && (
+                                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                                                                Ruang: {item.assetRoom}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div className="text-xs text-slate-500 font-medium flex flex-wrap items-center gap-3">
+                                                        <span>Volume: <b>{item.volume || 1} {item.satuan || 'Unit'}</b></span>
+                                                        <span>•</span>
+                                                        <span>Harga Satuan: <b>{formatRupiah(item.harga || item.amount)}</b></span>
+                                                        <span>•</span>
+                                                        <span className="text-indigo-600 font-black">Total: {formatRupiah(item.amount)}</span>
+                                                    </div>
+                                                    {isRej && (
+                                                        <div className="mt-2">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Alasan penolakan Sarpras (wajib)..."
+                                                                value={decision.notes || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    setSarprasReviewModal(prev => ({
+                                                                        ...prev,
+                                                                        itemDecisions: {
+                                                                            ...prev.itemDecisions,
+                                                                            [item.componentId]: { ...decision, notes: val }
+                                                                        }
+                                                                    }));
+                                                                }}
+                                                                className="w-full text-xs px-3 py-2 rounded-xl border border-rose-300 focus:outline-none focus:ring-2 focus:ring-rose-400 bg-white"
+                                                            />
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <div className="flex items-center gap-2 shrink-0">
+                                                    <button
+                                                        onClick={() => {
+                                                            setSarprasReviewModal(prev => ({
+                                                                ...prev,
+                                                                itemDecisions: {
+                                                                    ...prev.itemDecisions,
+                                                                    [item.componentId]: { status: isAcc ? 'PENDING' : 'APPROVED', notes: '' }
+                                                                }
+                                                            }));
+                                                        }}
+                                                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 ${isAcc ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-emerald-100 hover:text-emerald-700'}`}
+                                                    >
+                                                        <Check size={14} strokeWidth={3} />
+                                                        {isAcc ? '✓ Di-ACC' : 'ACC'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            const reason = !isRej ? (decision.notes || window.prompt('Masukkan alasan penolakan Sarpras:') || 'Ditolak Sarpras') : '';
+                                                            setSarprasReviewModal(prev => ({
+                                                                ...prev,
+                                                                itemDecisions: {
+                                                                    ...prev.itemDecisions,
+                                                                    [item.componentId]: { status: isRej ? 'PENDING' : 'REJECTED', notes: reason }
+                                                                }
+                                                            }));
+                                                        }}
+                                                        className={`px-5 py-2.5 rounded-xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 ${isRej ? 'bg-rose-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-rose-100 hover:text-rose-700'}`}
+                                                    >
+                                                        <XCircle size={14} />
+                                                        {isRej ? '✕ Ditolak' : 'Tolak'}
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                            <button
+                                onClick={() => setSarprasReviewModal(null)}
+                                className="px-6 py-3 rounded-xl text-slate-600 font-black text-xs uppercase tracking-wider hover:bg-slate-200 transition-colors"
+                            >
+                                Tutup
+                            </button>
+                            <button
+                                onClick={handleSaveSarprasModal}
+                                disabled={processingId === 'saving-sarpras-review'}
+                                className="px-8 py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black text-xs uppercase tracking-widest rounded-xl shadow-lg shadow-amber-500/20 transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {processingId === 'saving-sarpras-review' ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                Simpan Verifikasi Sarpras
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
