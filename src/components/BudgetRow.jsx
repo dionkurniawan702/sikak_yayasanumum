@@ -226,83 +226,42 @@ export default function BudgetRow({
                                                             📦 {comp.assetName || comp.namaAset ? `${comp.assetName || comp.namaAset} (${comp.assetCategory || 'Aset'})` : (comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset')}
                                                         </span>
                                                     )}
-                                                    {/* Status Tunggal Progresif Komponen (Tidak ada lagi badge ganda membingungkan) */}
-                                                    {(() => {
-                                                        if (comp.isAsset) {
-                                                            // 1. Ditolak oleh Sarpras
-                                                            if (comp.sarprasStatus === 'REJECTED') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500 text-white whitespace-nowrap" title={comp.sarprasNotes ? `Catatan Sarpras: ${comp.sarprasNotes}` : 'Ditolak Sarpras'}>
-                                                                        ✕ Ditolak Sarpras
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            // 2. Belum disetujui Sarpras (Menunggu ACC Sarpras)
-                                                            if (comp.sarprasStatus !== 'APPROVED') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 whitespace-nowrap" title="Menunggu verifikasi spesifikasi oleh Bidang Sarpras">
-                                                                        ⏳ Menunggu Sarpras
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            // 3. Sudah ACC Sarpras: Ikuti tahapan pengajuan ke Yayasan
-                                                            if (comp.status === 'APPROVED') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap" title="Disetujui oleh Yayasan (RAB Sah)">
-                                                                        ✓ Disetujui Yayasan
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            if (comp.status === 'PENDING') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500 text-white whitespace-nowrap" title="Telah di-ACC Sarpras, sedang menunggu persetujuan anggaran Yayasan">
-                                                                        ⏳ Menunggu Yayasan
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            if (comp.status === 'REJECTED') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500 text-white whitespace-nowrap" title="Ditolak oleh Yayasan saat telaah RAB">
-                                                                        ✕ Ditolak Yayasan
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            // Jika masih DRAFT di unit (Sarpras sudah ACC, siap diajukan ke Yayasan)
-                                                            return (
-                                                                <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200 whitespace-nowrap" title="Telah disetujui Sarpras, siap diajukan ke Yayasan">
-                                                                    ✓ Lolos Sarpras (Draft)
-                                                                </span>
-                                                            );
-                                                        } else {
-                                                            // Alur Komponen Belanja Biasa (Non-Aset):
-                                                            if (comp.status === 'APPROVED') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap">
-                                                                        ✓ Disetujui Yayasan
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            if (comp.status === 'PENDING') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500 text-white whitespace-nowrap">
-                                                                        ⏳ Menunggu Yayasan
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            if (comp.status === 'REJECTED') {
-                                                                return (
-                                                                    <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500 text-white whitespace-nowrap">
-                                                                        ✕ Ditolak Yayasan
-                                                                    </span>
-                                                                );
-                                                            }
-                                                            return (
-                                                                <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-300 text-slate-700 whitespace-nowrap">
-                                                                    Draft
-                                                                </span>
-                                                            );
-                                                        }
-                                                    })()}
+                                                    {/* Status Verifikasi Sarpras (Khusus Komponen Aset) */}
+                                                    {comp.isAsset && (
+                                                        comp.sarprasStatus === 'REJECTED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500 text-white whitespace-nowrap" title={comp.sarprasNotes ? `Catatan Sarpras: ${comp.sarprasNotes}` : 'Ditolak Sarpras'}>
+                                                                ✕ Ditolak Sarpras
+                                                            </span>
+                                                        ) : comp.sarprasStatus !== 'APPROVED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-400 text-amber-950 whitespace-nowrap" title="Menunggu verifikasi spesifikasi oleh Bidang Sarpras">
+                                                                ⏳ Menunggu Sarpras
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-teal-100 text-teal-800 border border-teal-200 whitespace-nowrap" title="Spesifikasi telah disetujui oleh Bidang Sarpras">
+                                                                ✓ ACC Sarpras
+                                                            </span>
+                                                        )
+                                                    )}
+                                                    {/* Status Pengajuan & Persetujuan Yayasan (Tampil jika non-aset, ATAU jika aset sudah lolos ACC Sarpras) */}
+                                                    {(!comp.isAsset || comp.sarprasStatus === 'APPROVED') && (
+                                                        comp.status === 'APPROVED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap" title="Anggaran disetujui oleh Yayasan (RAB Sah)">
+                                                                ✓ Disetujui Yayasan
+                                                            </span>
+                                                        ) : comp.status === 'PENDING' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500 text-white whitespace-nowrap" title="Sedang menunggu telaah dan persetujuan Yayasan">
+                                                                ⏳ Menunggu Yayasan
+                                                            </span>
+                                                        ) : comp.status === 'REJECTED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-500 text-white whitespace-nowrap" title="Ditolak oleh Yayasan saat telaah RAB">
+                                                                ✕ Ditolak Yayasan
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-slate-300 text-slate-700 whitespace-nowrap" title="Draft (Belum diajukan ke Yayasan)">
+                                                                Draft
+                                                            </span>
+                                                        )
+                                                    )}
                                                     {isUnbalanced && (
                                                         <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-rose-600 text-white flex items-center gap-1 whitespace-nowrap" title={`Alokasi Bulanan Belum Seimbang. Total: ${formatCurrency(comp.total)} vs Terjadwal: ${formatCurrency(monthlyTotal)}`}>
                                                             <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
