@@ -5651,17 +5651,25 @@ function RABContent() {
                                                                                                     <span className="text-[10px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs">
                                                                                                         <Package size={11} className="text-indigo-600" /> {comp.assetName ? `${comp.assetName} (${comp.assetCategory || 'Aset'})` : (comp.assetCategory ? `Aset: ${comp.assetCategory}` : 'Aset Sarpras')}
                                                                                                     </span>
-                                                                                                    {comp.sarprasStatus === 'PENDING' ? (
-                                                                                                        <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                                                                            ⏳ Menunggu Sarpras
-                                                                                                        </span>
-                                                                                                    ) : comp.sarprasStatus === 'REJECTED' ? (
+                                                                                                    {comp.sarprasStatus === 'REJECTED' ? (
                                                                                                         <span className="text-[9px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md flex items-center gap-1" title={comp.sarprasNotes || ''}>
                                                                                                             <XCircle size={11} /> Ditolak Sarpras
                                                                                                         </span>
-                                                                                                    ) : (
+                                                                                                    ) : comp.sarprasStatus !== 'APPROVED' ? (
+                                                                                                        <span className="text-[9px] font-black text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            ⏳ Menunggu Sarpras
+                                                                                                        </span>
+                                                                                                    ) : isApproved ? (
                                                                                                         <span className="text-[9px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1">
-                                                                                                            <CheckCircle2 size={11} /> ACC Sarpras
+                                                                                                            <CheckCircle2 size={11} /> Disetujui Yayasan
+                                                                                                        </span>
+                                                                                                    ) : isPending ? (
+                                                                                                        <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            ⏳ Menunggu Yayasan
+                                                                                                        </span>
+                                                                                                    ) : (
+                                                                                                        <span className="text-[9px] font-black text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                            <CheckCircle2 size={11} /> Lolos Sarpras (Draft)
                                                                                                         </span>
                                                                                                     )}
                                                                                                     {isSarprasAdmin && (
@@ -5741,7 +5749,7 @@ function RABContent() {
                                                                                             {(isPending || isApproved) && !isSuperAdmin ? (
                                                                                                 <div className="flex items-center gap-2">
                                                                                                     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
-                                                                                                        <Lock size={14} /> {isApproved ? 'Disetujui' : 'Menunggu'}
+                                                                                                        <Lock size={14} /> {isApproved ? 'Disetujui Yayasan' : 'Menunggu Yayasan'}
                                                                                                     </div>
                                                                                                     <button
                                                                                                         onClick={() => {
