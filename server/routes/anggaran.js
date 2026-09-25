@@ -1314,11 +1314,17 @@ router.delete('/budget-reports/:id', requireAuth, async (req, res) => {
         }
 
         await prisma.$transaction(async (tx) => {
-            // Nota draft dan budget-reports selalu dihapus secara permanen (tanpa masuk ke trash)
             if (report.journalId) {
                 await tx.journal.delete({ where: { id: report.journalId } }).catch(() => {});
             }
-            await tx.budgetReport.delete({ where: { id: reportId } });
+            if (req.query.permanent === 'true') {
+                await tx.budgetReport.delete({ where: { id: reportId } });
+            } else {
+                await tx.budgetReport.update({
+                    where: { id: reportId },
+                    data: { isDeleted: true, status: 'DELETED' }
+                });
+            }
         });
 
         res.json({ message: 'Success' });

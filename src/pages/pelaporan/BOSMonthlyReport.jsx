@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, Landmark, Upload, FileSpreadsheet } from 'lucide-react';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, Landmark, Upload, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
@@ -123,7 +123,7 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
 }
 
 // ─── Expandable Row ──────────────────────────────────────────────────────────
-function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, globalAcademicYearId }) {
+function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, onCancelApproval, onWithdraw, isProcessing, globalAcademicYearId }) {
     const [open, setOpen] = useState(false);
     const unitName = units.find(u => u.id === report.unitId)?.name;
     const dateStr = report.date ? new Date(report.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
@@ -166,18 +166,16 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                 className={`border-b border-slate-100 cursor-pointer transition-colors ${open ? 'bg-emerald-50/40' : 'hover:bg-slate-50/80'}`}
                 onClick={() => setOpen(o => !o)}
             >
-                {!isSuperAdmin && (
-                    <td className="px-5 py-4 text-center" onClick={e => e.stopPropagation()}>
-                        {selectable && (
-                            <input 
-                                type="checkbox" 
-                                checked={isSelected} 
-                                onChange={() => onToggleSelect(report.id)}
-                                className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shadow-sm"
-                            />
-                        )}
-                    </td>
-                )}
+                <td className="px-5 py-4 text-center" onClick={e => e.stopPropagation()}>
+                    {selectable && (
+                        <input 
+                            type="checkbox" 
+                            checked={isSelected} 
+                            onChange={() => onToggleSelect(report.id)}
+                            className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shadow-sm"
+                        />
+                    )}
+                </td>
                 <td className="px-5 py-4 text-center">
                     <span className="text-[10px] font-black text-slate-400">{idx + 1}</span>
                 </td>
@@ -248,6 +246,16 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                 </td>
                 <td className="px-5 py-4 text-center">
                     <div className="flex items-center justify-center gap-1.5">
+                        {!isSuperAdmin && report.status === 'PENDING' && onWithdraw && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onWithdraw(); }}
+                                className="px-2.5 py-1 text-[9px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 rounded-lg transition-all flex items-center gap-1 shadow-sm active:scale-95"
+                                title="Batalkan Ajukan (Kembalikan ke Draf)"
+                            >
+                                <RotateCcw size={11} />
+                                <span>Tarik Ajuan</span>
+                            </button>
+                        )}
                         {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') && onEdit && onDelete && (
                             <>
                                 {report.kategoriAset !== 'PENGEMBALIAN' && (
@@ -268,6 +276,15 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 </button>
                             </>
                         )}
+                        {isSuperAdmin && onDelete && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Hapus Laporan Permanen"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
                         {open
                             ? <ChevronDown size={14} className="text-emerald-400" />
                             : <ChevronRight size={14} className="text-slate-300" />}
@@ -278,7 +295,7 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
             {/* Accordion Detail */}
             {open && (
                 <tr className="bg-slate-50/80 border-b border-slate-100">
-                    <td colSpan={isSuperAdmin ? 11 : 12} className="px-8 py-6">
+                    <td colSpan={13} className="px-8 py-6">
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                             {/* Rincian Pembelian */}
                             <div className="space-y-3">
@@ -324,6 +341,33 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                     </div>
                                 </div>
                             )}
+
+                            {/* Actions for Superadmin */}
+                            {isSuperAdmin && (
+                                <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
+                                    <div className="flex gap-3 justify-end">
+                                        {report.status === 'APPROVED' && onCancelApproval && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onCancelApproval(); }} 
+                                                disabled={isProcessing}
+                                                className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-amber-600 hover:!bg-amber-50 hover:!border-amber-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <RotateCcw size={12} className="inline-block" /> Batalkan Persetujuan (ACC)
+                                            </button>
+                                        )}
+                                        {onDelete && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+                                                disabled={isProcessing}
+                                                className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Hapus Laporan Permanen"
+                                            >
+                                                <Trash2 size={12} className="inline-block" /> Hapus Laporan
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </td>
                 </tr>
@@ -342,6 +386,8 @@ export default function BOSMonthlyReport() {
 
     const [selectedUnitFilter, setSelectedUnitFilter] = useState('ALL'); // superadmin unit filter
     const [selectedHistoryIds, setSelectedHistoryIds] = useState([]); // local history bulk submission
+    const [selectedHistoryPendingIds, setSelectedHistoryPendingIds] = useState([]);
+    const [selectedHistoryCancelIds, setSelectedHistoryCancelIds] = useState([]);
     const [showReportsList, setShowReportsList] = useState(false);
     const [selectedItemForReports, setSelectedItemForReports] = useState(null);
 
@@ -995,6 +1041,7 @@ export default function BOSMonthlyReport() {
 
                 const transactionRows = rows.slice(8);
                 let importedCount = 0;
+                let skippedCount = 0;
 
                 transactionRows.forEach((row) => {
                     if (!row || row.length < 4) return;
@@ -1008,6 +1055,24 @@ export default function BOSMonthlyReport() {
                     const notaVal = row[7] ? String(row[7]).trim() : '';
 
                     if (!descVal || amountVal <= 0) return;
+
+                    // Anti-duplikasi: Cek apakah nota dengan nomor, tanggal, dan nominal yang sama persis sudah ada di sistem
+                    const isDuplicate = (budgetReports || []).some(existing => 
+                        !existing.isDeleted &&
+                        existing.budgetRequestId === item.reqId &&
+                        existing.status !== 'REJECTED' &&
+                        (
+                            (notaVal && existing.nomorNota && String(existing.nomorNota).trim().toLowerCase() === notaVal.toLowerCase()) ||
+                            (String(existing.description || '').trim().toLowerCase() === descVal.toLowerCase() &&
+                             Math.abs(parseFloat(existing.amount || 0) - amountVal) < 0.01 &&
+                             String(existing.date || '').slice(0, 10) === dateVal.slice(0, 10))
+                        )
+                    );
+
+                    if (isDuplicate) {
+                        skippedCount++;
+                        return;
+                    }
 
                     const newReport = {
                         id: `REL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -1034,7 +1099,9 @@ export default function BOSMonthlyReport() {
                 });
 
                 if (importedCount > 0) {
-                    alert(`Berhasil mengimpor ${importedCount} nota realisasi BOS untuk "${item.name}"! Data telah tersimpan sebagai Draft Nota.`);
+                    alert(`Berhasil mengimpor ${importedCount} nota realisasi BOS untuk "${item.name}"! Data telah tersimpan sebagai Draft Nota.${skippedCount > 0 ? `\n\n(${skippedCount} nota dilewati karena sudah ada di sistem agar tidak duplikat)` : ''}`);
+                } else if (skippedCount > 0) {
+                    alert(`Semua (${skippedCount}) nota dalam file Excel ini SUDAH ADA di sistem dan dilewati agar tidak terjadi duplikasi.`);
                 } else {
                     alert('Tidak ada data nota valid yang ditemukan pada file Excel.');
                 }
@@ -1081,6 +1148,8 @@ export default function BOSMonthlyReport() {
     React.useEffect(() => {
         setSelectedReportIds([]);
         setSelectedHistoryIds([]);
+        setSelectedHistoryPendingIds([]);
+        setSelectedHistoryCancelIds([]);
     }, [sourceMode, activeTab]);
 
     const handleSelectAll = (e) => {
@@ -1149,31 +1218,69 @@ export default function BOSMonthlyReport() {
 
     const handleSelectAllHistory = (e) => {
         if (e.target.checked) {
-            setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+            if (isSuperAdmin) {
+                const cancelable = filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').map(r => r.id);
+                setSelectedHistoryCancelIds(cancelable);
+            } else {
+                setSelectedHistoryIds(filteredReports.filter(r => r.status === 'DRAFT').map(r => r.id));
+                setSelectedHistoryPendingIds(filteredReports.filter(r => r.status === 'PENDING').map(r => r.id));
+            }
         } else {
             setSelectedHistoryIds([]);
+            setSelectedHistoryPendingIds([]);
+            setSelectedHistoryCancelIds([]);
         }
     };
 
     const handleToggleSelectHistory = (id) => {
-        setSelectedHistoryIds(prev => 
+        const report = filteredReports.find(r => r.id === id);
+        if (report?.status === 'PENDING') {
+            setSelectedHistoryPendingIds(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+            );
+        } else {
+            setSelectedHistoryIds(prev => 
+                prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+            );
+        }
+    };
+
+    const handleToggleSelectHistoryCancel = (id) => {
+        setSelectedHistoryCancelIds(prev => 
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
     };
 
+    const handleWithdrawReportSubmission = async (report) => {
+        if (!window.confirm(`Batalkan pengajuan laporan nota "${report.nomorNota || report.category}"?\n\nStatus laporan akan dikembalikan ke DRAFT agar bisa Anda ubah.`)) return;
+        setProcessingId(report.id);
+        try {
+            const updated = { ...report, status: 'DRAFT', notified: false };
+            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+
+            alert('Pengajuan laporan berhasil dibatalkan dan dikembalikan ke DRAFT.');
+        } catch (err) {
+            alert('Gagal membatalkan pengajuan: ' + err.message);
+        } finally {
+            setProcessingId(null);
+        }
+    };
+
     const handleBulkSubmitHistory = async () => {
-        if (selectedHistoryIds.length === 0) return;
+        if (selectedHistoryIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan draft yang ingin diajukan terlebih dahulu!');
+        }
         if (window.confirm(`Anda akan mengajukan ${selectedHistoryIds.length} laporan terpilih ke Superadmin. Lanjutkan?`)) {
             setProcessingId('BULK_HISTORY');
             try {
-                const updatedReports = selectedHistoryIds.map(id => {
+                for (const id of selectedHistoryIds) {
                     const r = budgetReports.find(x => x.id === id);
-                    return r ? { ...r, status: 'PENDING' } : null;
-                }).filter(Boolean);
-
-                for (const report of updatedReports) {
-                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: report });
-                    await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: report }, state);
+                    if (r) {
+                        const updated = { ...r, status: 'PENDING' };
+                        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                    }
                 }
 
                 alert(`${selectedHistoryIds.length} laporan berhasil diajukan!`);
@@ -1183,6 +1290,65 @@ export default function BOSMonthlyReport() {
             } finally {
                 setProcessingId(null);
             }
+        }
+    };
+
+    const handleBulkWithdrawHistory = async () => {
+        if (selectedHistoryPendingIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan berstatus MENUNGGU untuk dibatalkan pengajuannya!');
+        }
+        if (window.confirm(`Batalkan pengajuan ${selectedHistoryPendingIds.length} laporan terpilih?\n\nStatus laporan akan dikembalikan ke DRAFT.`)) {
+            setProcessingId('BULK_WITHDRAW');
+            try {
+                for (const id of selectedHistoryPendingIds) {
+                    const r = budgetReports.find(x => x.id === id);
+                    if (r && r.status === 'PENDING') {
+                        const updated = { ...r, status: 'DRAFT', notified: false };
+                        dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                        await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                    }
+                }
+
+                alert(`${selectedHistoryPendingIds.length} pengajuan laporan berhasil dibatalkan dan dikembalikan ke DRAFT!`);
+                setSelectedHistoryPendingIds([]);
+            } catch (err) {
+                alert('Gagal membatalkan pengajuan laporan: ' + err.message);
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkCancelApproval = async () => {
+        if (selectedHistoryCancelIds.length === 0) {
+            return alert('Pilih/centang minimal satu laporan yang terverifikasi untuk dibatalkan!');
+        }
+        const confirmMsg = `Batalkan verifikasi ${selectedHistoryCancelIds.length} laporan terpilih?\n\nJurnal akuntansi terkait akan DIHAPUS dan status laporan kembali ke PENDING.`;
+        if (!window.confirm(confirmMsg)) return;
+
+        setProcessingId('BULK_CANCEL');
+        try {
+            const result = await api.bulkCancelApproval(selectedHistoryCancelIds);
+
+            const successIds = new Set(result.success || []);
+            successIds.forEach(id => {
+                const r = budgetReports.find(x => x.id === id);
+                if (r) {
+                    const updated = { ...r, status: 'PENDING', journalId: null, notified: false };
+                    dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                }
+            });
+
+            const failCount = (result.failed || []).length;
+            alert(
+                `${successIds.size} laporan berhasil dibatalkan verifikasinya.` +
+                (failCount > 0 ? `\n${failCount} laporan gagal diproses (mungkin bukan status APPROVED).` : '')
+            );
+            setSelectedHistoryCancelIds([]);
+        } catch (err) {
+            alert('Gagal membatalkan verifikasi: ' + err.message);
+        } finally {
+            setProcessingId(null);
         }
     };
     const baseReports = useMemo(() => {
@@ -1489,10 +1655,91 @@ export default function BOSMonthlyReport() {
         }
     };
 
-    const handleDeleteDraft = (id) => {
+    const handleDeleteDraft = async (id) => {
         if (window.confirm('Hapus nota (draft) ini? Saldo sisa dana akan kembali seperti semula.')) {
-            dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
-            api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+            try {
+                setProcessingId(id);
+                await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+                dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+            } catch (err) {
+                console.error('Delete draft failed:', err);
+                alert('Gagal menghapus nota: ' + (err.message || 'Terjadi kesalahan pada server.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkDeleteDrafts = async () => {
+        if (selectedHistoryIds.length === 0) return alert('Pilih draft yang ingin dihapus.');
+        if (window.confirm(`Hapus ${selectedHistoryIds.length} draft laporan terpilih? Saldo sisa dana akan kembali seperti semula.`)) {
+            try {
+                setProcessingId('BULK_DELETE_DRAFTS');
+                for (const id of selectedHistoryIds) {
+                    await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+                    dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+                }
+                alert(`${selectedHistoryIds.length} draft laporan berhasil dihapus.`);
+                setSelectedHistoryIds([]);
+            } catch (err) {
+                console.error('Bulk delete drafts failed:', err);
+                alert('Gagal menghapus draft: ' + (err.message || 'Terjadi kesalahan pada server.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleDeleteReportSuperadmin = async (report) => {
+        if (window.confirm(`PERINGATAN SUPERADMIN: Apakah Anda yakin ingin MENGHAPUS PERMANEN laporan nota "${report.nomorNota || '-'} - ${report.description || report.category}" ini?\n\nJurnal akuntansi terkait (jika ada) juga akan otomatis dibatalkan/dihapus.`)) {
+            try {
+                setProcessingId(report.id);
+                await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: report.id }, state);
+                dispatch({ type: 'DELETE_BUDGET_REPORT', payload: report.id });
+                alert('Laporan berhasil dihapus.');
+            } catch (err) {
+                console.error('Superadmin delete failed:', err);
+                alert('Gagal menghapus laporan: ' + (err.message || 'Terjadi kesalahan pada server.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkDeleteSuperadmin = async () => {
+        if (selectedHistoryCancelIds.length === 0) return alert('Pilih laporan yang ingin dihapus.');
+        if (window.confirm(`PERINGATAN SUPERADMIN: Apakah Anda yakin ingin MENGHAPUS ${selectedHistoryCancelIds.length} laporan terpilih?\n\nSemua jurnal terkait akan otomatis dihapus.`)) {
+            try {
+                setProcessingId('BULK_DELETE');
+                for (const id of selectedHistoryCancelIds) {
+                    await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+                    dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+                }
+                alert(`${selectedHistoryCancelIds.length} laporan berhasil dihapus.`);
+                setSelectedHistoryCancelIds([]);
+            } catch (err) {
+                console.error('Bulk delete failed:', err);
+                alert('Gagal menghapus laporan: ' + (err.message || 'Terjadi kesalahan.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleCancelReportApproval = async (report) => {
+        if (window.confirm('Batalkan persetujuan laporan ini? Jurnal akuntansi terkait akan otomatis dihapus dan status laporan kembali ke PENDING.')) {
+            setProcessingId(report.id);
+            try {
+                const updated = { ...report, status: 'PENDING', journalId: null };
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+                alert('Persetujuan laporan berhasil dibatalkan. Status kembali ke PENDING.');
+            } catch (error) {
+                console.error(error);
+                alert('Gagal membatalkan persetujuan laporan: ' + error.message);
+            } finally {
+                setProcessingId(null);
+            }
         }
     };
 
@@ -2143,12 +2390,44 @@ export default function BOSMonthlyReport() {
                             </div>
                             <div className="flex items-center gap-4">
                                 {!isSuperAdmin && selectedHistoryIds.length > 0 && (
+                                    <>
+                                        <button 
+                                            onClick={handleBulkSubmitHistory} 
+                                            disabled={processingId === 'BULK_HISTORY'}
+                                            className="px-3 py-1.5 bg-emerald-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/30">
+                                            {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Draft Terpilih`}
+                                        </button>
+                                        <button 
+                                            onClick={handleBulkDeleteDrafts} 
+                                            disabled={processingId === 'BULK_DELETE_DRAFTS'}
+                                            className="px-3 py-1.5 bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30">
+                                            {processingId === 'BULK_DELETE_DRAFTS' ? 'Memproses...' : `Hapus ${selectedHistoryIds.length} Draft`}
+                                        </button>
+                                    </>
+                                )}
+                                {!isSuperAdmin && selectedHistoryPendingIds.length > 0 && (
                                     <button 
-                                        onClick={handleBulkSubmitHistory} 
-                                        disabled={processingId === 'BULK_HISTORY'}
-                                        className="px-3 py-1.5 bg-emerald-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/30">
-                                        {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Terpilih`}
+                                        onClick={handleBulkWithdrawHistory} 
+                                        disabled={processingId === 'BULK_WITHDRAW'}
+                                        className="px-3 py-1.5 bg-amber-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-colors shadow-sm shadow-amber-600/30">
+                                        {processingId === 'BULK_WITHDRAW' ? 'Memproses...' : `Batalkan Ajukan ${selectedHistoryPendingIds.length} Terpilih`}
                                     </button>
+                                )}
+                                {isSuperAdmin && selectedHistoryCancelIds.length > 0 && (
+                                    <>
+                                        <button 
+                                            onClick={handleBulkCancelApproval} 
+                                            disabled={processingId === 'BULK_CANCEL'}
+                                            className="px-3 py-1.5 bg-amber-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-colors shadow-sm shadow-amber-600/30">
+                                            {processingId === 'BULK_CANCEL' ? 'Memproses...' : `Batalkan Verifikasi ${selectedHistoryCancelIds.length} Terpilih`}
+                                        </button>
+                                        <button 
+                                            onClick={handleBulkDeleteSuperadmin} 
+                                            disabled={processingId === 'BULK_DELETE'}
+                                            className="px-3 py-1.5 bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30">
+                                            {processingId === 'BULK_DELETE' ? 'Memproses...' : `Hapus ${selectedHistoryCancelIds.length} Terpilih`}
+                                        </button>
+                                    </>
                                 )}
                                 <span className="text-[9px] text-slate-400 font-bold">{filteredReports.length} data ditampilkan</span>
                             </div>
@@ -2157,16 +2436,17 @@ export default function BOSMonthlyReport() {
                             <table className="w-full text-left border-collapse">
                                 <thead>
                                     <tr className="bg-slate-50 border-b border-slate-100">
-                                        {!isSuperAdmin && (
-                                            <th className="px-5 py-3 w-12 text-center">
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shadow-sm"
-                                                    onChange={handleSelectAllHistory}
-                                                    checked={filteredReports.filter(r => r.status === 'DRAFT').length > 0 && selectedHistoryIds.length === filteredReports.filter(r => r.status === 'DRAFT').length}
-                                                />
-                                            </th>
-                                        )}
+                                        <th className="px-5 py-3 w-12 text-center">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 rounded text-emerald-600 border-slate-300 focus:ring-emerald-500 cursor-pointer shadow-sm"
+                                                onChange={handleSelectAllHistory}
+                                                checked={isSuperAdmin 
+                                                    ? (filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').length > 0 && selectedHistoryCancelIds.length === filteredReports.filter(r => r.status === 'APPROVED' || r.status === 'PENDING').length)
+                                                    : (filteredReports.filter(r => r.status === 'DRAFT' || r.status === 'PENDING').length > 0 && (selectedHistoryIds.length + selectedHistoryPendingIds.length) === filteredReports.filter(r => r.status === 'DRAFT' || r.status === 'PENDING').length)
+                                                }
+                                            />
+                                        </th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center w-10">No</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">Tanggal Nota</th>
                                         <th className="px-5 py-3 text-[9px] font-black text-emerald-500 uppercase tracking-widest">Bulan Permintaan</th>
@@ -2194,11 +2474,14 @@ export default function BOSMonthlyReport() {
                                                 budgetRequests={budgetRequests} 
                                                 isSuperAdmin={isSuperAdmin} 
                                                 idx={idx} 
-                                                selectable={!isSuperAdmin && report.status === 'DRAFT'}
-                                                isSelected={selectedHistoryIds.includes(report.id)}
-                                                onToggleSelect={handleToggleSelectHistory}
+                                                selectable={(!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'PENDING')) || (isSuperAdmin && (report.status === 'APPROVED' || report.status === 'PENDING'))}
+                                                isSelected={isSuperAdmin ? selectedHistoryCancelIds.includes(report.id) : (report.status === 'PENDING' ? selectedHistoryPendingIds.includes(report.id) : selectedHistoryIds.includes(report.id))}
+                                                onToggleSelect={isSuperAdmin ? handleToggleSelectHistoryCancel : handleToggleSelectHistory}
                                                 onEdit={() => handleEditDraft(report)}
-                                                onDelete={() => handleDeleteDraft(report.id)}
+                                                onDelete={isSuperAdmin ? () => handleDeleteReportSuperadmin(report) : () => handleDeleteDraft(report.id)}
+                                                onCancelApproval={() => handleCancelReportApproval(report)}
+                                                onWithdraw={() => handleWithdrawReportSubmission(report)}
+                                                isProcessing={processingId === report.id}
                                             />
                                         ))
                                         : (
@@ -2397,7 +2680,7 @@ export default function BOSMonthlyReport() {
                                                 <th className="px-5 py-3 text-[9px] font-black text-rose-500 uppercase tracking-widest text-right">Diskon</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                                                {!isSuperAdmin && <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>}
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2435,39 +2718,50 @@ export default function BOSMonthlyReport() {
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        {!isSuperAdmin && (
-                                                            <td className="px-5 py-4 text-center">
-                                                                {(report.status === 'DRAFT' || report.status === 'REJECTED') ? (
-                                                                    <div className="flex items-center justify-center gap-1.5">
-                                                                        {report.kategoriAset !== 'PENGEMBALIAN' && (
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setShowReportsList(false);
-                                                                                    handleEditDraft(report);
-                                                                                }}
-                                                                                className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                                                title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
-                                                                            >
-                                                                                <Edit2 size={14} />
-                                                                            </button>
-                                                                        )}
+                                                        <td className="px-5 py-4 text-center">
+                                                            {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') ? (
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    {report.kategoriAset !== 'PENGEMBALIAN' && (
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                handleDeleteDraft(report.id);
+                                                                                setShowReportsList(false);
+                                                                                handleEditDraft(report);
                                                                             }}
-                                                                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
-                                                                            title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                                                                            className="p-1.5 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                                            title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
                                                                         >
-                                                                            <Trash2 size={14} />
+                                                                            <Edit2 size={14} />
                                                                         </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-slate-300 text-xs">—</span>
-                                                                )}
-                                                            </td>
-                                                        )}
+                                                                    )}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteDraft(report.id);
+                                                                        }}
+                                                                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                                                        title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : isSuperAdmin ? (
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteReportSuperadmin(report);
+                                                                        }}
+                                                                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                                                        title="Hapus Laporan Permanen"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-300 text-xs">—</span>
+                                                            )}
+                                                        </td>
                                                     </tr>
                                                 );
                                             })}

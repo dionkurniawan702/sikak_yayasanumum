@@ -277,6 +277,15 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 </button>
                             </>
                         )}
+                        {isSuperAdmin && onDelete && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                                className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                title="Hapus Laporan Permanen"
+                            >
+                                <Trash2 size={14} />
+                            </button>
+                        )}
                         {open
                             ? <ChevronDown size={14} className="text-indigo-400" />
                             : <ChevronRight size={14} className="text-slate-300" />}
@@ -334,17 +343,29 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 </div>
                             )}
 
-                            {/* Actions for Approved (Superadmin Only) */}
-                            {isSuperAdmin && report.status === 'APPROVED' && onCancelApproval && (
+                            {/* Actions for Superadmin */}
+                            {isSuperAdmin && (
                                 <div className="space-y-3 md:col-span-3 border-t border-slate-200/60 pt-4 mt-2">
                                     <div className="flex gap-3 justify-end">
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); onCancelApproval(); }} 
-                                            disabled={isProcessing}
-                                            className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <RotateCcw size={12} className="inline-block" /> Batalkan Persetujuan (ACC)
-                                        </button>
+                                        {report.status === 'APPROVED' && onCancelApproval && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onCancelApproval(); }} 
+                                                disabled={isProcessing}
+                                                className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-amber-600 hover:!bg-amber-50 hover:!border-amber-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                            >
+                                                <RotateCcw size={12} className="inline-block" /> Batalkan Persetujuan (ACC)
+                                            </button>
+                                        )}
+                                        {onDelete && (
+                                            <button 
+                                                onClick={(e) => { e.stopPropagation(); onDelete(); }} 
+                                                disabled={isProcessing}
+                                                className="btn btn-secondary !py-2 !px-4 !text-xs !rounded-xl !text-rose-600 hover:!bg-rose-50 hover:!border-rose-200 shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Hapus Laporan Permanen"
+                                            >
+                                                <Trash2 size={12} className="inline-block" /> Hapus Laporan
+                                            </button>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -1082,6 +1103,7 @@ export default function MonthlyReport() {
 
                 const transactionRows = rows.slice(8);
                 let importedCount = 0;
+                let skippedCount = 0;
 
                 transactionRows.forEach((row) => {
                     if (!row || row.length < 4) return;
@@ -1095,6 +1117,19 @@ export default function MonthlyReport() {
                     const notaVal = row[7] ? String(row[7]).trim() : '';
 
                     if (!descVal || amountVal <= 0) return;
+
+                    // Proteksi anti-duplikasi: lewati jika nota & rincian serupa sudah pernah ada di request ini
+                    const isDuplicate = (budgetReports || []).some(r => 
+                        !r.isDeleted &&
+                        r.budgetRequestId === item.reqId &&
+                        (r.nomorNota || '').trim().toLowerCase() === notaVal.toLowerCase() &&
+                        (r.description || '').trim().toLowerCase() === descVal.toLowerCase() &&
+                        parseFloat(r.amount || 0) === amountVal
+                    );
+                    if (isDuplicate) {
+                        skippedCount++;
+                        return;
+                    }
 
                     const newReport = {
                         id: `REL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -1111,7 +1146,8 @@ export default function MonthlyReport() {
                         nomorNota: notaVal,
                         status: 'DRAFT',
                         createdAt: new Date().toISOString(),
-                        unitId: item.reqUnitId
+                        unitId: item.reqUnitId,
+                        academicYearId: globalAcademicYearId
                     };
 
                     dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReport });
@@ -1120,7 +1156,10 @@ export default function MonthlyReport() {
                 });
 
                 if (importedCount > 0) {
-                    alert(`Berhasil mengimpor ${importedCount} nota realisasi untuk "${item.name}"! Data telah tersimpan sebagai Draft Nota.`);
+                    const skipMsg = skippedCount > 0 ? ` (${skippedCount} nota dilewati karena sudah ada/duplikat).` : '.';
+                    alert(`Berhasil mengimpor ${importedCount} nota realisasi untuk "${item.name}"! Data telah tersimpan sebagai Draft Nota${skipMsg}`);
+                } else if (skippedCount > 0) {
+                    alert(`Semua ${skippedCount} nota pada file Excel dilewati karena sudah ada sebelumnya.`);
                 } else {
                     alert('Tidak ada data nota valid yang ditemukan pada file Excel.');
                 }
@@ -1720,10 +1759,74 @@ export default function MonthlyReport() {
         }
     };
 
-    const handleDeleteDraft = (id) => {
+    const handleDeleteDraft = async (id) => {
         if (window.confirm('Hapus nota (draft) ini? Saldo sisa dana akan kembali seperti semula.')) {
-            dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
-            api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+            try {
+                setProcessingId(id);
+                await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+                dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+            } catch (err) {
+                console.error('Delete draft failed:', err);
+                alert('Gagal menghapus nota: ' + (err.message || 'Terjadi kesalahan pada server.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkDeleteDrafts = async () => {
+        if (selectedHistoryIds.length === 0) return alert('Pilih draft yang ingin dihapus.');
+        if (window.confirm(`Hapus ${selectedHistoryIds.length} draft laporan terpilih? Saldo sisa dana akan kembali seperti semula.`)) {
+            try {
+                setProcessingId('BULK_DELETE_DRAFTS');
+                for (const id of selectedHistoryIds) {
+                    await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+                    dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+                }
+                alert(`${selectedHistoryIds.length} draft laporan berhasil dihapus.`);
+                setSelectedHistoryIds([]);
+            } catch (err) {
+                console.error('Bulk delete drafts failed:', err);
+                alert('Gagal menghapus draft: ' + (err.message || 'Terjadi kesalahan pada server.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleDeleteReportSuperadmin = async (report) => {
+        if (window.confirm(`PERINGATAN SUPERADMIN: Apakah Anda yakin ingin MENGHAPUS PERMANEN laporan nota "${report.nomorNota || '-'} - ${report.description || report.category}" ini?\n\nJurnal akuntansi terkait (jika ada) juga akan otomatis dibatalkan/dihapus.`)) {
+            try {
+                setProcessingId(report.id);
+                await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: report.id }, state);
+                dispatch({ type: 'DELETE_BUDGET_REPORT', payload: report.id });
+                alert('Laporan berhasil dihapus.');
+            } catch (err) {
+                console.error('Superadmin delete failed:', err);
+                alert('Gagal menghapus laporan: ' + (err.message || 'Terjadi kesalahan pada server.'));
+            } finally {
+                setProcessingId(null);
+            }
+        }
+    };
+
+    const handleBulkDeleteSuperadmin = async () => {
+        if (selectedHistoryCancelIds.length === 0) return alert('Pilih laporan yang ingin dihapus.');
+        if (window.confirm(`PERINGATAN SUPERADMIN: Apakah Anda yakin ingin MENGHAPUS ${selectedHistoryCancelIds.length} laporan terpilih?\n\nSemua jurnal terkait akan otomatis dihapus.`)) {
+            try {
+                setProcessingId('BULK_DELETE');
+                for (const id of selectedHistoryCancelIds) {
+                    await api.pushAction({ type: 'DELETE_BUDGET_REPORT', payload: id }, state);
+                    dispatch({ type: 'DELETE_BUDGET_REPORT', payload: id });
+                }
+                alert(`${selectedHistoryCancelIds.length} laporan berhasil dihapus.`);
+                setSelectedHistoryCancelIds([]);
+            } catch (err) {
+                console.error('Bulk delete failed:', err);
+                alert('Gagal menghapus laporan: ' + (err.message || 'Terjadi kesalahan.'));
+            } finally {
+                setProcessingId(null);
+            }
         }
     };
 
@@ -2328,12 +2431,20 @@ export default function MonthlyReport() {
                             </div>
                             <div className="flex items-center gap-4">
                                 {!isSuperAdmin && selectedHistoryIds.length > 0 && (
-                                    <button 
-                                        onClick={handleBulkSubmitHistory} 
-                                        disabled={processingId === 'BULK_HISTORY'}
-                                        className="px-3 py-1.5 bg-indigo-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/30">
-                                        {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Draft Terpilih`}
-                                    </button>
+                                    <>
+                                        <button 
+                                            onClick={handleBulkSubmitHistory} 
+                                            disabled={processingId === 'BULK_HISTORY'}
+                                            className="px-3 py-1.5 bg-indigo-500 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-indigo-600 transition-colors shadow-sm shadow-indigo-500/30">
+                                            {processingId === 'BULK_HISTORY' ? 'Memproses...' : `Ajukan ${selectedHistoryIds.length} Draft Terpilih`}
+                                        </button>
+                                        <button 
+                                            onClick={handleBulkDeleteDrafts} 
+                                            disabled={processingId === 'BULK_DELETE_DRAFTS'}
+                                            className="px-3 py-1.5 bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30">
+                                            {processingId === 'BULK_DELETE_DRAFTS' ? 'Memproses...' : `Hapus ${selectedHistoryIds.length} Draft`}
+                                        </button>
+                                    </>
                                 )}
                                 {!isSuperAdmin && selectedHistoryPendingIds.length > 0 && (
                                     <button 
@@ -2344,12 +2455,20 @@ export default function MonthlyReport() {
                                     </button>
                                 )}
                                 {isSuperAdmin && selectedHistoryCancelIds.length > 0 && (
-                                    <button 
-                                        onClick={handleBulkCancelApproval} 
-                                        disabled={processingId === 'BULK_CANCEL'}
-                                        className="px-3 py-1.5 bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30">
-                                        {processingId === 'BULK_CANCEL' ? 'Memproses...' : `Batalkan Verifikasi ${selectedHistoryCancelIds.length} Terpilih`}
-                                    </button>
+                                    <>
+                                        <button 
+                                            onClick={handleBulkCancelApproval} 
+                                            disabled={processingId === 'BULK_CANCEL'}
+                                            className="px-3 py-1.5 bg-amber-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-amber-700 transition-colors shadow-sm shadow-amber-600/30">
+                                            {processingId === 'BULK_CANCEL' ? 'Memproses...' : `Batalkan Verifikasi ${selectedHistoryCancelIds.length} Terpilih`}
+                                        </button>
+                                        <button 
+                                            onClick={handleBulkDeleteSuperadmin} 
+                                            disabled={processingId === 'BULK_DELETE'}
+                                            className="px-3 py-1.5 bg-rose-600 text-white font-black text-[9px] uppercase tracking-widest rounded-lg hover:bg-rose-700 transition-colors shadow-sm shadow-rose-600/30">
+                                            {processingId === 'BULK_DELETE' ? 'Memproses...' : `Hapus ${selectedHistoryCancelIds.length} Terpilih`}
+                                        </button>
+                                    </>
                                 )}
                                 <span className="text-[9px] text-slate-400 font-bold">{filteredReports.length} data ditampilkan</span>
                             </div>
@@ -2400,7 +2519,7 @@ export default function MonthlyReport() {
                                                 isSelected={isSuperAdmin ? selectedHistoryCancelIds.includes(report.id) : (report.status === 'PENDING' ? selectedHistoryPendingIds.includes(report.id) : selectedHistoryIds.includes(report.id))}
                                                 onToggleSelect={isSuperAdmin ? handleToggleSelectHistoryCancel : handleToggleSelectHistory}
                                                 onEdit={() => handleEditDraft(report)}
-                                                onDelete={() => handleDeleteDraft(report.id)}
+                                                onDelete={isSuperAdmin ? () => handleDeleteReportSuperadmin(report) : () => handleDeleteDraft(report.id)}
                                                 onCancelApproval={() => handleCancelReportApproval(report)}
                                                 onWithdraw={() => handleWithdrawReportSubmission(report)}
                                                 isProcessing={processingId === report.id}
@@ -2602,7 +2721,7 @@ export default function MonthlyReport() {
                                                 <th className="px-5 py-3 text-[9px] font-black text-rose-500 uppercase tracking-widest text-right">Diskon</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-right">Jumlah</th>
                                                 <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Status</th>
-                                                {!isSuperAdmin && <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>}
+                                                <th className="px-5 py-3 text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">Aksi</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -2640,39 +2759,50 @@ export default function MonthlyReport() {
                                                                 </span>
                                                             )}
                                                         </td>
-                                                        {!isSuperAdmin && (
-                                                            <td className="px-5 py-4 text-center">
-                                                                {(report.status === 'DRAFT' || report.status === 'REJECTED') ? (
-                                                                    <div className="flex items-center justify-center gap-1.5">
-                                                                        {report.kategoriAset !== 'PENGEMBALIAN' && (
-                                                                            <button
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation();
-                                                                                    setShowReportsList(false);
-                                                                                    handleEditDraft(report);
-                                                                                }}
-                                                                                className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
-                                                                                title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
-                                                                            >
-                                                                                <Edit2 size={14} />
-                                                                            </button>
-                                                                        )}
+                                                        <td className="px-5 py-4 text-center">
+                                                            {!isSuperAdmin && (report.status === 'DRAFT' || report.status === 'REJECTED') ? (
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    {report.kategoriAset !== 'PENGEMBALIAN' && (
                                                                         <button
                                                                             onClick={(e) => {
                                                                                 e.stopPropagation();
-                                                                                handleDeleteDraft(report.id);
+                                                                                setShowReportsList(false);
+                                                                                handleEditDraft(report);
                                                                             }}
-                                                                            className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
-                                                                            title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                                                                            className="p-1.5 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 rounded-lg transition-colors"
+                                                                            title={report.status === 'REJECTED' ? 'Perbaiki Laporan' : 'Edit Draft'}
                                                                         >
-                                                                            <Trash2 size={14} />
+                                                                            <Edit2 size={14} />
                                                                         </button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <span className="text-slate-300 text-xs">—</span>
-                                                                )}
-                                                            </td>
-                                                        )}
+                                                                    )}
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteDraft(report.id);
+                                                                        }}
+                                                                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                                                        title={report.status === 'REJECTED' ? 'Hapus Laporan' : 'Hapus Draft'}
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : isSuperAdmin ? (
+                                                                <div className="flex items-center justify-center gap-1.5">
+                                                                    <button
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            handleDeleteReportSuperadmin(report);
+                                                                        }}
+                                                                        className="p-1.5 text-rose-600 hover:text-rose-800 hover:bg-rose-50 rounded-lg transition-colors"
+                                                                        title="Hapus Laporan Permanen"
+                                                                    >
+                                                                        <Trash2 size={14} />
+                                                                    </button>
+                                                                </div>
+                                                            ) : (
+                                                                <span className="text-slate-300 text-xs">—</span>
+                                                            )}
+                                                        </td>
                                                     </tr>
                                                 );
                                             })}

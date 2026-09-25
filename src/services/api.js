@@ -514,7 +514,7 @@ export const api = {
                 units: state.units || [],
                 incomeItems: state.incomeItems || [],
                 expenseItems: state.expenseItems || [],
-                // distributionSettings and rabPlans removed from auto-sync to prevent dormant tabs from resurrecting deleted rules / stale data
+                // distributionSettings, rabPlans, and budgetReports removed from auto-sync to prevent dormant tabs from resurrecting deleted records / stale data
                 academicYears: state.academicYears || [],
                 classGroups: state.classGroups || [],
                 positions: state.positions || [],
@@ -522,7 +522,6 @@ export const api = {
                 parentStatuses: state.parentStatuses || [],
                 classes: state.classes || [],
                 budgetRequests: state.budgetRequests || [],
-                budgetReports: state.budgetReports || [],
                 bosStages: state.bosStages || [],
                 bosPosList: state.bosPosList || [],
                 bosAllocations: state.bosAllocations || []
