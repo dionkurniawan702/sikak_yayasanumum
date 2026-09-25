@@ -96,7 +96,9 @@ export default function RealizationDashboard() {
                     if (p.components && p.components.length > 0) {
                         // New Granular Approval System: Sum only approved components
                         p.components.forEach(comp => {
-                            const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                            const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
+                                comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED' &&
+                                (!comp.isAsset || comp.sarprasStatus === 'APPROVED');
                             if (isApproved) {
                                 const compTotal = parseFloat(comp.total) || 0;
                                 const useBos = comp.useBos || false;

@@ -1236,7 +1236,10 @@ function RABContent() {
         }
         
         let newStatus = entryForm.status;
-        if (newStatus === 'REJECTED' || !newStatus) {
+        if (editingCompIdx === null) {
+            // Komponen baru yang ditambahkan: status selalu DRAFT (wajib diajukan & disetujui Yayasan/Sarpras)
+            newStatus = 'DRAFT';
+        } else if (newStatus === 'REJECTED' || !newStatus) {
             newStatus = (currentPlan?.status === 'APPROVED' || currentPlan?.status === 'PENDING') ? currentPlan.status : 'DRAFT';
         }
 
@@ -1264,6 +1267,7 @@ function RABContent() {
             harga: parseFloat(entryForm.harga),
             total,
             status: newStatus,
+            isApproved: newStatus === 'APPROVED',
             isAsset: !!entryForm.isAsset,
             assetName: entryForm.isAsset ? (entryForm.assetName || entryForm.label || '') : '',
             namaAset: entryForm.isAsset ? (entryForm.assetName || entryForm.label || '') : '',

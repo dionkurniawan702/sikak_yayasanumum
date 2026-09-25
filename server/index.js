@@ -692,6 +692,8 @@ app.post('/api/sync', async (req, res) => {
                         if (cleanItem.totalAmount !== undefined && cleanItem.totalAmount !== null) cleanItem.totalAmount = parseFloat(cleanItem.totalAmount);
                         if (cleanItem.amount !== undefined && cleanItem.amount !== null) cleanItem.amount = parseFloat(cleanItem.amount);
                         if (cleanItem.reports) delete cleanItem.reports;
+                        delete cleanItem.hasAsset;
+                        delete cleanItem.sarprasStatus;
                     }
                     if (model === 'budgetReport') {
                         if (cleanItem.date) cleanItem.date = new Date(cleanItem.date);

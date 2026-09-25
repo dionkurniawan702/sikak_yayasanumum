@@ -474,7 +474,10 @@ export default function MonthlyRequest() {
                 
                 itemPlans.forEach((p, pIdx) => {
                     (p.components || []).forEach((comp, cIdx) => {
-                        const isActuallyApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                        const isActuallyApproved = 
+                            (comp.status === 'APPROVED' || (!comp.status && (plan.status === 'APPROVED' || comp.isApproved === true))) &&
+                            comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED' &&
+                            (!comp.isAsset || comp.sarprasStatus === 'APPROVED');
                         if (!isActuallyApproved) return;
                         
                         const compId = comp.id || `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
@@ -532,8 +535,11 @@ export default function MonthlyRequest() {
                         const isScheduledInMonth = comp.months?.[requestMonth]?.m === true;
                         const monthlyAmount = parseFloat(comp.months?.[requestMonth]?.jumlah) || 0;
 
-                        // Legacy support: comp.isApproved, New system: comp.status === 'APPROVED'
-                        const isActuallyApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                        // Strictly require Yayasan approval (comp.status === 'APPROVED') and Sarpras approval (if asset)
+                        const isActuallyApproved = 
+                            (comp.status === 'APPROVED' || (!comp.status && (plan.status === 'APPROVED' || comp.isApproved === true))) &&
+                            comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED' &&
+                            (!comp.isAsset || comp.sarprasStatus === 'APPROVED');
 
                         if (isActuallyApproved && isScheduledInMonth && monthlyAmount > 0) {
                             // Check if already requested in budgetRequests for THIS month
@@ -648,8 +654,8 @@ export default function MonthlyRequest() {
                 })
             };
 
-            dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRequest });
             await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: newRequest }, state); // Immediate push
+            dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newRequest });
             setShowRequestModal(false);
             setSelectedComponents([]);
             showToast('Permintaan dana berhasil diajukan!');

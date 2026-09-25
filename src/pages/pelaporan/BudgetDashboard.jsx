@@ -192,7 +192,9 @@ export default function BudgetDashboard() {
                     if (p.components && p.components.length > 0) {
                         // New Granular Approval System: Sum only approved components
                         p.components.forEach(comp => {
-                            const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                            const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
+                                comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED' &&
+                                (!comp.isAsset || comp.sarprasStatus === 'APPROVED');
                             if (isApproved) {
                                 const compTotal = parseFloat(comp.total) || 0;
                                 const useBos = comp.useBos || false;
@@ -356,7 +358,9 @@ export default function BudgetDashboard() {
                     itemPlans.forEach(p => {
                         if (p.components && p.components.length > 0) {
                             p.components.forEach(comp => {
-                                const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                                const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
+                                    comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED' &&
+                                    (!comp.isAsset || comp.sarprasStatus === 'APPROVED');
                                 if (isApproved && comp.useBos) {
                                     const compTotal = parseFloat(comp.total) || 0;
                                     const cBos = parseFloat(comp.bosAmount) || 0;
@@ -408,7 +412,9 @@ export default function BudgetDashboard() {
                 itemPlans.forEach(p => {
                     if (p.components && p.components.length > 0) {
                         p.components.forEach(comp => {
-                            const isApproved = comp.status === 'APPROVED' || comp.isApproved === true;
+                            const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
+                                comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED' &&
+                                (!comp.isAsset || comp.sarprasStatus === 'APPROVED');
                             if (isApproved && comp.useBos) {
                                 const compTotal = parseFloat(comp.total) || 0;
                                 const cBos = parseFloat(comp.bosAmount) || 0;

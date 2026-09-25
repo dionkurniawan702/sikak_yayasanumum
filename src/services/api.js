@@ -285,9 +285,17 @@ export const api = {
                 case 'UPDATE_DISTRIBUTION_SETTINGS':
                     await this.post('/distribution-settings', payload);
                     break;
-                case 'ADD_BUDGET_REQUEST':
-                    await syncItem('budget-requests', null, payload, 'POST');
+                case 'ADD_BUDGET_REQUEST': {
+                    const BUDGET_REQUEST_FIELDS = ['id', 'status', 'description', 'month', 'year',
+                        'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
+                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed'];
+                    const cleanPayload = {};
+                    BUDGET_REQUEST_FIELDS.forEach(f => {
+                        if (payload[f] !== undefined) cleanPayload[f] = payload[f];
+                    });
+                    await syncItem('budget-requests', null, cleanPayload, 'POST');
                     break;
+                }
                 case 'EDIT_BUDGET_REQUEST': {
                     const BUDGET_REQUEST_FIELDS = ['status', 'description', 'month', 'year',
                         'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',

@@ -738,7 +738,15 @@ router.get('/budget-requests', async (req, res) => {
 
 router.post('/budget-requests', async (req, res) => {
     try {
-        const data = { ...req.body };
+        const ALLOWED_FIELDS = ['id', 'status', 'description', 'month', 'year',
+            'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
+            'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed'];
+
+        const data = {};
+        ALLOWED_FIELDS.forEach(f => {
+            if (req.body[f] !== undefined) data[f] = req.body[f];
+        });
+
         if (data.date) data.date = new Date(data.date);
         if (data.totalAmount !== undefined && data.totalAmount !== null) data.totalAmount = parseFloat(data.totalAmount);
         if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
