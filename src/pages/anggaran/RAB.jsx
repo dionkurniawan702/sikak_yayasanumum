@@ -190,6 +190,7 @@ function RABContent() {
     const [sarprasSearchQuery, setSarprasSearchQuery] = useState('');
     const [rejectModalItem, setRejectModalItem] = useState(null);
     const [rejectModalReason, setRejectModalReason] = useState('');
+    const [detailAssetItem, setDetailAssetItem] = useState(null);
 
     const revisionPlanId = `${selectedYearId}-${selectedUnitId}-REVISION-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
     const revisionPlan = useMemo(() => (rabPlans || []).find(p => p.id === revisionPlanId), [rabPlans, revisionPlanId]);
@@ -3904,6 +3905,8 @@ function RABContent() {
                                         const assetDisplayName = comp.assetName || comp.namaAset || comp.label;
                                         const isDifferentLabel = comp.label && comp.label !== assetDisplayName;
                                         const st = comp.sarprasStatus;
+                                        const catObj = assetCategories.find(c => c.name?.toLowerCase() === (comp.assetCategory || '').toLowerCase());
+                                        const economicLifeYears = parseInt(catObj?.economicLife) || (comp.economicLife ? parseInt(comp.economicLife) : null);
 
                                         return (
                                             <tr key={`${item.planId}-${item.itemId}-${item.subGroupId}-${item.compIdx}`} className="hover:bg-slate-50/80 transition-colors">
@@ -3951,9 +3954,9 @@ function RABContent() {
                                                                 🏷️ {comp.assetCategory}
                                                             </span>
                                                         )}
-                                                        {comp.assetRoom && (
-                                                            <span className="text-[9px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-md border border-indigo-200">
-                                                                📍 {comp.assetRoom}
+                                                        {economicLifeYears && (
+                                                            <span className="text-[9px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md border border-amber-200" title={`Umur Ekonomis: ${economicLifeYears} Tahun`}>
+                                                                ⏳ {economicLifeYears} Thn
                                                             </span>
                                                         )}
                                                         <span className={`text-[9px] font-black px-2 py-0.5 rounded-md ${
@@ -4006,6 +4009,14 @@ function RABContent() {
                                                 {/* Actions */}
                                                 <td className="py-4 px-6">
                                                     <div className="flex items-center justify-center gap-1.5">
+                                                        <button
+                                                            onClick={() => setDetailAssetItem(item)}
+                                                            className="p-1.5 text-slate-500 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-all border border-slate-200 hover:border-amber-300"
+                                                            title="Lihat Detail & Umur Ekonomis Aset"
+                                                        >
+                                                            <Eye size={15} />
+                                                        </button>
+
                                                         {st !== 'APPROVED' && (
                                                             <button
                                                                 onClick={() => handleSarprasActionOnAnyPlan(item.planId, item.itemId, item.subGroupId, item.compIdx, 'APPROVED')}
@@ -4127,6 +4138,215 @@ function RABContent() {
                         </div>
                     </div>
                 )}
+
+                {/* Detail & Umur Ekonomis Asset Modal */}
+                {detailAssetItem && (() => {
+                    const dComp = detailAssetItem.component || {};
+                    const dCatObj = assetCategories.find(c => c.name?.toLowerCase() === (dComp.assetCategory || '').toLowerCase());
+                    const dEconomicLifeYears = parseInt(dCatObj?.economicLife) || (dComp.economicLife ? parseInt(dComp.economicLife) : 4);
+                    const dEconomicLifeMonths = dEconomicLifeYears * 12;
+                    const dTotalCost = parseFloat(dComp.total) || 0;
+                    const dAnnualDepreciation = dEconomicLifeYears > 0 ? Math.round(dTotalCost / dEconomicLifeYears) : 0;
+                    const dMonthlyDepreciation = dEconomicLifeMonths > 0 ? Math.round(dTotalCost / dEconomicLifeMonths) : 0;
+                    const dStatus = dComp.sarprasStatus || 'PENDING';
+
+                    return (
+                        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-[2500] flex items-center justify-center p-4 animate-in fade-in duration-200">
+                            <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 max-w-2xl w-full p-8 relative overflow-hidden animate-in zoom-in-95 duration-200 max-h-[90vh] overflow-y-auto">
+                                {/* Header */}
+                                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-3 bg-amber-50 text-amber-600 rounded-2xl">
+                                            <Eye size={22} />
+                                        </div>
+                                        <div>
+                                            <h4 className="font-black text-slate-900 text-base">Detail Telaah Aset & Umur Ekonomis</h4>
+                                            <p className="text-slate-400 text-xs font-bold">Verifikasi kelayakan & analisis investasi sarana prasarana</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setDetailAssetItem(null)}
+                                        className="p-2 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 transition-colors"
+                                    >
+                                        <X size={18} />
+                                    </button>
+                                </div>
+
+                                <div className="space-y-4 mb-6">
+                                    {/* Info Unit & Program */}
+                                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 grid grid-cols-2 gap-3 text-xs">
+                                        <div>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Unit / Bidang</span>
+                                            <span className="font-black text-slate-800">{detailAssetItem.ownerName}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Sumber Dana</span>
+                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black mt-0.5 ${
+                                                detailAssetItem.sourceLabel === 'BOS' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800'
+                                            }`}>
+                                                {detailAssetItem.sourceLabel}
+                                            </span>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Program & Pos Anggaran</span>
+                                            <span className="font-bold text-slate-700">{detailAssetItem.programName}</span>
+                                            <div className="text-[11px] text-slate-500 font-medium">{detailAssetItem.itemLabel} &bull; {detailAssetItem.subGroupName}</div>
+                                        </div>
+                                    </div>
+
+                                    {/* Spesifikasi Aset */}
+                                    <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3">
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Nama / Spesifikasi Aset</span>
+                                                <h5 className="font-black text-slate-900 text-sm mt-0.5">{dComp.assetName || dComp.label}</h5>
+                                                {dComp.assetName && dComp.label && dComp.assetName.trim().toLowerCase() !== dComp.label.trim().toLowerCase() && (
+                                                    <p className="text-xs text-slate-500 italic mt-0.5">Rincian: "{dComp.label}"</p>
+                                                )}
+                                            </div>
+                                            <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg shrink-0 ${
+                                                dComp.assetProcurementType === 'PENGGANTIAN' ? 'bg-amber-100 text-amber-800' :
+                                                dComp.assetProcurementType === 'TAMBAHAN' ? 'bg-purple-100 text-purple-800' :
+                                                'bg-blue-100 text-blue-800'
+                                            }`}>
+                                                {dComp.assetProcurementType === 'PENGGANTIAN' ? 'Penggantian Rusak' : 'Pengadaan Baru'}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2 border-t border-slate-100 text-xs">
+                                            <div>
+                                                <span className="text-[10px] font-bold text-slate-400 block">Kategori Aset</span>
+                                                <span className="font-bold text-slate-700">🏷️ {dComp.assetCategory || '-'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-bold text-slate-400 block">Volume & Harga</span>
+                                                <span className="font-bold text-slate-700">{dComp.volume} {dComp.satuan || 'Unit'} {dComp.kali > 1 ? `x ${dComp.kali}` : ''} @ {formatRupiah(dComp.harga)}</span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[10px] font-bold text-slate-400 block">Total Anggaran</span>
+                                                <span className="font-black text-emerald-700 text-sm">{formatRupiah(dTotalCost)}</span>
+                                            </div>
+                                        </div>
+
+                                        {dComp.description && (
+                                            <div className="pt-2 border-t border-slate-100 text-xs">
+                                                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Catatan / Justifikasi Unit</span>
+                                                <p className="text-slate-600 italic mt-0.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">"{dComp.description}"</p>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Analisis Umur Ekonomis & Depresiasi */}
+                                    <div className="p-5 rounded-2xl bg-gradient-to-br from-amber-50 to-orange-50 border-2 border-amber-200 space-y-3">
+                                        <div className="flex items-center gap-2">
+                                            <span className="p-1.5 bg-amber-500 text-white rounded-lg text-xs font-black">📊</span>
+                                            <div>
+                                                <h6 className="font-black text-amber-950 text-xs uppercase tracking-wider">Analisis Umur Ekonomis & Beban Penyusutan</h6>
+                                                <p className="text-[10px] font-bold text-amber-700">Metode Garis Lurus (Straight-Line Depreciation)</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                                            <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-amber-200">
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 block">Masa Manfaat / Umur</span>
+                                                <div className="text-base font-black text-amber-950 mt-0.5">{dEconomicLifeYears} Tahun</div>
+                                                <span className="text-[10px] text-amber-700 font-medium">({dEconomicLifeMonths} Bulan)</span>
+                                            </div>
+                                            <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-amber-200">
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 block">Penyusutan per Tahun</span>
+                                                <div className="text-sm font-black text-slate-900 mt-0.5">{formatRupiah(dAnnualDepreciation)}</div>
+                                                <span className="text-[10px] text-slate-500 font-medium">per tahun anggaran</span>
+                                            </div>
+                                            <div className="bg-white/80 backdrop-blur-sm p-3 rounded-xl border border-amber-200">
+                                                <span className="text-[9px] font-black uppercase tracking-wider text-amber-800 block">Beban per Bulan</span>
+                                                <div className="text-sm font-black text-slate-900 mt-0.5">{formatRupiah(dMonthlyDepreciation)}</div>
+                                                <span className="text-[10px] text-slate-500 font-medium">per bulan operasional</span>
+                                            </div>
+                                        </div>
+
+                                        <p className="text-[10px] text-amber-800 italic bg-amber-100/50 p-2 rounded-lg">
+                                            💡 Data umur ekonomis merujuk pada standar kategori <strong>"{dComp.assetCategory || 'Umum'}"</strong>. Beban penyusutan riil akan otomatis berjalan pada modul Inventaris Aset setelah barang dibeli dan diaktifkan.
+                                        </p>
+                                    </div>
+
+                                    {/* Current Verification Status */}
+                                    <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between text-xs">
+                                        <span className="font-bold text-slate-600">Status Telaah Sarpras Saat Ini:</span>
+                                        {dStatus === 'APPROVED' ? (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-black text-[11px]">
+                                                <CheckCircle2 size={13} /> Disetujui (ACC)
+                                            </span>
+                                        ) : dStatus === 'REJECTED' ? (
+                                            <div className="text-right">
+                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-rose-100 text-rose-800 rounded-full font-black text-[11px]">
+                                                    <XCircle size={13} /> Ditolak
+                                                </span>
+                                                {dComp.sarprasNotes && (
+                                                    <p className="text-[11px] text-rose-600 font-semibold mt-1">"{dComp.sarprasNotes}"</p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 rounded-full font-black text-[11px]">
+                                                ⏳ Menunggu Telaah
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Footer Buttons */}
+                                <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+                                    <button
+                                        type="button"
+                                        onClick={() => setDetailAssetItem(null)}
+                                        className="px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-black text-xs uppercase tracking-wider hover:bg-slate-50 transition-colors"
+                                    >
+                                        Tutup
+                                    </button>
+
+                                    <div className="flex items-center gap-2">
+                                        {dStatus !== 'REJECTED' && (
+                                            <button
+                                                type="button"
+                                                disabled={isSaving}
+                                                onClick={() => {
+                                                    const targetItem = detailAssetItem;
+                                                    setDetailAssetItem(null);
+                                                    setRejectModalItem(targetItem);
+                                                    setRejectModalReason(dComp.sarprasNotes || '');
+                                                }}
+                                                className="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 font-black text-xs uppercase tracking-wider transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                                            >
+                                                <XCircle size={14} />
+                                                <span>Tolak Usulan</span>
+                                            </button>
+                                        )}
+
+                                        {dStatus !== 'APPROVED' && (
+                                            <button
+                                                type="button"
+                                                disabled={isSaving}
+                                                onClick={async () => {
+                                                    await handleSarprasActionOnAnyPlan(
+                                                        detailAssetItem.planId,
+                                                        detailAssetItem.itemId,
+                                                        detailAssetItem.subGroupId,
+                                                        detailAssetItem.compIdx,
+                                                        'APPROVED'
+                                                    );
+                                                    setDetailAssetItem(null);
+                                                }}
+                                                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-200 transition-all flex items-center gap-1.5 active:scale-95 disabled:opacity-50"
+                                            >
+                                                <CheckCircle2 size={14} />
+                                                <span>Setujui (ACC)</span>
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                })()}
             </div>
         );
     };
@@ -5850,7 +6070,7 @@ function RABContent() {
                                                                             </datalist>
                                                                         </div>
 
-                                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                                             {/* Dropdown Kategori Aset */}
                                                                             <div className="space-y-1">
                                                                                 <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
@@ -5871,46 +6091,25 @@ function RABContent() {
                                                                                 </select>
                                                                             </div>
 
-                                                                            {/* Dropdown / Input Ruangan */}
+                                                                            {/* Sifat Pengadaan */}
                                                                             <div className="space-y-1">
-                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
-                                                                                    Rencana Penempatan / Ruangan
-                                                                                </label>
-                                                                                <input 
-                                                                                    type="text" 
-                                                                                    readOnly={isReadOnlyComp} 
-                                                                                    list="asset-rooms-list"
-                                                                                    placeholder="Contoh: Lab Komputer, Kantor TU, Kelas..."
-                                                                                    className="w-full p-3 bg-white border-2 border-indigo-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all disabled:opacity-75"
-                                                                                    value={entryForm.assetRoom || ''} 
-                                                                                    onChange={e => setEntryForm({ ...entryForm, assetRoom: e.target.value })}
-                                                                                />
-                                                                                <datalist id="asset-rooms-list">
-                                                                                    {assetRooms.filter(r => !r.isDeleted).map(r => (
-                                                                                        <option key={r.id} value={r.name} />
+                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">Sifat Pengadaan Aset</label>
+                                                                                <div className="grid grid-cols-2 gap-2 h-[46px]">
+                                                                                    {[
+                                                                                        { id: 'BARU', label: 'Penambahan Baru' },
+                                                                                        { id: 'PENGGANTIAN', label: 'Penggantian Rusak' }
+                                                                                    ].map(opt => (
+                                                                                        <button
+                                                                                            key={opt.id}
+                                                                                            type="button"
+                                                                                            disabled={isReadOnlyComp}
+                                                                                            onClick={() => setEntryForm({ ...entryForm, assetProcurementType: opt.id })}
+                                                                                            className={`h-full px-2 rounded-xl text-[10px] font-black tracking-tight transition-all border flex items-center justify-center text-center ${entryForm.assetProcurementType === opt.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-indigo-100 hover:bg-indigo-50/50'}`}
+                                                                                        >
+                                                                                            {opt.label}
+                                                                                        </button>
                                                                                     ))}
-                                                                                </datalist>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        {/* Sifat Pengadaan */}
-                                                                        <div className="space-y-1.5">
-                                                                            <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">Sifat Pengadaan Aset</label>
-                                                                            <div className="flex gap-2">
-                                                                                {[
-                                                                                    { id: 'BARU', label: 'Penambahan Aset Baru' },
-                                                                                    { id: 'PENGGANTIAN', label: 'Penggantian Aset Rusak' }
-                                                                                ].map(opt => (
-                                                                                    <button
-                                                                                        key={opt.id}
-                                                                                        type="button"
-                                                                                        disabled={isReadOnlyComp}
-                                                                                        onClick={() => setEntryForm({ ...entryForm, assetProcurementType: opt.id })}
-                                                                                        className={`flex-1 py-2 px-3 rounded-xl text-[10px] font-black tracking-tight transition-all border ${entryForm.assetProcurementType === opt.id ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50/50'}`}
-                                                                                    >
-                                                                                        {opt.label}
-                                                                                    </button>
-                                                                                ))}
+                                                                                </div>
                                                                             </div>
                                                                         </div>
 
