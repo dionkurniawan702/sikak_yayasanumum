@@ -619,6 +619,8 @@ export default function MonthlyRequest() {
             const totalAmount = selectedData.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
             const hasAsset = selectedData.some(c => Boolean(c.isAsset));
 
+            const allAssetsApprovedInRab = selectedData.filter(c => c.isAsset).every(c => c.sarprasStatus === 'APPROVED');
+
             const newRequest = {
                 id: generateId('REQ'),
                 unitId: myUnitId || 'FOUNDATION',
@@ -631,7 +633,7 @@ export default function MonthlyRequest() {
                 source: sourceMode, // Tag as YAYASAN or BOS
                 description: selectedData.length > 0 ? (selectedData[0].label || selectedData[0].name) : 'Pengajuan Dana',
                 hasAsset: hasAsset,
-                sarprasStatus: hasAsset ? 'PENDING' : 'APPROVED',
+                sarprasStatus: hasAsset ? (allAssetsApprovedInRab ? 'APPROVED' : 'PENDING') : 'APPROVED',
                 items: selectedData.map(c => {
                     const isAsset = Boolean(c.isAsset);
                     return {
@@ -648,8 +650,8 @@ export default function MonthlyRequest() {
                         assetRoom: c.assetRoom || '',
                         assetProcurementType: c.assetProcurementType || 'BARU',
                         assetName: c.assetName || c.namaAset || c.label || c.name || '',
-                        sarprasStatus: isAsset ? 'PENDING' : 'APPROVED',
-                        sarprasNotes: ''
+                        sarprasStatus: isAsset ? (c.sarprasStatus || 'APPROVED') : 'APPROVED',
+                        sarprasNotes: c.sarprasNotes || ''
                     };
                 })
             };
