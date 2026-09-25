@@ -512,8 +512,10 @@ export default function MonthlyReport() {
                         reqApprovedMap[rReqId] += amt;
                     }
 
-                    if (!reqSettledMap[rReqId]) reqSettledMap[rReqId] = 0;
-                    reqSettledMap[rReqId] += amt;
+                    if (r.kategoriAset !== 'PENGEMBALIAN') {
+                        if (!reqSettledMap[rReqId]) reqSettledMap[rReqId] = 0;
+                        reqSettledMap[rReqId] += amt;
+                    }
 
                     if (effectiveComponentId) {
                         const reqCompKey = `${rReqId}_${effectiveComponentId}`;
@@ -2226,21 +2228,30 @@ export default function MonthlyReport() {
                                     <h4 className={`text-2xl font-black mb-1 ${item.sisa < 0 ? 'text-rose-600' : 'text-blue-700'}`}>{formatRupiah(item.sisa)}</h4>
                                     <p className="text-[10px] font-bold text-slate-400 mb-4">RAB: {formatRupiah(parseFloat(item.amount || 0))}</p>
                                     <div className="flex flex-col gap-2 mt-2 w-full">
-                                        {!isSuperAdmin && (
-                                            item.sisa <= 0 ? (
+                                        {item.sisa <= 0 ? (
+                                            isSuperAdmin ? (
+                                                <button
+                                                    onClick={() => handleOpenReportForm(item)}
+                                                    className="px-3 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm w-full"
+                                                    title="Plafon rincian sudah terpenuhi, klik untuk menambahkan nota susulan/penyesuaian"
+                                                >
+                                                    <FileCheck size={15} />
+                                                    <span>+ Nota Susulan</span>
+                                                </button>
+                                            ) : (
                                                 <div className="px-3 py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm">
                                                     <CheckCircle2 size={15} />
                                                     <span>100% Selesai Dilaporkan</span>
                                                 </div>
-                                            ) : (
-                                                <button
-                                                    onClick={() => handleOpenReportForm(item)}
-                                                    className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
-                                                >
-                                                    <FileCheck size={16} />
-                                                    <span>Buat Laporan</span>
-                                                </button>
                                             )
+                                        ) : (
+                                            <button
+                                                onClick={() => handleOpenReportForm(item)}
+                                                className="btn btn-primary !rounded-xl !py-2 !text-xs !w-full"
+                                            >
+                                                <FileCheck size={16} />
+                                                <span>{isSuperAdmin ? '+ Input Nota' : 'Buat Laporan'}</span>
+                                            </button>
                                         )}
                                         <button
                                             onClick={() => { setSelectedItemForReports(item); setShowReportsList(true); }}
@@ -2694,12 +2705,26 @@ export default function MonthlyReport() {
                                 <h2 className="text-2xl font-black text-slate-900">Riwayat Pengeluaran Belanja</h2>
                                 <p className="text-slate-400 font-bold uppercase text-[10px] tracking-widest mt-1">Komponen: {selectedItemForReports.name}</p>
                             </div>
-                            <button
-                                onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }}
-                                className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => {
+                                        const itm = selectedItemForReports;
+                                        setShowReportsList(false);
+                                        setSelectedItemForReports(null);
+                                        handleOpenReportForm(itm);
+                                    }}
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-1.5 shadow-md shadow-indigo-600/20"
+                                >
+                                    <FileCheck size={14} />
+                                    <span>+ Tambah Nota</span>
+                                </button>
+                                <button
+                                    onClick={() => { setShowReportsList(false); setSelectedItemForReports(null); }}
+                                    className="p-2 bg-slate-50 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
                         </div>
 
                         {/* Modal Body */}
@@ -2788,6 +2813,18 @@ export default function MonthlyReport() {
                                                                 </div>
                                                             ) : isSuperAdmin ? (
                                                                 <div className="flex items-center justify-center gap-1.5">
+                                                                    {report.status === 'APPROVED' && (
+                                                                        <button
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                handleCancelReportApproval(report);
+                                                                            }}
+                                                                            className="p-1.5 text-amber-600 hover:text-amber-800 hover:bg-amber-50 rounded-lg transition-colors"
+                                                                            title="Batalkan Persetujuan (Status kembali ke Pending & Hapus Jurnal)"
+                                                                        >
+                                                                            <RotateCcw size={14} />
+                                                                        </button>
+                                                                    )}
                                                                     <button
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
