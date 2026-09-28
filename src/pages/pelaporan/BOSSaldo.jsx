@@ -742,6 +742,22 @@ export default function BOSSaldo() {
             return;
         }
 
+        if (returnForm.budgetRequestId) {
+            const chosenReq = returnModalRequests.find(r => r.id === returnForm.budgetRequestId);
+            if (chosenReq) {
+                const spent = (budgetReports || []).filter(r => r.budgetRequestId === chosenReq.id && r.status === 'APPROVED' && r.kategoriAset !== 'PENGEMBALIAN')
+                    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+                const ret = (budgetReports || []).filter(r => r.budgetRequestId === chosenReq.id && r.status === 'APPROVED' && r.kategoriAset === 'PENGEMBALIAN')
+                    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+                const reqTotal = parseFloat(chosenReq.totalAmount) || 0;
+                const sisa = Math.max(0, reqTotal - spent - ret);
+                if (amt > sisa) {
+                    alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa pagu riil (${formatRupiah(sisa)})!`);
+                    return;
+                }
+            }
+        }
+
         if (!returnForm.unitId) {
             alert('Mohon pilih unit penerima BOS!');
             return;

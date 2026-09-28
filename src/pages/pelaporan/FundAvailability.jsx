@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye, Calendar, Tag, Filter } from 'lucide-react';
+import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye, Calendar, Tag, Filter, Lock, Unlock } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
@@ -240,6 +240,7 @@ export default function FundAvailability() {
 
     const [showReturnModal, setShowReturnModal] = useState(false);
     const [returnForm, setReturnForm] = useState({ amount: '', buktiTeks: '', description: '', budgetRequestId: '' });
+    const [isReturnAmountLocked, setIsReturnAmountLocked] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [processingId, setProcessingId] = useState(null);
     const [reviewData, setReviewData] = useState(null);
@@ -526,6 +527,12 @@ export default function FundAvailability() {
         const myPendingReturns = baseReports.filter(r => r.status === 'PENDING' && r.kategoriAset === 'PENGEMBALIAN').reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
         
         if (isNaN(amt) || amt <= 0) return alert('Nominal tidak valid!');
+        if (!returnForm.budgetRequestId) return alert('Mohon pilih Bulan Permintaan Dana (Surat REQ) yang akan dikembalikan!');
+        
+        const chosenCard = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
+        if (chosenCard && amt > chosenCard.reqSisa) {
+            return alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa pagu riil yang belum dilaporkan (${formatRupiah(chosenCard.reqSisa)})!\n\nJika ada nota belanja yang belum diinput, silakan laporkan nota tersebut terlebih dahulu agar perhitungan sisa klop.`);
+        }
         if (amt > (statBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
         if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
 
@@ -643,7 +650,14 @@ export default function FundAvailability() {
                     {!isSuperAdmin && statBalance > 0 && (
                         <button 
                             onClick={() => {
-                                setReturnForm(prev => ({ ...prev, amount: statBalance }));
+                                const availableCard = monthBreakdownCards.find(c => c.reqSisa > 0);
+                                setReturnForm(prev => ({
+                                    ...prev,
+                                    budgetRequestId: availableCard ? availableCard.reqId : '',
+                                    amount: availableCard ? availableCard.reqSisa : (statBalance > 0 ? statBalance : ''),
+                                    description: availableCard ? `Pengembalian Sisa Dana Request ${formatMonthLabel(availableCard.reqMonth)}` : ''
+                                }));
+                                setIsReturnAmountLocked(true);
                                 setShowReturnModal(true);
                             }}
                             className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 font-bold text-xs"
@@ -1200,30 +1214,89 @@ export default function FundAvailability() {
                                 })()}
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Nominal Pengembalian (Rp)</label>
-                                <input
-                                    type="number"
-                                    value={returnForm.amount}
-                                    onChange={e => setReturnForm({ ...returnForm, amount: e.target.value })}
-                                    placeholder="Masukkan nominal"
-                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    required
-                                />
-                                {returnForm.budgetRequestId && (() => {
+                                {(() => {
                                     const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
-                                    if (chosen && chosen.reqSisa > 0 && parseFloat(returnForm.amount || 0) !== chosen.reqSisa) {
-                                        const diff = chosen.reqSisa - parseFloat(returnForm.amount || 0);
-                                        return (
-                                            <span className="text-[11px] font-bold text-amber-700 mt-1.5 block bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-                                                ⚠️ Nominal pengembalian ({formatRupiah(parseFloat(returnForm.amount || 0))}) berbeda dari sisa pagu ({formatRupiah(chosen.reqSisa)}). {diff > 0 ? `Selisih ${formatRupiah(diff)} akan tetap tercatat sebagai sisa di Statistik Laporan.` : ''}
-                                            </span>
-                                        );
-                                    }
-                                    return null;
+                                    const currentAmt = parseFloat(returnForm.amount || 0);
+                                    const isOver = chosen && currentAmt > chosen.reqSisa;
+
+                                    return (
+                                        <>
+                                            <div className="flex items-center justify-between mb-1">
+                                                <label className="block text-xs font-bold text-slate-500 uppercase">
+                                                    Nominal Pengembalian (Rp) <span className="text-rose-500">*</span>
+                                                </label>
+                                                {chosen && chosen.reqSisa > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!isReturnAmountLocked) {
+                                                                setReturnForm(prev => ({ ...prev, amount: chosen.reqSisa }));
+                                                            }
+                                                            setIsReturnAmountLocked(!isReturnAmountLocked);
+                                                        }}
+                                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                                                    >
+                                                        {isReturnAmountLocked ? (
+                                                            <>
+                                                                <Lock size={12} className="text-emerald-600" />
+                                                                <span className="text-emerald-600">Terkunci Sesuai Sisa (Klik Ubah)</span>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Unlock size={12} className="text-amber-600" />
+                                                                <span className="text-amber-600">Buka Kunci (Kembalikan ke Pas)</span>
+                                                            </>
+                                                        )}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="relative">
+                                                <input
+                                                    type="number"
+                                                    value={returnForm.amount}
+                                                    readOnly={isReturnAmountLocked}
+                                                    max={chosen ? chosen.reqSisa : undefined}
+                                                    onChange={e => setReturnForm({ ...returnForm, amount: e.target.value })}
+                                                    placeholder={chosen ? `Maksimal: ${formatRupiah(chosen.reqSisa)}` : 'Pilih Bulan Permintaan terlebih dahulu'}
+                                                    className={`w-full px-4 py-3 border rounded-xl font-black text-sm focus:outline-none transition-all ${
+                                                        isReturnAmountLocked 
+                                                            ? 'bg-slate-100 border-slate-200 text-slate-700 cursor-not-allowed' 
+                                                            : isOver
+                                                                ? 'bg-rose-50 border-rose-300 text-rose-700 focus:ring-2 focus:ring-rose-500'
+                                                                : 'bg-white border-indigo-300 text-slate-900 focus:ring-2 focus:ring-indigo-500'
+                                                    }`}
+                                                    required
+                                                />
+                                                {isReturnAmountLocked && (
+                                                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-emerald-600 flex items-center gap-1 text-[11px] font-bold">
+                                                        <Lock size={14} />
+                                                        <span>Auto-Locked</span>
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {chosen && (
+                                                <div className="mt-2 space-y-1">
+                                                    {isOver && (
+                                                        <span className="text-[11px] font-black text-rose-600 block bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5">
+                                                            ⛔ Nominal pengembalian ({formatRupiah(currentAmt)}) MELEBIHI sisa pagu riil ({formatRupiah(chosen.reqSisa)})! Kelebihan {formatRupiah(currentAmt - chosen.reqSisa)}. Harap laporkan nota belanja terlebih dahulu jika ada nota yang belum diinput.
+                                                        </span>
+                                                    )}
+                                                    {!isOver && currentAmt > 0 && currentAmt === chosen.reqSisa && (
+                                                        <span className="text-[11px] font-black text-emerald-700 block bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                                                            ✅ Nominal pas 100% sesuai sisa pagu riil yang belum dilaporkan ({formatRupiah(chosen.reqSisa)}).
+                                                        </span>
+                                                    )}
+                                                    {!isOver && currentAmt > 0 && currentAmt < chosen.reqSisa && (
+                                                        <span className="text-[11px] font-bold text-amber-700 block bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                                                            ⚠️ Pengembalian sebagian ({formatRupiah(currentAmt)}). Sisa {formatRupiah(chosen.reqSisa - currentAmt)} akan tetap tercatat sebagai sisa pagu yang harus dilaporkan/disetor.
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </>
+                                    );
                                 })()}
-                                <span className="text-[10px] font-bold text-indigo-600 mt-1 block">
-                                    Maksimal total sisa saldo: {formatRupiah(statBalance)}
-                                </span>
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bukti Transfer (Nomor/Teks Bukti)</label>
@@ -1254,13 +1327,23 @@ export default function FundAvailability() {
                                 >
                                     Batal
                                 </button>
-                                <button
-                                    type="submit"
-                                    disabled={isSubmitting}
-                                    className="flex-1 py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 shadow-lg shadow-indigo-200"
-                                >
-                                    Kirim Pengajuan
-                                </button>
+                                {(() => {
+                                    const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
+                                    const isOver = chosen && parseFloat(returnForm.amount || 0) > chosen.reqSisa;
+                                    return (
+                                        <button
+                                            type="submit"
+                                            disabled={isSubmitting || !returnForm.budgetRequestId || isOver}
+                                            className={`flex-1 py-3 text-white rounded-xl font-bold text-xs shadow-lg transition-all ${
+                                                isOver || !returnForm.budgetRequestId
+                                                    ? 'bg-slate-300 cursor-not-allowed shadow-none'
+                                                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
+                                            }`}
+                                        >
+                                            Kirim Pengajuan
+                                        </button>
+                                    );
+                                })()}
                             </div>
                         </form>
                     </div>

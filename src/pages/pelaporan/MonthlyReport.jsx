@@ -1559,6 +1559,21 @@ export default function MonthlyReport() {
         return Math.max(0, totalCair - totalPengeluaran - totalPengembalian);
     }, [totalCair, totalPengeluaran, totalPengembalian]);
 
+    const totalSisaActiveItems = useMemo(() => {
+        return filteredPendingItems.reduce((sum, item) => sum + Math.max(0, parseFloat(item.sisa || 0)), 0);
+    }, [filteredPendingItems]);
+
+    const rawDiffSisa = useMemo(() => {
+        return totalCair - totalPengeluaran - totalPengembalian;
+    }, [totalCair, totalPengeluaran, totalPengembalian]);
+
+    const priorOverReturn = useMemo(() => {
+        if (pendingMonthFilter === 'ALL' && totalSisaActiveItems > totalSisa) {
+            return totalSisaActiveItems - totalSisa;
+        }
+        return 0;
+    }, [pendingMonthFilter, totalSisaActiveItems, totalSisa]);
+
     const totalSisaForHistory = useMemo(() => {
         const approvedReqsInHistoryFilter = requestsForYear
             .filter(r => r.status === 'APPROVED')
@@ -2368,6 +2383,28 @@ export default function MonthlyReport() {
                                     <span className="text-xs font-bold text-slate-400">Total Sisa</span>
                                     <span className="text-sm font-black text-amber-500">{formatRupiah(totalSisa)}</span>
                                 </div>
+                                {pendingMonthFilter === 'ALL' && priorOverReturn > 0 && (
+                                    <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 text-[11px] space-y-1.5 animate-in fade-in">
+                                        <div className="flex justify-between items-center font-bold text-slate-600">
+                                            <span>Sisa Rincian Belum Selesai:</span>
+                                            <span className="text-slate-800">{formatRupiah(totalSisaActiveItems)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center font-bold text-rose-600">
+                                            <span>Lebih Setor Periode Lalu:</span>
+                                            <span>- {formatRupiah(priorOverReturn)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center font-black text-amber-800 border-t border-amber-200 pt-1">
+                                            <span>Sisa Kas Wajib Disetor:</span>
+                                            <span>{formatRupiah(totalSisa)}</span>
+                                        </div>
+                                    </div>
+                                )}
+                                {rawDiffSisa < 0 && (
+                                    <div className="bg-rose-50 border border-rose-200 rounded-xl p-3 text-[11px] flex justify-between items-center animate-in fade-in">
+                                        <span className="font-bold text-rose-700">Lebih Setor Pengembalian:</span>
+                                        <span className="font-black text-rose-700">+{formatRupiah(Math.abs(rawDiffSisa))}</span>
+                                    </div>
+                                )}
                                 <div className="flex justify-between items-center border-t border-slate-100 pt-4">
                                     <span className="text-xs font-bold text-slate-400">Total Pengembalian</span>
                                     <span className="text-sm font-black text-indigo-600">{formatRupiah(totalPengembalian)}</span>
