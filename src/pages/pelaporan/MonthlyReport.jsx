@@ -1579,12 +1579,20 @@ export default function MonthlyReport() {
         return totalCair - totalPengeluaran - totalPengembalian;
     }, [totalCair, totalPengeluaran, totalPengembalian]);
 
-    const priorOverReturn = useMemo(() => {
-        if (pendingMonthFilter === 'ALL' && totalSisaActiveItems > totalSisa) {
-            return totalSisaActiveItems - totalSisa;
+    const totalOverSpentActiveItems = useMemo(() => {
+        return filteredPendingItems.reduce((sum, item) => {
+            const sisa = parseFloat(item.sisa || 0);
+            return sisa < 0 ? sum + Math.abs(sisa) : sum;
+        }, 0);
+    }, [filteredPendingItems]);
+
+    const actualPriorOverReturn = useMemo(() => {
+        if (totalSisaActiveItems > totalSisa) {
+            const diff = totalSisaActiveItems - totalSisa;
+            return Math.max(0, diff - totalOverSpentActiveItems);
         }
         return 0;
-    }, [pendingMonthFilter, totalSisaActiveItems, totalSisa]);
+    }, [totalSisaActiveItems, totalSisa, totalOverSpentActiveItems]);
 
     const totalSisaForHistory = useMemo(() => {
         const approvedReqsInHistoryFilter = requestsForYear
@@ -2395,16 +2403,24 @@ export default function MonthlyReport() {
                                     <span className="text-xs font-bold text-slate-400">Total Sisa</span>
                                     <span className="text-sm font-black text-amber-500">{formatRupiah(totalSisa)}</span>
                                 </div>
-                                {pendingMonthFilter === 'ALL' && priorOverReturn > 0 && (
+                                {(totalOverSpentActiveItems > 0 || actualPriorOverReturn > 0) && (
                                     <div className="bg-amber-50/80 border border-amber-200/80 rounded-xl p-3 text-[11px] space-y-1.5 animate-in fade-in">
                                         <div className="flex justify-between items-center font-bold text-slate-600">
                                             <span>Sisa Rincian Belum Selesai:</span>
                                             <span className="text-slate-800">{formatRupiah(totalSisaActiveItems)}</span>
                                         </div>
-                                        <div className="flex justify-between items-center font-bold text-rose-600">
-                                            <span>Lebih Setor Periode Lalu:</span>
-                                            <span>- {formatRupiah(priorOverReturn)}</span>
-                                        </div>
+                                        {totalOverSpentActiveItems > 0 && (
+                                            <div className="flex justify-between items-center font-bold text-rose-600">
+                                                <span>Kelebihan Belanja Rincian (Over-Pagu):</span>
+                                                <span>- {formatRupiah(totalOverSpentActiveItems)}</span>
+                                            </div>
+                                        )}
+                                        {actualPriorOverReturn > 0 && (
+                                            <div className="flex justify-between items-center font-bold text-rose-600">
+                                                <span>Lebih Setor Periode Lalu:</span>
+                                                <span>- {formatRupiah(actualPriorOverReturn)}</span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between items-center font-black text-amber-800 border-t border-amber-200 pt-1">
                                             <span>Sisa Kas Wajib Disetor:</span>
                                             <span>{formatRupiah(totalSisa)}</span>
