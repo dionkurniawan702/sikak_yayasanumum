@@ -1,5 +1,6 @@
 import express from 'express';
 import bcrypt from 'bcryptjs';
+import { recordAudit } from './audit.js';
 const router = express.Router();
 
 const getPrisma = (req) => req.app.get('prisma');
@@ -98,6 +99,18 @@ router.post('/journals', async (req, res) => {
                 reference, programId, phoneNumber
             }
         });
+        recordAudit(getPrisma(req), {
+            req,
+            action: 'CREATE',
+            entity: 'Jurnal',
+            entityId: data.id,
+            details: {
+                reference: data.reference,
+                name: data.name,
+                description: data.description,
+                message: `Mencatat entri Jurnal Umum: ${data.name || ''} - ${data.description || ''} (Ref: ${data.reference || '-'})`
+            }
+        }).catch(() => {});
         res.json({ data });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -620,6 +633,16 @@ router.delete('/journals/:id', async (req, res) => {
                 data: { isDeleted: true }
             });
         }
+        recordAudit(getPrisma(req), {
+            req,
+            action: 'DELETE',
+            entity: 'Jurnal',
+            entityId: req.params.id,
+            details: {
+                isPermanent,
+                message: `Menghapus entri Jurnal Umum ID: ${req.params.id}`
+            }
+        }).catch(() => {});
         res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });

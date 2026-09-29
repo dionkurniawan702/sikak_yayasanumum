@@ -1,6 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { Activity, Clock, User, ShieldAlert, Database, FileText, Search, RefreshCw, ChevronRight } from 'lucide-react';
+import {
+    Activity, Clock, User, ShieldAlert, Database, FileText, Search,
+    RefreshCw, ChevronRight, Filter, Calendar, Eye, X, CheckCircle2,
+    AlertCircle, LogIn, Trash2, ArrowUpRight, ShieldCheck, Building2,
+    Send, BookMarked, Wallet, ChevronLeft
+} from 'lucide-react';
 import { isRemote } from '../services/api';
 
 export default function AuditLog() {
@@ -9,150 +14,603 @@ export default function AuditLog() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Filters
+    const [searchTerm, setSearchTerm] = useState('');
+    const [actionFilter, setActionFilter] = useState('ALL');
+    const [entityFilter, setEntityFilter] = useState('ALL');
+    const [dateRangeFilter, setDateRangeFilter] = useState('ALL'); // 'ALL', 'TODAY', 'WEEK', 'MONTH', 'CUSTOM'
+    const [customStartDate, setCustomStartDate] = useState('');
+    const [customEndDate, setCustomEndDate] = useState('');
+    const [selectedLog, setSelectedLog] = useState(null); // Modal detail
+
+    // Pagination
+    const [currentPage, setCurrentPage] = useState(1);
+    const pageSize = 25;
+
+    const fetchLogs = async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const token = localStorage.getItem('jwt_token');
+            if (!token) throw new Error('Akses diblokir: Sesi tidak valid atau belum login.');
+
+            let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
+            const { hostname, protocol, host } = window.location;
+            if (hostname !== 'localhost' && hostname !== '127.0.0.1') apiUrl = `${protocol}//${host}/api`;
+
+            // Always fetch up to 200 recent records for smooth client-side filtering
+            const response = await fetch(`${apiUrl}/audit-logs?limit=200`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+
+            if (!response.ok) {
+                const errData = await response.json().catch(() => ({}));
+                throw new Error(errData.error || `Gagal mengambil log: Status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (data.success) {
+                setLogs(data.data || []);
+            } else {
+                throw new Error(data.error || 'Terjadi kesalahan sistem.');
+            }
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchLogs = async () => {
-            if (!isRemote) {
-                setError('Audit Log hanya tersedia dalam Mode Server (Remote).');
-                setLoading(false);
-                return;
-            }
-
-            try {
-                const token = localStorage.getItem('jwt_token');
-                if (!token) throw new Error('Akses diblokir: Sesi tidak valid.');
-
-                let apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
-                const { hostname, protocol, host } = window.location;
-                if (hostname !== 'localhost' && hostname !== '127.0.0.1') apiUrl = `${protocol}//${host}/api`;
-
-                const response = await fetch(`${apiUrl}/audit-logs`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-
-                if (!response.ok) throw new Error('Kegagalan sinkronisasi dengan server audit.');
-
-                const data = await response.json();
-                if (data.success) {
-                    setLogs(data.data);
-                } else {
-                    throw new Error(data.error || 'Terjadi kesalahan sistem.');
-                }
-            } catch (err) {
-                setError(err.message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchLogs();
     }, []);
 
+    // Filter Logic
+    const filteredLogs = useMemo(() => {
+        let result = logs;
+
+        // Action Filter
+        if (actionFilter !== 'ALL') {
+            result = result.filter(l => (l.action || '').toUpperCase() === actionFilter);
+        }
+
+        // Entity Filter
+        if (entityFilter !== 'ALL') {
+            result = result.filter(l => (l.entity || '').toLowerCase() === entityFilter.toLowerCase());
+        }
+
+        // Date Filter
+        if (dateRangeFilter !== 'ALL') {
+            const now = new Date();
+            if (dateRangeFilter === 'TODAY') {
+                const todayStr = now.toISOString().split('T')[0];
+                result = result.filter(l => l.timestamp && l.timestamp.startsWith(todayStr));
+            } else if (dateRangeFilter === 'WEEK') {
+                const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                result = result.filter(l => l.timestamp && new Date(l.timestamp) >= weekAgo);
+            } else if (dateRangeFilter === 'MONTH') {
+                const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+                result = result.filter(l => l.timestamp && new Date(l.timestamp) >= monthAgo);
+            } else if (dateRangeFilter === 'CUSTOM') {
+                if (customStartDate) {
+                    const start = new Date(customStartDate);
+                    result = result.filter(l => l.timestamp && new Date(l.timestamp) >= start);
+                }
+                if (customEndDate) {
+                    const end = new Date(customEndDate);
+                    end.setHours(23, 59, 59, 999);
+                    result = result.filter(l => l.timestamp && new Date(l.timestamp) <= end);
+                }
+            }
+        }
+
+        // Search Term
+        if (searchTerm.trim()) {
+            const q = searchTerm.toLowerCase();
+            result = result.filter(l => {
+                const opName = (l.operatorName || '').toLowerCase();
+                const opUnit = (l.operatorUnit || '').toLowerCase();
+                const opRole = (l.operatorRole || '').toLowerCase();
+                const act = (l.action || '').toLowerCase();
+                const ent = (l.entity || '').toLowerCase();
+                const entId = (l.entityId || '').toLowerCase();
+                const detailsStr = JSON.stringify(l.details || {}).toLowerCase();
+                return opName.includes(q) || opUnit.includes(q) || opRole.includes(q) ||
+                    act.includes(q) || ent.includes(q) || entId.includes(q) || detailsStr.includes(q);
+            });
+        }
+
+        return result;
+    }, [logs, actionFilter, entityFilter, dateRangeFilter, customStartDate, customEndDate, searchTerm]);
+
+    // Paginated
+    const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
+    const paginatedLogs = useMemo(() => {
+        const start = (currentPage - 1) * pageSize;
+        return filteredLogs.slice(start, start + pageSize);
+    }, [filteredLogs, currentPage, pageSize]);
+
+    // Reset pagination on filter change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm, actionFilter, entityFilter, dateRangeFilter, customStartDate, customEndDate]);
+
+    // Quick Stats
+    const stats = useMemo(() => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayCount = logs.filter(l => l.timestamp && l.timestamp.startsWith(todayStr)).length;
+        const deleteCount = logs.filter(l => (l.action || '').includes('DELETE')).length;
+        const approveCount = logs.filter(l => (l.action || '').includes('APPROVE')).length;
+        return {
+            total: logs.length,
+            today: todayCount,
+            delete: deleteCount,
+            approve: approveCount
+        };
+    }, [logs]);
+
     const getActionBadge = (action) => {
         switch (action) {
-            case 'CREATE': return <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest">BUAT</span>;
-            case 'UPDATE': return <span className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[9px] font-black uppercase tracking-widest">UBAH</span>;
-            case 'DELETE': return <span className="px-3 py-1 bg-rose-50 text-rose-600 rounded-full text-[9px] font-black uppercase tracking-widest">HAPUS</span>;
-            case 'CLOSING_PERIOD': return <span className="px-3 py-1 bg-slate-900 text-white rounded-full text-[9px] font-black uppercase tracking-widest">TUTUP BUKU</span>;
-            default: return <span className="px-3 py-1 bg-slate-100 text-slate-400 rounded-full text-[9px] font-black uppercase tracking-widest">{action}</span>;
+            case 'CREATE':
+                return <span className="px-2.5 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><CheckCircle2 size={11}/> TAMBAH</span>;
+            case 'UPDATE':
+                return <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><RefreshCw size={11}/> UBAH</span>;
+            case 'DELETE':
+            case 'DELETE_PERMANENT':
+                return <span className="px-2.5 py-1 bg-rose-50 text-rose-700 border border-rose-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><Trash2 size={11}/> HAPUS</span>;
+            case 'APPROVE':
+                return <span className="px-2.5 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><ShieldCheck size={11}/> SETUJU</span>;
+            case 'REJECT':
+            case 'CANCEL_APPROVE':
+                return <span className="px-2.5 py-1 bg-amber-50 text-amber-700 border border-amber-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><AlertCircle size={11}/> BATAL/TOLAK</span>;
+            case 'LOGIN':
+                return <span className="px-2.5 py-1 bg-violet-50 text-violet-700 border border-violet-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><LogIn size={11}/> MASUK</span>;
+            case 'LOGIN_FAILED':
+                return <span className="px-2.5 py-1 bg-rose-100 text-rose-800 border border-rose-300 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><ShieldAlert size={11}/> GAGAL LOGIN</span>;
+            case 'RESTORE':
+                return <span className="px-2.5 py-1 bg-teal-50 text-teal-700 border border-teal-200/60 rounded-lg text-[9px] font-black uppercase tracking-wider inline-flex items-center gap-1.5"><RefreshCw size={11}/> PULIHKAN</span>;
+            default:
+                return <span className="px-2.5 py-1 bg-slate-100 text-slate-600 rounded-lg text-[9px] font-black uppercase tracking-wider">{action}</span>;
         }
     };
 
     const getEntityIcon = (entity) => {
         switch (entity) {
-            case 'Account': return <Database size={14} />;
-            case 'Journal': return <FileText size={14} />;
-            case 'User': return <User size={14} />;
-            default: return <Activity size={14} />;
+            case 'NotaBelanja':
+            case 'BudgetReport': return <FileText size={13} className="text-emerald-500" />;
+            case 'PermintaanDana':
+            case 'BudgetRequest': return <Send size={13} className="text-blue-500" />;
+            case 'PengembalianKas': return <Wallet size={13} className="text-teal-500" />;
+            case 'Jurnal':
+            case 'Journal': return <BookMarked size={13} className="text-indigo-500" />;
+            case 'TempatSampah': return <Trash2 size={13} className="text-rose-500" />;
+            case 'Auth':
+            case 'User': return <User size={13} className="text-violet-500" />;
+            default: return <Activity size={13} className="text-slate-400" />;
         }
     };
 
-    if (!isRemote) {
-        return (
-            <div className="p-20 text-center flex flex-col items-center justify-center animate-in">
-                <div className="p-8 bg-slate-50 text-slate-300 rounded-[40px] shadow-inner mb-6">
-                    <ShieldAlert size={64} />
-                </div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">FITUR OFFLINE</h3>
-                <p className="text-slate-400 font-medium max-w-sm mt-2 leading-relaxed">Audit Log memerlukan koneksi database real-time (Mode Server) untuk mencatat riwayat aktivitas pengguna secara aman.</p>
-            </div>
-        );
-    }
+    const formatRupiah = (val) => {
+        if (!val || isNaN(val)) return 'Rp 0';
+        return `Rp ${Math.round(val).toLocaleString('id-ID')}`;
+    };
+
+    const getFriendlyDescription = (log) => {
+        const d = log.details || {};
+        if (d.message) return d.message;
+        if (log.action === 'LOGIN') return `Pengguna ${log.operatorName || ''} berhasil login ke sistem`;
+        if (log.action === 'LOGIN_FAILED') return `Percobaan login gagal untuk akun "${d.username || '-'}"`;
+        if (log.entity === 'NotaBelanja' || log.entity === 'BudgetReport') {
+            const nota = d.nomorNota ? `Nota No. ${d.nomorNota}` : 'Nota belanja';
+            const desc = d.description || d.desc || '';
+            const rp = d.amount ? formatRupiah(d.amount) : '';
+            return `${log.action === 'DELETE' ? 'Menghapus' : (log.action === 'CREATE' ? 'Menginput' : 'Mengubah')} ${nota} ${desc ? `(${desc})` : ''} ${rp ? `sebesar ${rp}` : ''}`;
+        }
+        if (log.entity === 'PermintaanDana' || log.entity === 'BudgetRequest') {
+            const bln = d.month ? `bulan ${d.month}` : '';
+            const rp = d.totalAmount ? formatRupiah(d.totalAmount) : '';
+            return `${log.action === 'APPROVE' ? 'Menyetujui' : (log.action === 'REJECT' ? 'Menolak' : 'Memproses')} pengajuan dana ${bln} ${rp ? `sebesar ${rp}` : ''}`;
+        }
+        return JSON.stringify(d);
+    };
 
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-12">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6 animate-in fade-in">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-6">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight italic">Audit Log Sistem</h2>
-                    <p className="text-slate-500 font-medium">Jejak digital dan riwayat aktivitas operasional yayasan</p>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="p-2 bg-blue-50 text-blue-600 rounded-xl">
+                            <Activity size={22} />
+                        </span>
+                        <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">
+                            Jejak Aktivitas Sistem <span className="text-blue-600 font-serif italic text-lg md:text-xl font-normal">(Audit Trail)</span>
+                        </h2>
+                    </div>
+                    <p className="text-xs md:text-sm text-slate-500 font-medium">
+                        Rekam jejak forensik seluruh operasi: input nota, pengajuan dana, persetujuan, dan penghapusan data
+                    </p>
                 </div>
-                <div className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
-                    <Clock size={20} className="text-blue-500" />
-                    <span className="text-xs font-black text-slate-900 uppercase tracking-widest italic font-mono">{new Date().toLocaleDateString('id-ID')}</span>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={fetchLogs}
+                        disabled={loading}
+                        className="btn btn-secondary text-xs flex items-center gap-2 shadow-sm hover:shadow"
+                    >
+                        <RefreshCw size={14} className={loading ? 'animate-spin text-blue-600' : ''} />
+                        <span>Refresh Data</span>
+                    </button>
+                    <div className="p-3 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
+                        <Clock size={16} className="text-blue-500" />
+                        <span className="text-[11px] font-black text-slate-700 font-mono tracking-wider">
+                            {new Date().toLocaleDateString('id-ID', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}
+                        </span>
+                    </div>
                 </div>
             </div>
 
-            <div className="bg-white rounded-[40px] border border-slate-100 shadow-2xl overflow-hidden animate-in">
-                {loading ? (
-                    <div className="p-24 text-center">
-                        <RefreshCw className="animate-spin text-blue-600 mx-auto mb-4" size={32} />
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Sinkronisasi data riwayat...</p>
+            {/* Quick Stat Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Aktivitas</p>
+                        <p className="text-2xl font-black text-slate-900">{stats.total.toLocaleString('id-ID')}</p>
                     </div>
-                ) : error ? (
-                    <div className="p-20 text-center flex flex-col items-center">
-                        <div className="w-16 h-16 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-4"><ShieldAlert size={32}/></div>
-                        <p className="text-sm font-black text-slate-900 uppercase tracking-tight italic">{error}</p>
+                    <div className="w-11 h-11 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600">
+                        <Database size={20} />
                     </div>
-                ) : (
-                    <table className="w-full text-left">
-                        <thead className="bg-slate-50 text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">
-                            <tr>
-                                <th className="px-10 py-6">Stempel Waktu</th>
-                                <th className="px-10 py-6">Operator</th>
-                                <th className="px-10 py-6">Aktivitas</th>
-                                <th className="px-10 py-6">Detail Perubahan</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {logs.map(log => (
-                                <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                                    <td className="px-10 py-6 whitespace-nowrap">
-                                        <p className="font-black text-slate-900 text-xs italic">{new Date(log.timestamp).toLocaleTimeString('id-ID')}</p>
-                                        <p className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{new Date(log.timestamp).toLocaleDateString('id-ID')}</p>
-                                    </td>
-                                    <td className="px-10 py-6 whitespace-nowrap">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-blue-50 text-blue-600 rounded-lg flex items-center justify-center font-black text-[10px] italic shadow-inner">
-                                                {state.users.find(u => u.id === log.userId)?.name?.charAt(0) || 'S'}
-                                            </div>
-                                            <span className="font-bold text-slate-700 text-sm">{state.users.find(u => u.id === log.userId)?.name || 'Sistem'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-6 whitespace-nowrap">
-                                        <div className="flex flex-col gap-2">
-                                            {getActionBadge(log.action)}
-                                            <div className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                                                {getEntityIcon(log.entity)} {log.entity}
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-10 py-6">
-                                        <div className="p-4 bg-slate-900 rounded-2xl text-[10px] font-mono text-emerald-400 max-w-md overflow-x-auto shadow-inner whitespace-pre-wrap">
-                                            {JSON.stringify(log.details, null, 2)}
-                                        </div>
-                                    </td>
-                                </tr>
-                            ))}
-                            {logs.length === 0 && (
-                                <tr><td colSpan={4} className="p-20 text-center font-black text-slate-300 italic">Belum ada aktivitas terekam dalam log audit</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aktivitas Hari Ini</p>
+                        <p className="text-2xl font-black text-blue-600">{stats.today.toLocaleString('id-ID')}</p>
+                    </div>
+                    <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
+                        <Calendar size={20} />
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Persetujuan (Approval)</p>
+                        <p className="text-2xl font-black text-indigo-600">{stats.approve.toLocaleString('id-ID')}</p>
+                    </div>
+                    <div className="w-11 h-11 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <ShieldCheck size={20} />
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Hapus / Batalkan</p>
+                        <p className="text-2xl font-black text-rose-600">{stats.delete.toLocaleString('id-ID')}</p>
+                    </div>
+                    <div className="w-11 h-11 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600">
+                        <Trash2 size={20} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Toolbar Filters & Search */}
+            <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                    {/* Search bar */}
+                    <div className="relative flex-1">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={17} />
+                        <input
+                            type="text"
+                            placeholder="Cari nama operator, unit, nomor nota, deskripsi aksi..."
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            className="input pl-11 pr-4 py-2.5 text-xs w-full rounded-2xl bg-slate-50 border-slate-200 focus:bg-white"
+                        />
+                        {searchTerm && (
+                            <button
+                                onClick={() => setSearchTerm('')}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+                            >
+                                ✕
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Filter Action */}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <select
+                            value={actionFilter}
+                            onChange={(e) => setActionFilter(e.target.value)}
+                            className="input py-2.5 px-3 text-xs rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700"
+                        >
+                            <option value="ALL">Semua Aksi</option>
+                            <option value="CREATE">Tambah (CREATE)</option>
+                            <option value="UPDATE">Ubah (UPDATE)</option>
+                            <option value="DELETE">Hapus (DELETE)</option>
+                            <option value="APPROVE">Persetujuan (APPROVE)</option>
+                            <option value="REJECT">Tolak / Batal</option>
+                            <option value="LOGIN">Login Akun</option>
+                        </select>
+
+                        {/* Filter Entity */}
+                        <select
+                            value={entityFilter}
+                            onChange={(e) => setEntityFilter(e.target.value)}
+                            className="input py-2.5 px-3 text-xs rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700"
+                        >
+                            <option value="ALL">Semua Modul</option>
+                            <option value="NotaBelanja">Nota Belanja</option>
+                            <option value="PermintaanDana">Permintaan Dana</option>
+                            <option value="PengembalianKas">Pengembalian Kas</option>
+                            <option value="Jurnal">Jurnal Umum</option>
+                            <option value="Auth">Autentikasi (Login)</option>
+                            <option value="TempatSampah">Tempat Sampah</option>
+                        </select>
+
+                        {/* Filter Date Range */}
+                        <select
+                            value={dateRangeFilter}
+                            onChange={(e) => setDateRangeFilter(e.target.value)}
+                            className="input py-2.5 px-3 text-xs rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700"
+                        >
+                            <option value="ALL">Semua Waktu</option>
+                            <option value="TODAY">Hari Ini</option>
+                            <option value="WEEK">7 Hari Terakhir</option>
+                            <option value="MONTH">30 Hari Terakhir</option>
+                            <option value="CUSTOM">Rentang Kustom...</option>
+                        </select>
+                    </div>
+                </div>
+
+                {/* Custom Date Pickers */}
+                {dateRangeFilter === 'CUSTOM' && (
+                    <div className="flex items-center gap-3 pt-3 border-t border-slate-100 text-xs">
+                        <span className="font-bold text-slate-500">Rentang Tanggal:</span>
+                        <input
+                            type="date"
+                            value={customStartDate}
+                            onChange={(e) => setCustomStartDate(e.target.value)}
+                            className="input py-1.5 px-3 text-xs rounded-xl bg-slate-50 border-slate-200"
+                        />
+                        <span className="text-slate-400">s/d</span>
+                        <input
+                            type="date"
+                            value={customEndDate}
+                            onChange={(e) => setCustomEndDate(e.target.value)}
+                            className="input py-1.5 px-3 text-xs rounded-xl bg-slate-50 border-slate-200"
+                        />
+                    </div>
                 )}
             </div>
 
-            <div className="mt-12 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                Data audit log tidak dapat dimanipulasi atau dihapus untuk menjaga integritas sistem
+            {/* Table Area */}
+            <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
+                {loading ? (
+                    <div className="p-24 text-center">
+                        <RefreshCw className="animate-spin text-blue-600 mx-auto mb-3" size={28} />
+                        <p className="text-xs font-bold text-slate-500">Memuat riwayat jejak aktivitas...</p>
+                    </div>
+                ) : error ? (
+                    <div className="p-16 text-center flex flex-col items-center">
+                        <div className="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-3">
+                            <ShieldAlert size={28} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-800">{error}</p>
+                        <button onClick={fetchLogs} className="btn btn-secondary text-xs mt-4">Coba Lagi</button>
+                    </div>
+                ) : paginatedLogs.length === 0 ? (
+                    <div className="p-20 text-center flex flex-col items-center justify-center">
+                        <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mb-3">
+                            <Activity size={28} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-700">Tidak ada aktivitas ditemukan</p>
+                        <p className="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau filter yang Anda pilih.</p>
+                    </div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <th className="px-6 py-4">Waktu</th>
+                                    <th className="px-6 py-4">Operator / Pengguna</th>
+                                    <th className="px-6 py-4">Aksi & Modul</th>
+                                    <th className="px-6 py-4">Rincian Aktivitas</th>
+                                    <th className="px-6 py-4 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs">
+                                {paginatedLogs.map((log) => {
+                                    const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
+                                    const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+
+                                    return (
+                                        <tr key={log.id} className="hover:bg-blue-50/20 transition-colors">
+                                            {/* Waktu */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <p className="font-mono font-black text-slate-800 text-xs">{timeStr} <span className="text-[10px] text-slate-400 font-normal">WIB</span></p>
+                                                <p className="text-[10px] text-slate-400 font-semibold">{dateStr}</p>
+                                            </td>
+
+                                            {/* Operator */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex items-center gap-2.5">
+                                                    <div className="w-8 h-8 rounded-xl bg-blue-100/70 text-blue-700 font-black text-xs flex items-center justify-center shrink-0">
+                                                        {(log.operatorName || 'S').charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-bold text-slate-800 text-xs leading-tight">{log.operatorName || 'Sistem'}</p>
+                                                        <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                            <Building2 size={10} />
+                                                            <span>{log.operatorUnit || 'Yayasan'}</span>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span className="uppercase font-semibold text-[9px] text-blue-600">{log.operatorRole || 'system'}</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Aksi & Modul */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="flex flex-col gap-1.5 items-start">
+                                                    {getActionBadge(log.action)}
+                                                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-600">
+                                                        {getEntityIcon(log.entity)}
+                                                        <span>{log.entity}</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            {/* Rincian Ringkas */}
+                                            <td className="px-6 py-4">
+                                                <p className="font-medium text-slate-700 line-clamp-2 text-xs leading-relaxed max-w-lg">
+                                                    {getFriendlyDescription(log)}
+                                                </p>
+                                                {log.entityId && (
+                                                    <span className="inline-block mt-1 font-mono text-[9px] text-slate-400 bg-slate-50 px-2 py-0.5 rounded border border-slate-100">
+                                                        ID: {log.entityId}
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            {/* Tombol Detail */}
+                                            <td className="px-6 py-4 text-center whitespace-nowrap">
+                                                <button
+                                                    onClick={() => setSelectedLog(log)}
+                                                    className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors"
+                                                    title="Lihat Rincian Forensik"
+                                                >
+                                                    <Eye size={16} />
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* Pagination Footer */}
+                {filteredLogs.length > 0 && (
+                    <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 font-medium bg-slate-50/50">
+                        <div>
+                            Menampilkan <span className="font-bold text-slate-700">{(currentPage - 1) * pageSize + 1}</span> s/d{' '}
+                            <span className="font-bold text-slate-700">{Math.min(currentPage * pageSize, filteredLogs.length)}</span> dari{' '}
+                            <span className="font-bold text-slate-700">{filteredLogs.length}</span> aktivitas
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="btn btn-secondary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40"
+                            >
+                                <ChevronLeft size={14} /> Sebelumnya
+                            </button>
+                            <span className="px-3 py-1 font-bold text-slate-700">
+                                Hal {currentPage} dari {totalPages}
+                            </span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                                className="btn btn-secondary py-1.5 px-3 text-xs flex items-center gap-1 disabled:opacity-40"
+                            >
+                                Berikutnya <ChevronRight size={14} />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Modal Detail Forensik */}
+            {selectedLog && (
+                <div className="fixed inset-0 z-[9999] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+                    <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+                        {/* Modal Header */}
+                        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl">
+                                    <Activity size={20} />
+                                </div>
+                                <div>
+                                    <h4 className="font-black text-slate-900 text-base">Rincian Jejak Aktivitas</h4>
+                                    <p className="text-[11px] text-slate-400 font-mono">Log ID: {selectedLog.id}</p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setSelectedLog(null)}
+                                className="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Modal Content */}
+                        <div className="p-6 overflow-y-auto space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Waktu Kejadian</p>
+                                    <p className="font-black text-slate-800 text-sm font-mono">
+                                        {new Date(selectedLog.timestamp).toLocaleTimeString('id-ID')} WIB
+                                    </p>
+                                    <p className="text-xs text-slate-500 font-semibold">
+                                        {new Date(selectedLog.timestamp).toLocaleDateString('id-ID', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+                                    </p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Aksi & Modul</p>
+                                    <div className="mt-1 flex items-center gap-2">
+                                        {getActionBadge(selectedLog.action)}
+                                        <span className="font-bold text-slate-700 text-xs">{selectedLog.entity}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Informasi Operator</p>
+                                <div className="grid grid-cols-3 gap-2 text-xs">
+                                    <div>
+                                        <span className="text-slate-400 block text-[10px]">Nama:</span>
+                                        <span className="font-bold text-slate-800">{selectedLog.operatorName || 'Sistem'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block text-[10px]">Unit / Bidang:</span>
+                                        <span className="font-bold text-slate-800">{selectedLog.operatorUnit || 'Yayasan'}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-slate-400 block text-[10px]">Hak Akses (Role):</span>
+                                        <span className="font-bold text-blue-600 uppercase text-[11px]">{selectedLog.operatorRole || 'System'}</span>
+                                    </div>
+                                </div>
+                                {selectedLog.details?.ipAddress && (
+                                    <div className="pt-2 border-t border-slate-200/60 text-xs text-slate-500 font-mono">
+                                        IP Address: <span className="font-bold text-slate-700">{selectedLog.details.ipAddress}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Ringkasan Aktivitas</p>
+                                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 text-xs font-semibold text-slate-700 leading-relaxed">
+                                    {getFriendlyDescription(selectedLog)}
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Teknis (Payload JSON)</p>
+                                <div className="p-4 bg-slate-900 rounded-2xl text-[11px] font-mono text-emerald-400 overflow-x-auto max-h-56">
+                                    <pre>{JSON.stringify(selectedLog.details || {}, null, 2)}</pre>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-4 border-t border-slate-100 flex justify-end bg-slate-50/50">
+                            <button
+                                onClick={() => setSelectedLog(null)}
+                                className="btn btn-secondary text-xs px-6"
+                            >
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

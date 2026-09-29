@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { recordAudit } from './audit.js';
 const router = express.Router();
 
 // Helper to get Prisma Client from the request (attached in index.js)
@@ -752,6 +753,18 @@ router.post('/budget-requests', async (req, res) => {
         if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
 
         const request = await getPrisma(req).budgetRequest.create({ data });
+        recordAudit(getPrisma(req), {
+            req,
+            action: 'CREATE',
+            entity: 'PermintaanDana',
+            entityId: request.id,
+            details: {
+                month: request.month,
+                totalAmount: request.totalAmount,
+                itemCount: Array.isArray(request.items) ? request.items.length : 0,
+                message: `Mengajukan Permintaan Dana bulan ${request.month || '-'} sebesar Rp ${Math.round(request.totalAmount || 0).toLocaleString('id-ID')}`
+            }
+        }).catch(() => {});
         res.json({ data: request });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -859,6 +872,21 @@ router.put('/budget-requests/:id', async (req, res) => {
             where: { id: req.params.id },
             data
         });
+        const actionType = data.status === 'APPROVED' ? 'APPROVE' : (data.status === 'REJECTED' ? 'REJECT' : 'UPDATE');
+        recordAudit(prisma, {
+            req,
+            action: actionType,
+            entity: 'PermintaanDana',
+            entityId: req.params.id,
+            details: {
+                status: data.status,
+                totalAmount: request.totalAmount,
+                month: request.month,
+                message: actionType === 'APPROVE'
+                    ? `Menyetujui Permintaan Dana bulan ${request.month || '-'} sebesar Rp ${Math.round(request.totalAmount || 0).toLocaleString('id-ID')}`
+                    : (actionType === 'REJECT' ? `Menolak Permintaan Dana bulan ${request.month || '-'}` : `Memperbarui status/data Permintaan Dana bulan ${request.month || '-'}`)
+            }
+        }).catch(() => {});
         res.json({ data: request });
     } catch (error) {
         console.error(`[API Error] PUT /budget-requests/${req.params.id}: ${error.message}`);
@@ -923,6 +951,18 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
                 data: { isDeleted: true }
             });
         }
+        recordAudit(prisma, {
+            req,
+            action: 'DELETE',
+            entity: 'PermintaanDana',
+            entityId: reqId,
+            details: {
+                month: budgetReq.month,
+                totalAmount: budgetReq.totalAmount,
+                isPermanent,
+                message: `Membatalkan/menghapus pengajuan dana bulan ${budgetReq.month || '-'} sebesar Rp ${Math.round(budgetReq.totalAmount || 0).toLocaleString('id-ID')}`
+            }
+        }).catch(() => {});
         res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -1057,6 +1097,23 @@ router.post('/budget-reports', async (req, res) => {
             return report;
         });
 
+        const isRefund = kategoriAset === 'PENGEMBALIAN';
+        recordAudit(getPrisma(req), {
+            req,
+            action: 'CREATE',
+            entity: isRefund ? 'PengembalianKas' : 'NotaBelanja',
+            entityId: result.id,
+            details: {
+                nomorNota: result.nomorNota,
+                amount: result.amount,
+                description: result.description,
+                buktiTeks: result.buktiTeks,
+                status: result.status,
+                message: isRefund
+                    ? `Mencatat pengembalian kas sisa dana sebesar Rp ${Math.round(result.amount || 0).toLocaleString('id-ID')}`
+                    : `Menginput nota belanja No. ${result.nomorNota || '-'} (${result.description || '-'}) sebesar Rp ${Math.round(result.amount || 0).toLocaleString('id-ID')}`
+            }
+        }).catch(() => {});
         res.json({ data: result });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -1342,6 +1399,20 @@ router.delete('/budget-reports/:id', requireAuth, async (req, res) => {
             }
         });
 
+        recordAudit(prisma, {
+            req,
+            action: 'DELETE',
+            entity: report.kategoriAset === 'PENGEMBALIAN' ? 'PengembalianKas' : 'NotaBelanja',
+            entityId: reportId,
+            details: {
+                nomorNota: report.nomorNota,
+                amount: report.amount,
+                description: report.description,
+                buktiTeks: report.buktiTeks,
+                isPermanent: req.query.permanent === 'true',
+                message: `Menghapus nota belanja No. ${report.nomorNota || '-'} (${report.description || '-'}) sebesar Rp ${Math.round(report.amount || 0).toLocaleString('id-ID')}`
+            }
+        }).catch(() => {});
         res.json({ message: 'Success' });
     } catch (error) {
         res.status(500).json({ error: error.message });

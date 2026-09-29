@@ -1,4 +1,5 @@
 import express from 'express';
+import { recordAudit } from './audit.js';
 const router = express.Router();
 
 const getPrisma = (req) => req.app.get('prisma');

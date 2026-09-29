@@ -11,6 +11,7 @@ import { fileURLToPath } from 'url';
 import anggaranRouter from './routes/anggaran.js';
 import coreRouter from './routes/core.js';
 import trashRouter from './routes/trash.js';
+import auditRouter, { recordAudit } from './routes/audit.js';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
@@ -504,6 +505,7 @@ app.post('/api/login', async (req, res) => {
         }
 
         console.log(`[Login Success] User "${username}" authenticated successfully.`);
+        recordAudit(client, { req, userId: user.id, userName: user.name, userRole: user.role, action: 'LOGIN', entity: 'Auth', entityId: user.id, details: { message: `Pengguna "${user.name || user.username}" (${user.role}) berhasil masuk ke sistem` } }).catch(() => {});
 
         const token = jwt.sign(
             { 
@@ -538,6 +540,7 @@ app.post('/api/login', async (req, res) => {
 app.use('/api', coreRouter);
 app.use('/api', anggaranRouter);
 app.use('/api/trash', trashRouter);
+app.use('/api', auditRouter);
 
 app.get('/api/run-db-push', async (req, res) => {
     try {
