@@ -47,6 +47,8 @@ export async function recordAudit(prisma, {
     userId = null,
     userName = null,
     userRole = null,
+    unitId = null,
+    fieldId = null,
     unitName = null,
     action = 'UNKNOWN',
     entity = 'General',
@@ -66,14 +68,29 @@ export async function recordAudit(prisma, {
             ip = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || null;
             if (ip && ip.includes(',')) ip = ip.split(',')[0].trim();
 
-            if (!uId && req.user) {
-                uId = req.user.id;
-                uName = uName || req.user.username || req.user.name;
-                uRole = uRole || req.user.role;
+            if (!uId) {
+                if (req.user) {
+                    uId = req.user.id;
+                    uName = uName || req.user.name || req.user.username;
+                    uRole = uRole || req.user.role;
+                } else {
+                    // Coba dekode token JWT dari header Authorization jika belum didekode oleh middleware
+                    const authHeader = req.headers['authorization'];
+                    const token = authHeader && authHeader.split(' ')[1];
+                    if (token) {
+                        try {
+                            const decoded = jwt.verify(token, JWT_SECRET);
+                            req.user = decoded;
+                            uId = decoded.id;
+                            uName = uName || decoded.name || decoded.username;
+                            uRole = uRole || decoded.role;
+                        } catch (e) {}
+                    }
+                }
             }
         }
 
-        // Jika ada userId tapi belum lengkap nama/unit, coba lookup singkat
+        // Jika ada userId tapi belum lengkap nama/unit, lookup user di DB
         if (uId && (!uName || !uUnit)) {
             try {
                 const user = await prisma.user.findUnique({
@@ -83,20 +100,41 @@ export async function recordAudit(prisma, {
                 if (user) {
                     uName = uName || user.name || user.username;
                     uRole = uRole || user.role;
-                    uUnit = uUnit || user.unit?.name || user.field?.name || (user.role === 'superadmin' ? 'Yayasan' : null);
+                    if (!uUnit) {
+                        uUnit = user.unit?.name || user.field?.name || (user.role === 'superadmin' ? 'Yayasan' : null);
+                    }
                 }
-            } catch (e) {
-                // Ignore lookup errors
-            }
+            } catch (e) {}
         }
+
+        // Tentukan Unit / Bidang target dari transaksi ini
+        let targetUnitName = unitName;
+        const targetUId = unitId || req?.body?.unitId;
+        const targetFId = fieldId || req?.body?.fieldId;
+
+        if (!targetUnitName && targetUId) {
+            try {
+                const u = await prisma.unit.findUnique({ where: { id: targetUId } });
+                if (u) targetUnitName = u.name;
+            } catch (e) {}
+        }
+        if (!targetUnitName && targetFId) {
+            try {
+                const f = await prisma.field.findUnique({ where: { id: targetFId } });
+                if (f) targetUnitName = f.name;
+            } catch (e) {}
+        }
+
+        const finalUnit = targetUnitName || uUnit || (uRole === 'superadmin' ? 'Yayasan' : '—');
 
         const detailsObj = typeof details === 'object' && details !== null 
             ? { ...details } 
             : { message: String(details || '') };
 
-        if (uName) detailsObj.operatorName = uName;
-        if (uRole) detailsObj.operatorRole = uRole;
-        if (uUnit) detailsObj.operatorUnit = uUnit;
+        detailsObj.operatorName = uName || (targetUnitName ? `Bendahara ${targetUnitName}` : 'Sistem');
+        detailsObj.operatorRole = uRole || (targetUnitName ? 'admin_unit' : 'system');
+        detailsObj.operatorUnit = finalUnit;
+        detailsObj.targetUnit = targetUnitName || finalUnit;
         if (ip) detailsObj.ipAddress = ip;
 
         await prisma.auditLog.create({
@@ -119,15 +157,16 @@ router.get('/audit-logs', requireSuperAdmin, async (req, res) => {
         const prisma = getPrisma(req);
         const {
             page = 1,
-            limit = 50,
+            limit = 20,
             action,
             entity,
+            unit,
             search,
             startDate,
             endDate
         } = req.query;
 
-        const take = Math.min(Math.max(parseInt(limit, 10) || 50, 10), 200);
+        const take = Math.min(Math.max(parseInt(limit, 10) || 20, 10), 200);
         const skip = (Math.max(parseInt(page, 10) || 1, 1) - 1) * take;
 
         const where = {};
@@ -157,7 +196,7 @@ router.get('/audit-logs', requireSuperAdmin, async (req, res) => {
             })
         ]);
 
-        // Kumpulkan user ID yang belum memiliki nama di details
+        // Kumpulkan user ID untuk lookup nama operator jika belum tersimpan
         const missingUserIds = [...new Set(logs.filter(l => !l.details?.operatorName && l.userId).map(l => l.userId))];
         let userMap = new Map();
         if (missingUserIds.length > 0) {
@@ -170,9 +209,67 @@ router.get('/audit-logs', requireSuperAdmin, async (req, res) => {
             } catch (e) {}
         }
 
+        // Backfill data unit untuk transaksi realisasi/nota belanja/pengembalian kas
+        const reportIdsToLookup = logs
+            .filter(l => l.entityId && (l.entity === 'NotaBelanja' || l.entity === 'BudgetReport' || l.entity === 'PengembalianKas'))
+            .map(l => l.entityId);
+        let reportUnitMap = new Map();
+        if (reportIdsToLookup.length > 0) {
+            try {
+                const reports = await prisma.budgetReport.findMany({
+                    where: { id: { in: reportIdsToLookup } },
+                    include: { unit: true, field: true }
+                });
+                reports.forEach(r => {
+                    const uName = r.unit?.name || r.field?.name;
+                    if (uName) reportUnitMap.set(r.id, uName);
+                });
+            } catch (e) {}
+        }
+
+        // Backfill data unit untuk pengajuan dana (PermintaanDana)
+        const reqIdsToLookup = logs
+            .filter(l => l.entityId && (l.entity === 'PermintaanDana' || l.entity === 'BudgetRequest'))
+            .map(l => l.entityId);
+        let reqUnitMap = new Map();
+        if (reqIdsToLookup.length > 0) {
+            try {
+                const breqs = await prisma.budgetRequest.findMany({
+                    where: { id: { in: reqIdsToLookup } },
+                    include: { unit: true, field: true }
+                });
+                breqs.forEach(b => {
+                    const uName = b.unit?.name || b.field?.name;
+                    if (uName) reqUnitMap.set(b.id, uName);
+                });
+            } catch (e) {}
+        }
+
         let enrichedLogs = logs.map(l => {
             const details = l.details || {};
             const u = l.userId ? userMap.get(l.userId) : null;
+            
+            // Prioritaskan nama unit: jika di details bernilai valid (bukan '—' / '-'), gunakan itu, jika tidak cari di database
+            const validDetailTarget = (details.targetUnit && details.targetUnit !== '—' && details.targetUnit !== '-') ? details.targetUnit : null;
+            const validDetailOpUnit = (details.operatorUnit && details.operatorUnit !== '—' && details.operatorUnit !== '-') ? details.operatorUnit : null;
+
+            const targetUnit = validDetailTarget || 
+                (l.entityId ? reportUnitMap.get(l.entityId) : null) || 
+                (l.entityId ? reqUnitMap.get(l.entityId) : null) || 
+                validDetailOpUnit || 
+                u?.unit?.name || 
+                u?.field?.name || 
+                (u?.role === 'superadmin' ? 'Yayasan' : (l.entity === 'Auth' ? 'Yayasan' : 'Yayasan'));
+
+            const isKnownUnit = targetUnit && targetUnit !== '—' && targetUnit !== '-';
+            const operatorName = (details.operatorName && details.operatorName !== 'Sistem')
+                ? details.operatorName
+                : (u?.name || u?.username || (isKnownUnit && targetUnit !== 'Yayasan' ? `Bendahara ${targetUnit}` : (u?.role === 'superadmin' ? 'Super Administrator' : 'Sistem')));
+
+            const operatorRole = (details.operatorRole && details.operatorRole !== 'system')
+                ? details.operatorRole
+                : (u?.role || (isKnownUnit && targetUnit !== 'Yayasan' ? 'admin_unit' : 'system'));
+
             return {
                 id: l.id,
                 userId: l.userId,
@@ -181,17 +278,23 @@ router.get('/audit-logs', requireSuperAdmin, async (req, res) => {
                 entityId: l.entityId,
                 timestamp: l.timestamp,
                 details: details,
-                operatorName: details.operatorName || u?.name || u?.username || 'Sistem',
-                operatorRole: details.operatorRole || u?.role || 'system',
-                operatorUnit: details.operatorUnit || u?.unit?.name || u?.field?.name || (u?.role === 'superadmin' ? 'Yayasan' : '—')
+                targetUnit: targetUnit,
+                operatorName,
+                operatorRole,
+                operatorUnit: targetUnit
             };
         });
+
+        // Filter unit jika ada parameter unit
+        if (unit && unit !== 'ALL') {
+            enrichedLogs = enrichedLogs.filter(l => (l.targetUnit || '').toLowerCase().includes(unit.toLowerCase()));
+        }
 
         // Filter text search di memori jika ada kata kunci
         if (search && search.trim()) {
             const q = search.toLowerCase();
             enrichedLogs = enrichedLogs.filter(l => {
-                const text = `${l.action} ${l.entity} ${l.entityId || ''} ${l.operatorName} ${l.operatorUnit} ${JSON.stringify(l.details)}`.toLowerCase();
+                const text = `${l.action} ${l.entity} ${l.entityId || ''} ${l.operatorName} ${l.operatorUnit} ${l.targetUnit} ${JSON.stringify(l.details)}`.toLowerCase();
                 return text.includes(q);
             });
         }
@@ -216,13 +319,16 @@ router.get('/audit-logs', requireSuperAdmin, async (req, res) => {
 router.post('/audit-logs', requireAuth, async (req, res) => {
     try {
         const prisma = getPrisma(req);
-        const { action, entity, entityId, details } = req.body;
+        const { action, entity, entityId, details, unitId, fieldId, unitName } = req.body;
 
         await recordAudit(prisma, {
             req,
             action,
             entity,
             entityId,
+            unitId,
+            fieldId,
+            unitName,
             details
         });
 

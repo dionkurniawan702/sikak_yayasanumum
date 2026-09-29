@@ -16,6 +16,7 @@ export default function AuditLog() {
 
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
+    const [unitFilter, setUnitFilter] = useState('ALL');
     const [actionFilter, setActionFilter] = useState('ALL');
     const [entityFilter, setEntityFilter] = useState('ALL');
     const [dateRangeFilter, setDateRangeFilter] = useState('ALL'); // 'ALL', 'TODAY', 'WEEK', 'MONTH', 'CUSTOM'
@@ -23,9 +24,9 @@ export default function AuditLog() {
     const [customEndDate, setCustomEndDate] = useState('');
     const [selectedLog, setSelectedLog] = useState(null); // Modal detail
 
-    // Pagination
+    // Pagination (dibatasi 20 per halaman sesuai permintaan)
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 25;
+    const pageSize = 20;
 
     const fetchLogs = async () => {
         setLoading(true);
@@ -65,9 +66,42 @@ export default function AuditLog() {
         fetchLogs();
     }, []);
 
+    // Daftar Unit & Bidang untuk Filter
+    const availableUnits = useMemo(() => {
+        const schools = new Set();
+        const fields = new Set();
+
+        (state.units || []).forEach(u => { if (u.name) schools.add(u.name); });
+        (state.fields || []).forEach(f => { if (f.name) fields.add(f.name); });
+
+        logs.forEach(l => {
+            const uName = l.targetUnit || l.operatorUnit;
+            if (uName && uName !== '—' && uName !== '-' && uName !== 'Yayasan') {
+                if (uName.toLowerCase().includes('bidang')) {
+                    fields.add(uName);
+                } else {
+                    schools.add(uName);
+                }
+            }
+        });
+
+        return {
+            schoolUnits: Array.from(schools).sort(),
+            fieldUnits: Array.from(fields).sort()
+        };
+    }, [state.units, state.fields, logs]);
+
     // Filter Logic
     const filteredLogs = useMemo(() => {
         let result = logs;
+
+        // Unit / Bidang Filter
+        if (unitFilter !== 'ALL') {
+            result = result.filter(l => {
+                const u = (l.targetUnit || l.operatorUnit || '').toLowerCase();
+                return u.includes(unitFilter.toLowerCase());
+            });
+        }
 
         // Action Filter
         if (actionFilter !== 'ALL') {
@@ -110,18 +144,19 @@ export default function AuditLog() {
             result = result.filter(l => {
                 const opName = (l.operatorName || '').toLowerCase();
                 const opUnit = (l.operatorUnit || '').toLowerCase();
+                const tgtUnit = (l.targetUnit || '').toLowerCase();
                 const opRole = (l.operatorRole || '').toLowerCase();
                 const act = (l.action || '').toLowerCase();
                 const ent = (l.entity || '').toLowerCase();
                 const entId = (l.entityId || '').toLowerCase();
                 const detailsStr = JSON.stringify(l.details || {}).toLowerCase();
-                return opName.includes(q) || opUnit.includes(q) || opRole.includes(q) ||
+                return opName.includes(q) || opUnit.includes(q) || tgtUnit.includes(q) || opRole.includes(q) ||
                     act.includes(q) || ent.includes(q) || entId.includes(q) || detailsStr.includes(q);
             });
         }
 
         return result;
-    }, [logs, actionFilter, entityFilter, dateRangeFilter, customStartDate, customEndDate, searchTerm]);
+    }, [logs, unitFilter, actionFilter, entityFilter, dateRangeFilter, customStartDate, customEndDate, searchTerm]);
 
     // Paginated
     const totalPages = Math.max(1, Math.ceil(filteredLogs.length / pageSize));
@@ -133,7 +168,7 @@ export default function AuditLog() {
     // Reset pagination on filter change
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchTerm, actionFilter, entityFilter, dateRangeFilter, customStartDate, customEndDate]);
+    }, [searchTerm, unitFilter, actionFilter, entityFilter, dateRangeFilter, customStartDate, customEndDate]);
 
     // Quick Stats
     const stats = useMemo(() => {
@@ -195,23 +230,66 @@ export default function AuditLog() {
         return `Rp ${Math.round(val).toLocaleString('id-ID')}`;
     };
 
+    const getUnitBadge = (unitName) => {
+        const name = unitName && unitName !== '—' && unitName !== '-' ? unitName : 'Yayasan';
+        if (name === 'Yayasan') {
+            return (
+                <span className="px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200/80 rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5 shadow-xs">
+                    <ShieldCheck size={12} className="text-slate-500 shrink-0" />
+                    <span>Yayasan</span>
+                </span>
+            );
+        }
+        if (name.toLowerCase().includes('bidang')) {
+            return (
+                <span className="px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200/80 rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5 shadow-xs">
+                    <Building2 size={12} className="text-amber-600 shrink-0" />
+                    <span>{name}</span>
+                </span>
+            );
+        }
+        return (
+            <span className="px-2.5 py-1 bg-blue-50 text-blue-700 border border-blue-200/80 rounded-xl text-[11px] font-bold inline-flex items-center gap-1.5 shadow-xs">
+                <Building2 size={12} className="text-blue-600 shrink-0" />
+                <span>{name}</span>
+            </span>
+        );
+    };
+
     const getFriendlyDescription = (log) => {
         const d = log.details || {};
-        if (d.message) return d.message;
-        if (log.action === 'LOGIN') return `Pengguna ${log.operatorName || ''} berhasil login ke sistem`;
-        if (log.action === 'LOGIN_FAILED') return `Percobaan login gagal untuk akun "${d.username || '-'}"`;
-        if (log.entity === 'NotaBelanja' || log.entity === 'BudgetReport') {
+        const unitName = log.targetUnit || log.operatorUnit;
+        const unitTag = (unitName && unitName !== '—' && unitName !== '-' && unitName !== 'Yayasan')
+            ? `[${unitName}] `
+            : '';
+
+        let desc = '';
+        if (d.message) {
+            desc = d.message;
+        } else if (log.action === 'LOGIN') {
+            desc = `Pengguna ${log.operatorName || ''} berhasil login ke sistem`;
+        } else if (log.action === 'LOGIN_FAILED') {
+            desc = `Percobaan login gagal untuk akun "${d.username || '-'}"`;
+        } else if (log.entity === 'NotaBelanja' || log.entity === 'BudgetReport') {
             const nota = d.nomorNota ? `Nota No. ${d.nomorNota}` : 'Nota belanja';
-            const desc = d.description || d.desc || '';
+            const itemDesc = d.description || d.desc || '';
             const rp = d.amount ? formatRupiah(d.amount) : '';
-            return `${log.action === 'DELETE' ? 'Menghapus' : (log.action === 'CREATE' ? 'Menginput' : 'Mengubah')} ${nota} ${desc ? `(${desc})` : ''} ${rp ? `sebesar ${rp}` : ''}`;
-        }
-        if (log.entity === 'PermintaanDana' || log.entity === 'BudgetRequest') {
+            desc = `${log.action === 'DELETE' ? 'Menghapus' : (log.action === 'CREATE' ? 'Menginput' : 'Mengubah')} ${nota} ${itemDesc ? `(${itemDesc})` : ''} ${rp ? `sebesar ${rp}` : ''}`;
+        } else if (log.entity === 'PermintaanDana' || log.entity === 'BudgetRequest') {
             const bln = d.month ? `bulan ${d.month}` : '';
             const rp = d.totalAmount ? formatRupiah(d.totalAmount) : '';
-            return `${log.action === 'APPROVE' ? 'Menyetujui' : (log.action === 'REJECT' ? 'Menolak' : 'Memproses')} pengajuan dana ${bln} ${rp ? `sebesar ${rp}` : ''}`;
+            desc = `${log.action === 'APPROVE' ? 'Menyetujui' : (log.action === 'REJECT' ? 'Menolak' : 'Memproses')} pengajuan dana ${bln} ${rp ? `sebesar ${rp}` : ''}`;
+        } else if (log.entity === 'PengembalianKas') {
+            const rp = d.amount ? formatRupiah(d.amount) : '';
+            desc = `Mencatat pengembalian kas sisa dana ${rp ? `sebesar ${rp}` : ''}`;
+        } else {
+            desc = JSON.stringify(d);
         }
-        return JSON.stringify(d);
+
+        if (unitTag && !desc.includes(unitName) && !desc.startsWith('[')) {
+            return `${unitTag}${desc}`.trim();
+        }
+        return desc;
     };
 
     return (
@@ -312,8 +390,33 @@ export default function AuditLog() {
                         )}
                     </div>
 
-                    {/* Filter Action */}
+                    {/* Filter Unit / Bidang & Aksi */}
                     <div className="flex flex-wrap items-center gap-2">
+                        {/* Filter Unit / Bidang */}
+                        <select
+                            value={unitFilter}
+                            onChange={(e) => setUnitFilter(e.target.value)}
+                            className="input py-2.5 px-3 text-xs rounded-xl bg-slate-50 border-slate-200 font-bold text-slate-700"
+                        >
+                            <option value="ALL">Semua Unit & Bidang</option>
+                            {availableUnits.schoolUnits.length > 0 && (
+                                <optgroup label="Unit Sekolah / Madrasah">
+                                    {availableUnits.schoolUnits.map(u => (
+                                        <option key={u} value={u}>{u}</option>
+                                    ))}
+                                </optgroup>
+                            )}
+                            {availableUnits.fieldUnits.length > 0 && (
+                                <optgroup label="Bidang">
+                                    {availableUnits.fieldUnits.map(f => (
+                                        <option key={f} value={f}>{f}</option>
+                                    ))}
+                                </optgroup>
+                            )}
+                            <option value="Yayasan">Yayasan (Pusat)</option>
+                        </select>
+
+                        {/* Filter Action */}
                         <select
                             value={actionFilter}
                             onChange={(e) => setActionFilter(e.target.value)}
@@ -408,6 +511,7 @@ export default function AuditLog() {
                             <thead>
                                 <tr className="bg-slate-50/80 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
                                     <th className="px-6 py-4">Waktu</th>
+                                    <th className="px-6 py-4">Unit / Bidang</th>
                                     <th className="px-6 py-4">Operator / Pengguna</th>
                                     <th className="px-6 py-4">Aksi & Modul</th>
                                     <th className="px-6 py-4">Rincian Aktivitas</th>
@@ -418,6 +522,17 @@ export default function AuditLog() {
                                 {paginatedLogs.map((log) => {
                                     const timeStr = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
                                     const dateStr = log.timestamp ? new Date(log.timestamp).toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+                                    const unitName = log.targetUnit || log.operatorUnit || 'Yayasan';
+
+                                    // Format nama operator: bila anonymous/Sistem tetapi unitnya diketahui, tampilkan Bendahara [Unit]
+                                    const isAnonymous = !log.operatorName || log.operatorName === 'Sistem';
+                                    const isYayasan = unitName === 'Yayasan' || unitName === '—' || unitName === '-';
+                                    const displayOperator = isAnonymous
+                                        ? (isYayasan ? 'Sistem' : `Bendahara ${unitName}`)
+                                        : log.operatorName;
+                                    const displayRole = log.operatorRole && log.operatorRole !== 'system'
+                                        ? log.operatorRole
+                                        : (isYayasan ? 'system' : 'admin_unit');
 
                                     return (
                                         <tr key={log.id} className="hover:bg-blue-50/20 transition-colors">
@@ -427,19 +542,24 @@ export default function AuditLog() {
                                                 <p className="text-[10px] text-slate-400 font-semibold">{dateStr}</p>
                                             </td>
 
+                                            {/* Unit / Bidang */}
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                {getUnitBadge(unitName)}
+                                            </td>
+
                                             {/* Operator */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex items-center gap-2.5">
                                                     <div className="w-8 h-8 rounded-xl bg-blue-100/70 text-blue-700 font-black text-xs flex items-center justify-center shrink-0">
-                                                        {(log.operatorName || 'S').charAt(0).toUpperCase()}
+                                                        {(displayOperator || 'S').charAt(0).toUpperCase()}
                                                     </div>
                                                     <div>
-                                                        <p className="font-bold text-slate-800 text-xs leading-tight">{log.operatorName || 'Sistem'}</p>
+                                                        <p className="font-bold text-slate-800 text-xs leading-tight">{displayOperator}</p>
                                                         <p className="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
                                                             <Building2 size={10} />
-                                                            <span>{log.operatorUnit || 'Yayasan'}</span>
+                                                            <span>{unitName}</span>
                                                             <span className="text-slate-300">•</span>
-                                                            <span className="uppercase font-semibold text-[9px] text-blue-600">{log.operatorRole || 'system'}</span>
+                                                            <span className="uppercase font-semibold text-[9px] text-blue-600">{displayRole}</span>
                                                         </p>
                                                     </div>
                                                 </div>
@@ -561,20 +681,30 @@ export default function AuditLog() {
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Informasi Operator</p>
-                                <div className="grid grid-cols-3 gap-2 text-xs">
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-3">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Informasi Unit & Operator</p>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                                     <div>
-                                        <span className="text-slate-400 block text-[10px]">Nama:</span>
-                                        <span className="font-bold text-slate-800">{selectedLog.operatorName || 'Sistem'}</span>
+                                        <span className="text-slate-400 block text-[10px] mb-1">Unit / Bidang:</span>
+                                        <div>
+                                            {getUnitBadge(selectedLog.targetUnit || selectedLog.operatorUnit)}
+                                        </div>
                                     </div>
                                     <div>
-                                        <span className="text-slate-400 block text-[10px]">Unit / Bidang:</span>
-                                        <span className="font-bold text-slate-800">{selectedLog.operatorUnit || 'Yayasan'}</span>
+                                        <span className="text-slate-400 block text-[10px] mb-1">Nama Operator:</span>
+                                        <span className="font-bold text-slate-800">
+                                            {selectedLog.operatorName && selectedLog.operatorName !== 'Sistem'
+                                                ? selectedLog.operatorName
+                                                : ((selectedLog.targetUnit && selectedLog.targetUnit !== 'Yayasan' && selectedLog.targetUnit !== '—' && selectedLog.targetUnit !== '-')
+                                                    ? `Bendahara ${selectedLog.targetUnit}`
+                                                    : 'Sistem')}
+                                        </span>
                                     </div>
                                     <div>
-                                        <span className="text-slate-400 block text-[10px]">Hak Akses (Role):</span>
-                                        <span className="font-bold text-blue-600 uppercase text-[11px]">{selectedLog.operatorRole || 'System'}</span>
+                                        <span className="text-slate-400 block text-[10px] mb-1">Hak Akses (Role):</span>
+                                        <span className="font-bold text-blue-600 uppercase text-[11px]">
+                                            {selectedLog.operatorRole || 'System'}
+                                        </span>
                                     </div>
                                 </div>
                                 {selectedLog.details?.ipAddress && (

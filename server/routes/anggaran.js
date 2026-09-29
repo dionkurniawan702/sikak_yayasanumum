@@ -758,6 +758,8 @@ router.post('/budget-requests', async (req, res) => {
             action: 'CREATE',
             entity: 'PermintaanDana',
             entityId: request.id,
+            unitId: request.unitId,
+            fieldId: request.fieldId,
             details: {
                 month: request.month,
                 totalAmount: request.totalAmount,
@@ -878,6 +880,8 @@ router.put('/budget-requests/:id', async (req, res) => {
             action: actionType,
             entity: 'PermintaanDana',
             entityId: req.params.id,
+            unitId: request.unitId,
+            fieldId: request.fieldId,
             details: {
                 status: data.status,
                 totalAmount: request.totalAmount,
@@ -956,6 +960,8 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
             action: 'DELETE',
             entity: 'PermintaanDana',
             entityId: reqId,
+            unitId: budgetReq.unitId,
+            fieldId: budgetReq.fieldId,
             details: {
                 month: budgetReq.month,
                 totalAmount: budgetReq.totalAmount,
@@ -1103,6 +1109,8 @@ router.post('/budget-reports', async (req, res) => {
             action: 'CREATE',
             entity: isRefund ? 'PengembalianKas' : 'NotaBelanja',
             entityId: result.id,
+            unitId: result.unitId,
+            fieldId: result.fieldId,
             details: {
                 nomorNota: result.nomorNota,
                 amount: result.amount,
@@ -1275,6 +1283,25 @@ router.put('/budget-reports/:id', async (req, res) => {
             return updated;
         });
 
+        const actionType = data.status === 'APPROVED' ? 'APPROVE' : (data.status === 'REJECTED' ? 'REJECT' : 'UPDATE');
+        recordAudit(prisma, {
+            req,
+            action: actionType,
+            entity: report.kategoriAset === 'PENGEMBALIAN' ? 'PengembalianKas' : 'NotaBelanja',
+            entityId: report.id,
+            unitId: report.unitId,
+            fieldId: report.fieldId,
+            details: {
+                nomorNota: report.nomorNota,
+                amount: report.amount,
+                description: report.description,
+                status: report.status,
+                message: actionType === 'APPROVE'
+                    ? `Menyetujui nota belanja No. ${report.nomorNota || '-'} (${report.description || '-'}) sebesar Rp ${Math.round(report.amount || 0).toLocaleString('id-ID')}`
+                    : (actionType === 'REJECT' ? `Menolak nota belanja No. ${report.nomorNota || '-'} (${report.description || '-'})` : `Memperbarui nota belanja No. ${report.nomorNota || '-'} (${report.description || '-'})`)
+            }
+        }).catch(() => {});
+
         res.json({ data: report });
     } catch (error) {
         console.error(`[API Error] PUT /budget-reports/${req.params.id}: ${error.message}`);
@@ -1331,6 +1358,19 @@ router.post('/budget-reports/bulk-cancel-approval', requireSuperAdmin, async (re
                 results.success.push(report.id);
             }
         });
+
+        if (results.success.length > 0) {
+            recordAudit(prisma, {
+                req,
+                action: 'CANCEL_APPROVE',
+                entity: 'NotaBelanja',
+                details: {
+                    count: results.success.length,
+                    ids: results.success,
+                    message: `Membatalkan verifikasi/persetujuan untuk ${results.success.length} nota belanja`
+                }
+            }).catch(() => {});
+        }
 
         console.log(`[API] bulk-cancel-approval: ${results.success.length} berhasil, ${results.failed.length} gagal`);
         res.json({ message: `${results.success.length} laporan berhasil dibatalkan verifikasinya.`, ...results });
@@ -1404,6 +1444,8 @@ router.delete('/budget-reports/:id', requireAuth, async (req, res) => {
             action: 'DELETE',
             entity: report.kategoriAset === 'PENGEMBALIAN' ? 'PengembalianKas' : 'NotaBelanja',
             entityId: reportId,
+            unitId: report.unitId,
+            fieldId: report.fieldId,
             details: {
                 nomorNota: report.nomorNota,
                 amount: report.amount,
