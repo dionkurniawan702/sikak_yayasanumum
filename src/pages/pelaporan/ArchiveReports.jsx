@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Calendar, Building2, Gem, Search, CheckCircle, Clock, Archive, FileText, Filter, Download, Package, Layers, FileCheck, Receipt, RotateCcw } from 'lucide-react';
+import { Calendar, Building2, Gem, Search, CheckCircle, Clock, Archive, FileText, Filter, Download, Package, Layers, FileCheck, Receipt, RotateCcw, ExternalLink } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import * as XLSX from 'xlsx';
@@ -643,9 +643,22 @@ export default function ArchiveReports() {
                                                     {item.expenseItemName}
                                                 </span>
                                                 {item.buktiTeks && (
-                                                    <div className="flex items-center gap-1.5 mt-1 text-[10px] text-amber-600 font-medium">
-                                                        <FileText size={10} />
-                                                        <span>Bukti: {item.buktiTeks}</span>
+                                                    <div className="flex items-center gap-1.5 mt-1 text-[10px]">
+                                                        <FileText size={11} className="text-amber-600 shrink-0" />
+                                                        {item.buktiTeks.trim().startsWith('http://') || item.buktiTeks.trim().startsWith('https://') ? (
+                                                            <a
+                                                                href={item.buktiTeks.trim()}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 hover:text-indigo-900 border border-indigo-200 transition-all font-bold shadow-xs hover:shadow"
+                                                                title={item.buktiTeks}
+                                                            >
+                                                                <ExternalLink size={10} className="shrink-0" />
+                                                                <span>{item.buktiTeks.includes('drive.google.com') ? 'Buka Bukti Google Drive' : 'Buka Bukti Tautan'} ↗</span>
+                                                            </a>
+                                                        ) : (
+                                                            <span className="text-amber-600 font-medium">Bukti: {item.buktiTeks}</span>
+                                                        )}
                                                     </div>
                                                 )}
                                             </div>

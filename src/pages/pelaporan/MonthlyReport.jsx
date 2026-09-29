@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, RotateCcw, Upload, FileSpreadsheet } from 'lucide-react';
+import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, RotateCcw, Upload, FileSpreadsheet, ExternalLink } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
@@ -316,7 +316,19 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                                 {report.buktiTeks && (
                                     <div className="p-3 bg-amber-50 rounded-xl border border-amber-100">
                                         <p className="text-[9px] font-black text-amber-600 uppercase tracking-widest mb-1">Bukti Transaksi</p>
-                                        <p className="text-xs text-slate-700 font-medium">{report.buktiTeks}</p>
+                                        {report.buktiTeks.trim().startsWith('http://') || report.buktiTeks.trim().startsWith('https://') ? (
+                                            <a
+                                                href={report.buktiTeks.trim()}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1.5 text-xs text-indigo-700 hover:text-indigo-900 font-bold underline break-all mt-1 bg-white px-2.5 py-1.5 rounded-lg border border-indigo-200 shadow-xs hover:shadow transition-all"
+                                            >
+                                                <ExternalLink size={12} className="shrink-0" />
+                                                <span>Buka Tautan Bukti ({report.buktiTeks.includes('drive.google.com') ? 'Google Drive' : 'Link Web'}) ↗</span>
+                                            </a>
+                                        ) : (
+                                            <p className="text-xs text-slate-700 font-medium">{report.buktiTeks}</p>
+                                        )}
                                     </div>
                                 )}
                             </div>
