@@ -750,16 +750,10 @@ export default function MonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return; // Exclude closed requests
 
-            // Skip requests that are fully reported & settled (only if all individual items are also settled/reported)
-            const hasUnreportedItems = req.items && req.items.length > 0 && req.items.some(item => {
-                if (item.isClosed) return false;
-                const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
-                const reportedComp = reqCompKey && reportedAmounts?.byRequestComponent ? (reportedAmounts.byRequestComponent[reqCompKey] || 0) : 0;
-                return (parseFloat(item.amount || 0) - reportedComp) > 0;
-            });
+            // Skip requests that are fully reported & settled (Total reports + refunds >= totalAmount)
             const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
             const reqTotal = parseFloat(req.totalAmount || 0);
-            if (!hasUnreportedItems && reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+            if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
 
             const uKey = req.unitId || req.fieldId || 'UNKNOWN';
@@ -935,16 +929,10 @@ export default function MonthlyReport() {
 
             if (activeBalance <= 0) return;
 
-            // Skip requests that are fully reported & settled (only if all individual items are also settled/reported)
-            const hasUnreportedItems = req.items && req.items.length > 0 && req.items.some(item => {
-                if (item.isClosed) return false;
-                const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
-                const reportedComp = reqCompKey && reportedAmounts?.byRequestComponent ? (reportedAmounts.byRequestComponent[reqCompKey] || 0) : 0;
-                return (parseFloat(item.amount || 0) - reportedComp) > 0;
-            });
+            // Skip requests that are fully reported & settled
             const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
             const reqTotal = parseFloat(req.totalAmount || 0);
-            if (!hasUnreportedItems && reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+            if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
 
             if (req.items && req.items.length > 0) {
