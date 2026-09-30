@@ -77,11 +77,40 @@ router.delete('/accounts/:id', async (req, res) => {
 // --- JOURNALS ---
 router.get('/journals', async (req, res) => {
     try {
-        const data = await getPrisma(req).journal.findMany({
-            where: { isDeleted: false },
+        const prisma = getPrisma(req);
+        const { month, startDate, endDate, limit, page } = req.query;
+
+        let where = { isDeleted: false };
+
+        if (month && month !== 'ALL') {
+            const [y, m] = month.split('-').map(Number);
+            const start = new Date(Date.UTC(y, m - 1, 1, 0, 0, 0));
+            const end = new Date(Date.UTC(y, m, 0, 23, 59, 59, 999));
+            where.date = { gte: start, lte: end };
+        } else if (startDate || endDate) {
+            where.date = {};
+            if (startDate) where.date.gte = new Date(startDate);
+            if (endDate) where.date.lte = new Date(endDate + 'T23:59:59.999Z');
+        }
+
+        const totalCount = await prisma.journal.count({ where });
+
+        let queryOptions = {
+            where,
             orderBy: { date: 'desc' }
-        });
-        res.json({ data });
+        };
+
+        if (limit) {
+            const take = parseInt(limit, 10);
+            queryOptions.take = take;
+            if (page) {
+                const skip = (parseInt(page, 10) - 1) * take;
+                queryOptions.skip = Math.max(0, skip);
+            }
+        }
+
+        const data = await prisma.journal.findMany(queryOptions);
+        res.json({ data, totalCount });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -111,6 +140,45 @@ router.post('/journals', async (req, res) => {
                 message: `Mencatat entri Jurnal Umum: ${data.name || ''} - ${data.description || ''} (Ref: ${data.reference || '-'})`
             }
         }).catch(() => {});
+        res.json({ data });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/journals/:id', async (req, res) => {
+    try {
+        const { date, name, description, entries, reference, proof, programId, phoneNumber } = req.body;
+        const prisma = getPrisma(req);
+
+        const updateData = {};
+        if (date !== undefined) updateData.date = date ? new Date(date) : null;
+        if (name !== undefined) updateData.name = name;
+        if (description !== undefined) updateData.description = description;
+        if (entries !== undefined) updateData.entries = typeof entries === 'string' ? JSON.parse(entries) : entries;
+        if (reference !== undefined) updateData.reference = reference;
+        if (proof !== undefined) updateData.proof = proof;
+        if (programId !== undefined) updateData.programId = programId;
+        if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
+
+        const data = await prisma.journal.update({
+            where: { id: req.params.id },
+            data: updateData
+        });
+
+        recordAudit(prisma, {
+            req,
+            action: 'UPDATE',
+            entity: 'Jurnal',
+            entityId: data.id,
+            details: {
+                reference: data.reference,
+                name: data.name,
+                description: data.description,
+                message: `Memperbarui entri Jurnal Umum: ${data.name || ''} - ${data.description || ''} (Ref: ${data.reference || '-'})`
+            }
+        }).catch(() => {});
+
         res.json({ data });
     } catch (error) {
         res.status(500).json({ error: error.message });

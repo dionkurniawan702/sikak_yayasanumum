@@ -8,6 +8,7 @@ const AppContext = createContext();
 const defaultState = {
     accounts: initialAccounts,
     journals: initialJournals,
+    totalJournalsCount: 0,
     assets: initialAssets,
     assetCategories: initialAssetCategories,
     assetVendors: initialAssetVendors,
@@ -331,6 +332,7 @@ function appReducer(state, action) {
             newState = {
                 ...state,
                 accounts: serverData.accounts || state.accounts || [],
+                totalJournalsCount: serverData.totalJournalsCount !== undefined ? serverData.totalJournalsCount : (state.totalJournalsCount || 0),
                 journals: (serverData.journals || state.journals || []).map(j => ({ 
                     ...j, 
                     programId: j.programId || 'PRG-GEN',
@@ -515,14 +517,34 @@ function appReducer(state, action) {
                 entries: typeof action.payload.entries === 'string' ? JSON.parse(action.payload.entries) : action.payload.entries
             };
             // Jurnal murni untuk transaksi akuntansi, aset fisik dicatat terpisah di Database Aset
-            newState = { ...state, journals: [...state.journals, newJournal] };
+            newState = { 
+                ...state, 
+                journals: [newJournal, ...state.journals],
+                totalJournalsCount: (state.totalJournalsCount || state.journals.length) + 1
+            };
+            break;
+        }
+        case 'EDIT_JOURNAL': {
+            const updatedEntries = typeof action.payload.entries === 'string' ? JSON.parse(action.payload.entries) : action.payload.entries;
+            const updatedJournal = {
+                ...action.payload,
+                entries: updatedEntries
+            };
+            newState = {
+                ...state,
+                journals: state.journals.map(j => j.id === action.payload.id ? { ...j, ...updatedJournal } : j)
+            };
             break;
         }
         case 'DELETE_JOURNAL':
             newState = {
                 ...state,
-                journals: state.journals.filter(j => j.id !== action.payload)
+                journals: state.journals.filter(j => j.id !== action.payload),
+                totalJournalsCount: Math.max(0, (state.totalJournalsCount || state.journals.length) - 1)
             };
+            break;
+        case 'SET_TOTAL_JOURNALS_COUNT':
+            newState = { ...state, totalJournalsCount: action.payload };
             break;
         case 'ADD_ASSET': {
             const assetId = action.payload.id || generateId('AST');

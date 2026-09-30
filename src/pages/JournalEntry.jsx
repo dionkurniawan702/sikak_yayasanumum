@@ -1,12 +1,14 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal, generateId } from '../utils/format';
 import {
     Plus, Trash2, Save, AlertTriangle, CheckCircle, Calendar, FileText,
-    Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users, Search, FileSpreadsheet
+    Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users, Search, FileSpreadsheet,
+    ChevronLeft, ChevronRight, Loader2, ArrowUpDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';
+import { api } from '../services/api';
 
 export default function JournalEntry() {
     const { state, dispatch } = useApp();
@@ -42,47 +44,81 @@ export default function JournalEntry() {
     const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
     const [historySearch, setHistorySearch] = useState('');
     const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
+    const [selectedPeriod, setSelectedPeriod] = useState('LATEST_500'); // 'LATEST_500' | 'YYYY-MM'
+    const [monthJournals, setMonthJournals] = useState([]);
+    const [monthTotalCount, setMonthTotalCount] = useState(null);
+    const [isLoadingPeriod, setIsLoadingPeriod] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(50);
 
-    const exportHistoryToExcel = () => {
-        const data = journals.map(j => ({
-            'ID Jurnal': j.id,
-            'Tanggal': j.date ? j.date.split('T')[0] : '',
-            'Deskripsi': j.description,
-            'Pihak Terkait': j.name || '-',
-            'Referensi': j.reference || '-',
-            'Total': j.entries.reduce((s, e) => s + e.debit, 0)
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
-        XLSX.writeFile(wb, 'SIKAD-Ringkasan-Jurnal.xlsx');
+    const formatMonthLabel = (ymString) => {
+        if (!ymString || ymString === 'LATEST_500') return '500 Transaksi Terbaru';
+        const [year, month] = ymString.split('-');
+        const monthNames = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+        ];
+        const mIdx = parseInt(month, 10) - 1;
+        return `${monthNames[mIdx] || month} ${year}`;
     };
 
-    const exportDetailedHistoryToExcel = () => {
-        const detailedRows = [];
-        journals.forEach(j => {
-            const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
-            j.entries.forEach((e, idx) => {
-                const accCode = accounts.find(a => a.id === e.accountId)?.code || e.accountId || '';
-                detailedRows.push({
-                    'Tanggal': idx === 0 ? (j.date ? j.date.split('T')[0] : '') : '',
-                    'Pihak Terkait': idx === 0 ? (j.name || '-') : '',
-                    'Deskripsi': idx === 0 ? j.description : '',
-                    'No Referensi': idx === 0 ? (j.reference || '-') : '',
-                    'Program': idx === 0 ? progName : '',
-                    'Kode Akun': accCode,
-                    'Nama Akun': e.accountName || '',
-                    'Debit': e.debit || 0,
-                    'Kredit': e.credit || 0
-                });
+    const availableMonths = useMemo(() => {
+        const options = [{ value: 'LATEST_500', label: '500 Transaksi Terbaru (Default)' }];
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1;
+        for (let i = 0; i < 18; i++) {
+            let m = curMonth - i;
+            let y = curYear;
+            while (m <= 0) {
+                m += 12;
+                y -= 1;
+            }
+            const val = `${y}-${String(m).padStart(2, '0')}`;
+            if (!options.some(o => o.value === val)) {
+                options.push({ value: val, label: formatMonthLabel(val) });
+            }
+        }
+        return options;
+    }, []);
+
+    useEffect(() => {
+        if (selectedPeriod === 'LATEST_500') {
+            setMonthJournals([]);
+            setMonthTotalCount(null);
+            setCurrentPage(1);
+            return;
+        }
+
+        let isMounted = true;
+        setIsLoadingPeriod(true);
+        setCurrentPage(1);
+
+        api.get(`/journals?month=${selectedPeriod}`)
+            .then(res => {
+                if (!isMounted) return;
+                const fetched = (res?.data || []).map(j => ({
+                    ...j,
+                    programId: j.programId || 'PRG-GEN',
+                    entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : (j.entries || [])
+                }));
+                setMonthJournals(fetched);
+                setMonthTotalCount(res?.totalCount ?? fetched.length);
+            })
+            .catch(err => {
+                console.error('[Journal Month Fetch Error]', err);
+                if (isMounted) {
+                    const fallback = journals.filter(j => j.date && j.date.startsWith(selectedPeriod));
+                    setMonthJournals(fallback);
+                    setMonthTotalCount(fallback.length);
+                }
+            })
+            .finally(() => {
+                if (isMounted) setIsLoadingPeriod(false);
             });
-        });
 
-        const ws = XLSX.utils.json_to_sheet(detailedRows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal');
-        XLSX.writeFile(wb, 'SIKAD-Detail-Jurnal-Ekspor.xlsx');
-    };
+        return () => { isMounted = false; };
+    }, [selectedPeriod]);
 
     const downloadTemplate = () => {
         const wsData = [
@@ -228,11 +264,16 @@ export default function JournalEntry() {
     const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
     const difference = Math.abs(totalDebit - totalCredit);
 
-    const countTotal = journals.length;
-    const countDone = journals.filter(j => !j.entries?.some(e => !e.accountId)).length;
-    const countPending = journals.filter(j => j.entries?.some(e => !e.accountId)).length;
+    const activeJournals = selectedPeriod === 'LATEST_500' ? journals : monthJournals;
 
-    const filteredJournals = journals
+    const countTotal = selectedPeriod === 'LATEST_500' 
+        ? (state.totalJournalsCount || journals.length) 
+        : (monthTotalCount ?? activeJournals.length);
+
+    const countDone = activeJournals.filter(j => !j.entries?.some(e => !e.accountId)).length;
+    const countPending = activeJournals.filter(j => j.entries?.some(e => !e.accountId)).length;
+
+    const filteredJournals = activeJournals
         .filter(j => !j.isDeleted)
         .filter(j => {
             if (historyStatusFilter === 'PENDING') {
@@ -243,13 +284,64 @@ export default function JournalEntry() {
             }
             return true;
         })
-        .filter(j => 
-            j.description.toLowerCase().includes(historySearch.toLowerCase()) || 
-            (j.name || '').toLowerCase().includes(historySearch.toLowerCase()) ||
-            j.id.toLowerCase().includes(historySearch.toLowerCase())
-        )
-        .sort((a, b) => b.id.localeCompare(a.id))
-        .slice(0, 50);
+        .filter(j => {
+            if (!historySearch.trim()) return true;
+            const q = historySearch.toLowerCase();
+            return (
+                (j.description || '').toLowerCase().includes(q) || 
+                (j.name || '').toLowerCase().includes(q) ||
+                (j.reference || '').toLowerCase().includes(q) ||
+                (j.id || '').toLowerCase().includes(q)
+            );
+        })
+        .sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    const totalPages = Math.max(1, Math.ceil(filteredJournals.length / pageSize));
+    const startIndex = (currentPage - 1) * pageSize;
+    const paginatedJournals = filteredJournals.slice(startIndex, startIndex + pageSize);
+
+    const exportHistoryToExcel = () => {
+        const data = filteredJournals.map(j => ({
+            'ID Jurnal': j.id,
+            'Tanggal': j.date ? j.date.split('T')[0] : '',
+            'Deskripsi': j.description,
+            'Pihak Terkait': j.name || '-',
+            'Referensi': j.reference || '-',
+            'Total': (j.entries || []).reduce((s, e) => s + (e.debit || 0), 0)
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
+        XLSX.writeFile(wb, `SIKAD-Ringkasan-Jurnal-${selectedPeriod}.xlsx`);
+    };
+
+    const exportDetailedHistoryToExcel = () => {
+        const detailedRows = [];
+        filteredJournals.forEach(j => {
+            const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
+            (j.entries || []).forEach((e, idx) => {
+                const acc = accounts.find(a => a.id === e.accountId);
+                const accCode = acc?.code || e.accountId || '';
+                const accName = acc?.name || e.accountName || '';
+                detailedRows.push({
+                    'Tanggal': idx === 0 ? (j.date ? j.date.split('T')[0] : '') : '',
+                    'Pihak Terkait': idx === 0 ? (j.name || '-') : '',
+                    'Deskripsi': idx === 0 ? j.description : '',
+                    'No Referensi': idx === 0 ? (j.reference || '-') : '',
+                    'Program': idx === 0 ? progName : '',
+                    'Kode Akun': accCode,
+                    'Nama Akun': accName,
+                    'Debit': e.debit || 0,
+                    'Kredit': e.credit || 0
+                });
+            });
+        });
+
+        const ws = XLSX.utils.json_to_sheet(detailedRows);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal');
+        XLSX.writeFile(wb, `SIKAD-Detail-Jurnal-${selectedPeriod}.xlsx`);
+    };
 
 
     function addRow() {
@@ -287,7 +379,7 @@ export default function JournalEntry() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
-    function handleSave() {
+    async function handleSave() {
         if (!date || !description || !isBalanced) return alert('Periksa kembali input jurnal!');
         
         const hasEmptyAccount = rows.some(r => !r.accountId && (parseFloat(r.debit) || parseFloat(r.credit)));
@@ -307,15 +399,32 @@ export default function JournalEntry() {
             phoneNumber, programId
         };
 
-
-
-        if (editingJournal) {
-            dispatch({ type: 'EDIT_JOURNAL', payload: { ...payload, id: editingJournal.id } });
-            setEditingJournal(null);
-        } else {
-            dispatch({ type: 'ADD_JOURNAL', payload });
+        try {
+            if (editingJournal) {
+                const updated = { ...payload, id: editingJournal.id, isDeleted: false };
+                dispatch({ type: 'EDIT_JOURNAL', payload: updated });
+                await api.pushAction({ type: 'EDIT_JOURNAL', payload: updated }, state);
+                if (selectedPeriod !== 'LATEST_500') {
+                    setMonthJournals(prev => prev.map(j => j.id === editingJournal.id ? { ...j, ...updated } : j));
+                }
+                setEditingJournal(null);
+                alert('Jurnal berhasil diperbarui!');
+            } else {
+                const newId = generateId('JRN');
+                const newJournal = { ...payload, id: newId, isDeleted: false };
+                dispatch({ type: 'ADD_JOURNAL', payload: newJournal });
+                await api.pushAction({ type: 'ADD_JOURNAL', payload: newJournal }, state);
+                if (selectedPeriod !== 'LATEST_500' && date.startsWith(selectedPeriod)) {
+                    setMonthJournals(prev => [newJournal, ...prev]);
+                }
+                alert('Jurnal berhasil diposting!');
+            }
+            resetForm();
+            setViewMode('list');
+        } catch (err) {
+            console.error('[Save Journal Error]', err);
+            alert('Gagal menyimpan jurnal: ' + err.message);
         }
-        resetForm();
     }
 
     function resetForm() {
@@ -332,6 +441,9 @@ export default function JournalEntry() {
         if (window.confirm('Yakin ingin menghapus jurnal ini? Jurnal akan dipindahkan ke tempat sampah.')) {
             dispatch({ type: 'DELETE_JOURNAL', payload: id });
             await api.pushAction({ type: 'DELETE_JOURNAL', payload: id }, state);
+            if (selectedPeriod !== 'LATEST_500') {
+                setMonthJournals(prev => prev.filter(j => j.id !== id));
+            }
             alert('Jurnal berhasil dipindahkan ke tempat sampah.');
         }
     };
@@ -484,8 +596,12 @@ export default function JournalEntry() {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Jurnal</span>
                             </div>
                             <div className="mt-4">
-                                <h3 className="text-3xl font-black text-slate-800">{countTotal}</h3>
-                                <p className="text-xs text-slate-400 font-bold mt-1">Semua catatan transaksi</p>
+                                <h3 className="text-3xl font-black text-slate-800">{countTotal.toLocaleString('id-ID')}</h3>
+                                <p className="text-xs text-slate-400 font-bold mt-1">
+                                    {selectedPeriod === 'LATEST_500' 
+                                        ? `Menampilkan 500 terbaru dari ${(state.totalJournalsCount || countTotal).toLocaleString('id-ID')} di database` 
+                                        : `Transaksi bulan ${formatMonthLabel(selectedPeriod)}`}
+                                </p>
                             </div>
                         </div>
 
@@ -505,7 +621,7 @@ export default function JournalEntry() {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Terisi COA</span>
                             </div>
                             <div className="mt-4">
-                                <h3 className="text-3xl font-black text-slate-800">{countDone}</h3>
+                                <h3 className="text-3xl font-black text-slate-800">{countDone.toLocaleString('id-ID')}</h3>
                                 <p className="text-xs text-slate-400 font-bold mt-1">Transaksi dengan akun lengkap</p>
                             </div>
                         </div>
@@ -526,7 +642,7 @@ export default function JournalEntry() {
                                 <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Menunggu COA</span>
                             </div>
                             <div className="mt-4">
-                                <h3 className="text-3xl font-black text-slate-800">{countPending}</h3>
+                                <h3 className="text-3xl font-black text-slate-800">{countPending.toLocaleString('id-ID')}</h3>
                                 <p className="text-xs text-slate-400 font-bold mt-1">Perlu pemetaan akun COA</p>
                             </div>
                         </div>
@@ -539,20 +655,42 @@ export default function JournalEntry() {
                                 <tr>
                                     <th colSpan={4} className="px-8 py-4">
                                         <div className="flex flex-col xl:flex-row justify-between items-center gap-4">
-                                            <div className="relative flex-1 w-full">
-                                                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                                                <input className="form-input pl-12 rounded-2xl border-slate-200" placeholder="Cari di riwayat..." value={historySearch} onChange={e => setHistorySearch(e.target.value)} />
+                                            <div className="flex flex-col sm:flex-row flex-1 w-full gap-3">
+                                                <div className="relative flex-1">
+                                                    <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                                                    <input 
+                                                        className="form-input pl-12 rounded-2xl border-slate-200 w-full" 
+                                                        placeholder="Cari deskripsi, pihak, ref, ID..." 
+                                                        value={historySearch} 
+                                                        onChange={e => { setHistorySearch(e.target.value); setCurrentPage(1); }} 
+                                                    />
+                                                </div>
+
+                                                {/* Filter Periode / Bulan */}
+                                                <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-sm shrink-0">
+                                                    <Calendar size={16} className="text-blue-600 shrink-0" />
+                                                    <select 
+                                                        className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2"
+                                                        value={selectedPeriod}
+                                                        onChange={e => setSelectedPeriod(e.target.value)}
+                                                    >
+                                                        {availableMonths.map(opt => (
+                                                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                        ))}
+                                                    </select>
+                                                    {isLoadingPeriod && <Loader2 size={14} className="animate-spin text-blue-600 shrink-0" />}
+                                                </div>
                                             </div>
                                             
                                             {/* Action Buttons Group */}
                                             <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-start xl:justify-end">
                                                 {/* Export Summary */}
-                                                <button onClick={exportHistoryToExcel} className="flex items-center gap-1.5 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                                <button onClick={exportHistoryToExcel} className="flex items-center gap-1.5 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all shadow-sm">
                                                     <FileSpreadsheet size={12} /> Ekspor Ringkasan
                                                 </button>
 
                                                 {/* Export Detailed */}
-                                                <button onClick={exportDetailedHistoryToExcel} className="flex items-center gap-1.5 bg-emerald-55 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
+                                                <button onClick={exportDetailedHistoryToExcel} className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all shadow-sm">
                                                     <FileSpreadsheet size={12} /> Ekspor Detail Jurnal
                                                 </button>
                                             </div>
@@ -567,36 +705,96 @@ export default function JournalEntry() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                                {filteredJournals.map(j => (
-                                    <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-8 py-4">
-                                            <p className="font-bold text-blue-600 text-xs">{j.id}</p>
-                                            <p className="text-slate-500 text-xs font-medium">{formatTanggal(j.date)}</p>
-                                        </td>
-                                        <td className="px-8 py-4">
-                                            <p className="font-bold text-slate-800 text-sm">{j.description}</p>
-                                            <div className="flex gap-2 mt-1 items-center">
-                                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
-                                                {j.entries?.some(e => !e.accountId) && (
-                                                    <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                                                        <AlertTriangle size={10} /> Menunggu COA
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-8 py-4 text-right font-black text-slate-800">
-                                            <CurrencyDisplay value={j.entries.reduce((s, e) => s + e.debit, 0)} />
-                                        </td>
-                                        <td className="px-8 py-4">
-                                            <div className="flex justify-center gap-2">
-                                                <button onClick={() => handleEdit(j)} className="p-2 text-slate-300 hover:text-blue-600 transition-all"><Pencil size={16}/></button>
-                                                <button onClick={() => handleDelete(j.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all"><Trash2 size={16}/></button>
+                                {paginatedJournals.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={4} className="px-8 py-12 text-center text-slate-400">
+                                            <div className="flex flex-col items-center justify-center gap-2">
+                                                <Info size={32} className="text-slate-300" />
+                                                <p className="font-bold text-sm">Tidak ada transaksi yang ditemukan</p>
+                                                <p className="text-xs">Coba ubah kata kunci pencarian atau pilih periode bulan lain.</p>
                                             </div>
                                         </td>
                                     </tr>
-                                ))}
+                                ) : (
+                                    paginatedJournals.map(j => (
+                                        <tr key={j.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="px-8 py-4">
+                                                <p className="font-bold text-blue-600 text-xs">{j.id}</p>
+                                                <p className="text-slate-500 text-xs font-medium">{formatTanggal(j.date)}</p>
+                                            </td>
+                                            <td className="px-8 py-4">
+                                                <p className="font-bold text-slate-800 text-sm">{j.description}</p>
+                                                <div className="flex gap-2 mt-1 items-center">
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
+                                                    {j.entries?.some(e => !e.accountId) && (
+                                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                            <AlertTriangle size={10} /> Menunggu COA
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-8 py-4 text-right font-black text-slate-800">
+                                                <CurrencyDisplay value={(j.entries || []).reduce((s, e) => s + (e.debit || 0), 0)} />
+                                            </td>
+                                            <td className="px-8 py-4">
+                                                <div className="flex justify-center gap-2">
+                                                    <button onClick={() => handleEdit(j)} className="p-2 text-slate-300 hover:text-blue-600 transition-all" title="Edit Jurnal"><Pencil size={16}/></button>
+                                                    <button onClick={() => handleDelete(j.id)} className="p-2 text-slate-300 hover:text-rose-600 transition-all" title="Hapus Jurnal"><Trash2 size={16}/></button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
                             </tbody>
                         </table>
+
+                        {/* Pagination Bar */}
+                        <div className="px-8 py-4 bg-slate-50/70 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+                            <div className="flex items-center gap-3 text-xs text-slate-500 font-medium">
+                                <span>
+                                    Menampilkan <strong className="text-slate-700 font-bold">{filteredJournals.length === 0 ? 0 : startIndex + 1} - {Math.min(startIndex + pageSize, filteredJournals.length)}</strong> dari <strong className="text-slate-700 font-bold">{filteredJournals.length}</strong> transaksi
+                                </span>
+                                <span className="text-slate-300">|</span>
+                                <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Per hal:</span>
+                                    <select 
+                                        value={pageSize} 
+                                        onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                                        className="bg-white border border-slate-200 text-xs font-bold rounded-lg px-2 py-1 outline-none cursor-pointer"
+                                    >
+                                        <option value={25}>25</option>
+                                        <option value={50}>50</option>
+                                        <option value={100}>100</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {totalPages > 1 && (
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                        className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all"
+                                        title="Halaman Sebelumnya"
+                                    >
+                                        <ChevronLeft size={16} />
+                                    </button>
+                                    
+                                    <span className="text-xs font-bold text-slate-700 px-2">
+                                        Halaman {currentPage} dari {totalPages}
+                                    </span>
+
+                                    <button
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                        className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed hover:bg-slate-100 transition-all"
+                                        title="Halaman Selanjutnya"
+                                    >
+                                        <ChevronRight size={16} />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

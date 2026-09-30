@@ -951,7 +951,7 @@ app.get('/api/all-data', async (req, res) => {
             fields, units, students, incomeItems, expenseItems, distributionSettings,
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
             budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations,
-            assetCategories, assetVendors, assetRooms, assetPics
+            assetCategories, assetVendors, assetRooms, assetPics, totalJournalsCount
         ] = await Promise.all([
             client.account.findMany({ where: { isDeleted: false }, orderBy: { code: 'asc' } }),
             
@@ -1022,7 +1022,8 @@ app.get('/api/all-data', async (req, res) => {
             client.assetCategory.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
             client.assetVendor.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
             client.assetRoom.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
-            client.assetPic.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => [])
+            client.assetPic.findMany({ where: { isDeleted: false }, orderBy: { name: 'asc' } }).catch(() => []),
+            client.journal.count({ where: { isDeleted: false } }).catch(() => 0)
         ]);
 
         res.json({
@@ -1032,7 +1033,7 @@ app.get('/api/all-data', async (req, res) => {
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses,
                 budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations,
-                assetCategories, assetVendors, assetRooms, assetPics
+                assetCategories, assetVendors, assetRooms, assetPics, totalJournalsCount
             }
         });
     } catch (error) {

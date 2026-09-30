@@ -159,6 +159,9 @@ export const api = {
                 case 'ADD_JOURNAL':
                     await syncItem('journals', null, payload, 'POST');
                     break;
+                case 'EDIT_JOURNAL':
+                    await syncItem('journals', payload.id, payload, 'PUT');
+                    break;
                 case 'DELETE_JOURNAL':
                     await syncItem('journals', payload, null, 'DELETE');
                     break;
