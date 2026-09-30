@@ -1727,6 +1727,66 @@ const ensureStudentGenderColumn = async () => {
     }
 };
 
+const ensureExpenseProgramColumns = async () => {
+    try {
+        const client = getPrisma();
+        const tableVariations = ['expense_programs', 'ExpenseProgram', 'expenseprograms'];
+        let targetTable = null;
+
+        for (const t of tableVariations) {
+            try {
+                await client.$queryRawUnsafe(`DESCRIBE \`${t}\``);
+                targetTable = t;
+                break;
+            } catch (e) { }
+        }
+
+        if (targetTable) {
+            const columns = await client.$queryRawUnsafe(`DESCRIBE \`${targetTable}\``);
+            const hasDebit = columns.some(c => (c.Field || c.field) === 'debitAccountId');
+            const hasCredit = columns.some(c => (c.Field || c.field) === 'creditAccountId');
+
+            if (!hasDebit) {
+                console.log(`[Self-Healing] Adding debitAccountId to ${targetTable}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN debitAccountId VARCHAR(255) NULL`);
+            }
+            if (!hasCredit) {
+                console.log(`[Self-Healing] Adding creditAccountId to ${targetTable}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${targetTable}\` ADD COLUMN creditAccountId VARCHAR(255) NULL`);
+            }
+            console.log(`[Self-Healing] ExpenseProgram COA columns verified on ${targetTable}.`);
+        }
+
+        const itemTables = ['expense_items', 'ExpenseItem', 'expenseitems'];
+        let itemTarget = null;
+        for (const it of itemTables) {
+            try {
+                await client.$queryRawUnsafe(`DESCRIBE \`${it}\``);
+                itemTarget = it;
+                break;
+            } catch (e) { }
+        }
+
+        if (itemTarget) {
+            const itemCols = await client.$queryRawUnsafe(`DESCRIBE \`${itemTarget}\``);
+            const hasItemDebit = itemCols.some(c => (c.Field || c.field) === 'debitAccountId');
+            const hasItemCredit = itemCols.some(c => (c.Field || c.field) === 'creditAccountId');
+
+            if (!hasItemDebit) {
+                console.log(`[Self-Healing] Adding debitAccountId to ${itemTarget}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${itemTarget}\` ADD COLUMN debitAccountId VARCHAR(255) NULL`);
+            }
+            if (!hasItemCredit) {
+                console.log(`[Self-Healing] Adding creditAccountId to ${itemTarget}...`);
+                await client.$executeRawUnsafe(`ALTER TABLE \`${itemTarget}\` ADD COLUMN creditAccountId VARCHAR(255) NULL`);
+            }
+            console.log(`[Self-Healing] ExpenseItem COA columns verified on ${itemTarget}.`);
+        }
+    } catch (error) {
+        console.error(`[Self-Healing Error] ExpenseProgram/ExpenseItem COA columns: ${error.message}`);
+    }
+};
+
 
 const repairDistributions = async () => {
     try {
@@ -1794,6 +1854,7 @@ const server = app.listen(PORT, '0.0.0.0', () => {
             await ensureBosAllocationColumns();
             await ensureBudgetSourceColumns();
             await ensureStudentGenderColumn();
+            await ensureExpenseProgramColumns();
             // await repairDistributions(); // REMOVED: Causing random data deletion!
 
             console.log('[Background Tasks] All startup checks completed successfully.');

@@ -1044,6 +1044,19 @@ router.post('/budget-reports', async (req, res) => {
 
                 let resolvedProgramId = null;
                 let journalDescription = '';
+
+                // Look up matching ExpenseProgram by category or description
+                let expenseProgram = null;
+                if (category) {
+                    expenseProgram = await tx.expenseProgram.findFirst({
+                        where: { name: category, isDeleted: false }
+                    });
+                }
+                if (!expenseProgram && description) {
+                    expenseProgram = await tx.expenseProgram.findFirst({
+                        where: { name: description, isDeleted: false }
+                    });
+                }
                 
                 if (kategoriAset === 'PENGEMBALIAN') {
                     const isBos = source === 'BOS' || (planId && planId.endsWith('-BOS'));
@@ -1052,7 +1065,7 @@ router.post('/budget-reports', async (req, res) => {
                         : `Pengembalian Sisa Dana: ${targetName}${description ? ` (${description})` : ''}`;
                     resolvedProgramId = 'PRG-GEN';
                 } else {
-                    const expName = expenseItem?.name || description || 'Pengeluaran';
+                    const expName = expenseProgram?.name || expenseItem?.name || description || 'Pengeluaran';
                     journalDescription = `Realisasi: ${expName} - ${targetName}${description ? ` (${description})` : ''}`;
                     if (category) {
                         const p = await tx.program.findFirst({
@@ -1062,11 +1075,29 @@ router.post('/budget-reports', async (req, res) => {
                     }
                 }
 
-                const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
-                const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
+                // Resolve Debit & Credit Accounts (Check ExpenseProgram first, then ExpenseItem)
+                const resolvedDebitId = expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                const resolvedCreditId = expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+
+                let debitAccObj = null;
+                if (resolvedDebitId) {
+                    debitAccObj = await tx.account.findUnique({ where: { id: resolvedDebitId } });
+                }
+
+                let creditAccObj = null;
+                if (resolvedCreditId) {
+                    creditAccObj = await tx.account.findUnique({ where: { id: resolvedCreditId } });
+                }
+
+                const debitAccount = resolvedDebitId || '';
+                const debitName = debitAccObj 
+                    ? `${debitAccObj.code} - ${debitAccObj.name}` 
+                    : (resolvedDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
                 
-                const creditAccount = '';
-                const creditName = 'MENUNGGU COA (Kredit)';
+                const creditAccount = resolvedCreditId || '';
+                const creditName = creditAccObj 
+                    ? `${creditAccObj.code} - ${creditAccObj.name}` 
+                    : (resolvedCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
                 const journal = await tx.journal.create({
                     data: {
@@ -1179,6 +1210,19 @@ router.put('/budget-reports/:id', async (req, res) => {
 
                 let resolvedProgramId = null;
                 let journalDescription = '';
+
+                // Look up matching ExpenseProgram by category or description
+                let expenseProgram = null;
+                if (updated.category) {
+                    expenseProgram = await tx.expenseProgram.findFirst({
+                        where: { name: updated.category, isDeleted: false }
+                    });
+                }
+                if (!expenseProgram && updated.description) {
+                    expenseProgram = await tx.expenseProgram.findFirst({
+                        where: { name: updated.description, isDeleted: false }
+                    });
+                }
                 
                 if (updated.kategoriAset === 'PENGEMBALIAN') {
                     const isBos = updated.source === 'BOS' || (updated.planId && updated.planId.endsWith('-BOS'));
@@ -1187,7 +1231,7 @@ router.put('/budget-reports/:id', async (req, res) => {
                         : `Pengembalian Sisa Dana: ${targetName}${updated.description ? ` (${updated.description})` : ''}`;
                     resolvedProgramId = 'PRG-GEN';
                 } else {
-                    const expName = expenseItem?.name || updated.description || 'Pengeluaran';
+                    const expName = expenseProgram?.name || expenseItem?.name || updated.description || 'Pengeluaran';
                     journalDescription = `Realisasi: ${expName} - ${targetName}${updated.description ? ` (${updated.description})` : ''}`;
                     if (updated.category) {
                         const p = await tx.program.findFirst({
@@ -1197,11 +1241,29 @@ router.put('/budget-reports/:id', async (req, res) => {
                     }
                 }
 
-                const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
-                const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
+                // Resolve Debit & Credit Accounts (Check ExpenseProgram first, then ExpenseItem)
+                const resolvedDebitId = expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                const resolvedCreditId = expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+
+                let debitAccObj = null;
+                if (resolvedDebitId) {
+                    debitAccObj = await tx.account.findUnique({ where: { id: resolvedDebitId } });
+                }
+
+                let creditAccObj = null;
+                if (resolvedCreditId) {
+                    creditAccObj = await tx.account.findUnique({ where: { id: resolvedCreditId } });
+                }
+
+                const debitAccount = resolvedDebitId || '';
+                const debitName = debitAccObj 
+                    ? `${debitAccObj.code} - ${debitAccObj.name}` 
+                    : (resolvedDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
                 
-                const creditAccount = '';
-                const creditName = 'MENUNGGU COA (Kredit)';
+                const creditAccount = resolvedCreditId || '';
+                const creditName = creditAccObj 
+                    ? `${creditAccObj.code} - ${creditAccObj.name}` 
+                    : (resolvedCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
                 const journal = await tx.journal.create({
                     data: {

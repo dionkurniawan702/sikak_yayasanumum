@@ -100,13 +100,15 @@ model Program {
 }
 
 model ExpenseProgram {
-  id           String   @id @default(uuid())
-  name         String
-  description  String?  @db.Text
-  unitId       String?
-  fieldId      String?
-  type         String?  @default("Expense")
-  isDeleted    Boolean  @default(false)
+  id              String   @id @default(uuid())
+  name            String
+  description     String?  @db.Text
+  unitId          String?
+  fieldId         String?
+  type            String?  @default("Expense")
+  debitAccountId  String?
+  creditAccountId String?
+  isDeleted       Boolean  @default(false)
 
   @@map("expense_programs")
 }
@@ -210,16 +212,18 @@ model IncomeItem {
 }
 
 model ExpenseItem {
-  id        String   @id @default(uuid())
-  name      String
-  unitId    String?
-  unit      Unit?    @relation(fields: [unitId], references: [id])
-  fieldId   String?
-  field     Field?   @relation(fields: [fieldId], references: [id])
-  accountId String?
-  sourceOfFunds String?
-  isBos         Boolean  @default(false)
-  isDeleted     Boolean  @default(false)
+  id              String   @id @default(uuid())
+  name            String
+  unitId          String?
+  unit            Unit?    @relation(fields: [unitId], references: [id])
+  fieldId         String?
+  field           Field?   @relation(fields: [fieldId], references: [id])
+  accountId       String?
+  debitAccountId  String?
+  creditAccountId String?
+  sourceOfFunds   String?
+  isBos           Boolean  @default(false)
+  isDeleted       Boolean  @default(false)
 
   allocations          BudgetAllocation[]
   distributionSettings DistributionSetting[]
