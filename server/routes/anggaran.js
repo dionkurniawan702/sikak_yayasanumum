@@ -285,12 +285,13 @@ router.post('/students', async (req, res) => {
                 unitId: unitId,
                 nis: nis || '',
                 classId: classId || null,
+                academicYearId: academicYearId || null,
                 isDeleted: false
             }
         });
         
         if (existing) {
-            return res.status(400).json({ error: `Gagal: Siswa dengan nama "${name}", NIS "${nis || '-'}", dan kelas yang sama sudah terdaftar di unit ini.` });
+            return res.status(400).json({ error: `Gagal: Siswa dengan nama "${name}", NIS "${nis || '-'}", dan kelas yang sama sudah terdaftar di unit dan tahun ajaran ini.` });
         }
 
         const student = await prisma.student.create({
@@ -332,13 +333,14 @@ router.put('/students/:id', async (req, res) => {
                 unitId: unitId,
                 nis: nis || '',
                 classId: classId || null,
+                academicYearId: academicYearId || null,
                 id: { not: req.params.id },
                 isDeleted: false
             }
         });
 
         if (existing) {
-            return res.status(400).json({ error: `Gagal: Siswa dengan nama "${name}", NIS "${nis || '-'}", dan kelas yang sama sudah digunakan oleh siswa lain di unit ini.` });
+            return res.status(400).json({ error: `Gagal: Siswa dengan nama "${name}", NIS "${nis || '-'}", dan kelas yang sama sudah digunakan oleh siswa lain di unit dan tahun ajaran ini.` });
         }
 
         // Transaction to update student and details

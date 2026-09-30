@@ -370,20 +370,43 @@ export default function StudentDatabase() {
                     const studentClass = state.classes?.find(c => c.name?.toLowerCase() === className?.toLowerCase() && c.unitId === unitId);
                     const classId = studentClass?.id || '';
 
+                    // Determine Academic Year from Excel (Fallback to active filter or current)
+                    const academicYearName = getExcelValue(item, ['Tahun Ajaran', 'Tahun ajaran', 'Tahun', 'TA', 'Tahun Pelajaran'])?.toString()?.trim();
+                    const academicYear = state.academicYears?.find(y => {
+                        if (!academicYearName) return false;
+                        const cleanY = y.name.trim().toLowerCase().replace(/\s+/g, '');
+                        const cleanItem = academicYearName.toLowerCase().replace(/\s+/g, '');
+                        return cleanY === cleanItem || cleanY.replace(/\//g, '-') === cleanItem.replace(/\//g, '-');
+                    });
+                    const finalAcademicYearId = academicYear?.id || (academicYearFilter !== 'all' ? academicYearFilter : null) || currentYear?.id || '';
+                    const displayAcademicYearName = academicYear?.name || state.academicYears?.find(y => y.id === finalAcademicYearId)?.name || academicYearName || '-';
+
                     // 1. Check for duplicates WITHIN the Excel file itself
-                    const fileKey = `${studentName.toLowerCase()}_${studentNis.toLowerCase()}_${classId}_${unitId}`;
+                    const fileKey = `${studentName.toLowerCase()}_${studentNis.toLowerCase()}_${classId}_${unitId}_${finalAcademicYearId}`;
                     if (seenInFile.has(fileKey)) {
-                        return { ...item, _importStatus: 'DUPLICATE_FILE' };
+                        return { 
+                            ...item, 
+                            _academicYearId: finalAcademicYearId,
+                            _academicYearName: displayAcademicYearName,
+                            _importStatus: 'DUPLICATE_FILE' 
+                        };
                     }
                     seenInFile.add(fileKey);
 
-                    // 2. Check for duplicates in the Database
+                    // 2. Check for duplicates in the Database (scoped to academic year)
                     let existing = null;
                     if (studentNis) {
-                        existing = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
+                        existing = students.find(s => s.nis === studentNis && s.unitId === unitId && (s.academicYearId || '') === (finalAcademicYearId || '') && !s.isDeleted);
                     }
                     if (!existing) {
-                        existing = students.find(s => s.name.toLowerCase() === studentName.toLowerCase() && (s.nis || '') === studentNis && s.classId === classId && s.unitId === unitId && !s.isDeleted);
+                        existing = students.find(s => 
+                            s.name.toLowerCase() === studentName.toLowerCase() && 
+                            (s.nis || '') === studentNis && 
+                            s.classId === classId && 
+                            s.unitId === unitId && 
+                            (s.academicYearId || '') === (finalAcademicYearId || '') && 
+                            !s.isDeleted
+                        );
                     }
 
                     if (existing) {
@@ -412,9 +435,19 @@ export default function StudentDatabase() {
                             existing.gender !== (newGender || existing.gender) ||
                             JSON.stringify(sortedCurrentIncome) !== JSON.stringify(sortedNewIncome);
 
-                        return { ...item, _importStatus: isDataChanged ? 'UPDATE' : 'DUPLICATE' };
+                        return { 
+                            ...item, 
+                            _academicYearId: finalAcademicYearId,
+                            _academicYearName: displayAcademicYearName,
+                            _importStatus: isDataChanged ? 'UPDATE' : 'DUPLICATE' 
+                        };
                     }
-                    return { ...item, _importStatus: 'NEW' };
+                    return { 
+                        ...item, 
+                        _academicYearId: finalAcademicYearId,
+                        _academicYearName: displayAcademicYearName,
+                        _importStatus: 'NEW' 
+                    };
                 });
                 
                 setImportData(analyzedData);
@@ -469,10 +502,15 @@ export default function StudentDatabase() {
                     const statusName = getExcelValue(item, ['Status', 'Status Siswa'])?.toString();
                     const status = state.studentStatuses?.find(s => s.name.toLowerCase() === statusName?.toLowerCase());
 
-                    // 3b. Determine Academic Year from Excel (Fallback to current)
-                    const academicYearName = getExcelValue(item, ['Tahun Ajaran', 'Tahun ajaran', 'Tahun', 'TA'])?.toString();
-                    const academicYear = state.academicYears?.find(y => y.name.toLowerCase() === academicYearName?.toLowerCase());
-                    const finalAcademicYearId = academicYear?.id || currentYear?.id || '';
+                    // 3b. Determine Academic Year from Excel (Fallback to current or filter)
+                    const academicYearName = getExcelValue(item, ['Tahun Ajaran', 'Tahun ajaran', 'Tahun', 'TA', 'Tahun Pelajaran'])?.toString()?.trim();
+                    const academicYear = state.academicYears?.find(y => {
+                        if (!academicYearName) return false;
+                        const cleanY = y.name.trim().toLowerCase().replace(/\s+/g, '');
+                        const cleanItem = academicYearName.toLowerCase().replace(/\s+/g, '');
+                        return cleanY === cleanItem || cleanY.replace(/\//g, '-') === cleanItem.replace(/\//g, '-');
+                    });
+                    const finalAcademicYearId = item._academicYearId || academicYear?.id || (academicYearFilter !== 'all' ? academicYearFilter : null) || currentYear?.id || '';
                     
                     // 3c. Determine Parent Status
                     const parentStatusName = getExcelValue(item, ['Status Orang Tua', 'Status Ortu', 'Kategori Ortu'])?.toString();
@@ -484,10 +522,10 @@ export default function StudentDatabase() {
                         amount: parseFloat(getExcelValue(item, [ii.name])) || 0
                     })).filter(id => id.amount > 0);
 
-                    // 5. Find existing student
+                    // 5. Find existing student (scoped to academic year)
                     let existingStudent = null;
                     if (studentNis) {
-                        existingStudent = students.find(s => s.nis === studentNis && s.unitId === unitId && !s.isDeleted);
+                        existingStudent = students.find(s => s.nis === studentNis && s.unitId === unitId && (s.academicYearId || '') === (finalAcademicYearId || '') && !s.isDeleted);
                     }
                     if (!existingStudent) {
                         existingStudent = students.find(s => 
@@ -495,7 +533,7 @@ export default function StudentDatabase() {
                             (s.nis || '') === studentNis &&
                             s.classId === (studentClass?.id || '') &&
                             s.unitId === unitId && 
-                            s.academicYearId === finalAcademicYearId && 
+                            (s.academicYearId || '') === (finalAcademicYearId || '') && 
                             !s.isDeleted
                         );
                     }
@@ -1270,7 +1308,7 @@ export default function StudentDatabase() {
                                                                 <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item.NIS || '-'}</td>
                                                                 <td className="px-6 py-4 text-[10px] font-black text-indigo-600 uppercase tracking-widest border-b border-slate-50">{item.Unit || '-'}</td>
                                                                 <td className="px-6 py-4 text-xs font-bold text-slate-600 border-b border-slate-50">{item.Kelas || '-'}</td>
-                                                                <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item['Tahun Ajaran'] || '-'}</td>
+                                                                <td className="px-6 py-4 text-xs font-medium text-slate-500 border-b border-slate-50">{item._academicYearName || item['Tahun Ajaran'] || '-'}</td>
                                                             </tr>
                                                         );
                                                     })}
