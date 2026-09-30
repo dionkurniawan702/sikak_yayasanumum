@@ -60,17 +60,10 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     const rReqId = report.budgetRequestId || report.requestId;
     const reportItemName = (report.category || report.description || '').trim().toLowerCase();
 
-    // 2. Check exact budgetRequestId if it exists AND its items contain the report item name/category
+    // 2. Check exact budgetRequestId if it exists
     if (rReqId) {
         const found = budgetRequests.find(r => r.id === rReqId);
-        if (found) {
-            if (!reportItemName || !found.items || found.items.length === 0) {
-                if (report.kategoriAset !== 'PENGEMBALIAN') return found;
-            } else {
-                const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
-                if (hasItem) return found;
-            }
-        }
+        if (found) return found;
     }
 
     // 3. Search for approved budgetRequest by category / name
@@ -1620,7 +1613,7 @@ export default function BOSMonthlyReport() {
         }
     };
 
-    const handleReportSubmit = (e) => {
+    const handleReportSubmit = async (e) => {
         e.preventDefault();
         if (formData.kategoriAset === 'ASET' && !formData.umurEkonomis) {
             return alert('Pilih umur ekonomis untuk kategori Aset.');
@@ -1691,16 +1684,22 @@ export default function BOSMonthlyReport() {
             expenseItemId: selectedRequest.expenseItemId
         };
 
-        if (editingDraftId) {
-            dispatch({ type: 'EDIT_BUDGET_REPORT', payload: reportData });
-            api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: reportData }, state);
-        } else {
-            dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
-            api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
-        }
+        try {
+            if (editingDraftId) {
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: reportData });
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: reportData }, state);
+            } else {
+                dispatch({ type: 'ADD_BUDGET_REPORT', payload: reportData });
+                await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: reportData }, state);
+            }
 
-        setShowReportForm(false);
-        setEditingDraftId(null);
+            alert(`Nota No. ${reportData.nomorNota || '-'} sebesar ${formatRupiah(reportData.amount)} berhasil disimpan sebagai ${isSuperAdmin ? 'Laporan Terverifikasi' : 'Draft'}.`);
+            setShowReportForm(false);
+            setEditingDraftId(null);
+        } catch (err) {
+            console.error('Save BOS report failed:', err);
+            alert('Gagal menyimpan nota: ' + (err.message || 'Terjadi kesalahan server atau koneksi jaringan.'));
+        }
     };
 
     const handleSubmitDrafts = () => {
