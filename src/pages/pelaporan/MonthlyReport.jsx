@@ -750,10 +750,16 @@ export default function MonthlyReport() {
         requestsForYear.filter(req => req.status === 'APPROVED').forEach(req => {
             if (req.isClosed) return; // Exclude closed requests
 
-            // Skip requests that are fully reported & settled (Total reports + refunds >= totalAmount)
+            // Skip requests that are fully reported & settled (only if all individual items are also settled/reported)
+            const hasUnreportedItems = req.items && req.items.length > 0 && req.items.some(item => {
+                if (item.isClosed) return false;
+                const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
+                const reportedComp = reqCompKey && reportedAmounts?.byRequestComponent ? (reportedAmounts.byRequestComponent[reqCompKey] || 0) : 0;
+                return (parseFloat(item.amount || 0) - reportedComp) > 0;
+            });
             const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
             const reqTotal = parseFloat(req.totalAmount || 0);
-            if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+            if (!hasUnreportedItems && reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
 
             const uKey = req.unitId || req.fieldId || 'UNKNOWN';
@@ -929,10 +935,16 @@ export default function MonthlyReport() {
 
             if (activeBalance <= 0) return;
 
-            // Skip requests that are fully reported & settled
+            // Skip requests that are fully reported & settled (only if all individual items are also settled/reported)
+            const hasUnreportedItems = req.items && req.items.length > 0 && req.items.some(item => {
+                if (item.isClosed) return false;
+                const reqCompKey = item.componentId ? `${req.id}_${item.componentId}` : null;
+                const reportedComp = reqCompKey && reportedAmounts?.byRequestComponent ? (reportedAmounts.byRequestComponent[reqCompKey] || 0) : 0;
+                return (parseFloat(item.amount || 0) - reportedComp) > 0;
+            });
             const totalSettled = reportedAmounts?.reqSettledMap?.[req.id] || 0;
             const reqTotal = parseFloat(req.totalAmount || 0);
-            if (reqTotal > 0 && totalSettled >= reqTotal - 1) return;
+            if (!hasUnreportedItems && reqTotal > 0 && totalSettled >= reqTotal - 1) return;
 
 
             if (req.items && req.items.length > 0) {
@@ -1113,8 +1125,16 @@ export default function MonthlyReport() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             try {
+                window.dispatchEvent(new CustomEvent('app-processing-start', { 
+                    detail: { 
+                        title: 'Mengimpor Nota Excel...', 
+                        message: `Sedang memproses dan menyimpan data nota realisasi untuk "${item.name}"...`, 
+                        type: 'importing' 
+                    } 
+                }));
+
                 const bstr = evt.target.result;
                 const wb = XLSX.read(bstr, { type: 'binary' });
                 const sheetName = wb.SheetNames[0];
@@ -1124,12 +1144,26 @@ export default function MonthlyReport() {
                 if (!rows || rows.length < 9) {
                     alert('Format file Excel tidak sesuai. Gunakan file Excel yang di-Export dari rincian ini.');
                     e.target.value = '';
+                    window.dispatchEvent(new CustomEvent('app-processing-end'));
                     return;
                 }
 
                 const transactionRows = rows.slice(8);
                 let importedCount = 0;
                 let skippedCount = 0;
+
+                const parentReq = (budgetRequests || []).find(r => r.id === item.reqId);
+                const resolvedAcademicYearId = item.academicYearId || parentReq?.academicYearId || globalAcademicYearId;
+                const resolvedPlanId = item.planId || parentReq?.planId || (resolvedAcademicYearId && (item.reqUnitId || item.unitId) ? `${resolvedAcademicYearId}-${item.reqUnitId || item.unitId}-${sourceMode}` : null);
+
+                // Anti-duplikasi: track existing in database + track newly added in current batch
+                const existingKeys = new Set(
+                    (budgetReports || [])
+                        .filter(r => !r.isDeleted && r.budgetRequestId === item.reqId)
+                        .map(r => `${(r.nomorNota || '').trim().toLowerCase()}_${(r.description || '').trim().toLowerCase()}_${parseFloat(r.amount || 0)}`)
+                );
+
+                const newReports = [];
 
                 transactionRows.forEach((row) => {
                     if (!row || row.length < 4) return;
@@ -1144,18 +1178,12 @@ export default function MonthlyReport() {
 
                     if (!descVal || amountVal <= 0) return;
 
-                    // Proteksi anti-duplikasi: lewati jika nota & rincian serupa sudah pernah ada di request ini
-                    const isDuplicate = (budgetReports || []).some(r => 
-                        !r.isDeleted &&
-                        r.budgetRequestId === item.reqId &&
-                        (r.nomorNota || '').trim().toLowerCase() === notaVal.toLowerCase() &&
-                        (r.description || '').trim().toLowerCase() === descVal.toLowerCase() &&
-                        parseFloat(r.amount || 0) === amountVal
-                    );
-                    if (isDuplicate) {
+                    const rowKey = `${notaVal.toLowerCase()}_${descVal.toLowerCase()}_${amountVal}`;
+                    if (existingKeys.has(rowKey)) {
                         skippedCount++;
                         return;
                     }
+                    existingKeys.add(rowKey);
 
                     const newReport = {
                         id: `REL-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -1172,14 +1200,24 @@ export default function MonthlyReport() {
                         nomorNota: notaVal,
                         status: 'DRAFT',
                         createdAt: new Date().toISOString(),
-                        unitId: item.reqUnitId,
-                        academicYearId: globalAcademicYearId
+                        unitId: item.reqUnitId || item.unitId,
+                        academicYearId: resolvedAcademicYearId,
+                        planId: resolvedPlanId,
+                        source: sourceMode
                     };
 
-                    dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReport });
-                    api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReport }, state);
+                    newReports.push(newReport);
                     importedCount++;
                 });
+
+                if (newReports.length > 0) {
+                    for (const nr of newReports) {
+                        dispatch({ type: 'ADD_BUDGET_REPORT', payload: nr });
+                        await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: nr }, state);
+                    }
+                    const updatedAllReports = [...(budgetReports || []), ...newReports];
+                    await api.syncWholeState({ ...state, budgetReports: updatedAllReports });
+                }
 
                 if (importedCount > 0) {
                     const skipMsg = skippedCount > 0 ? ` (${skippedCount} nota dilewati karena sudah ada/duplikat).` : '.';
@@ -1194,6 +1232,7 @@ export default function MonthlyReport() {
                 alert('Gagal mengunggah file Excel: ' + err.message);
             } finally {
                 e.target.value = '';
+                window.dispatchEvent(new CustomEvent('app-processing-end'));
             }
         };
         reader.readAsBinaryString(file);
