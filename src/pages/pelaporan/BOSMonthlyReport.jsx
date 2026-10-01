@@ -124,6 +124,70 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     return null;
 }
 
+function resolveReportToRequestItem(report, reqItems, byRequestComponent, rReqId) {
+    if (!report || !reqItems || reqItems.length === 0) return null;
+
+    // 1. Direct componentId match if report has componentId
+    if (report.componentId) {
+        const direct = reqItems.find(it => (it.componentId || it.id) === report.componentId);
+        if (direct) return direct;
+    }
+
+    const rCat = (report.category || '').trim().toLowerCase();
+    const rDesc = (report.description || '').trim().toLowerCase();
+
+    // 2. Strict EXACT match on category against item name
+    if (rCat) {
+        const exactCat = reqItems.find(it => (it.name || '').trim().toLowerCase() === rCat);
+        if (exactCat) return exactCat;
+    }
+
+    // 3. Strict EXACT match on description against item name
+    if (rDesc) {
+        const exactDesc = reqItems.find(it => (it.name || '').trim().toLowerCase() === rDesc);
+        if (exactDesc) return exactDesc;
+    }
+
+    // 4. Substring matching with specificity priority:
+    // Longest matching item name MUST win (e.g. "Tambahan honor petugas kebersihan" > "Honor petugas kebersihan")
+    const searchText = rCat || rDesc;
+    if (searchText) {
+        const candidateItems = reqItems.filter(it => {
+            const iName = (it.name || '').trim().toLowerCase();
+            return iName && (searchText.includes(iName) || iName.includes(searchText));
+        });
+
+        if (candidateItems.length === 1) {
+            return candidateItems[0];
+        }
+
+        if (candidateItems.length > 1) {
+            // Sort by name length descending: most specific/longest match first
+            candidateItems.sort((a, b) => ((b.name || '').trim().length - (a.name || '').trim().length));
+            
+            const topLen = (candidateItems[0].name || '').trim().length;
+            const topCandidates = candidateItems.filter(it => (it.name || '').trim().length === topLen);
+
+            if (topCandidates.length === 1) {
+                return topCandidates[0];
+            }
+
+            if (byRequestComponent && rReqId) {
+                const candidate = topCandidates.find(item => {
+                    const cId = item.componentId || item.id;
+                    const reqCompKey = `${rReqId}_${cId}`;
+                    const currentUsed = byRequestComponent[reqCompKey] || 0;
+                    return currentUsed < parseFloat(item.amount || 0);
+                });
+                if (candidate) return candidate;
+            }
+            return topCandidates[0];
+        }
+    }
+
+    return null;
+}
+
 // ─── Expandable Row ──────────────────────────────────────────────────────────
 function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSuperAdmin, idx, selectable, isSelected, onToggleSelect, onEdit, onDelete, onCancelApproval, onWithdraw, isProcessing, globalAcademicYearId }) {
     const [open, setOpen] = useState(false);
@@ -480,22 +544,9 @@ export default function BOSMonthlyReport() {
                 if (!effectiveComponentId && rReqId) {
                     const req = reqLookup.get(rReqId);
                     if (req && req.items && req.items.length > 0) {
-                        const rCat = (r.category || r.description || '').trim().toLowerCase();
-                        const matchingItems = req.items.filter(item => {
-                            const iName = (item.name || '').trim().toLowerCase();
-                            return iName && (iName === rCat || rCat.includes(iName) || iName.includes(rCat));
-                        });
-                        if (matchingItems.length === 1) {
-                            effectiveComponentId = matchingItems[0].componentId || matchingItems[0].id;
-                        } else if (matchingItems.length > 1) {
-                            // Find item that still has remaining budget capacity or fill sequentially
-                            const candidate = matchingItems.find(item => {
-                                const cId = item.componentId || item.id;
-                                const reqCompKey = `${rReqId}_${cId}`;
-                                const currentUsed = byRequestComponent[reqCompKey] || 0;
-                                return currentUsed < parseFloat(item.amount || 0);
-                            }) || matchingItems[matchingItems.length - 1];
-                            effectiveComponentId = candidate.componentId || candidate.id;
+                        const matchedItem = resolveReportToRequestItem(r, req.items, byRequestComponent, rReqId);
+                        if (matchedItem) {
+                            effectiveComponentId = matchedItem.componentId || matchedItem.id;
                         }
                     }
                 }
@@ -575,15 +626,9 @@ export default function BOSMonthlyReport() {
                 }
                 const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
                 if (req && req.items && req.items.length > 0) {
-                    const rCat = (r.category || r.description || '').trim().toLowerCase();
-                    const matchingItems = req.items.filter(ri => {
-                        const riName = (ri.name || '').trim().toLowerCase();
-                        return riName && (riName === rCat || rCat.includes(riName) || riName.includes(rCat));
-                    });
-                    if (matchingItems.length === 1) {
-                        return (matchingItems[0].componentId || matchingItems[0].id) === itemCompId;
-                    } else if (matchingItems.length > 1) {
-                        return matchingItems.some(mi => (mi.componentId || mi.id) === itemCompId);
+                    const matchedItem = resolveReportToRequestItem(r, req.items);
+                    if (matchedItem) {
+                        return (matchedItem.componentId || matchedItem.id) === itemCompId;
                     }
                 }
                 return false;
@@ -625,15 +670,9 @@ export default function BOSMonthlyReport() {
                 }
                 const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
                 if (req && req.items && req.items.length > 0) {
-                    const rCat = (r.category || r.description || '').trim().toLowerCase();
-                    const matchingItems = req.items.filter(ri => {
-                        const riName = (ri.name || '').trim().toLowerCase();
-                        return riName && (riName === rCat || rCat.includes(riName) || riName.includes(rCat));
-                    });
-                    if (matchingItems.length === 1) {
-                        return (matchingItems[0].componentId || matchingItems[0].id) === itemCompId;
-                    } else if (matchingItems.length > 1) {
-                        return matchingItems.some(mi => (mi.componentId || mi.id) === itemCompId);
+                    const matchedItem = resolveReportToRequestItem(r, req.items);
+                    if (matchedItem) {
+                        return (matchedItem.componentId || matchedItem.id) === itemCompId;
                     }
                 }
                 return false;
@@ -1550,7 +1589,7 @@ export default function BOSMonthlyReport() {
     };
 
     const handleEditDraft = (draft) => {
-        const req = budgetRequests.find(r => r.id === draft.budgetRequestId);
+        const req = resolveReportRequest(draft, budgetRequests, globalAcademicYearId) || budgetRequests.find(r => r.id === draft.budgetRequestId);
         if (!req) return alert("Data induk tidak ditemukan!");
         
         let item = { 
@@ -1564,15 +1603,22 @@ export default function BOSMonthlyReport() {
             planId: draft.planId || req.planId, 
             componentId: draft.componentId 
         };
-        if (draft.componentId) {
-            const reqItem = req.items?.find(i => i.componentId === draft.componentId);
-            if (reqItem) {
-                const isRejected = draft.status === 'REJECTED';
-                const reqCompKey = `${req.id}_${draft.componentId}`;
-                const reportedCompVal = reportedAmounts.byRequestComponent?.[reqCompKey] || 0;
-                const reportedComp = reportedCompVal - (isRejected ? 0 : parseFloat(draft.amount || 0));
-                item = { ...reqItem, ...item, sisa: parseFloat(reqItem.amount || 0) - reportedComp };
-            }
+        const matchedReqItem = (draft.componentId && req.items?.find(i => (i.componentId || i.id) === draft.componentId))
+            || resolveReportToRequestItem(draft, req.items);
+        if (matchedReqItem) {
+            const isRejected = draft.status === 'REJECTED';
+            const compId = matchedReqItem.componentId || matchedReqItem.id;
+            const reqCompKey = `${req.id}_${compId}`;
+            const reportedCompVal = reportedAmounts.byRequestComponent?.[reqCompKey] || 0;
+            const reportedComp = reportedCompVal - (isRejected ? 0 : parseFloat(draft.amount || 0));
+            item = { 
+                ...matchedReqItem, 
+                ...item, 
+                componentId: compId,
+                name: matchedReqItem.name || draft.category,
+                expenseItemId: matchedReqItem.expenseItemId || item.expenseItemId,
+                sisa: parseFloat(matchedReqItem.amount || 0) - reportedComp 
+            };
         }
         
         setSelectedRequest(item);
