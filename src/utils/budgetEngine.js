@@ -139,8 +139,8 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
 
 /**
  * Helper to extract specific "Keterangan Rincian" for a budget request item or component.
- * Searches item attributes, and if needed traverses rabPlans to retrieve component label,
- * asset name, room/location, or plan description.
+ * Strictly returns only the specific note, specification, asset/room details belonging
+ * to THAT specific item or component (suppresses parent plan aggregate descriptions and category names).
  */
 export const getComponentKeterangan = (item, rabPlans, expenseItems = []) => {
     if (!item) return '';
@@ -148,27 +148,38 @@ export const getComponentKeterangan = (item, rabPlans, expenseItems = []) => {
     const clean = (val) => (val ? String(val).trim() : '');
     const itemName = clean(item.name).toLowerCase();
 
-    // 1. Direct fields on item if present and different from item.name
+    // Helper to detect if text is an aggregate list of multiple items
+    const isAggregateText = (text) => {
+        if (!text) return false;
+        return text.includes(',') && text.length > 40 && (text.split(',').length >= 3);
+    };
+
+    // 1. Direct fields on item if present and specific to this item
     const directParts = [];
     const directKet = clean(item.keterangan);
-    if (directKet && directKet.toLowerCase() !== itemName) {
+    if (directKet && directKet.toLowerCase() !== itemName && !isAggregateText(directKet)) {
         directParts.push(directKet);
     }
-    const directAsset = clean(item.assetName || item.namaAset);
-    if (directAsset && directAsset.toLowerCase() !== itemName && !directParts.includes(directAsset)) {
-        directParts.push(directAsset);
+    const directSarpras = clean(item.sarprasNotes);
+    if (directSarpras && directSarpras.toLowerCase() !== itemName && !directParts.includes(directSarpras)) {
+        directParts.push(directSarpras);
     }
     const directRoom = clean(item.assetRoom);
     if (directRoom) {
         directParts.push(`Ruang/Lokasi: ${directRoom}`);
     }
-    const directDesc = clean(item.description);
-    if (directDesc && directDesc.toLowerCase() !== itemName && !directParts.includes(directDesc)) {
-        directParts.push(directDesc);
+    const directAsset = clean(item.assetName || item.namaAset);
+    if (directAsset && directAsset.toLowerCase() !== itemName && !directParts.includes(directAsset)) {
+        directParts.push(directAsset);
     }
-    const directPlanDesc = clean(item.planDescription);
-    if (directPlanDesc && directPlanDesc.toLowerCase() !== itemName && !directParts.includes(directPlanDesc)) {
-        directParts.push(directPlanDesc);
+    const directDesc = clean(item.description);
+    if (directDesc && 
+        directDesc.toLowerCase() !== itemName && 
+        !directParts.includes(directDesc) && 
+        !isAggregateText(directDesc) &&
+        directDesc !== clean(item.reqDescription) &&
+        directDesc !== clean(item.planDescription)) {
+        directParts.push(directDesc);
     }
 
     if (directParts.length > 0) {
@@ -182,47 +193,50 @@ export const getComponentKeterangan = (item, rabPlans, expenseItems = []) => {
             if (item.planId && plan.id !== item.planId) continue;
             for (const [itemId, rawPlans] of Object.entries(plan.expense || {})) {
                 const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' ? [rawPlans] : []);
-                for (const p of plansArr) {
-                    for (const c of p.components || []) {
-                        if (c.id && (c.id === targetCompId || `COMP-${plan.id}` === targetCompId.substring(0, `COMP-${plan.id}`.length))) {
+                for (let pIdx = 0; pIdx < plansArr.length; pIdx++) {
+                    const p = plansArr[pIdx];
+                    const compList = p.components || [];
+                    for (let cIdx = 0; cIdx < compList.length; cIdx++) {
+                        const c = compList[cIdx];
+                        const syntheticId = `COMP-${plan.id}-${itemId}-${pIdx}-${cIdx}`;
+                        const isMatch = (c.id && c.id === targetCompId) || 
+                                        (targetCompId === syntheticId) ||
+                                        (!item.componentId && clean(c.label).toLowerCase() === itemName);
+
+                        if (isMatch) {
                             const parts = [];
                             const cLabel = clean(c.label);
                             if (cLabel && cLabel.toLowerCase() !== itemName) {
                                 parts.push(cLabel);
                             }
                             const cKet = clean(c.keterangan);
-                            if (cKet && cKet.toLowerCase() !== itemName && !parts.includes(cKet)) {
+                            if (cKet && cKet.toLowerCase() !== itemName && !parts.includes(cKet) && !isAggregateText(cKet)) {
                                 parts.push(cKet);
                             }
-                            const cAsset = clean(c.assetName || c.namaAset);
-                            if (cAsset && cAsset.toLowerCase() !== itemName && !parts.includes(cAsset)) {
-                                parts.push(cAsset);
+                            const cSarpras = clean(c.sarprasNotes);
+                            if (cSarpras && cSarpras.toLowerCase() !== itemName && !parts.includes(cSarpras)) {
+                                parts.push(cSarpras);
                             }
                             const cRoom = clean(c.assetRoom);
                             if (cRoom) {
                                 parts.push(`Ruang/Lokasi: ${cRoom}`);
                             }
+                            const cAsset = clean(c.assetName || c.namaAset);
+                            if (cAsset && cAsset.toLowerCase() !== itemName && !parts.includes(cAsset)) {
+                                parts.push(cAsset);
+                            }
                             const cDesc = clean(c.description);
-                            if (cDesc && cDesc.toLowerCase() !== itemName && !parts.includes(cDesc)) {
+                            if (cDesc && 
+                                cDesc.toLowerCase() !== itemName && 
+                                cDesc !== clean(p.description) && 
+                                !parts.includes(cDesc) && 
+                                !isAggregateText(cDesc)) {
                                 parts.push(cDesc);
                             }
-                            const pDesc = clean(p.description);
-                            if (pDesc && pDesc.toLowerCase() !== itemName && !parts.includes(pDesc)) {
-                                parts.push(pDesc);
-                            }
-                            if (expenseItems && expenseItems.length > 0) {
-                                const exItem = expenseItems.find(e => e.id === itemId);
-                                const exName = clean(exItem?.name);
-                                if (exName && exName.toLowerCase() !== itemName && !parts.includes(exName)) {
-                                    parts.push(exName);
-                                }
-                            }
+
                             if (parts.length > 0) return parts.join(' • ');
+                            return ''; // Matched specific component, but component has no extra notes
                         }
-                    }
-                    const pDesc = clean(p.description);
-                    if (p.id === item.planId && pDesc && pDesc.toLowerCase() !== itemName) {
-                        return pDesc;
                     }
                 }
             }

@@ -650,9 +650,9 @@ export default function MonthlyRequest() {
                         assetName: c.assetName || c.namaAset || c.label || c.name || '',
                         sarprasStatus: isAsset ? 'PENDING' : 'APPROVED',
                         sarprasNotes: '',
-                        keterangan: c.keterangan || c.label || '',
-                        description: c.description || c.planDescription || '',
-                        planDescription: c.planDescription || ''
+                        keterangan: c.keterangan || '',
+                        description: c.description || '',
+                        planDescription: ''
                     };
                 })
             };
