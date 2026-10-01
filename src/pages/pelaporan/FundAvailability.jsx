@@ -33,17 +33,18 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     const rReqId = report.budgetRequestId || report.requestId;
     const reportItemName = (report.category || report.description || '').trim().toLowerCase();
 
-    // 2. Check exact budgetRequestId if it exists AND its items contain the report item name/category
+    // 2. Check exact budgetRequestId if it exists AND its items contain the report item name/category (exact or substring)
     if (rReqId) {
         const found = budgetRequests.find(r => r.id === rReqId);
         if (found) {
-            if (report.kategoriAset === 'PENGEMBALIAN') return found;
-            if (!reportItemName || !found.items || found.items.length === 0) {
+            if (report.kategoriAset === 'PENGEMBALIAN' || !reportItemName || !found.items || found.items.length === 0) {
                 return found;
-            } else {
-                const hasItem = found.items.some(i => (i.name || '').trim().toLowerCase() === reportItemName);
-                if (hasItem) return found;
             }
+            const hasItem = found.items.some(i => {
+                const iName = (i.name || '').trim().toLowerCase();
+                return iName === reportItemName || reportItemName.includes(iName) || iName.includes(reportItemName);
+            });
+            if (hasItem) return found;
         }
     }
 
