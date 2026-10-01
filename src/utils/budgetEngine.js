@@ -136,3 +136,99 @@ export const calculateRAP = (state, selectedYearId, targetUnitId, targetFieldId)
 
     return results;
 };
+
+/**
+ * Helper to extract specific "Keterangan Rincian" for a budget request item or component.
+ * Searches item attributes, and if needed traverses rabPlans to retrieve component label,
+ * asset name, room/location, or plan description.
+ */
+export const getComponentKeterangan = (item, rabPlans, expenseItems = []) => {
+    if (!item) return '';
+
+    const clean = (val) => (val ? String(val).trim() : '');
+    const itemName = clean(item.name).toLowerCase();
+
+    // 1. Direct fields on item if present and different from item.name
+    const directParts = [];
+    const directKet = clean(item.keterangan);
+    if (directKet && directKet.toLowerCase() !== itemName) {
+        directParts.push(directKet);
+    }
+    const directAsset = clean(item.assetName || item.namaAset);
+    if (directAsset && directAsset.toLowerCase() !== itemName && !directParts.includes(directAsset)) {
+        directParts.push(directAsset);
+    }
+    const directRoom = clean(item.assetRoom);
+    if (directRoom) {
+        directParts.push(`Ruang/Lokasi: ${directRoom}`);
+    }
+    const directDesc = clean(item.description);
+    if (directDesc && directDesc.toLowerCase() !== itemName && !directParts.includes(directDesc)) {
+        directParts.push(directDesc);
+    }
+    const directPlanDesc = clean(item.planDescription);
+    if (directPlanDesc && directPlanDesc.toLowerCase() !== itemName && !directParts.includes(directPlanDesc)) {
+        directParts.push(directPlanDesc);
+    }
+
+    if (directParts.length > 0) {
+        return directParts.join(' • ');
+    }
+
+    // 2. Lookup in rabPlans by componentId or planId
+    if (rabPlans && Array.isArray(rabPlans) && (item.componentId || item.planId)) {
+        const targetCompId = item.componentId || item.id;
+        for (const plan of rabPlans) {
+            if (item.planId && plan.id !== item.planId) continue;
+            for (const [itemId, rawPlans] of Object.entries(plan.expense || {})) {
+                const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' ? [rawPlans] : []);
+                for (const p of plansArr) {
+                    for (const c of p.components || []) {
+                        if (c.id && (c.id === targetCompId || `COMP-${plan.id}` === targetCompId.substring(0, `COMP-${plan.id}`.length))) {
+                            const parts = [];
+                            const cLabel = clean(c.label);
+                            if (cLabel && cLabel.toLowerCase() !== itemName) {
+                                parts.push(cLabel);
+                            }
+                            const cKet = clean(c.keterangan);
+                            if (cKet && cKet.toLowerCase() !== itemName && !parts.includes(cKet)) {
+                                parts.push(cKet);
+                            }
+                            const cAsset = clean(c.assetName || c.namaAset);
+                            if (cAsset && cAsset.toLowerCase() !== itemName && !parts.includes(cAsset)) {
+                                parts.push(cAsset);
+                            }
+                            const cRoom = clean(c.assetRoom);
+                            if (cRoom) {
+                                parts.push(`Ruang/Lokasi: ${cRoom}`);
+                            }
+                            const cDesc = clean(c.description);
+                            if (cDesc && cDesc.toLowerCase() !== itemName && !parts.includes(cDesc)) {
+                                parts.push(cDesc);
+                            }
+                            const pDesc = clean(p.description);
+                            if (pDesc && pDesc.toLowerCase() !== itemName && !parts.includes(pDesc)) {
+                                parts.push(pDesc);
+                            }
+                            if (expenseItems && expenseItems.length > 0) {
+                                const exItem = expenseItems.find(e => e.id === itemId);
+                                const exName = clean(exItem?.name);
+                                if (exName && exName.toLowerCase() !== itemName && !parts.includes(exName)) {
+                                    parts.push(exName);
+                                }
+                            }
+                            if (parts.length > 0) return parts.join(' • ');
+                        }
+                    }
+                    const pDesc = clean(p.description);
+                    if (p.id === item.planId && pDesc && pDesc.toLowerCase() !== itemName) {
+                        return pDesc;
+                    }
+                }
+            }
+        }
+    }
+
+    return '';
+};
+

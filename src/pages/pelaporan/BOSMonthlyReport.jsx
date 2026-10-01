@@ -4,6 +4,7 @@ import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, Hist
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
+import { getComponentKeterangan } from '../../utils/budgetEngine';
 import * as XLSX from 'xlsx';
 
 // ─── Badge Kategori Aset ─────────────────────────────────────────────────────
@@ -142,7 +143,7 @@ function resolveReportRequest(report, budgetRequests, globalAcademicYearId) {
     return null;
 }
 
-function resolveReportToRequestItem(report, reqItems, byRequestComponent, rReqId) {
+function resolveReportToRequestItem(report, reqItems, byRequestComponent, rReqId, rabPlans, expenseItems) {
     if (!report || !reqItems || reqItems.length === 0) return null;
 
     // 1. Direct componentId match if report has componentId
@@ -153,21 +154,75 @@ function resolveReportToRequestItem(report, reqItems, byRequestComponent, rReqId
 
     const rCat = (report.category || '').trim().toLowerCase();
     const rDesc = (report.description || '').trim().toLowerCase();
+    const rBukti = (report.buktiTeks || '').trim().toLowerCase();
+
+    // Helper to pick the best item among candidates with same category/name
+    const pickBestItem = (candidates) => {
+        if (!candidates || candidates.length === 0) return null;
+        if (candidates.length === 1) return candidates[0];
+
+        // A. Keyword match against keterangan rincian, asset name, room, or description
+        const descText = `${rDesc} ${rBukti}`.trim();
+        if (descText) {
+            const scored = candidates.map(cand => {
+                const candKet = (getComponentKeterangan(cand, rabPlans, expenseItems) || '').toLowerCase();
+                const candRoom = (cand.assetRoom || '').toLowerCase();
+                const candAsset = (cand.assetName || '').toLowerCase();
+                const candDesc = (cand.description || cand.keterangan || '').toLowerCase();
+
+                let score = 0;
+                if (candKet && (descText.includes(candKet) || candKet.includes(descText))) score += 10;
+                if (candRoom && descText.includes(candRoom)) score += 8;
+                if (candAsset && descText.includes(candAsset)) score += 6;
+                if (candDesc && (descText.includes(candDesc) || candDesc.includes(descText))) score += 5;
+
+                // Word overlap
+                const words = `${candKet} ${candRoom} ${candAsset} ${candDesc}`.split(/[\s,./•-]+/).filter(w => w && w.length > 3);
+                words.forEach(w => {
+                    if (descText.includes(w)) score += 2;
+                });
+
+                return { cand, score };
+            });
+
+            scored.sort((a, b) => b.score - a.score);
+            if (scored[0].score > 0) {
+                return scored[0].cand;
+            }
+        }
+
+        // B. Budget Awareness: Pick the candidate that still has remaining budget (prevents piling up onto over-budget item)
+        if (byRequestComponent && rReqId) {
+            const candidateWithBudget = candidates.find(item => {
+                const cId = item.componentId || item.id;
+                const reqCompKey = `${rReqId}_${cId}`;
+                const currentUsed = byRequestComponent[reqCompKey] || 0;
+                return currentUsed < parseFloat(item.amount || 0);
+            });
+            if (candidateWithBudget) return candidateWithBudget;
+        }
+
+        // C. Fallback to first candidate
+        return candidates[0];
+    };
 
     // 2. Strict EXACT match on category against item name
     if (rCat) {
-        const exactCat = reqItems.find(it => (it.name || '').trim().toLowerCase() === rCat);
-        if (exactCat) return exactCat;
+        const exactCatMatches = reqItems.filter(it => (it.name || '').trim().toLowerCase() === rCat);
+        if (exactCatMatches.length > 0) {
+            return pickBestItem(exactCatMatches);
+        }
     }
 
     // 3. Strict EXACT match on description against item name
     if (rDesc) {
-        const exactDesc = reqItems.find(it => (it.name || '').trim().toLowerCase() === rDesc);
-        if (exactDesc) return exactDesc;
+        const exactDescMatches = reqItems.filter(it => (it.name || '').trim().toLowerCase() === rDesc);
+        if (exactDescMatches.length > 0) {
+            return pickBestItem(exactDescMatches);
+        }
     }
 
     // 4. Substring matching with specificity priority:
-    // Longest matching item name MUST win (e.g. "Tambahan honor petugas kebersihan" > "Honor petugas kebersihan")
     const searchText = rCat || rDesc;
     if (searchText) {
         const candidateItems = reqItems.filter(it => {
@@ -175,31 +230,12 @@ function resolveReportToRequestItem(report, reqItems, byRequestComponent, rReqId
             return iName && (searchText.includes(iName) || iName.includes(searchText));
         });
 
-        if (candidateItems.length === 1) {
-            return candidateItems[0];
-        }
-
-        if (candidateItems.length > 1) {
+        if (candidateItems.length > 0) {
             // Sort by name length descending: most specific/longest match first
             candidateItems.sort((a, b) => ((b.name || '').trim().length - (a.name || '').trim().length));
-            
             const topLen = (candidateItems[0].name || '').trim().length;
             const topCandidates = candidateItems.filter(it => (it.name || '').trim().length === topLen);
-
-            if (topCandidates.length === 1) {
-                return topCandidates[0];
-            }
-
-            if (byRequestComponent && rReqId) {
-                const candidate = topCandidates.find(item => {
-                    const cId = item.componentId || item.id;
-                    const reqCompKey = `${rReqId}_${cId}`;
-                    const currentUsed = byRequestComponent[reqCompKey] || 0;
-                    return currentUsed < parseFloat(item.amount || 0);
-                });
-                if (candidate) return candidate;
-            }
-            return topCandidates[0];
+            return pickBestItem(topCandidates);
         }
     }
 
@@ -548,6 +584,7 @@ export default function BOSMonthlyReport() {
         const reqSettledMap = {};
         const byRequestComponent = {};
         const approvedByRequestComponent = {};
+        const reportCompMap = {};
 
         const reqLookup = new Map();
         (budgetRequests || []).forEach(br => reqLookup.set(br.id, br));
@@ -562,7 +599,7 @@ export default function BOSMonthlyReport() {
                 if (!effectiveComponentId && rReqId) {
                     const req = reqLookup.get(rReqId);
                     if (req && req.items && req.items.length > 0) {
-                        const matchedItem = resolveReportToRequestItem(r, req.items, byRequestComponent, rReqId);
+                        const matchedItem = resolveReportToRequestItem(r, req.items, byRequestComponent, rReqId, rabPlans, expenseItems);
                         if (matchedItem) {
                             effectiveComponentId = matchedItem.componentId || matchedItem.id;
                         }
@@ -572,6 +609,8 @@ export default function BOSMonthlyReport() {
                 const amt = parseFloat(r.amount || 0);
 
                 if (effectiveComponentId) {
+                    reportCompMap[r.id] = effectiveComponentId;
+
                     if (!map[effectiveComponentId]) map[effectiveComponentId] = 0;
                     map[effectiveComponentId] += amt;
 
@@ -622,73 +661,57 @@ export default function BOSMonthlyReport() {
             }
         });
 
-        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, reqSettledMap, byRequestComponent, approvedByRequestComponent };
-    }, [budgetReports, budgetRequests]);
+        return { byComponent: map, approvedByComponent: approvedMap, byRequest: reqMap, approvedByRequest: reqApprovedMap, reqSettledMap, byRequestComponent, approvedByRequestComponent, reportCompMap };
+    }, [budgetReports, budgetRequests, globalAcademicYearId, rabPlans, expenseItems]);
+
+    const reportsCountMap = useMemo(() => {
+        const countMap = {};
+        (budgetReports || []).forEach(r => {
+            if (!r || r.isDeleted || r.status === 'REJECTED') return;
+            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+            const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
+            const compId = r.componentId || reportedAmounts?.reportCompMap?.[r.id];
+            if (rReqId && compId) {
+                const key = `${rReqId}_${compId}`;
+                countMap[key] = (countMap[key] || 0) + 1;
+            } else if (compId) {
+                countMap[compId] = (countMap[compId] || 0) + 1;
+            }
+        });
+        return countMap;
+    }, [budgetReports, budgetRequests, globalAcademicYearId, reportedAmounts]);
 
     const getReportsCountForItem = (item) => {
         if (!item) return 0;
         const itemCompId = item.componentId || item.id;
-        return (budgetReports || []).filter(r => {
-            if (!r || r.isDeleted || r.status === 'REJECTED') return false;
-
-            const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
-            const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
-
-            if (rReqId && item.reqId && rReqId !== item.reqId) {
-                return false;
-            }
-
-            if (itemCompId) {
-                if (r.componentId) {
-                    return itemCompId === r.componentId;
-                }
-                const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
-                if (req && req.items && req.items.length > 0) {
-                    const matchedItem = resolveReportToRequestItem(r, req.items);
-                    if (matchedItem) {
-                        return (matchedItem.componentId || matchedItem.id) === itemCompId;
-                    }
-                }
-                return false;
-            }
-
-            const rCat = (r.category || '').trim().toLowerCase();
-            const rDesc = (r.description || '').trim().toLowerCase();
-            const iName = (item.name || '').trim().toLowerCase();
-
-            if (iName && (rCat === iName || rDesc === iName)) {
-                return true;
-            }
-
-            if (rReqId && item.reqId && rReqId === item.reqId && !r.componentId && !r.category) {
-                return true;
-            }
-
-            return false;
-        }).length;
+        if (item.reqId && itemCompId) {
+            return reportsCountMap[`${item.reqId}_${itemCompId}`] || 0;
+        }
+        return reportsCountMap[itemCompId] || 0;
     };
 
     const itemReports = useMemo(() => {
         if (!selectedItemForReports) return [];
         const item = selectedItemForReports;
         const itemCompId = item.componentId || item.id;
+        const itemReqId = item.reqId;
+
         return (budgetReports || []).filter(r => {
-            if (!r || r.isDeleted) return false;
+            if (!r || r.isDeleted || r.status === 'REJECTED') return false;
 
             const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
             const rReqId = resolvedReq ? resolvedReq.id : (r.budgetRequestId || r.requestId);
 
-            if (rReqId && item.reqId && rReqId !== item.reqId) {
-                return false;
-            }
+            if (rReqId && itemReqId && rReqId !== itemReqId) return false;
 
             if (itemCompId) {
-                if (r.componentId) {
-                    return itemCompId === r.componentId;
+                const effectiveCompId = r.componentId || reportedAmounts?.reportCompMap?.[r.id];
+                if (effectiveCompId) {
+                    return effectiveCompId === itemCompId;
                 }
-                const req = (budgetRequests || []).find(b => b.id === (item.reqId || rReqId));
+                const req = (budgetRequests || []).find(b => b.id === (itemReqId || rReqId));
                 if (req && req.items && req.items.length > 0) {
-                    const matchedItem = resolveReportToRequestItem(r, req.items);
+                    const matchedItem = resolveReportToRequestItem(r, req.items, reportedAmounts?.byRequestComponent, rReqId, rabPlans, expenseItems);
                     if (matchedItem) {
                         return (matchedItem.componentId || matchedItem.id) === itemCompId;
                     }
@@ -710,7 +733,7 @@ export default function BOSMonthlyReport() {
 
             return false;
         });
-    }, [selectedItemForReports, budgetReports, budgetRequests, globalAcademicYearId]);
+    }, [selectedItemForReports, budgetReports, budgetRequests, globalAcademicYearId, reportedAmounts, rabPlans, expenseItems]);
 
     const requestsForYear = useMemo(() => {
         return (budgetRequests || []).filter(req => {
@@ -968,7 +991,8 @@ export default function BOSMonthlyReport() {
                 const name = (item.name || '').toLowerCase();
                 const desc = (item.reqDescription || '').toLowerCase();
                 const reqId = (item.reqId || '').toLowerCase();
-                return name.includes(q) || desc.includes(q) || reqId.includes(q) || unitName.includes(q);
+                const ket = (getComponentKeterangan(item, rabPlans, expenseItems) || '').toLowerCase();
+                return name.includes(q) || desc.includes(q) || reqId.includes(q) || unitName.includes(q) || ket.includes(q);
             });
         }
         if (statusFilter === 'FILLED') {
@@ -995,15 +1019,18 @@ export default function BOSMonthlyReport() {
             });
         }
         return items;
-    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, pendingMonthFilter, statusFilter, units, fields, draftReports, budgetReports]);
+    }, [pendingItems, isSuperAdmin, selectedUnitFilter, pendingSearch, pendingMonthFilter, statusFilter, units, fields, draftReports, budgetReports, rabPlans, expenseItems]);
 
     // Handle Download Template Import Excel for a single item card
     const handleDownloadItemTemplate = (item) => {
         try {
+            const itemKeterangan = getComponentKeterangan(item, rabPlans, expenseItems);
             const wsData = [
                 ["TEMPLATE IMPORT REALISASI NOTA BELANJA BOS (EXCEL)"],
                 ["Nama Item Rincian:", item.name || "-"],
+                ["Keterangan Rincian (Detail):", itemKeterangan || "-"],
                 ["Kode Pengajuan (REQ ID):", item.reqId || "-"],
+                ["Component ID:", item.componentId || item.id || "-"],
                 ["Bulan Permintaan:", item.reqMonth || "-"],
                 ["Pagu RAB (Rp):", parseFloat(item.amount || 0)],
                 ["Sisa Dana Saat Ini (Rp):", item.sisa || 0],
@@ -1013,7 +1040,7 @@ export default function BOSMonthlyReport() {
                 [
                     1,
                     new Date().toISOString().split('T')[0],
-                    `Pembelian ${item.name}`,
+                    `Pembelian ${item.name}${itemKeterangan ? ` (${itemKeterangan})` : ''}`,
                     "Toko A",
                     1,
                     "Pcs",
@@ -1037,6 +1064,7 @@ export default function BOSMonthlyReport() {
     // Handle Export Excel for a single item card
     const handleExportSingleItemExcel = (item) => {
         try {
+            const itemKeterangan = getComponentKeterangan(item, rabPlans, expenseItems);
             const itemReports = (budgetReports || []).filter(r => 
                 !r.isDeleted && 
                 (item.componentId ? r.componentId === item.componentId : r.budgetRequestId === item.reqId)
@@ -1045,7 +1073,9 @@ export default function BOSMonthlyReport() {
             const wsData = [
                 ["RINCIAN PELAPORAN REALISASI ANGGARAN BOS (EXCEL)"],
                 ["Nama Item Rincian:", item.name || "-"],
+                ["Keterangan Rincian (Detail):", itemKeterangan || "-"],
                 ["Kode Pengajuan (REQ ID):", item.reqId || "-"],
+                ["Component ID:", item.componentId || item.id || "-"],
                 ["Bulan Permintaan:", item.reqMonth || "-"],
                 ["Pagu RAB (Rp):", parseFloat(item.amount || 0)],
                 ["Sisa Dana Saat Ini (Rp):", item.sisa || 0],
@@ -1071,7 +1101,7 @@ export default function BOSMonthlyReport() {
                 wsData.push([
                     1,
                     new Date().toISOString().split('T')[0],
-                    `Pembelian ${item.name}`,
+                    `Pembelian ${item.name}${itemKeterangan ? ` (${itemKeterangan})` : ''}`,
                     "Toko A",
                     1,
                     "Pcs",
@@ -1106,13 +1136,15 @@ export default function BOSMonthlyReport() {
                 const ws = wb.Sheets[sheetName];
                 
                 const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                if (!rows || rows.length < 9) {
+                if (!rows || rows.length < 5) {
                     alert('Format file Excel tidak sesuai. Gunakan file Excel yang di-Export dari rincian ini.');
                     e.target.value = '';
                     return;
                 }
 
-                const transactionRows = rows.slice(8);
+                // Cari baris header secara dinamis
+                const headerRowIndex = rows.findIndex(row => Array.isArray(row) && row.some(cell => String(cell || '').toLowerCase().includes('tanggal realisasi') || String(cell || '').toLowerCase().includes('nominal belanja')));
+                const transactionRows = headerRowIndex !== -1 ? rows.slice(headerRowIndex + 1) : rows.slice(8);
                 let importedCount = 0;
                 let skippedCount = 0;
 
@@ -2272,7 +2304,19 @@ export default function BOSMonthlyReport() {
                             <div key={`${item.reqId}-${item.componentId || 'legacy'}`} className="card p-8 flex flex-col md:flex-row md:items-center justify-between gap-6 hover:border-emerald-200 transition-all border-l-8 border-l-emerald-600">
                                 <div className="flex-1">
                                     <div className="flex flex-wrap items-center justify-between gap-2 mb-1">
-                                        <h4 className="font-black text-slate-900 text-xl">{item.name}</h4>
+                                        <div>
+                                            <h4 className="font-black text-slate-900 text-xl">{item.name}</h4>
+                                            {(() => {
+                                                const itemKet = getComponentKeterangan(item, rabPlans, expenseItems);
+                                                if (!itemKet) return null;
+                                                return (
+                                                    <div className="mt-1 flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-emerald-50/80 px-2.5 py-1 rounded-lg border border-emerald-200/80 w-fit">
+                                                        <Tag size={12} className="text-emerald-600 shrink-0" />
+                                                        <span><strong>Keterangan:</strong> {itemKet}</span>
+                                                    </div>
+                                                );
+                                            })()}
+                                        </div>
                                         {item.sisa <= 0 && (
                                             <span className="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-full text-[10px] font-black uppercase tracking-wider">
                                                 <CheckCircle2 size={12} /> Selesai / Lunas
@@ -3088,6 +3132,91 @@ export default function BOSMonthlyReport() {
                                             );
                                         })()}
                                     </div>
+                                </div>
+
+                                {/* Target Rincian Belanja */}
+                                <div>
+                                    <label className="form-label font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                        <span>Target Rincian Belanja / Pagu Anggaran</span>
+                                        {(() => {
+                                            const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
+                                            if (parentReq?.items && parentReq.items.length > 1) {
+                                                return (
+                                                    <span className="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-100">
+                                                        Tersedia {parentReq.items.length} Rincian dalam Pengajuan Ini
+                                                    </span>
+                                                );
+                                            }
+                                            return null;
+                                        })()}
+                                    </label>
+                                    {(() => {
+                                        const parentReq = budgetRequests.find(r => r.id === selectedRequest?.reqId);
+                                        if (parentReq?.items && parentReq.items.length > 1) {
+                                            return (
+                                                <div className="space-y-2">
+                                                    <select
+                                                        value={selectedRequest?.componentId || selectedRequest?.id || ''}
+                                                        onChange={(e) => {
+                                                            const chosenCompId = e.target.value;
+                                                            const foundItem = parentReq.items.find(i => (i.componentId || i.id) === chosenCompId);
+                                                            if (foundItem) {
+                                                                const reqCompKey = `${parentReq.id}_${chosenCompId}`;
+                                                                const reportedCompVal = reportedAmounts.byRequestComponent?.[reqCompKey] || 0;
+                                                                setSelectedRequest({
+                                                                    ...foundItem,
+                                                                    reqId: parentReq.id,
+                                                                    reqMonth: parentReq.month,
+                                                                    reqDate: parentReq.date,
+                                                                    reqDescription: parentReq.description,
+                                                                    reqUnitId: parentReq.unitId,
+                                                                    expenseItemId: foundItem.expenseItemId || parentReq.expenseItemId,
+                                                                    sisa: parseFloat(foundItem.amount || 0) - reportedCompVal
+                                                                });
+                                                            }
+                                                        }}
+                                                        className="form-input bg-white border-2 border-emerald-200 text-xs font-bold text-slate-800 focus:border-emerald-500"
+                                                    >
+                                                        {parentReq.items.map(it => {
+                                                            const cId = it.componentId || it.id;
+                                                            const itKet = getComponentKeterangan(it, rabPlans, expenseItems);
+                                                            const reqCompKey = `${parentReq.id}_${cId}`;
+                                                            const used = reportedAmounts.byRequestComponent?.[reqCompKey] || 0;
+                                                            const remaining = parseFloat(it.amount || 0) - used;
+                                                            return (
+                                                                <option key={cId} value={cId}>
+                                                                    {it.name} {itKet ? `(${itKet})` : ''} — Pagu: {formatRupiah(it.amount)} (Sisa: {formatRupiah(remaining)})
+                                                                </option>
+                                                            );
+                                                        })}
+                                                    </select>
+                                                    {(() => {
+                                                        const activeKet = getComponentKeterangan(selectedRequest, rabPlans, expenseItems);
+                                                        if (!activeKet) return null;
+                                                        return (
+                                                            <div className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-50 border border-emerald-100 rounded-xl text-xs font-bold text-emerald-700">
+                                                                <Tag size={13} className="shrink-0 text-emerald-500" />
+                                                                <span><strong>Keterangan:</strong> {activeKet}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            );
+                                        } else {
+                                            const activeKet = getComponentKeterangan(selectedRequest, rabPlans, expenseItems);
+                                            return (
+                                                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl flex items-center justify-between gap-3">
+                                                    <div>
+                                                        <span className="font-black text-xs text-slate-800 block">{selectedRequest?.name || 'Rincian Pengeluaran'}</span>
+                                                        {activeKet && (
+                                                            <span className="text-[11px] font-bold text-emerald-600 block mt-0.5">🏷️ {activeKet}</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-xs font-black text-slate-700">{formatRupiah(selectedRequest?.amount || 0)}</span>
+                                                </div>
+                                            );
+                                        }
+                                    })()}
                                 </div>
 
                                 {/* Row 1: Tanggal + Nomor Nota */}

@@ -649,7 +649,10 @@ export default function MonthlyRequest() {
                         assetProcurementType: c.assetProcurementType || 'BARU',
                         assetName: c.assetName || c.namaAset || c.label || c.name || '',
                         sarprasStatus: isAsset ? 'PENDING' : 'APPROVED',
-                        sarprasNotes: ''
+                        sarprasNotes: '',
+                        keterangan: c.keterangan || c.label || '',
+                        description: c.description || c.planDescription || '',
+                        planDescription: c.planDescription || ''
                     };
                 })
             };
