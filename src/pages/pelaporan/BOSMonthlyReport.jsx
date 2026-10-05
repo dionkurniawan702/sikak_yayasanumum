@@ -542,7 +542,7 @@ export default function BOSMonthlyReport() {
     });
     const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
-    const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser } = state;
+    const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser, accounts = [] } = state;
 
     const monthOptions = useMemo(() => {
         const set = new Set();
@@ -1273,7 +1273,7 @@ export default function BOSMonthlyReport() {
 
     const handleBulkApprove = async () => {
         if (selectedReportIds.length === 0) return;
-        if (window.confirm(`Setujui ${selectedReportIds.length} laporan terpilih sekaligus?`)) {
+        if (window.confirm(`Setujui ${selectedReportIds.length} laporan terpilih sekaligus?\n\nJurnal pengeluaran otomatis dicatat ke pembukuan akuntansi sesuai COA yang telah disahkan.`)) {
             setProcessingId('BULK');
             try {
                 const updatedReports = selectedReportIds.map(id => {
@@ -1906,7 +1906,7 @@ export default function BOSMonthlyReport() {
     };
 
     const handleApproveReport = async (report) => {
-        if (window.confirm('Setujui laporan ini? Draf Jurnal (Menunggu COA) akan otomatis dibuat.')) {
+        if (window.confirm(`Setujui laporan nota "${report.nomorNota || report.description || '-'}" ini?\n\nJurnal pengeluaran otomatis dicatat ke pembukuan akuntansi sesuai COA yang telah disahkan.`)) {
             setProcessingId(report.id);
             window.dispatchEvent(new CustomEvent('app-processing-start', { 
                 detail: { 
@@ -2828,7 +2828,43 @@ export default function BOSMonthlyReport() {
                                                 </td>
                                                 <td className="px-5 py-4 text-xs font-black text-emerald-600 font-mono">{report.nomorNota || '—'}</td>
                                                 <td className="px-5 py-4 text-xs font-bold text-slate-700">{report.category || '—'}</td>
-                                                <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[200px] truncate" title={report.description}>{report.description}</td>
+                                                <td className="px-5 py-4 text-xs font-medium text-slate-600 max-w-[240px]" title={report.description}>
+                                                    <div className="font-bold text-slate-800 truncate mb-1">{report.description}</div>
+                                                    {(() => {
+                                                        const parentReq = (budgetRequests || []).find(req => req.id === report.budgetRequestId);
+                                                        let matchedItem = null;
+                                                        if (parentReq && parentReq.items) {
+                                                            const items = Array.isArray(parentReq.items) ? parentReq.items : [];
+                                                            if (report.planId) matchedItem = items.find(i => i.componentId === report.planId || i.planId === report.planId);
+                                                            if (!matchedItem && report.expenseItemId) matchedItem = items.find(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
+                                                            if (!matchedItem && report.description) {
+                                                                const d = report.description.trim().toLowerCase();
+                                                                matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
+                                                            }
+                                                            if (!matchedItem && items.length === 1) matchedItem = items[0];
+                                                        }
+                                                        const dName = matchedItem?.debitAccountName || (matchedItem?.debitAccountId ? (accounts.find(a => a.id === matchedItem.debitAccountId)?.name) : null);
+                                                        const cName = matchedItem?.creditAccountName || (matchedItem?.creditAccountId ? (accounts.find(a => a.id === matchedItem.creditAccountId)?.name) : null);
+
+                                                        if (dName || cName) {
+                                                            return (
+                                                                <div className="flex flex-wrap items-center gap-1.5 text-[9px] font-bold">
+                                                                    {dName && (
+                                                                        <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200 truncate max-w-[130px]" title={`Debit: ${dName}`}>
+                                                                            D: {dName}
+                                                                        </span>
+                                                                    )}
+                                                                    {cName && (
+                                                                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 truncate max-w-[130px]" title={`Kredit: ${cName}`}>
+                                                                            K: {cName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    })()}
+                                                </td>
                                                 <td className="px-5 py-4 text-center text-xs font-bold text-slate-600">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
                                                 <td className="px-5 py-4 text-right text-xs font-bold text-rose-500 font-mono whitespace-nowrap">{parseFloat(report.diskon || 0) > 0 ? `-${formatRupiah(parseFloat(report.diskon))}` : '—'}</td>
                                                 <td className="px-5 py-4 text-right text-sm font-black text-slate-800">{formatRupiah(parseFloat(report.amount || 0))}</td>

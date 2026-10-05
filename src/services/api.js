@@ -302,7 +302,7 @@ export const api = {
                 case 'EDIT_BUDGET_REQUEST': {
                     const BUDGET_REQUEST_FIELDS = ['status', 'description', 'month', 'year',
                         'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
-                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified'];
+                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'creditAccountId', 'bypassBalanceCheck'];
                     const cleanPayload = { id: payload.id };
                     BUDGET_REQUEST_FIELDS.forEach(f => {
                         if (payload[f] !== undefined) cleanPayload[f] = payload[f];

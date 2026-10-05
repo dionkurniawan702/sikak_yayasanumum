@@ -273,11 +273,106 @@ const getPrisma = () => {
                                 }
                             }
 
-                            const debitAccount = (expenseItem && expenseItem.accountId) ? expenseItem.accountId : '';
-                            const debitName = (expenseItem && expenseItem.accountId) ? expenseItem.name : 'MENUNGGU COA (Debit)';
+                            // Resolve Debit & Credit Accounts from parent BudgetRequest or ExpenseItem
+                            let reqDebitId = '';
+                            let reqCreditId = '';
+
+                            if (report.budgetRequestId) {
+                                const parentReq = await prisma.budgetRequest.findUnique({
+                                    where: { id: report.budgetRequestId }
+                                });
+                                if (parentReq && parentReq.items) {
+                                    const items = Array.isArray(parentReq.items)
+                                        ? parentReq.items
+                                        : (typeof parentReq.items === 'string' ? JSON.parse(parentReq.items) : []);
+
+                                    let matchedItem = null;
+                                    if (report.planId) {
+                                        matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.planId && i.planId === report.planId));
+                                    }
+                                    if (!matchedItem && report.expenseItemId) {
+                                        matchedItem = items.find(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
+                                    }
+                                    if (!matchedItem && report.description) {
+                                        const d = report.description.trim().toLowerCase();
+                                        matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
+                                    }
+                                    if (!matchedItem && items.length === 1) {
+                                        matchedItem = items[0];
+                                    }
+
+                                    if (matchedItem) {
+                                        if (matchedItem.debitAccountId) reqDebitId = matchedItem.debitAccountId;
+                                        if (matchedItem.creditAccountId) reqCreditId = matchedItem.creditAccountId;
+                                    }
+                                    if (!reqCreditId && parentReq.creditAccountId) {
+                                        reqCreditId = parentReq.creditAccountId;
+                                    }
+                                }
+                            }
+
+                            let resolvedDebitId = reqDebitId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                            let resolvedCreditId = reqCreditId || expenseItem?.creditAccountId || '';
+
+                            if (!resolvedCreditId) {
+                                const isBos = report.source === 'BOS' || (report.planId && report.planId.endsWith('-BOS')) || (report.category && report.category.toLowerCase().includes('bos'));
+                                if (isBos) {
+                                    const bosBank = await prisma.account.findFirst({
+                                        where: {
+                                            isDeleted: false,
+                                            isParent: false,
+                                            OR: [
+                                                { code: '1-1112' },
+                                                { name: { contains: 'Dana Terikat' } },
+                                                { name: { contains: 'BOS' } }
+                                            ]
+                                        }
+                                    });
+                                    if (bosBank) resolvedCreditId = bosBank.id;
+                                } else {
+                                    const yayasanBank = await prisma.account.findFirst({
+                                        where: {
+                                            isDeleted: false,
+                                            isParent: false,
+                                            OR: [
+                                                { code: '1-1111' },
+                                                { code: '1-1101' },
+                                                { name: { contains: 'Bank Yayasan' } },
+                                                { name: { contains: 'Kas Yayasan' } }
+                                            ]
+                                        }
+                                    });
+                                    if (yayasanBank) resolvedCreditId = yayasanBank.id;
+                                }
+                            }
+
+                            let finalDebitId = resolvedDebitId;
+                            let finalCreditId = resolvedCreditId;
+
+                            if (report.kategoriAset === 'PENGEMBALIAN') {
+                                finalDebitId = resolvedCreditId;
+                                finalCreditId = resolvedDebitId;
+                            }
+
+                            let debitAccObj = null;
+                            if (finalDebitId) {
+                                debitAccObj = await prisma.account.findUnique({ where: { id: finalDebitId } });
+                            }
+
+                            let creditAccObj = null;
+                            if (finalCreditId) {
+                                creditAccObj = await prisma.account.findUnique({ where: { id: finalCreditId } });
+                            }
+
+                            const debitAccount = finalDebitId || '';
+                            const debitName = debitAccObj 
+                                ? `${debitAccObj.code} - ${debitAccObj.name}` 
+                                : (finalDebitId ? (expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
                             
-                            const creditAccount = '';
-                            const creditName = 'MENUNGGU COA (Kredit)';
+                            const creditAccount = finalCreditId || '';
+                            const creditName = creditAccObj 
+                                ? `${creditAccObj.code} - ${creditAccObj.name}` 
+                                : (finalCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
                             const journal = await prisma.journal.create({
                                 data: {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck, Banknote, ArrowRightLeft, BookOpen, Layers } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -124,7 +124,7 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
 
 export default function MonthlyRequest() {
     const { state, dispatch } = useApp();
-    const { currentUser, rabPlans, budgetRequests, units, fields, academicYears, globalAcademicYearId } = state;
+    const { currentUser, rabPlans, budgetRequests, units, fields, academicYears, globalAcademicYearId, accounts = [], expenseItems = [] } = state;
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [processingId, setProcessingId] = useState(null);
     const [selectedComponents, setSelectedComponents] = useState([]);
@@ -148,6 +148,39 @@ export default function MonthlyRequest() {
         const timer = setTimeout(() => setToast(null), 3500);
         return () => clearTimeout(timer);
     }, [toast]);
+
+    // Filter postable accounts for COA mapping
+    const postableAccounts = useMemo(() => {
+        return (accounts || [])
+            .filter(a => !a.isParent && !a.isDeleted)
+            .sort((a, b) => (a.code || '').localeCompare(b.code || ''));
+    }, [accounts]);
+
+    const cashBankAccounts = useMemo(() => {
+        return postableAccounts.filter(a => 
+            a.code?.startsWith('1-11') || 
+            a.name?.toLowerCase().includes('kas') || 
+            a.name?.toLowerCase().includes('bank')
+        );
+    }, [postableAccounts]);
+
+    const expenseAccounts = useMemo(() => {
+        return postableAccounts.filter(a => 
+            a.code?.startsWith('5') || 
+            a.type?.toLowerCase().includes('beban') || 
+            a.type?.toLowerCase().includes('biaya')
+        );
+    }, [postableAccounts]);
+
+    const assetAccounts = useMemo(() => {
+        return postableAccounts.filter(a => 
+            a.code?.startsWith('1-2') || 
+            a.code?.startsWith('1-3') || 
+            a.name?.toLowerCase().includes('aset') || 
+            a.name?.toLowerCase().includes('peralatan') || 
+            a.name?.toLowerCase().includes('inventaris')
+        );
+    }, [postableAccounts]);
 
     // Add month selection for the request
     const monthNames = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
@@ -670,6 +703,96 @@ export default function MonthlyRequest() {
         }
     };
 
+    const handleOpenReview = (req) => {
+        const isBosReq = req.source === 'BOS' || (req.items || []).some(i => i.planId?.endsWith('-BOS'));
+        // Find default cash/bank account
+        const defaultCashAcc = cashBankAccounts.find(a => 
+            isBosReq ? (a.code === '1-1112' || a.name?.toLowerCase().includes('terikat') || a.name?.toLowerCase().includes('bos')) 
+                     : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('bsi') || a.name?.toLowerCase().includes('yayasan'))
+        ) || cashBankAccounts[0] || null;
+
+        const defaultCreditId = req.creditAccountId || defaultCashAcc?.id || '';
+
+        const initialMappings = {};
+        (req.items || []).forEach(item => {
+            let defaultDebitId = item.debitAccountId || '';
+            
+            // If not set, check from master expenseItems
+            if (!defaultDebitId && item.expenseItemId) {
+                const exp = (expenseItems || []).find(e => e.id === item.expenseItemId);
+                if (exp) defaultDebitId = exp.debitAccountId || exp.accountId || '';
+            }
+
+            // Smart guess if still not set
+            if (!defaultDebitId) {
+                if (isItemAsset(item)) {
+                    const assetAcc = assetAccounts[0] || postableAccounts.find(a => a.code?.startsWith('1-2') || a.code?.startsWith('1-3'));
+                    if (assetAcc) defaultDebitId = assetAcc.id;
+                } else {
+                    const lowerName = (item.name || '').toLowerCase();
+                    if (lowerName.includes('listrik') || lowerName.includes('air') || lowerName.includes('internet') || lowerName.includes('telkom')) {
+                        defaultDebitId = postableAccounts.find(a => a.code === '5-2102')?.id || '';
+                    } else if (lowerName.includes('gaji') || lowerName.includes('honor') || lowerName.includes('insentif')) {
+                        defaultDebitId = postableAccounts.find(a => a.code === '5-2101')?.id || '';
+                    } else if (lowerName.includes('atk') || lowerName.includes('kertas') || lowerName.includes('kantor') || lowerName.includes('konsumsi') || lowerName.includes('snack') || lowerName.includes('makan')) {
+                        defaultDebitId = postableAccounts.find(a => a.code === '5-2103')?.id || '';
+                    } else if (lowerName.includes('pendidikan') || lowerName.includes('santri') || lowerName.includes('siswa') || lowerName.includes('buku') || lowerName.includes('kurikulum')) {
+                        defaultDebitId = postableAccounts.find(a => a.code === '5-1101')?.id || '';
+                    } else {
+                        defaultDebitId = postableAccounts.find(a => a.code === '5-2103')?.id || expenseAccounts[0]?.id || '';
+                    }
+                }
+            }
+
+            initialMappings[item.componentId] = {
+                debitAccountId: defaultDebitId,
+                creditAccountId: item.creditAccountId || defaultCreditId
+            };
+        });
+
+        setReviewRequest({
+            req,
+            accIds: [],
+            tolakIds: [],
+            globalCreditAccountId: defaultCreditId,
+            itemMappings: initialMappings
+        });
+    };
+
+    const handleUpdateItemMapping = (componentId, field, value) => {
+        setReviewRequest(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                itemMappings: {
+                    ...(prev.itemMappings || {}),
+                    [componentId]: {
+                        ...(prev.itemMappings?.[componentId] || {}),
+                        [field]: value
+                    }
+                }
+            };
+        });
+    };
+
+    const handleApplyGlobalCredit = (creditId) => {
+        setReviewRequest(prev => {
+            if (!prev) return prev;
+            const updatedMappings = { ...(prev.itemMappings || {}) };
+            (prev.req.items || []).forEach(item => {
+                updatedMappings[item.componentId] = {
+                    ...(updatedMappings[item.componentId] || {}),
+                    creditAccountId: creditId
+                };
+            });
+            return {
+                ...prev,
+                globalCreditAccountId: creditId,
+                itemMappings: updatedMappings
+            };
+        });
+    };
+
     const handleSaveReview = async (bypassBalance = false) => {
         setProcessingId('saving-review');
         window.dispatchEvent(new CustomEvent('app-processing-start', { 
@@ -693,13 +816,39 @@ export default function MonthlyRequest() {
                 }
             }
             
-            const accItems = req.items.filter(i => accIds.includes(i.componentId));
+            // Helper to enrich items with COA mappings chosen by Superadmin
+            const enrichItems = (itemList) => {
+                return itemList.map(item => {
+                    const mapping = reviewRequest.itemMappings?.[item.componentId] || {};
+                    const debitAccountId = mapping.debitAccountId || item.debitAccountId || '';
+                    const creditAccountId = mapping.creditAccountId || reviewRequest.globalCreditAccountId || item.creditAccountId || '';
+                    
+                    const debitAcc = accounts.find(a => a.id === debitAccountId);
+                    const creditAcc = accounts.find(a => a.id === creditAccountId);
+
+                    return {
+                        ...item,
+                        debitAccountId,
+                        creditAccountId,
+                        debitAccountName: debitAcc ? `${debitAcc.code} - ${debitAcc.name}` : (item.debitAccountName || ''),
+                        creditAccountName: creditAcc ? `${creditAcc.code} - ${creditAcc.name}` : (item.creditAccountName || '')
+                    };
+                });
+            };
+
+            const accItems = enrichItems(req.items.filter(i => accIds.includes(i.componentId)));
             const tolakItems = req.items.filter(i => tolakIds.includes(i.componentId));
             const pendingItems = req.items.filter(i => !accIds.includes(i.componentId) && !tolakIds.includes(i.componentId));
             
             // If all are ACC
             if (accItems.length === req.items.length) {
-                const updated = { ...req, status: 'APPROVED', notified: false };
+                const updated = { 
+                    ...req, 
+                    status: 'APPROVED', 
+                    items: accItems, 
+                    creditAccountId: reviewRequest.globalCreditAccountId || req.creditAccountId,
+                    notified: false 
+                };
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                 await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
             } 
@@ -717,13 +866,28 @@ export default function MonthlyRequest() {
                     if (pendingItems.length === 0 && tolakItems.length > 0) {
                         // Original request becomes the APPROVED one
                         const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
-                        const updated = { ...req, status: 'APPROVED', items: accItems, totalAmount: accTotal, notified: false };
+                        const updated = { 
+                            ...req, 
+                            status: 'APPROVED', 
+                            items: accItems, 
+                            totalAmount: accTotal, 
+                            creditAccountId: reviewRequest.globalCreditAccountId || req.creditAccountId,
+                            notified: false 
+                        };
                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                         await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
                     } else {
                         // Create a NEW request for the APPROVED items
                         const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
-                        const newAcc = { ...req, id: generateId('REQ') + '-ACC', status: 'APPROVED', items: accItems, totalAmount: accTotal, notified: false };
+                        const newAcc = { 
+                            ...req, 
+                            id: generateId('REQ') + '-ACC', 
+                            status: 'APPROVED', 
+                            items: accItems, 
+                            totalAmount: accTotal, 
+                            creditAccountId: reviewRequest.globalCreditAccountId || req.creditAccountId,
+                            notified: false 
+                        };
                         dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newAcc });
                         await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: { ...newAcc, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
                     }
@@ -1391,7 +1555,7 @@ export default function MonthlyRequest() {
                                         )}
                                         {isSuperAdmin && req.status === 'PENDING' && (
                                             <button
-                                                onClick={() => setReviewRequest({ req, accIds: [], tolakIds: [] })}
+                                                onClick={() => handleOpenReview(req)}
                                                 className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest"
                                             >
                                                 <Search size={16} strokeWidth={3} />
@@ -1675,56 +1839,180 @@ export default function MonthlyRequest() {
                             );
                         })()}
 
+                        {/* Banner Kas/Bank Pencairan Global */}
+                        <div className="mx-10 mt-6 p-5 bg-gradient-to-r from-indigo-50/90 via-sky-50/80 to-indigo-50/90 border border-indigo-100 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+                            <div className="flex items-center gap-3.5">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
+                                    <Banknote size={20} />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h4 className="text-xs font-black uppercase tracking-wider text-indigo-950">Rekening Kas / Bank Pencairan (Kredit Utama)</h4>
+                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-200/60 text-indigo-800">COA Otomatis</span>
+                                    </div>
+                                    <p className="text-[11px] font-medium text-slate-500">Pilih rekening kas/bank yayasan yang akan dicatat pada sisi Kredit jurnal untuk seluruh rincian</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={reviewRequest.globalCreditAccountId || ''}
+                                    onChange={(e) => handleApplyGlobalCredit(e.target.value)}
+                                    className="bg-white border border-indigo-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-300 outline-none shadow-sm min-w-[260px]"
+                                >
+                                    <option value="" disabled>-- Pilih Rekening Kas / Bank --</option>
+                                    {cashBankAccounts.length > 0 && (
+                                        <optgroup label="Kas & Bank Yayasan / BOS">
+                                            {cashBankAccounts.map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                    <optgroup label="Daftar Akun Lainnya">
+                                        {postableAccounts.filter(a => !cashBankAccounts.some(c => c.id === a.id)).map(a => (
+                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                        ))}
+                                    </optgroup>
+                                </select>
+                            </div>
+                        </div>
+
                         <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-slate-900 bg-slate-50/50">
                             <div className="grid grid-cols-1 gap-4">
                                 {(modalSearchTerm ? reviewRequest.req.items.filter(i => i.name.toLowerCase().includes(modalSearchTerm.toLowerCase())) : reviewRequest.req.items).map(item => {
                                     const isAcc = reviewRequest.accIds.includes(item.componentId);
                                     const isTolak = reviewRequest.tolakIds.includes(item.componentId);
+                                    const itemDebitId = reviewRequest.itemMappings?.[item.componentId]?.debitAccountId || '';
+                                    const itemCreditId = reviewRequest.itemMappings?.[item.componentId]?.creditAccountId || reviewRequest.globalCreditAccountId || '';
                                     
                                     return (
-                                        <div key={item.componentId} className={`p-6 rounded-[2rem] border-2 transition-all flex items-center justify-between group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
-                                            <div className="flex items-center gap-6">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${isAcc ? 'bg-emerald-50 text-emerald-600' : isTolak ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                    {isAcc ? <Check size={24} strokeWidth={3} /> : isTolak ? <XCircle size={24} strokeWidth={3} /> : <FileText size={20} />}
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-black text-lg tracking-tight leading-tight mb-1">{item.name}</h4>
-                                                    <p className={`text-[12px] font-bold ${isAcc ? 'text-emerald-600' : isTolak ? 'text-rose-600' : 'text-slate-500'}`}>{formatRupiah(item.amount)}</p>
-                                                    {isItemAsset(item) && (() => {
-                                                        const st = getItemSarprasStatus(item, reviewRequest.req);
-                                                        return (
-                                                            <div className="mt-1 flex items-center gap-2">
-                                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black border ${st === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : st === 'REJECTED' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
-                                                                    <Package size={10} />
-                                                                    {st === 'APPROVED' ? '✓ Disetujui Sarpras' : st === 'REJECTED' ? `✕ Ditolak Sarpras ${item.sarprasNotes ? `(${item.sarprasNotes})` : ''}` : '⏳ Menunggu ACC Sarpras'}
+                                        <div key={item.componentId} className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col gap-4 group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
+                                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                                <div className="flex items-center gap-5">
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${isAcc ? 'bg-emerald-50 text-emerald-600' : isTolak ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
+                                                        {isAcc ? <Check size={24} strokeWidth={3} /> : isTolak ? <XCircle size={24} strokeWidth={3} /> : <FileText size={20} />}
+                                                    </div>
+                                                    <div>
+                                                        <h4 className="font-black text-lg tracking-tight leading-tight mb-1">{item.name}</h4>
+                                                        <div className="flex flex-wrap items-center gap-2">
+                                                            <p className={`text-[13px] font-black ${isAcc ? 'text-emerald-600' : isTolak ? 'text-rose-600' : 'text-slate-700'}`}>{formatRupiah(item.amount)}</p>
+                                                            {(item.volume && item.satuan) && (
+                                                                <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
+                                                                    {item.volume} {item.satuan}
                                                                 </span>
-                                                                {isAcc && st !== 'APPROVED' && (
-                                                                    <span className="text-[9px] text-amber-600 font-bold">⚠️ Belum ACC Sarpras</span>
-                                                                )}
-                                                            </div>
-                                                        );
-                                                    })()}
+                                                            )}
+                                                            {isItemAsset(item) && (() => {
+                                                                const st = getItemSarprasStatus(item, reviewRequest.req);
+                                                                return (
+                                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black border ${st === 'APPROVED' ? 'bg-emerald-100 text-emerald-800 border-emerald-200' : st === 'REJECTED' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-amber-100 text-amber-800 border-amber-200'}`}>
+                                                                        <Package size={10} />
+                                                                        {st === 'APPROVED' ? '✓ Disetujui Sarpras' : st === 'REJECTED' ? `✕ Ditolak Sarpras` : '⏳ Menunggu Sarpras'}
+                                                                    </span>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                                    <button onClick={() => {
+                                                        setReviewRequest(prev => ({
+                                                            ...prev,
+                                                            accIds: isAcc ? prev.accIds.filter(id => id !== item.componentId) : [...prev.accIds, item.componentId],
+                                                            tolakIds: prev.tolakIds.filter(id => id !== item.componentId)
+                                                        }));
+                                                    }} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isAcc ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}`}>
+                                                        <Check size={14} className="inline mr-1.5" /> ACC
+                                                    </button>
+                                                    <button onClick={() => {
+                                                        setReviewRequest(prev => ({
+                                                            ...prev,
+                                                            tolakIds: isTolak ? prev.tolakIds.filter(id => id !== item.componentId) : [...prev.tolakIds, item.componentId],
+                                                            accIds: prev.accIds.filter(id => id !== item.componentId)
+                                                        }));
+                                                    }} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isTolak ? 'bg-rose-500 border-rose-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-rose-500 hover:text-rose-500'}`}>
+                                                        <XCircle size={14} className="inline mr-1.5" /> TOLAK
+                                                    </button>
                                                 </div>
                                             </div>
-                                            <div className="flex gap-3">
-                                                <button onClick={() => {
-                                                    setReviewRequest(prev => ({
-                                                        ...prev,
-                                                        accIds: isAcc ? prev.accIds.filter(id => id !== item.componentId) : [...prev.accIds, item.componentId],
-                                                        tolakIds: prev.tolakIds.filter(id => id !== item.componentId)
-                                                    }));
-                                                }} className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isAcc ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}`}>
-                                                    <Check size={16} className="inline mr-2" /> ACC
-                                                </button>
-                                                <button onClick={() => {
-                                                    setReviewRequest(prev => ({
-                                                        ...prev,
-                                                        tolakIds: isTolak ? prev.tolakIds.filter(id => id !== item.componentId) : [...prev.tolakIds, item.componentId],
-                                                        accIds: prev.accIds.filter(id => id !== item.componentId)
-                                                    }));
-                                                }} className={`px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isTolak ? 'bg-rose-500 border-rose-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-rose-500 hover:text-rose-500'}`}>
-                                                    <XCircle size={16} className="inline mr-2" /> TOLAK
-                                                </button>
+
+                                            {/* Mapping COA Selector Per Item */}
+                                            <div className={`pt-3.5 border-t border-slate-100 rounded-2xl p-4 transition-all ${isAcc ? 'bg-emerald-50/40 border border-emerald-100' : 'bg-slate-50/80 border border-slate-200/60'}`}>
+                                                <div className="flex items-center justify-between mb-2.5">
+                                                    <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+                                                        <BookOpen size={12} className="text-indigo-600" />
+                                                        Penentuan Akun Jurnal Otomatis (COA):
+                                                    </span>
+                                                    {itemDebitId && itemCreditId ? (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                            <Check size={10} /> COA Siap Di-Jurnal
+                                                        </span>
+                                                    ) : (
+                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                                                            <AlertCircle size={10} /> Lengkapi COA
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {/* Akun Debit */}
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-600 mb-1 flex items-center gap-1">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
+                                                            Debit (Beban / Aset):
+                                                        </label>
+                                                        <select
+                                                            value={itemDebitId}
+                                                            onChange={(e) => handleUpdateItemMapping(item.componentId, 'debitAccountId', e.target.value)}
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm"
+                                                        >
+                                                            <option value="">-- Pilih Akun Beban / Aset --</option>
+                                                            {expenseAccounts.length > 0 && (
+                                                                <optgroup label="Beban Operasional (5-xxxx)">
+                                                                    {expenseAccounts.map(a => (
+                                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            )}
+                                                            {assetAccounts.length > 0 && (
+                                                                <optgroup label="Aset / Peralatan (1-xxxx)">
+                                                                    {assetAccounts.map(a => (
+                                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            )}
+                                                            <optgroup label="Daftar Akun Lainnya">
+                                                                {postableAccounts.filter(a => !expenseAccounts.some(e => e.id === a.id) && !assetAccounts.some(as => as.id === a.id)).map(a => (
+                                                                    <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                        </select>
+                                                    </div>
+
+                                                    {/* Akun Kredit */}
+                                                    <div>
+                                                        <label className="block text-[10px] font-bold text-slate-600 mb-1 flex items-center gap-1">
+                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                                                            Kredit (Kas / Bank):
+                                                        </label>
+                                                        <select
+                                                            value={itemCreditId}
+                                                            onChange={(e) => handleUpdateItemMapping(item.componentId, 'creditAccountId', e.target.value)}
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm"
+                                                        >
+                                                            <option value="">-- Pilih Rekening Kas / Bank --</option>
+                                                            {cashBankAccounts.length > 0 && (
+                                                                <optgroup label="Kas & Bank">
+                                                                    {cashBankAccounts.map(a => (
+                                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                                    ))}
+                                                                </optgroup>
+                                                            )}
+                                                            <optgroup label="Daftar Akun Lainnya">
+                                                                {postableAccounts.filter(a => !cashBankAccounts.some(c => c.id === a.id)).map(a => (
+                                                                    <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                                ))}
+                                                            </optgroup>
+                                                        </select>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     );

@@ -1243,29 +1243,113 @@ router.put('/budget-reports/:id', async (req, res) => {
                     }
                 }
 
-                // Resolve Debit & Credit Accounts (Check ExpenseProgram first, then ExpenseItem)
-                const resolvedDebitId = expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
-                const resolvedCreditId = expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+                // Resolve Debit & Credit Accounts:
+                // Priority 1: Check if parent BudgetRequest has predefined COAs for this item (set by Superadmin during request review)
+                let reqDebitId = '';
+                let reqCreditId = '';
+
+                if (updated.budgetRequestId) {
+                    const parentReq = await tx.budgetRequest.findUnique({
+                        where: { id: updated.budgetRequestId }
+                    });
+                    if (parentReq && parentReq.items) {
+                        const items = Array.isArray(parentReq.items)
+                            ? parentReq.items
+                            : (typeof parentReq.items === 'string' ? JSON.parse(parentReq.items) : []);
+
+                        let matchedItem = null;
+                        if (updated.planId) {
+                            matchedItem = items.find(i => (i.componentId && i.componentId === updated.planId) || (i.planId && i.planId === updated.planId));
+                        }
+                        if (!matchedItem && updated.expenseItemId) {
+                            matchedItem = items.find(i => i.expenseItemId === updated.expenseItemId || i.componentId === updated.expenseItemId);
+                        }
+                        if (!matchedItem && updated.description) {
+                            const d = updated.description.trim().toLowerCase();
+                            matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
+                        }
+                        if (!matchedItem && items.length === 1) {
+                            matchedItem = items[0];
+                        }
+
+                        if (matchedItem) {
+                            if (matchedItem.debitAccountId) reqDebitId = matchedItem.debitAccountId;
+                            if (matchedItem.creditAccountId) reqCreditId = matchedItem.creditAccountId;
+                        }
+                        if (!reqCreditId && parentReq.creditAccountId) {
+                            reqCreditId = parentReq.creditAccountId;
+                        }
+                    }
+                }
+
+                // Priority 2: ExpenseProgram or ExpenseItem
+                let resolvedDebitId = reqDebitId || expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                let resolvedCreditId = reqCreditId || expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+
+                // Fallback for Credit (Kas/Bank) if still empty:
+                if (!resolvedCreditId) {
+                    const isBos = updated.source === 'BOS' || (updated.planId && updated.planId.endsWith('-BOS')) || (updated.category && updated.category.toLowerCase().includes('bos'));
+                    if (isBos) {
+                        const bosBank = await tx.account.findFirst({
+                            where: {
+                                isDeleted: false,
+                                isParent: false,
+                                OR: [
+                                    { code: '1-1112' },
+                                    { name: { contains: 'Dana Terikat' } },
+                                    { name: { contains: 'BOS' } }
+                                ]
+                            }
+                        });
+                        if (bosBank) resolvedCreditId = bosBank.id;
+                    } else {
+                        const yayasanBank = await tx.account.findFirst({
+                            where: {
+                                isDeleted: false,
+                                isParent: false,
+                                OR: [
+                                    { code: '1-1111' },
+                                    { code: '1-1101' },
+                                    { name: { contains: 'Bank Yayasan' } },
+                                    { name: { contains: 'Kas Yayasan' } }
+                                ]
+                            }
+                        });
+                        if (yayasanBank) resolvedCreditId = yayasanBank.id;
+                    }
+                }
+
+                // Special handling for PENGEMBALIAN:
+                // In refund, cash comes IN to Kas/Bank (Debit) and expense/fund is Credited
+                let finalDebitId = resolvedDebitId;
+                let finalCreditId = resolvedCreditId;
+
+                if (updated.kategoriAset === 'PENGEMBALIAN') {
+                    // Kas/Bank receives cash -> Debit
+                    finalDebitId = resolvedCreditId;
+                    // Expense or previous account is reduced -> Credit
+                    finalCreditId = resolvedDebitId;
+                }
 
                 let debitAccObj = null;
-                if (resolvedDebitId) {
-                    debitAccObj = await tx.account.findUnique({ where: { id: resolvedDebitId } });
+                if (finalDebitId) {
+                    debitAccObj = await tx.account.findUnique({ where: { id: finalDebitId } });
                 }
 
                 let creditAccObj = null;
-                if (resolvedCreditId) {
-                    creditAccObj = await tx.account.findUnique({ where: { id: resolvedCreditId } });
+                if (finalCreditId) {
+                    creditAccObj = await tx.account.findUnique({ where: { id: finalCreditId } });
                 }
 
-                const debitAccount = resolvedDebitId || '';
+                const debitAccount = finalDebitId || '';
                 const debitName = debitAccObj 
                     ? `${debitAccObj.code} - ${debitAccObj.name}` 
-                    : (resolvedDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
+                    : (finalDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
                 
-                const creditAccount = resolvedCreditId || '';
+                const creditAccount = finalCreditId || '';
                 const creditName = creditAccObj 
                     ? `${creditAccObj.code} - ${creditAccObj.name}` 
-                    : (resolvedCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
+                    : (finalCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
                 const journal = await tx.journal.create({
                     data: {
