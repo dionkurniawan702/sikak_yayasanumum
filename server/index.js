@@ -70,7 +70,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.5.9'
+        version: '1.5.10'
     });
 });
 

@@ -252,6 +252,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         // Ensure subType aligns with account code if missing or generic
         let resolvedSubType = header.subType;
         if (header.code?.endsWith('0000')) {
+            if (!showEmpty) return; // Grand class headers are only for Bagan Akun (showEmpty = true)
             resolvedSubType = header.type || 'Aset';
         } else if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Lainnya') {
             if (header.code?.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
@@ -377,7 +378,15 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
             };
         }
         subTypes[st].headers.push(h);
-        subTypes[st].saldo += h.saldo;
+    });
+
+    Object.values(subTypes).forEach(stObj => {
+        const allChildren = stObj.headers.flatMap(h => h.children || []);
+        if (allChildren.length > 0) {
+            stObj.saldo = allChildren.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0);
+        } else {
+            stObj.saldo = stObj.headers.reduce((sum, h) => sum + h.saldo, 0);
+        }
     });
 
     return Object.values(subTypes).sort((a, b) => {
