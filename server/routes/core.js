@@ -20,34 +20,87 @@ router.get('/accounts', async (req, res) => {
 
 router.post('/accounts', async (req, res) => {
     try {
-        const { id, code, name, category, type, subType, fund, initialBalance } = req.body;
-        const data = await getPrisma(req).account.create({
-            data: {
-                id, code, name, category, type, subType, fund,
-                balance: initialBalance || 0
+        const { id, code, name, category, type, subType, fund, initialBalance, balance, isParent } = req.body;
+        const prisma = getPrisma(req);
+
+        // Check if account with same ID or code already exists
+        const existing = await prisma.account.findFirst({
+            where: {
+                OR: [
+                    ...(id ? [{ id }] : []),
+                    ...(code ? [{ code }] : [])
+                ]
             }
         });
+
+        const accountData = {
+            code,
+            name,
+            category: category || (isParent ? 'header' : 'detail'),
+            type,
+            subType,
+            fund,
+            balance: initialBalance !== undefined ? parseFloat(initialBalance) : (balance !== undefined ? parseFloat(balance) : 0),
+            isParent: isParent !== undefined ? Boolean(isParent) : (category === 'header'),
+            isDeleted: false
+        };
+
+        if (existing) {
+            const data = await prisma.account.update({
+                where: { id: existing.id },
+                data: accountData
+            });
+            console.log(`[Account Create/Reactivate] Success: ${data.code} - ${data.name}`);
+            return res.json({ data });
+        }
+
+        const data = await prisma.account.create({
+            data: {
+                id: id || undefined,
+                ...accountData
+            }
+        });
+        console.log(`[Account Create] Success: ${data.code} - ${data.name}`);
         res.json({ data });
     } catch (error) {
+        console.error(`[Account Create Error] ${error.message}`);
         res.status(500).json({ error: error.message });
     }
 });
 
 router.put('/accounts/:id', async (req, res) => {
     try {
-        console.log(`[Account Update] ID: ${req.params.id}`);
-        console.log(`[Account Update] Body:`, req.body);
+        console.log(`[Account Update] ID: ${req.params.id}, Body:`, req.body);
+        const { code, name, category, type, subType, fund, initialBalance, balance, isDeleted, isParent } = req.body;
+        const prisma = getPrisma(req);
 
-        const { code, name, category, type, subType, fund, initialBalance, isDeleted } = req.body;
-        const data = await getPrisma(req).account.update({
-            where: { id: req.params.id },
+        let target = await prisma.account.findUnique({ where: { id: req.params.id } });
+        if (!target && code) {
+            target = await prisma.account.findFirst({ where: { code } });
+        }
+        if (!target) {
+            target = await prisma.account.findFirst({ where: { code: req.params.id } });
+        }
+
+        if (!target) {
+            return res.status(404).json({ error: 'Akun tidak ditemukan' });
+        }
+
+        const data = await prisma.account.update({
+            where: { id: target.id },
             data: {
-                code, name, category, type, subType, fund,
-                balance: initialBalance !== undefined ? parseFloat(initialBalance) : undefined,
-                isDeleted: isDeleted !== undefined ? isDeleted : undefined
+                code: code !== undefined ? code : target.code,
+                name: name !== undefined ? name : target.name,
+                category: category !== undefined ? category : target.category,
+                type: type !== undefined ? type : target.type,
+                subType: subType !== undefined ? subType : target.subType,
+                fund: fund !== undefined ? fund : target.fund,
+                balance: initialBalance !== undefined ? parseFloat(initialBalance) : (balance !== undefined ? parseFloat(balance) : target.balance),
+                isParent: isParent !== undefined ? Boolean(isParent) : (category === 'header' ? true : target.isParent),
+                isDeleted: isDeleted !== undefined ? isDeleted : target.isDeleted
             }
         });
-        console.log(`[Account Update] Success: ${data.name}`);
+        console.log(`[Account Update] Success: ${data.code} - ${data.name}`);
         res.json({ data });
     } catch (error) {
         console.error(`[Account Update Error] ${error.message}`);
@@ -57,15 +110,25 @@ router.put('/accounts/:id', async (req, res) => {
 
 router.delete('/accounts/:id', async (req, res) => {
     try {
+        const prisma = getPrisma(req);
+        let target = await prisma.account.findUnique({ where: { id: req.params.id } });
+        if (!target) {
+            target = await prisma.account.findFirst({ where: { code: req.params.id } });
+        }
+        if (!target) {
+            return res.status(404).json({ error: 'Akun tidak ditemukan' });
+        }
+
         const isPermanent = req.query.permanent === 'true' || req.body?.permanent === true;
         if (isPermanent) {
-            await getPrisma(req).account.delete({ where: { id: req.params.id } });
+            await prisma.account.delete({ where: { id: target.id } });
         } else {
-            await getPrisma(req).account.update({
-                where: { id: req.params.id },
+            await prisma.account.update({
+                where: { id: target.id },
                 data: { isDeleted: true }
             });
         }
+        console.log(`[Account Delete] Success: ${target.code} (permanent=${isPermanent})`);
         res.json({ message: 'Success' });
     } catch (error) {
         let msg = error.message;

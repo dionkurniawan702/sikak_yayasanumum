@@ -489,23 +489,25 @@ function appReducer(state, action) {
             localStorage.removeItem('currentUser');
             newState = { ...state, currentUser: null };
             break;
-        case 'ADD_ACCOUNT':
-            newState = { ...state, accounts: [...state.accounts, { ...action.payload, id: generateId('ACC') }] };
+        case 'ADD_ACCOUNT': {
+            const accId = action.payload.id || generateId('ACC');
+            newState = { ...state, accounts: [...state.accounts, { ...action.payload, id: accId, isDeleted: false }] };
             break;
+        }
         case 'EDIT_ACCOUNT':
             newState = {
                 ...state,
-                accounts: state.accounts.map(a => a.id === action.payload.id ? action.payload : a),
+                accounts: state.accounts.map(a => (a.id === action.payload.id || a.code === action.payload.code) ? { ...a, ...action.payload } : a),
                 journals: state.journals.map(j => ({
                     ...j,
-                    entries: j.entries.map(e => e.accountId === action.payload.id ? { ...e, accountName: action.payload.name } : e)
+                    entries: (j.entries || []).map(e => (e.accountId === action.payload.id || e.accountCode === action.payload.code) ? { ...e, accountName: action.payload.name } : e)
                 }))
             };
             break;
         case 'DELETE_ACCOUNT':
             newState = {
                 ...state,
-                accounts: state.accounts.filter(a => a.id !== action.payload)
+                accounts: state.accounts.map(a => (a.id === action.payload || a.code === action.payload) ? { ...a, isDeleted: true, deletedAt: new Date().toISOString() } : a)
             };
             break;
         case 'ADD_JOURNAL': {

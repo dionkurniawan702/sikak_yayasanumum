@@ -145,16 +145,17 @@ export const api = {
         try {
             switch (type) {
                 case 'ADD_ACCOUNT': {
-                    const newAcc = currentState.accounts.find(a => a.id === payload.id);
-                    if (newAcc) await syncItem('accounts', null, newAcc, 'POST');
+                    const accToSave = payload.id 
+                        ? (currentState.accounts.find(a => a.id === payload.id) || payload)
+                        : (currentState.accounts.find(a => a.code === payload.code) || payload);
+                    await syncItem('accounts', null, accToSave, 'POST');
                     break;
                 }
                 case 'EDIT_ACCOUNT':
-                    await syncItem('accounts', payload.id, payload);
+                    await syncItem('accounts', payload.id, payload, 'PUT');
                     break;
                 case 'DELETE_ACCOUNT':
-                    const accDel = currentState.accounts.find(a => a.id === payload);
-                    if (accDel) await syncItem('accounts', payload, null, 'DELETE');
+                    await syncItem('accounts', payload, null, 'DELETE');
                     break;
                 case 'ADD_JOURNAL':
                     await syncItem('journals', null, payload, 'POST');

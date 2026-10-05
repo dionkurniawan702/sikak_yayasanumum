@@ -1,8 +1,9 @@
 import { useState, Fragment, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Pencil, Trash2, X, Search, Wallet, CreditCard, PieChart, Activity, Info, FileSpreadsheet } from 'lucide-react';
-import { formatRupiah } from '../utils/format';
+import { formatRupiah, generateId } from '../utils/format';
 import { hitungSaldoAkun, hitungSaldoPerTipe, buildHierarchyAccounts } from '../utils/accounting';
+import { api } from '../services/api';
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';
 
@@ -24,6 +25,8 @@ export default function ChartOfAccounts() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
     const [filterType, setFilterType] = useState('');
     const [viewMode, setViewMode] = useState('list');
+    const [isSaving, setIsSaving] = useState(false);
+    const [deleteLoadingId, setDeleteLoadingId] = useState(null);
     const fileInputRef = useRef(null);
 
     const exportToExcel = () => {
@@ -84,30 +87,70 @@ export default function ChartOfAccounts() {
             name: acc.name,
             type: acc.type,
             subType: acc.subType || '',
-            fund: acc.fund,
-            category: acc.category,
+            fund: acc.fund || 'Dana Umum',
+            category: acc.category || (acc.isParent ? 'header' : 'detail'),
             normalBalance: isDebit ? 'debit' : 'kredit',
-            initialBalance: Math.abs(acc.initialBalance || 0)
+            initialBalance: Math.abs(acc.initialBalance !== undefined ? acc.initialBalance : (parseFloat(acc.balance) || 0))
         });
         setShowModal(true);
     }
 
-    function handleSave() {
+    async function handleSave() {
         if (!form.code || !form.name) return alert('Kode dan Nama Akun wajib diisi!');
         const isDebit = ['Aset', 'Beban'].includes(form.type);
-        const finalForm = { ...form, normalBalance: isDebit ? 'debit' : 'kredit' };
-        if (editId) {
-            dispatch({ type: 'EDIT_ACCOUNT', payload: { ...finalForm, id: editId } });
-        } else {
-            dispatch({ type: 'ADD_ACCOUNT', payload: finalForm });
+
+        let resolvedSubType = form.subType;
+        if (!resolvedSubType) {
+            if (form.code.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
+            else if (form.code.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
+            else if (form.code.startsWith('2-1')) resolvedSubType = 'Kewajiban Jangka Pendek';
+            else if (form.code.startsWith('2-2')) resolvedSubType = 'Kewajiban Jangka Panjang';
+            else if (form.code.startsWith('5-1')) resolvedSubType = 'Beban Program';
+            else if (form.code.startsWith('5-3')) resolvedSubType = 'Beban Program BOS';
+            else if (form.code.startsWith('5-4') || form.code.startsWith('5-2')) resolvedSubType = 'Beban Umum & Administrasi';
+            else resolvedSubType = form.type;
         }
-        setShowModal(false);
+
+        const finalForm = {
+            ...form,
+            subType: resolvedSubType,
+            normalBalance: isDebit ? 'debit' : 'kredit',
+            isParent: form.category === 'header'
+        };
+
+        setIsSaving(true);
+        try {
+            if (editId) {
+                const payload = { ...finalForm, id: editId };
+                dispatch({ type: 'EDIT_ACCOUNT', payload });
+                await api.pushAction({ type: 'EDIT_ACCOUNT', payload }, state);
+            } else {
+                const payload = { ...finalForm, id: generateId('ACC') };
+                dispatch({ type: 'ADD_ACCOUNT', payload });
+                await api.pushAction({ type: 'ADD_ACCOUNT', payload }, state);
+            }
+            setShowModal(false);
+        } catch (err) {
+            console.error('[ChartOfAccounts] Gagal menyimpan akun:', err);
+            alert('Gagal menyimpan akun ke server: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
     }
 
-    function handleDelete(id) {
-        if (window.confirm('Hapus akun ini?')) {
-            dispatch({ type: 'DELETE_ACCOUNT', payload: id });
-            window.alert('Akun berhasil dipindahkan ke tempat sampah');
+    async function handleDelete(id) {
+        if (window.confirm('Hapus akun ini? Akun akan dipindahkan ke tempat sampah.')) {
+            setDeleteLoadingId(id);
+            try {
+                dispatch({ type: 'DELETE_ACCOUNT', payload: id });
+                await api.pushAction({ type: 'DELETE_ACCOUNT', payload: id }, state);
+                window.alert('Akun berhasil dipindahkan ke tempat sampah');
+            } catch (err) {
+                console.error('[ChartOfAccounts] Gagal menghapus akun:', err);
+                alert('Gagal menghapus akun di server: ' + err.message);
+            } finally {
+                setDeleteLoadingId(null);
+            }
         }
     }
 
@@ -292,8 +335,8 @@ export default function ChartOfAccounts() {
                         </div>
                         <div className="p-8 bg-slate-50/50 border-t border-slate-100 flex justify-end gap-4">
                             <button onClick={() => setShowModal(false)} className="px-6 py-2 text-sm font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-widest">Batal</button>
-                            <button onClick={handleSave} className="btn btn-primary px-8 py-3 rounded-2xl shadow-lg shadow-blue-500/20 font-black tracking-tight tracking-wide">
-                                {editId ? 'Simpan' : 'Tambah'}
+                            <button onClick={handleSave} disabled={isSaving} className="btn btn-primary px-8 py-3 rounded-2xl shadow-lg shadow-blue-500/20 font-black tracking-tight tracking-wide disabled:opacity-50">
+                                {isSaving ? 'Menyimpan...' : (editId ? 'Simpan' : 'Tambah')}
                             </button>
                         </div>
                     </div>
