@@ -157,11 +157,15 @@ export default function MonthlyRequest() {
     }, [accounts]);
 
     const cashBankAccounts = useMemo(() => {
-        return postableAccounts.filter(a => 
-            a.code?.startsWith('1-11') || 
-            a.name?.toLowerCase().includes('kas') || 
-            a.name?.toLowerCase().includes('bank')
-        );
+        return postableAccounts.filter(a => {
+            const isExpense = a.code?.startsWith('5') || a.type?.toLowerCase().includes('beban') || a.type?.toLowerCase().includes('biaya');
+            if (isExpense) return false;
+            return (
+                a.code?.startsWith('1-11') || 
+                /\bkas\b/i.test(a.name || '') || 
+                /\bbank\b/i.test(a.name || '')
+            );
+        });
     }, [postableAccounts]);
 
     const expenseAccounts = useMemo(() => {
