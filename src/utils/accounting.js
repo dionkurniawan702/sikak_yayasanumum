@@ -285,7 +285,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         if (header.code?.endsWith('0000')) {
             if (!showEmpty) return; // Grand class headers are only for Bagan Akun (showEmpty = true)
             resolvedSubType = header.type || 'Aset';
-        } else if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Liabilitas' || resolvedSubType === 'Kewajiban' || resolvedSubType === 'Lainnya') {
+        } else if (!resolvedSubType || ['Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan', 'Beban', 'Lainnya'].includes(resolvedSubType)) {
             if (header.code?.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
             else if (header.code?.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
             else if (header.code?.startsWith('2-1')) resolvedSubType = 'Liabilitas Jangka Pendek';
@@ -404,7 +404,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
     const subTypes = {};
     headerHierarchy.forEach(h => {
         let st = h.subType;
-        if (!st || st === 'Lainnya' || st === 'Aset' || st === 'Liabilitas' || st === 'Kewajiban') {
+        if (!st || ['Lainnya', 'Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan', 'Beban'].includes(st)) {
             if (h.code?.endsWith('0000')) st = h.type;
             else if (h.code?.startsWith('1-1')) st = 'Aset Lancar';
             else if (h.code?.startsWith('1-2')) st = 'Aset Tidak Lancar';

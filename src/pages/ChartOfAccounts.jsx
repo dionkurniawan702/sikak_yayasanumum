@@ -100,11 +100,15 @@ export default function ChartOfAccounts() {
         const isDebit = ['Aset', 'Beban'].includes(form.type);
 
         let resolvedSubType = form.subType;
-        if (!resolvedSubType) {
+        if (!resolvedSubType || ['Pendapatan', 'Penghasilan', 'Beban', 'Aset', 'Kewajiban', 'Liabilitas'].includes(resolvedSubType)) {
             if (form.code.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
             else if (form.code.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
-            else if (form.code.startsWith('2-1')) resolvedSubType = 'Kewajiban Jangka Pendek';
-            else if (form.code.startsWith('2-2')) resolvedSubType = 'Kewajiban Jangka Panjang';
+            else if (form.code.startsWith('2-1')) resolvedSubType = 'Liabilitas Jangka Pendek';
+            else if (form.code.startsWith('2-2')) resolvedSubType = 'Liabilitas Jangka Panjang';
+            else if (form.code.startsWith('3-1')) resolvedSubType = 'Aset Neto Tanpa Pembatasan';
+            else if (form.code.startsWith('3-2')) resolvedSubType = 'Aset Neto Dengan Pembatasan';
+            else if (form.code.startsWith('4-1')) resolvedSubType = 'Penghasilan Tanpa Pembatasan';
+            else if (form.code.startsWith('4-2')) resolvedSubType = 'Penghasilan Dengan Pembatasan';
             else if (form.code.startsWith('5-1')) resolvedSubType = 'Beban Program';
             else if (form.code.startsWith('5-3')) resolvedSubType = 'Beban Program BOS';
             else if (form.code.startsWith('5-4') || form.code.startsWith('5-2')) resolvedSubType = 'Beban Umum & Administrasi';
