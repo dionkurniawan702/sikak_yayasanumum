@@ -709,13 +709,32 @@ export default function MonthlyRequest() {
 
     const handleOpenReview = (req) => {
         const isBosReq = req.source === 'BOS' || (req.items || []).some(i => i.planId?.endsWith('-BOS'));
-        // Find default cash/bank account
-        const defaultCashAcc = cashBankAccounts.find(a => 
+        
+        // 1. Rekening Sumber Kas Yayasan (Pusat / Induk) -> Sisi KREDIT saat pencairan dana
+        const defaultSourceBankAcc = cashBankAccounts.find(a => 
             isBosReq ? (a.code === '1-1112' || a.name?.toLowerCase().includes('terikat') || a.name?.toLowerCase().includes('bos')) 
                      : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('bsi') || a.name?.toLowerCase().includes('yayasan'))
         ) || cashBankAccounts[0] || null;
 
-        const defaultCreditId = req.creditAccountId || defaultCashAcc?.id || '';
+        const initialSourceBankId = req.sourceBankAccountId || defaultSourceBankAcc?.id || '';
+
+        // 2. Rekening Operasional Unit Tujuan -> Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja riil
+        const reqUnit = (units || []).find(u => u.id === req.unitId);
+        const reqField = (fields || []).find(f => f.id === req.fieldId);
+        const unitNameLower = (reqUnit?.name || reqField?.name || '').toLowerCase();
+        const unitCodeLower = (reqUnit?.code || '').toLowerCase();
+
+        // Cari rekening kas/bank yang secara spesifik milik unit ini
+        const matchedUnitBankAcc = cashBankAccounts.find(a => {
+            const accName = (a.name || '').toLowerCase();
+            if (unitNameLower && accName.includes(unitNameLower)) return true;
+            if (unitCodeLower && accName.includes(unitCodeLower)) return true;
+            return false;
+        }) || cashBankAccounts.find(a => {
+            return a.id !== initialSourceBankId && (a.name?.toLowerCase().includes('operasional') || a.name?.toLowerCase().includes('unit'));
+        }) || cashBankAccounts.find(a => a.id !== initialSourceBankId) || cashBankAccounts[0] || null;
+
+        const initialTargetUnitBankId = req.targetUnitBankAccountId || req.creditAccountId || matchedUnitBankAcc?.id || initialSourceBankId || '';
 
         const initialMappings = {};
         (req.items || []).forEach(item => {
@@ -788,7 +807,7 @@ export default function MonthlyRequest() {
 
             initialMappings[item.componentId] = {
                 debitAccountId: defaultDebitId,
-                creditAccountId: item.creditAccountId || defaultCreditId
+                creditAccountId: item.creditAccountId || initialTargetUnitBankId
             };
         });
 
@@ -796,7 +815,9 @@ export default function MonthlyRequest() {
             req,
             accIds: [],
             tolakIds: [],
-            globalCreditAccountId: defaultCreditId,
+            sourceBankAccountId: initialSourceBankId,
+            targetUnitBankAccountId: initialTargetUnitBankId,
+            globalCreditAccountId: initialTargetUnitBankId,
             itemMappings: initialMappings
         });
     };
@@ -817,22 +838,76 @@ export default function MonthlyRequest() {
         });
     };
 
-    const handleApplyGlobalCredit = (creditId) => {
+    const handleChangeSourceBank = (sourceBankId) => {
+        setReviewRequest(prev => {
+            if (!prev) return prev;
+            return {
+                ...prev,
+                sourceBankAccountId: sourceBankId
+            };
+        });
+    };
+
+    const handleChangeTargetUnitBank = (unitBankId) => {
         setReviewRequest(prev => {
             if (!prev) return prev;
             const updatedMappings = { ...(prev.itemMappings || {}) };
             (prev.req.items || []).forEach(item => {
                 updatedMappings[item.componentId] = {
                     ...(updatedMappings[item.componentId] || {}),
-                    creditAccountId: creditId
+                    creditAccountId: unitBankId
                 };
             });
             return {
                 ...prev,
-                globalCreditAccountId: creditId,
+                targetUnitBankAccountId: unitBankId,
+                globalCreditAccountId: unitBankId,
                 itemMappings: updatedMappings
             };
         });
+    };
+
+    const handleApplyGlobalCredit = (creditId) => {
+        handleChangeTargetUnitBank(creditId);
+    };
+
+    // Helper to generate the Transfer Kas journal entry for approved budget request
+    const createTransferJournal = (targetReq, approvedItems, sourceBankId, targetUnitBankId) => {
+        const accTotal = approvedItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
+        if (accTotal <= 0) return null;
+
+        const sourceAcc = accounts.find(a => a.id === sourceBankId) || cashBankAccounts[0];
+        const targetAcc = accounts.find(a => a.id === targetUnitBankId) || cashBankAccounts.find(a => a.id !== sourceAcc?.id) || sourceAcc;
+
+        if (!sourceAcc || !targetAcc) return null;
+
+        const targetUnit = units.find(u => u.id === targetReq.unitId);
+        const targetField = fields.find(f => f.id === targetReq.fieldId);
+        const entityName = targetUnit?.name || targetField?.name || 'Unit';
+
+        return {
+            id: generateId('JRN'),
+            date: targetReq.date || new Date().toISOString(),
+            name: `Pencairan Permintaan Dana - ${entityName} - ${targetReq.month || ''}`,
+            description: `Pemindahbukuan kas pencairan dana permintaan dari ${sourceAcc.name} ke ${targetAcc.name} (${approvedItems.length} rincian disetujui)`,
+            reference: `TRF-${targetReq.id}`,
+            proof: `REQ-${targetReq.id}`,
+            programId: 'PRG-GEN',
+            entries: [
+                {
+                    accountId: targetAcc.id,
+                    accountName: `${targetAcc.code} - ${targetAcc.name}`,
+                    debit: accTotal,
+                    credit: 0
+                },
+                {
+                    accountId: sourceAcc.id,
+                    accountName: `${sourceAcc.code} - ${sourceAcc.name}`,
+                    debit: 0,
+                    credit: accTotal
+                }
+            ]
+        };
     };
 
     const handleSaveReview = async (bypassBalance = false) => {
@@ -863,7 +938,7 @@ export default function MonthlyRequest() {
                 return itemList.map(item => {
                     const mapping = reviewRequest.itemMappings?.[item.componentId] || {};
                     const debitAccountId = mapping.debitAccountId || item.debitAccountId || '';
-                    const creditAccountId = mapping.creditAccountId || reviewRequest.globalCreditAccountId || item.creditAccountId || '';
+                    const creditAccountId = mapping.creditAccountId || reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || item.creditAccountId || '';
                     
                     const debitAcc = accounts.find(a => a.id === debitAccountId);
                     const creditAcc = accounts.find(a => a.id === creditAccountId);
@@ -882,15 +957,26 @@ export default function MonthlyRequest() {
             const tolakItems = req.items.filter(i => tolakIds.includes(i.componentId));
             const pendingItems = req.items.filter(i => !accIds.includes(i.componentId) && !tolakIds.includes(i.componentId));
             
+            const sourceBankAccountId = reviewRequest.sourceBankAccountId;
+            const targetUnitBankAccountId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
+
             // If all are ACC
             if (accItems.length === req.items.length) {
                 const updated = { 
                     ...req, 
                     status: 'APPROVED', 
                     items: accItems, 
-                    creditAccountId: reviewRequest.globalCreditAccountId || req.creditAccountId,
+                    creditAccountId: targetUnitBankAccountId || req.creditAccountId,
+                    sourceBankAccountId,
+                    targetUnitBankAccountId,
                     notified: false 
                 };
+                const trfJournal = createTransferJournal(updated, accItems, sourceBankAccountId, targetUnitBankAccountId);
+                if (trfJournal) {
+                    updated.transferJournalId = trfJournal.id;
+                    dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
+                    api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                }
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                 await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
             } 
@@ -898,6 +984,11 @@ export default function MonthlyRequest() {
             else if (tolakItems.length === req.items.length) {
                 const reason = window.prompt('Alasan penolakan keseluruhan:');
                 const updated = { ...req, status: 'REJECTED', rejectionReason: reason || 'Ditolak Superadmin', notified: false };
+                const prevJournal = (state.journals || []).find(j => j.reference === `TRF-${req.id}`);
+                if (prevJournal) {
+                    dispatch({ type: 'DELETE_JOURNAL', payload: prevJournal.id });
+                    api.pushAction({ type: 'DELETE_JOURNAL', payload: prevJournal.id }, state).catch(() => {});
+                }
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                 await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: updated }, state);
             }
@@ -913,23 +1004,40 @@ export default function MonthlyRequest() {
                             status: 'APPROVED', 
                             items: accItems, 
                             totalAmount: accTotal, 
-                            creditAccountId: reviewRequest.globalCreditAccountId || req.creditAccountId,
+                            creditAccountId: targetUnitBankAccountId || req.creditAccountId,
+                            sourceBankAccountId,
+                            targetUnitBankAccountId,
                             notified: false 
                         };
+                        const trfJournal = createTransferJournal(updated, accItems, sourceBankAccountId, targetUnitBankAccountId);
+                        if (trfJournal) {
+                            updated.transferJournalId = trfJournal.id;
+                            dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
+                            api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                        }
                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                         await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
                     } else {
                         // Create a NEW request for the APPROVED items
                         const accTotal = accItems.reduce((s, i) => s + (parseFloat(i.amount)||0), 0);
+                        const newAccId = generateId('REQ') + '-ACC';
                         const newAcc = { 
                             ...req, 
-                            id: generateId('REQ') + '-ACC', 
+                            id: newAccId, 
                             status: 'APPROVED', 
                             items: accItems, 
                             totalAmount: accTotal, 
-                            creditAccountId: reviewRequest.globalCreditAccountId || req.creditAccountId,
+                            creditAccountId: targetUnitBankAccountId || req.creditAccountId,
+                            sourceBankAccountId,
+                            targetUnitBankAccountId,
                             notified: false 
                         };
+                        const trfJournal = createTransferJournal(newAcc, accItems, sourceBankAccountId, targetUnitBankAccountId);
+                        if (trfJournal) {
+                            newAcc.transferJournalId = trfJournal.id;
+                            dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
+                            api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                        }
                         dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newAcc });
                         await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: { ...newAcc, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
                     }
@@ -1517,22 +1625,53 @@ export default function MonthlyRequest() {
                                                     
                                                     {expandedCards[req.id] && (
                                                         <div className="mt-3 pl-3 border-l-2 border-indigo-100 flex flex-col gap-2">
-                                                            {req.items.map((item, idx) => (
-                                                                <div key={idx} className="flex items-start md:items-center justify-between gap-4 text-sm bg-slate-50/50 p-2 rounded-lg hover:bg-slate-50 transition-colors">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <span className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></span>
-                                                                        <span className="font-bold text-slate-700">{item.name}</span>
-                                                                        {isItemAsset(item) && (
-                                                                            <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                                                                                ASET
-                                                                            </span>
-                                                                        )}
+                                                            {req.items.map((item, idx) => {
+                                                                const debitAccount = accounts.find(a => a.id === item.debitAccountId);
+                                                                const creditAccount = accounts.find(a => a.id === item.creditAccountId);
+                                                                const dName = item.debitAccountName || (debitAccount ? `${debitAccount.code} - ${debitAccount.name}` : null);
+                                                                const cName = item.creditAccountName || (creditAccount ? `${creditAccount.code} - ${creditAccount.name}` : null);
+
+                                                                return (
+                                                                    <div key={idx} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-sm bg-slate-50/70 p-2.5 rounded-xl hover:bg-slate-50 border border-slate-100 transition-colors">
+                                                                        <div className="flex items-center gap-2.5 flex-wrap">
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-300 flex-shrink-0"></span>
+                                                                            <span className="font-bold text-slate-800">{item.name}</span>
+                                                                            {isItemAsset(item) && (
+                                                                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                                                                    ASET
+                                                                                </span>
+                                                                            )}
+                                                                            {(dName || cName) && (
+                                                                                <div className="flex items-center gap-1.5 text-[9px] font-bold">
+                                                                                    {dName && (
+                                                                                        <span className="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 border border-indigo-200" title={`Debit: ${dName}`}>
+                                                                                            D: {dName}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {cName && (
+                                                                                        <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200" title={`Kredit: ${cName}`}>
+                                                                                            K: {cName}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                        <span className="font-black text-slate-700 italic text-[11px] whitespace-nowrap bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-xs self-end sm:self-auto">{formatRupiah(item.amount)}</span>
                                                                     </div>
-                                                                    <span className="font-black text-slate-500 italic text-[11px] whitespace-nowrap bg-white px-2 py-1 rounded shadow-sm">{formatRupiah(item.amount)}</span>
-                                                                </div>
-                                                            ))}
+                                                                );
+                                                            })}
                                                         </div>
                                                     )}
+                                                    {req.status === 'APPROVED' && (() => {
+                                                        const srcAcc = accounts.find(a => a.id === req.sourceBankAccountId);
+                                                        const tgtAcc = accounts.find(a => a.id === req.targetUnitBankAccountId || a.id === req.creditAccountId);
+                                                        return (
+                                                            <div className="mt-2.5 flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-200 px-3 py-1 rounded-xl w-fit">
+                                                                <ArrowRightLeft size={12} className="text-emerald-600 shrink-0" />
+                                                                <span>Transfer Pencairan: (D) {tgtAcc ? tgtAcc.name : 'Rekening Unit'} ⟵ (K) {srcAcc ? srcAcc.name : 'Rekening Yayasan'}</span>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             ) : (
                                                 <h4 className="font-black text-slate-900 text-lg leading-tight mb-1">{req.description}</h4>
@@ -1881,40 +2020,109 @@ export default function MonthlyRequest() {
                             );
                         })()}
 
-                        {/* Banner Kas/Bank Pencairan Global */}
-                        <div className="mx-10 mt-6 p-5 bg-gradient-to-r from-indigo-50/90 via-sky-50/80 to-indigo-50/90 border border-indigo-100 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
-                            <div className="flex items-center gap-3.5">
-                                <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-600/20 shrink-0">
-                                    <Banknote size={20} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <h4 className="text-xs font-black uppercase tracking-wider text-indigo-950">Rekening Kas / Bank Pencairan (Kredit Utama)</h4>
-                                        <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-indigo-200/60 text-indigo-800">COA Otomatis</span>
+                        {/* Dual Bank Account Configuration & Transfer Flow */}
+                        <div className="mx-6 md:mx-10 mt-6 p-5 md:p-6 bg-gradient-to-br from-indigo-50/90 via-sky-50/60 to-purple-50/80 border-2 border-indigo-100 rounded-3xl shadow-sm">
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-5 border-b border-indigo-100/80">
+                                <div className="flex items-center gap-3.5">
+                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 shrink-0">
+                                        <ArrowRightLeft size={22} className="animate-pulse" />
                                     </div>
-                                    <p className="text-[11px] font-medium text-slate-500">Pilih rekening kas/bank yayasan yang akan dicatat pada sisi Kredit jurnal untuk seluruh rincian</p>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <h4 className="text-sm font-black uppercase tracking-wider text-indigo-950">
+                                                Otomasi Jurnal Pencairan Dana & Pemindahbukuan Kas
+                                            </h4>
+                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-600 text-white tracking-wider shadow-sm">
+                                                JURNAL OTOMATIS
+                                            </span>
+                                        </div>
+                                        <p className="text-xs text-slate-600 font-medium mt-0.5">
+                                            Tentukan rekening kas yayasan dan rekening operasional unit. Saat disetujui (ACC), sistem langsung membukukan jurnal pemindahan kas dan mengunci COA belanja unit.
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                {/* Quick Summary Pill */}
+                                <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-4 py-2 rounded-2xl border border-indigo-200/80 shadow-sm text-xs font-bold text-indigo-900 shrink-0 self-start lg:self-auto">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                    <span>Total ACC: <strong className="text-emerald-700 font-black">{formatRupiah((reviewRequest.req.items || []).filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}</strong></span>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <select
-                                    value={reviewRequest.globalCreditAccountId || ''}
-                                    onChange={(e) => handleApplyGlobalCredit(e.target.value)}
-                                    className="bg-white border border-indigo-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-300 outline-none shadow-sm min-w-[260px]"
-                                >
-                                    <option value="" disabled>-- Pilih Rekening Kas / Bank --</option>
-                                    {cashBankAccounts.length > 0 && (
-                                        <optgroup label="Kas & Bank Yayasan / BOS">
-                                            {cashBankAccounts.map(a => (
-                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                            ))}
-                                        </optgroup>
-                                    )}
-                                    <optgroup label="Daftar Akun Lainnya">
-                                        {postableAccounts.filter(a => !cashBankAccounts.some(c => c.id === a.id)).map(a => (
+
+                            {/* Dual Selector: Rekening Sumber Yayasan & Rekening Operasional Unit */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+                                {/* 1. Rekening Sumber Kas Yayasan (Pusat / Induk) */}
+                                <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm flex flex-col justify-between">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
+                                                1
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                                    Rekening Kas/Bank Induk Yayasan (Sumber)
+                                                </label>
+                                                <span className="text-[10px] font-semibold text-rose-600">Sisi Kredit saat pencairan (Dana Keluar Yayasan)</span>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Yayasan Pusat</span>
+                                    </div>
+                                    <select
+                                        value={reviewRequest.sourceBankAccountId || ''}
+                                        onChange={(e) => handleChangeSourceBank(e.target.value)}
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-300 focus:bg-white outline-none transition-all cursor-pointer"
+                                    >
+                                        <option value="" disabled>-- Pilih Rekening Kas / Bank Yayasan --</option>
+                                        {cashBankAccounts.map(a => (
                                             <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
                                         ))}
-                                    </optgroup>
-                                </select>
+                                    </select>
+                                </div>
+
+                                {/* 2. Rekening Operasional Unit Tujuan */}
+                                <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs">
+                                                2
+                                            </div>
+                                            <div>
+                                                <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                                    Rekening Operasional Unit (Tujuan & Belanja)
+                                                </label>
+                                                <span className="text-[10px] font-semibold text-emerald-600">Sisi Debit saat pencairan & Kredit saat unit belanja LPJ</span>
+                                            </div>
+                                        </div>
+                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Unit Pemohon</span>
+                                    </div>
+                                    <select
+                                        value={reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || ''}
+                                        onChange={(e) => handleChangeTargetUnitBank(e.target.value)}
+                                        className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-300 focus:bg-white outline-none transition-all cursor-pointer"
+                                    >
+                                        <option value="" disabled>-- Pilih Rekening Operasional Unit --</option>
+                                        {cashBankAccounts.map(a => (
+                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Visual Flow Indicator */}
+                            <div className="mt-4 pt-3.5 border-t border-indigo-100/80 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-bold text-indigo-900">Alur Jurnal:</span>
+                                    <span className="bg-white/80 px-2.5 py-1 rounded-lg border border-indigo-200 font-mono text-[10px] text-indigo-800">
+                                        Pencairan: (D) Rekening Unit ⟵ (K) Rekening Yayasan
+                                    </span>
+                                    <span className="text-slate-400">➔</span>
+                                    <span className="bg-white/80 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono text-[10px] text-emerald-800">
+                                        Belanja LPJ: (D) Beban/Aset di bawah ⟵ (K) Rekening Unit
+                                    </span>
+                                </div>
+                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-full">
+                                    Superadmin menetapkan COA Beban di rincian bawah ↓
+                                </span>
                             </div>
                         </div>
 
@@ -1996,14 +2204,17 @@ export default function MonthlyRequest() {
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                     {/* Akun Debit */}
                                                     <div>
-                                                        <label className="block text-[10px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 inline-block"></span>
-                                                            Debit (Beban / Aset):
+                                                        <label className="block text-[10px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                                            <span className="flex items-center gap-1.5">
+                                                                <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
+                                                                Debit (Beban / Aset Unit):
+                                                            </span>
+                                                            <span className="text-[9px] font-semibold text-indigo-600">Ditentukan Superadmin</span>
                                                         </label>
                                                         <select
                                                             value={itemDebitId}
                                                             onChange={(e) => handleUpdateItemMapping(item.componentId, 'debitAccountId', e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm"
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm cursor-pointer"
                                                         >
                                                             <option value="">-- Pilih Akun Beban / Aset --</option>
                                                             {expenseAccounts.length > 0 && (
@@ -2030,16 +2241,19 @@ export default function MonthlyRequest() {
 
                                                     {/* Akun Kredit */}
                                                     <div>
-                                                        <label className="block text-[10px] font-bold text-slate-600 mb-1 flex items-center gap-1">
-                                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                                                            Kredit (Kas / Bank):
+                                                        <label className="block text-[10px] font-bold text-slate-700 mb-1 flex items-center justify-between">
+                                                            <span className="flex items-center gap-1.5">
+                                                                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                                                                Kredit (Kas Operasional Belanja Unit):
+                                                            </span>
+                                                            <span className="text-[9px] font-semibold text-emerald-600">Rekening Unit</span>
                                                         </label>
                                                         <select
                                                             value={itemCreditId}
                                                             onChange={(e) => handleUpdateItemMapping(item.componentId, 'creditAccountId', e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm"
+                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm cursor-pointer"
                                                         >
-                                                            <option value="">-- Pilih Rekening Kas / Bank --</option>
+                                                            <option value="">-- Pilih Rekening Kas / Bank Unit --</option>
                                                             {cashBankAccounts.length > 0 && (
                                                                 <optgroup label="Kas & Bank">
                                                                     {cashBankAccounts.map(a => (

@@ -292,7 +292,8 @@ export const api = {
                 case 'ADD_BUDGET_REQUEST': {
                     const BUDGET_REQUEST_FIELDS = ['id', 'status', 'description', 'month', 'year',
                         'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
-                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed'];
+                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed',
+                        'creditAccountId', 'sourceBankAccountId', 'targetUnitBankAccountId', 'transferJournalId', 'bypassBalanceCheck'];
                     const cleanPayload = {};
                     BUDGET_REQUEST_FIELDS.forEach(f => {
                         if (payload[f] !== undefined) cleanPayload[f] = payload[f];
@@ -303,7 +304,8 @@ export const api = {
                 case 'EDIT_BUDGET_REQUEST': {
                     const BUDGET_REQUEST_FIELDS = ['status', 'description', 'month', 'year',
                         'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
-                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'creditAccountId', 'bypassBalanceCheck'];
+                        'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'creditAccountId',
+                        'sourceBankAccountId', 'targetUnitBankAccountId', 'transferJournalId', 'bypassBalanceCheck'];
                     const cleanPayload = { id: payload.id };
                     BUDGET_REQUEST_FIELDS.forEach(f => {
                         if (payload[f] !== undefined) cleanPayload[f] = payload[f];

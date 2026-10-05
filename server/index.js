@@ -70,7 +70,7 @@ app.get('/health', async (req, res) => {
         database: dbStatus,
         dbError: dbError,
         timestamp: new Date().toISOString(),
-        version: '1.5.15'
+        version: '1.5.16'
     });
 });
 
@@ -792,6 +792,11 @@ app.post('/api/sync', async (req, res) => {
                         if (cleanItem.reports) delete cleanItem.reports;
                         delete cleanItem.hasAsset;
                         delete cleanItem.sarprasStatus;
+                        delete cleanItem.creditAccountId;
+                        delete cleanItem.sourceBankAccountId;
+                        delete cleanItem.targetUnitBankAccountId;
+                        delete cleanItem.transferJournalId;
+                        delete cleanItem.bypassBalanceCheck;
                     }
                     if (model === 'budgetReport') {
                         if (cleanItem.date) cleanItem.date = new Date(cleanItem.date);

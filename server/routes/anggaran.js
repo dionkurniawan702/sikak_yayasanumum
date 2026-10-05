@@ -739,6 +739,108 @@ router.get('/budget-requests', async (req, res) => {
     }
 });
 
+// Helper to create or update transfer journal for approved budget request
+async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
+    try {
+        if (!request || request.status !== 'APPROVED') return;
+
+        const totalNominal = parseFloat(request.totalAmount || 0);
+        if (totalNominal <= 0) return;
+
+        const sourceId = reqBody.sourceBankAccountId;
+        const targetId = reqBody.targetUnitBankAccountId || reqBody.creditAccountId;
+        const isBos = request.source === 'BOS' || (request.items && JSON.stringify(request.items).includes('-BOS'));
+
+        let sourceAcc = sourceId ? await prisma.account.findUnique({ where: { id: sourceId } }) : null;
+        if (!sourceAcc) {
+            sourceAcc = await prisma.account.findFirst({
+                where: {
+                    isDeleted: false,
+                    isParent: false,
+                    OR: isBos 
+                        ? [{ code: '1-1112' }, { name: { contains: 'BOS' } }, { name: { contains: 'Dana Terikat' } }]
+                        : [{ code: '1-1111' }, { code: '1-1101' }, { name: { contains: 'Yayasan' } }]
+                }
+            });
+        }
+
+        let targetAcc = targetId ? await prisma.account.findUnique({ where: { id: targetId } }) : null;
+        if (!targetAcc) {
+            let unitObj = request.unitId ? await prisma.unit.findUnique({ where: { id: request.unitId } }) : null;
+            let fieldObj = request.fieldId ? await prisma.field.findUnique({ where: { id: request.fieldId } }) : null;
+            const uName = (unitObj?.name || fieldObj?.name || '').trim();
+            if (uName) {
+                targetAcc = await prisma.account.findFirst({
+                    where: {
+                        isDeleted: false,
+                        isParent: false,
+                        name: { contains: uName }
+                    }
+                });
+            }
+        }
+        if (!targetAcc) {
+            targetAcc = await prisma.account.findFirst({
+                where: {
+                    isDeleted: false,
+                    isParent: false,
+                    id: { not: sourceAcc?.id },
+                    OR: [{ code: { startsWith: '1-11' } }, { type: 'Aset' }]
+                }
+            });
+        }
+
+        const transferRef = `TRF-${request.id}`;
+
+        if (sourceAcc && targetAcc) {
+            const existingTransferJournal = await prisma.journal.findFirst({
+                where: { reference: transferRef, isDeleted: false }
+            });
+
+            const targetUnitName = request.unitId ? (await prisma.unit.findUnique({ where: { id: request.unitId } }))?.name : '';
+            const targetFieldName = request.fieldId ? (await prisma.field.findUnique({ where: { id: request.fieldId } }))?.name : '';
+            const entityName = targetUnitName || targetFieldName || 'Unit';
+
+            const journalPayload = {
+                date: request.date ? new Date(request.date) : new Date(),
+                name: `Pencairan Permintaan Dana - ${entityName} - ${request.month || '-'}`,
+                description: `Pemindahbukuan kas pencairan dana permintaan dari ${sourceAcc.name} ke ${targetAcc.name}`,
+                reference: transferRef,
+                proof: `REQ-${request.id}`,
+                programId: 'PRG-GEN',
+                entries: [
+                    {
+                        accountId: targetAcc.id,
+                        accountName: `${targetAcc.code} - ${targetAcc.name}`,
+                        debit: totalNominal,
+                        credit: 0
+                    },
+                    {
+                        accountId: sourceAcc.id,
+                        accountName: `${sourceAcc.code} - ${sourceAcc.name}`,
+                        debit: 0,
+                        credit: totalNominal
+                    }
+                ]
+            };
+
+            if (existingTransferJournal) {
+                await prisma.journal.update({
+                    where: { id: existingTransferJournal.id },
+                    data: journalPayload
+                });
+            } else {
+                await prisma.journal.create({
+                    data: journalPayload
+                });
+            }
+            console.log(`[API] Successfully created/updated transfer journal ${transferRef} for BudgetRequest ${request.id}`);
+        }
+    } catch (journalErr) {
+        console.error(`[API Error] Failed to sync transfer journal for BudgetRequest ${request?.id}:`, journalErr.message);
+    }
+}
+
 router.post('/budget-requests', async (req, res) => {
     try {
         const ALLOWED_FIELDS = ['id', 'status', 'description', 'month', 'year',
@@ -755,6 +857,11 @@ router.post('/budget-requests', async (req, res) => {
         if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
 
         const request = await getPrisma(req).budgetRequest.create({ data });
+
+        if (request.status === 'APPROVED') {
+            await syncBudgetRequestTransferJournal(getPrisma(req), request, req.body);
+        }
+
         recordAudit(getPrisma(req), {
             req,
             action: 'CREATE',
@@ -876,6 +983,17 @@ router.put('/budget-requests/:id', async (req, res) => {
             where: { id: req.params.id },
             data
         });
+
+        // Auto-journaling for Transfer Kas when status is APPROVED
+        if (data.status === 'APPROVED') {
+            await syncBudgetRequestTransferJournal(prisma, request, req.body);
+        } else if (data.status === 'REJECTED') {
+            await prisma.journal.updateMany({
+                where: { reference: `TRF-${req.params.id}` },
+                data: { isDeleted: true }
+            }).catch(() => {});
+        }
+
         const actionType = data.status === 'APPROVED' ? 'APPROVE' : (data.status === 'REJECTED' ? 'REJECT' : 'UPDATE');
         recordAudit(prisma, {
             req,
@@ -951,11 +1069,16 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
         const isPermanent = req.query.permanent === 'true';
         if (isPermanent) {
             await prisma.budgetRequest.delete({ where: { id: reqId } });
+            await prisma.journal.deleteMany({ where: { reference: `TRF-${reqId}` } }).catch(() => {});
         } else {
             await prisma.budgetRequest.update({
                 where: { id: reqId },
                 data: { isDeleted: true }
             });
+            await prisma.journal.updateMany({
+                where: { reference: `TRF-${reqId}` },
+                data: { isDeleted: true }
+            }).catch(() => {});
         }
         recordAudit(prisma, {
             req,
