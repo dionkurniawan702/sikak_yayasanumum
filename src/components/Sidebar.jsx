@@ -205,8 +205,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     items: [
                         { path: '/', label: 'Dashboard', icon: LayoutDashboard },
                         { path: '/daftar-akun', label: 'Daftar Akun', icon: BookOpen },
-                        { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive },
-                        { path: '/manajemen-program', label: 'Manajemen Program', icon: List }
+                        { path: '/aset-tetap', label: 'Database Aset', icon: HardDrive }
                     ]
                 },
                 {
@@ -282,7 +281,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/anggaran/unit-penerima-bos', label: 'Unit Penerima BOS', icon: Building2 },
                         { path: '/anggaran/petunjuk', label: 'Petunjuk Penggunaan', icon: BookOpen },
                         { path: '/anggaran/sop-keuangan', label: 'SOP Keuangan', icon: BookCheck },
-                        { path: '/anggaran/pengaturan-aset', label: 'Pengaturan Aset', icon: Tag }
+                        { path: '/anggaran/pengaturan-aset', label: 'Pengaturan Aset', icon: Tag },
+                        { path: '/manajemen-program', label: 'Manajemen Program', icon: List }
                     ]
                 },
                 {
