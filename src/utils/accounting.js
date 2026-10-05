@@ -231,11 +231,29 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         const visibleChildren = (showEmpty ? childrenWithSaldo : childrenWithSaldo.filter(c => c.saldo !== 0))
             .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
 
-        const totalSaldo = childrenWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0) + (header.initialBalance || 0);
+        // Calculate sum for high-level headers that have no direct children
+        let totalSaldo = childrenWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0) + (header.initialBalance || 0);
+        if (header.code?.endsWith('0000') && childrenWithSaldo.length === 0) {
+            // Grand header (e.g. 1-0000 ASET) sums all details of this type
+            totalSaldo = details.reduce((sum, c) => {
+                const s = hitungSaldoAkun(journals, c.id, accounts, yearLimit, assets, isYearOnly);
+                return sum + (c.normalBalance === 'debit' ? s : -s);
+            }, 0) + (header.initialBalance || 0);
+        } else if (header.code?.endsWith('000') && childrenWithSaldo.length === 0) {
+            // Sub-class header (e.g. 1-1000 Aset Lancar, 1-2000 Aset Tidak Lancar)
+            const prefix = header.code.substring(0, 3); // '1-1' or '1-2'
+            const matchingDetails = details.filter(c => c.code?.startsWith(prefix));
+            totalSaldo = matchingDetails.reduce((sum, c) => {
+                const s = hitungSaldoAkun(journals, c.id, accounts, yearLimit, assets, isYearOnly);
+                return sum + (c.normalBalance === 'debit' ? s : -s);
+            }, 0) + (header.initialBalance || 0);
+        }
 
         // Ensure subType aligns with account code if missing or generic
         let resolvedSubType = header.subType;
-        if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Lainnya') {
+        if (header.code?.endsWith('0000')) {
+            resolvedSubType = header.type || 'Aset';
+        } else if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Lainnya') {
             if (header.code?.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
             else if (header.code?.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
         }
@@ -345,8 +363,9 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
     const subTypes = {};
     headerHierarchy.forEach(h => {
         let st = h.subType;
-        if (!st || st === 'Lainnya' || st === 'Aset') {
-            if (h.code?.startsWith('1-1')) st = 'Aset Lancar';
+        if (!st || st === 'Lainnya') {
+            if (h.code?.endsWith('0000')) st = h.type;
+            else if (h.code?.startsWith('1-1')) st = 'Aset Lancar';
             else if (h.code?.startsWith('1-2')) st = 'Aset Tidak Lancar';
             else st = h.type || 'Lainnya';
         }
@@ -364,9 +383,10 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
     return Object.values(subTypes).sort((a, b) => {
         const order = {
             'Aset': 0, 'Aset Lancar': 1, 'Aset Tidak Lancar': 2,
-            'Kewajiban': 2.5, 'Kewajiban Jangka Pendek': 3, 'Kewajiban Jangka Panjang': 4,
-            'Aset Neto': 4.5, 'Saldo Dana': 5,
-            'Pendapatan': 6, 'Beban': 7
+            'Kewajiban': 2.5, 'Kewajiban Jangka Pendek': 3, 'Liabilitas Jangka Pendek': 3, 'Kewajiban Jangka Panjang': 4, 'Liabilitas Jangka Panjang': 4,
+            'Aset Neto': 4.5, 'Aset Neto Tanpa Pembatasan': 4.6, 'Aset Neto Dengan Pembatasan': 4.7, 'Saldo Dana': 5,
+            'Pendapatan': 6, 'Penghasilan': 6, 'Penghasilan Tanpa Pembatasan': 6.1, 'Penghasilan Dengan Pembatasan': 6.2,
+            'Beban': 7, 'Beban Program': 7.1, 'Beban Program BOS': 7.2, 'Beban Umum & Administrasi': 7.3
         };
         return (order[a.name] || 99) - (order[b.name] || 99);
     });
