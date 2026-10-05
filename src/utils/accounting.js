@@ -199,11 +199,12 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
     let typeAccounts = accounts.filter(a => a.type === type);
 
     if (funds) {
-        typeAccounts = typeAccounts.filter(a => funds.includes(a.fund) || a.category === 'header');
+        typeAccounts = typeAccounts.filter(a => funds.includes(a.fund) || a.category === 'header' || a.isParent);
     }
 
-    const headers = typeAccounts.filter(a => a.category === 'header').sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
-    const details = typeAccounts.filter(a => a.category === 'detail');
+    const isHeaderAccount = (a) => a.category === 'header' || a.isParent || a.code?.endsWith('0000') || a.code?.endsWith('000') || a.code?.endsWith('00');
+    const headers = typeAccounts.filter(isHeaderAccount).sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
+    const details = typeAccounts.filter(a => !isHeaderAccount(a));
 
     const detailToHeader = {};
     details.forEach(child => {
@@ -232,9 +233,17 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
 
         const totalSaldo = childrenWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0) + (header.initialBalance || 0);
 
+        // Ensure subType aligns with account code if missing or generic
+        let resolvedSubType = header.subType;
+        if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Lainnya') {
+            if (header.code?.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
+            else if (header.code?.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
+        }
+
         if (showEmpty || visibleChildren.length > 0 || totalSaldo !== 0) {
             headerHierarchy.push({
                 ...header,
+                subType: resolvedSubType,
                 saldo: header.normalBalance === 'debit' ? totalSaldo : -totalSaldo,
                 children: visibleChildren
             });
@@ -243,36 +252,103 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
 
     const orphanedDetails = details.filter(d => detailToHeader[d.id] === null);
     if (orphanedDetails.length > 0) {
-        const orphansWithSaldo = orphanedDetails.map(c => ({
-            ...c,
-            saldo: hitungSaldoAkun(journals, c.id, accounts, yearLimit, assets, isYearOnly)
-        }));
-        const visibleOrphans = (showEmpty ? orphansWithSaldo : orphansWithSaldo.filter(c => c.saldo !== 0))
-            .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
+        // Group orphans by code prefix rather than dumping everything into Aset Tidak Lancar
+        const orphanGroups = {};
+        orphanedDetails.forEach(child => {
+            let groupKey = 'Lainnya';
+            let groupCode = 'N/A';
+            let groupName = `Akun ${type} (Lainnya)`;
+            let subType = 'Lainnya';
 
-        if (showEmpty || visibleOrphans.length > 0) {
-            const totalOrphanSaldo = orphansWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0);
-            headerHierarchy.push({
-                id: 'ORPHAN-' + type,
-                code: type === 'Aset' ? '1-2000' : 'N/A',
-                name: type === 'Aset' ? 'Aset Tidak Lancar' : `Akun ${type} (Tanpa Induk)`,
-                type: type,
-                fund: type === 'Aset' ? 'Umum' : '-',
-                subType: type === 'Aset' ? 'Aset Tidak Lancar' : 'Lainnya',
-                category: 'header',
-                normalBalance: 'debit',
-                children: visibleOrphans,
-                saldo: totalOrphanSaldo,
-                isOrphan: true
-            });
-        }
+            if (type === 'Aset') {
+                if (child.code?.startsWith('1-1')) {
+                    groupKey = 'Aset Lancar';
+                    groupCode = '1-1000';
+                    groupName = 'Aset Lancar (Lainnya)';
+                    subType = 'Aset Lancar';
+                } else {
+                    groupKey = 'Aset Tidak Lancar';
+                    groupCode = '1-2000';
+                    groupName = 'Aset Tidak Lancar (Lainnya)';
+                    subType = 'Aset Tidak Lancar';
+                }
+            } else if (type === 'Kewajiban') {
+                if (child.code?.startsWith('2-1')) {
+                    groupKey = 'Kewajiban Jangka Pendek';
+                    groupCode = '2-1000';
+                    groupName = 'Liabilitas Jangka Pendek';
+                    subType = 'Kewajiban Jangka Pendek';
+                } else {
+                    groupKey = 'Kewajiban Jangka Panjang';
+                    groupCode = '2-2000';
+                    groupName = 'Liabilitas Jangka Panjang';
+                    subType = 'Kewajiban Jangka Panjang';
+                }
+            } else if (type === 'Beban') {
+                if (child.code?.startsWith('5-1')) {
+                    groupKey = 'Beban Program';
+                    groupCode = '5-1000';
+                    groupName = 'Beban Program';
+                    subType = 'Beban Program';
+                } else if (child.code?.startsWith('5-3')) {
+                    groupKey = 'Beban Program BOS';
+                    groupCode = '5-3000';
+                    groupName = 'Beban Program BOS';
+                    subType = 'Beban Program BOS';
+                } else {
+                    groupKey = 'Beban Umum & Administrasi';
+                    groupCode = '5-4000';
+                    groupName = 'Beban Umum & Administrasi';
+                    subType = 'Beban Umum & Administrasi';
+                }
+            }
+
+            if (!orphanGroups[groupKey]) {
+                orphanGroups[groupKey] = {
+                    groupKey,
+                    groupCode,
+                    groupName,
+                    subType,
+                    items: []
+                };
+            }
+            orphanGroups[groupKey].items.push(child);
+        });
+
+        Object.values(orphanGroups).forEach(og => {
+            const orphansWithSaldo = og.items.map(c => ({
+                ...c,
+                saldo: hitungSaldoAkun(journals, c.id, accounts, yearLimit, assets, isYearOnly)
+            }));
+            const visibleOrphans = (showEmpty ? orphansWithSaldo : orphansWithSaldo.filter(c => c.saldo !== 0))
+                .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true, sensitivity: 'base' }));
+
+            if (showEmpty || visibleOrphans.length > 0) {
+                const totalOrphanSaldo = orphansWithSaldo.reduce((sum, c) => sum + (c.normalBalance === 'debit' ? c.saldo : -c.saldo), 0);
+                headerHierarchy.push({
+                    id: 'ORPHAN-' + type + '-' + og.groupKey,
+                    code: og.groupCode,
+                    name: og.groupName,
+                    type: type,
+                    fund: 'Umum',
+                    subType: og.subType,
+                    category: 'header',
+                    normalBalance: 'debit',
+                    children: visibleOrphans,
+                    saldo: totalOrphanSaldo,
+                    isOrphan: true
+                });
+            }
+        });
     }
 
     const subTypes = {};
     headerHierarchy.forEach(h => {
         let st = h.subType;
-        if (!st || st === 'Lainnya') {
-            st = h.type || 'Lainnya';
+        if (!st || st === 'Lainnya' || st === 'Aset') {
+            if (h.code?.startsWith('1-1')) st = 'Aset Lancar';
+            else if (h.code?.startsWith('1-2')) st = 'Aset Tidak Lancar';
+            else st = h.type || 'Lainnya';
         }
         if (!subTypes[st]) {
             subTypes[st] = {
