@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { bangunBukuBesar } from '../utils/accounting';
+import { bangunBukuBesar, getAvailableTransactionYears } from '../utils/accounting';
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { BookMarked, Calendar, Search, Filter, FileSpreadsheet, Printer } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
@@ -8,21 +8,35 @@ import * as XLSX from 'xlsx';
 
 export default function GeneralLedger() {
     const { state } = useApp();
-    const accounts = state.accounts.filter(a => !a.isDeleted);
-    const journals = state.journals.filter(j => !j.isDeleted);
-    const detailAccounts = accounts
+    const accounts = useMemo(() => state.accounts.filter(a => !a.isDeleted), [state.accounts]);
+    const journals = useMemo(() => state.journals.filter(j => !j.isDeleted), [state.journals]);
+    const detailAccounts = useMemo(() => accounts
         .filter(a => a.category === 'detail')
-        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+        .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })), [accounts]);
 
     const TIPE_URUTAN = ['Aset', 'Kewajiban', 'Aset Neto', 'Pendapatan', 'Beban'];
-    const groupedAccounts = TIPE_URUTAN.map(tipe => ({
+    const groupedAccounts = useMemo(() => TIPE_URUTAN.map(tipe => ({
         tipe,
         accounts: detailAccounts.filter(a => a.type === tipe)
-    })).filter(g => g.accounts.length > 0);
+    })).filter(g => g.accounts.length > 0), [detailAccounts]);
+
+    const availableYears = useMemo(() => getAvailableTransactionYears(journals), [journals]);
 
     const [selectedAccount, setSelectedAccount] = useState('');
+    const [selectedYearFilter, setSelectedYearFilter] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
+
+    const handleYearPreset = (year) => {
+        setSelectedYearFilter(year);
+        if (year) {
+            setStartDate(`${year}-01-01`);
+            setEndDate(`${year}-12-31`);
+        } else {
+            setStartDate('');
+            setEndDate('');
+        }
+    };
 
     const ledgerEntries = selectedAccount
         ? bangunBukuBesar(journals, selectedAccount, startDate || null, endDate || null, accounts)
@@ -55,11 +69,11 @@ export default function GeneralLedger() {
                 </div>
             </div>
 
-            <div className="bg-white p-8 rounded-3xl border border-slate-100 shadow-sm mb-8 animate-in">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-end">
+            <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm mb-8 animate-in">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 items-end">
                     <div className="md:col-span-2">
-                        <label className="form-label">Pilih Akun Rekening</label>
-                        <select className="form-select rounded-2xl border-slate-200" value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
+                        <label className="form-label text-xs font-bold text-slate-700">Pilih Akun Rekening</label>
+                        <select className="form-select rounded-2xl border-slate-200 text-sm font-medium" value={selectedAccount} onChange={e => setSelectedAccount(e.target.value)}>
                             <option value="">-- Pilih Akun Detail --</option>
                             {groupedAccounts.map(g => (
                                 <optgroup key={g.tipe} label={g.tipe.toUpperCase()}>
@@ -69,12 +83,25 @@ export default function GeneralLedger() {
                         </select>
                     </div>
                     <div>
-                        <label className="form-label">Tanggal Mulai</label>
-                        <input type="date" className="form-input rounded-2xl border-slate-200" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                        <label className="form-label text-xs font-bold text-slate-700">Filter Tahun Cepat</label>
+                        <select 
+                            className="form-select rounded-2xl border-slate-200 text-sm font-bold text-slate-800"
+                            value={selectedYearFilter} 
+                            onChange={e => handleYearPreset(e.target.value)}
+                        >
+                            <option value="">Semua Periode</option>
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>Tahun {year}</option>
+                            ))}
+                        </select>
                     </div>
                     <div>
-                        <label className="form-label">Tanggal Selesai</label>
-                        <input type="date" className="form-input rounded-2xl border-slate-200" value={endDate} onChange={e => setEndDate(e.target.value)} />
+                        <label className="form-label text-xs font-bold text-slate-700">Tanggal Mulai</label>
+                        <input type="date" className="form-input rounded-2xl border-slate-200 text-xs font-medium" value={startDate} onChange={e => { setStartDate(e.target.value); setSelectedYearFilter(''); }} />
+                    </div>
+                    <div>
+                        <label className="form-label text-xs font-bold text-slate-700">Tanggal Selesai</label>
+                        <input type="date" className="form-input rounded-2xl border-slate-200 text-xs font-medium" value={endDate} onChange={e => { setEndDate(e.target.value); setSelectedYearFilter(''); }} />
                     </div>
                 </div>
             </div>

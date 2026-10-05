@@ -17,6 +17,7 @@ const ProgramManagement = lazy(() => import('./pages/ProgramManagement'));
 const CashFlowStatement = lazy(() => import('./pages/CashFlowStatement'));
 const StatementOfChangesInNetAssets = lazy(() => import('./pages/StatementOfChangesInNetAssets'));
 const ProgramReport = lazy(() => import('./pages/ProgramReport'));
+const CALK = lazy(() => import('./pages/CALK'));
 const Budgeting = lazy(() => import('./pages/Budgeting'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const PeriodClosing = lazy(() => import('./pages/PeriodClosing'));
@@ -176,7 +177,7 @@ function AppContent() {
                     <Route path="laporan-program" element={<ProgramReport />} />
                     <Route path="tutup-buku" element={<PeriodClosing />} />
                     <Route path="manajemen-user" element={<UserManagement />} />
-                    <Route path="calk" element={<Placeholder title="Catatan Atas Laporan Keuangan" />} />
+                    <Route path="calk" element={<CALK />} />
 
                     <Route path="pengaturan/backup-restore" element={<SuperAdminRoute><BackupRestore /></SuperAdminRoute>} />
                     <Route path="pengaturan/audit-log" element={<SuperAdminRoute><AuditLog /></SuperAdminRoute>} />

@@ -1,44 +1,25 @@
-import { useState, Fragment } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { hitungSaldoAkun } from '../utils/accounting';
-import { formatRupiah, formatTanggal } from '../utils/format';
-import { Download, Printer, TrendingUp, Landmark, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import { hitungSaldoAkun, getAvailableTransactionYears } from '../utils/accounting';
+import { formatTanggal } from '../utils/format';
+import { Printer, TrendingUp, PieChart, FileSpreadsheet, RefreshCw, Landmark, CheckCircle } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
-import ReportRow from '../components/ReportRow';
 import * as XLSX from 'xlsx';
 
 export default function StatementOfChangesInNetAssets() {
     const { state } = useApp();
-    const accounts = state.accounts.filter(a => !a.isDeleted);
-    const journals = state.journals.filter(j => !j.isDeleted);
-    const assets = state.assets.filter(a => !a.isDeleted);
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-    const [expandedRows, setExpandedRows] = useState({});
-    const currentYearStr = selectedYear;
-    const prevYearStr = (parseInt(selectedYear) - 1).toString();
+    const accounts = useMemo(() => state.accounts.filter(a => !a.isDeleted), [state.accounts]);
+    const journals = useMemo(() => state.journals.filter(j => !j.isDeleted), [state.journals]);
+    const assets = useMemo(() => state.assets.filter(a => !a.isDeleted), [state.assets]);
+    const reportRef = useRef(null);
 
-    const toggleRow = (id) => {
-        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
-    };
+    // Filter Tahun Dinamis (Hanya tahun dengan transaksi)
+    const availableYears = useMemo(() => getAvailableTransactionYears(journals), [journals]);
+    const [selectedYear, setSelectedYear] = useState(() => availableYears[0] || new Date().getFullYear().toString());
 
-    const exportToExcel = () => {
-        const data = reportData.map(d => ({
-            'Klasifikasi Aset Neto': d.name,
-            'Saldo Awal (1 Jan)': d.awal,
-            'Surplus / (Defisit)': d.surplus,
-            'Saldo Akhir (31 Des)': d.akhir
-        }));
-        data.push({
-            'Klasifikasi Aset Neto': 'TOTAL SELURUH ASET NETO',
-            'Saldo Awal (1 Jan)': totalAwal,
-            'Surplus / (Defisit)': totalSurplus,
-            'Saldo Akhir (31 Des)': totalAkhir
-        });
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'NetAssetChanges');
-        XLSX.writeFile(wb, `SIKAD-Dareliman-PerubahanAsetNeto-${selectedYear}.xlsx`);
-    };
+    const activeYear = availableYears.includes(selectedYear) ? selectedYear : (availableYears[0] || new Date().getFullYear().toString());
+    const currentYearStr = activeYear;
+    const prevYearStr = (parseInt(activeYear, 10) - 1).toString();
 
     // Helper to get balance for a specific asset neto category and year
     const getNetAssetBalance = (categoryName, year) => {
@@ -64,134 +45,248 @@ export default function StatementOfChangesInNetAssets() {
         return Math.abs(pendapatan) - beban;
     };
 
-    // Categories (Foundation net assets classification)
+    // Categories (Foundation net assets classification per PSAK 35)
     const categories = [
-        { id: 'unrestricted', name: 'Tanpa Pembatasan', fund: 'Dana Umum' },
-        { id: 'restricted', name: 'Dengan Pembatasan', fund: 'Dana Terikat' }
+        { 
+            id: 'unrestricted', 
+            name: 'Aset Neto Tanpa Pembatasan', 
+            fund: 'Dana Umum',
+            desc: 'Dapat digunakan bebas untuk operasional umum dan tujuan yayasan tanpa restriksi pihak donor'
+        },
+        { 
+            id: 'restricted', 
+            name: 'Aset Neto Dengan Pembatasan', 
+            fund: 'Dana Terikat',
+            desc: 'Dibatasi penggunaannya oleh donor/pemberi dana untuk program, waktu, atau tujuan spesifik'
+        }
     ];
 
-    const reportData = categories.map(cat => {
-        const awal = getNetAssetBalance(cat.fund, prevYearStr);
-        const surplus = getCategorySurplus(cat.fund, currentYearStr);
-        const akhir = awal + surplus;
-        return { ...cat, awal, surplus, akhir };
-    });
+    const reportData = useMemo(() => {
+        return categories.map(cat => {
+            const awal = getNetAssetBalance(cat.fund, prevYearStr);
+            const surplus = getCategorySurplus(cat.fund, currentYearStr);
+            const akhir = awal + surplus;
+            return { ...cat, awal, surplus, akhir };
+        });
+    }, [accounts, journals, assets, currentYearStr, prevYearStr]);
 
-    const totalAwal = reportData.reduce((s, d) => s + d.awal, 0);
-    const totalSurplus = reportData.reduce((s, d) => s + d.surplus, 0);
-    const totalAkhir = reportData.reduce((s, d) => s + d.akhir, 0);
+    const totalAwal = useMemo(() => reportData.reduce((s, d) => s + d.awal, 0), [reportData]);
+    const totalSurplus = useMemo(() => reportData.reduce((s, d) => s + d.surplus, 0), [reportData]);
+    const totalAkhir = useMemo(() => reportData.reduce((s, d) => s + d.akhir, 0), [reportData]);
+    const growthPercent = totalAwal > 0 ? ((totalSurplus / totalAwal) * 100).toFixed(1) : '0';
+
+    const exportToExcel = () => {
+        const data = [];
+        data.push({ 'Klasifikasi Aset Neto': 'YAYASAN DARELIMAN' });
+        data.push({ 'Klasifikasi Aset Neto': `LAPORAN PERUBAHAN ASET NETO - TAHUN ${currentYearStr}` });
+        data.push({ 'Klasifikasi Aset Neto': `Untuk Tahun yang Berakhir pada 31 Desember ${currentYearStr}` });
+        data.push({});
+
+        reportData.forEach(d => {
+            data.push({
+                'Klasifikasi Aset Neto': d.name,
+                'Saldo Awal (1 Jan)': d.awal,
+                'Surplus / (Defisit)': d.surplus,
+                'Saldo Akhir (31 Des)': d.akhir
+            });
+        });
+
+        data.push({});
+        data.push({
+            'Klasifikasi Aset Neto': 'TOTAL SELURUH ASET NETO',
+            'Saldo Awal (1 Jan)': totalAwal,
+            'Surplus / (Defisit)': totalSurplus,
+            'Saldo Akhir (31 Des)': totalAkhir
+        });
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `AsetNeto_${currentYearStr}`);
+        XLSX.writeFile(wb, `SIKAD-Dareliman-PerubahanAsetNeto-${currentYearStr}.xlsx`);
+    };
 
     return (
-        <div className="p-8">
-            <div className="flex justify-between items-center mb-8 print:hidden">
+        <div className="p-8 max-w-7xl mx-auto">
+            {/* Header Kontrol */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8 print:hidden">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Laporan Perubahan Aset Neto</h2>
-                    <p className="text-slate-500 font-medium tracking-tight">Rekonsiliasi Saldo Awal, Surplus/Defisit, dan Saldo Akhir (PSAK 35)</p>
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                            <PieChart size={22} />
+                        </div>
+                        <h2 className="text-3xl font-black text-slate-900 tracking-tight">Perubahan Aset Neto</h2>
+                    </div>
+                    <p className="text-slate-500 font-medium text-sm">Rekonsiliasi Saldo Awal, Surplus/Defisit, dan Saldo Akhir (PSAK 35)</p>
                 </div>
-                <div className="flex gap-4 items-center">
-                    <select className="form-select rounded-2xl border-slate-200 text-xs font-bold" value={selectedYear} onChange={e => setSelectedYear(e.target.value)}>
-                        <option value="2026">2026</option>
-                        <option value="2025">2025</option>
-                    </select>
-                    <button onClick={exportToExcel} className="btn bg-white text-emerald-600 border-emerald-100 hover:bg-emerald-50 px-8 py-3 rounded-2xl shadow-sm font-black flex items-center gap-2">
-                        <FileSpreadsheet size={18} /> Export Excel
+
+                <div className="flex flex-wrap gap-3 items-center">
+                    <div className="flex items-center gap-2 bg-white px-3 py-2 rounded-2xl border border-slate-200 shadow-sm">
+                        <span className="text-xs font-black text-slate-400 uppercase tracking-wider">Tahun:</span>
+                        <select 
+                            className="bg-transparent border-none text-sm font-bold text-slate-800 focus:outline-none cursor-pointer"
+                            value={activeYear} 
+                            onChange={e => setSelectedYear(e.target.value)}
+                        >
+                            {availableYears.map(year => (
+                                <option key={year} value={year}>Tahun {year}</option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <button 
+                        onClick={exportToExcel} 
+                        className="btn bg-white text-emerald-600 border border-emerald-200 hover:bg-emerald-50 px-5 py-2.5 rounded-2xl shadow-sm text-sm font-bold flex items-center gap-2 transition-all"
+                    >
+                        <FileSpreadsheet size={16} /> Export Excel
                     </button>
-                    <button onClick={() => window.print()} className="btn btn-primary px-8 py-3 rounded-2xl shadow-xl shadow-blue-500/20 font-black">
-                        <Printer size={18} /> Cetak Laporan
+                    <button 
+                        onClick={() => window.print()} 
+                        className="btn bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-2xl shadow-lg shadow-blue-500/20 text-sm font-bold flex items-center gap-2 transition-all"
+                    >
+                        <Printer size={16} /> Cetak Laporan
                     </button>
                 </div>
             </div>
 
-            <div className="bg-white p-12 rounded-[40px] border border-slate-100 shadow-2xl animate-in">
-                {/* Header Formal */}
-                <div className="text-center mb-16 pb-8 border-b-4 border-double border-slate-200">
-                    <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tighter">SIKAD DARELIMAN</h1>
-                    <h2 className="text-xl font-bold text-slate-600 uppercase tracking-widest leading-none mt-2">LAPORAN PERUBAHAN ASET NETO</h2>
-                    <p className="text-sm font-medium text-slate-400 mt-2 lowercase tracking-widest">Untuk Tahun yang Berakhir pada 31 Desember {currentYearStr}</p>
+            {/* KPI Cards / Ringkasan Eksekutif */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8 print:hidden">
+                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+                        <Landmark size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Aset Neto Awal</p>
+                        <h4 className="text-lg font-black text-slate-900"><CurrencyDisplay value={totalAwal} useColor={false} /></h4>
+                        <p className="text-[10px] text-slate-400">Per 1 Januari {currentYearStr}</p>
+                    </div>
                 </div>
 
-                <div className="overflow-hidden bg-white rounded-[32px] border border-slate-100 mb-12 p-2">
+                <div className={`p-5 rounded-3xl border flex items-center gap-4 ${totalSurplus >= 0 ? 'bg-emerald-50/80 border-emerald-100 text-emerald-800' : 'bg-rose-50/80 border-rose-100 text-rose-800'}`}>
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${totalSurplus >= 0 ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-600'}`}>
+                        {totalSurplus >= 0 ? <TrendingUp size={24} /> : <RefreshCw size={24} />}
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider opacity-70">Surplus / (Defisit)</p>
+                        <h4 className="text-lg font-black"><CurrencyDisplay value={totalSurplus} /></h4>
+                        <p className="text-[10px] opacity-80">Pertumbuhan {growthPercent}%</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                        <PieChart size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Aset Neto Akhir</p>
+                        <h4 className="text-lg font-black text-blue-900"><CurrencyDisplay value={totalAkhir} useColor={false} /></h4>
+                        <p className="text-[10px] text-slate-400">Per 31 Desember {currentYearStr}</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+                        <CheckCircle size={22} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-wider text-slate-400">Status Klasifikasi</p>
+                        <h4 className="text-sm font-black text-slate-800">Standar PSAK 35</h4>
+                        <p className="text-[10px] text-slate-400">Tanpa & Dengan Pembatasan</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Lembar Laporan Formal */}
+            <div className="bg-white p-8 md:p-12 rounded-[36px] border border-slate-100 shadow-xl overflow-hidden" ref={reportRef}>
+                {/* Header Formal Instansi */}
+                <div className="text-center mb-10 pb-8 border-b-2 border-slate-200">
+                    <p className="text-xs font-black tracking-[0.25em] text-slate-400 uppercase mb-1">LAPORAN KEUANGAN YAYASAN</p>
+                    <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">YAYASAN DARELIMAN</h1>
+                    <h2 className="text-lg font-bold text-blue-600 mt-1 uppercase tracking-wide">LAPORAN PERUBAHAN ASET NETO</h2>
+                    <div className="inline-block mt-3 px-4 py-1 rounded-full bg-slate-100 text-slate-600 text-xs font-bold">
+                        Untuk Periode yang Berakhir pada 31 Desember {currentYearStr} (Standar PSAK 35)
+                    </div>
+                </div>
+
+                <div className="overflow-hidden bg-white rounded-3xl border border-slate-200/80 mb-10 p-2">
                     <table className="w-full text-left border-separate border-spacing-y-1">
-                        <thead className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">
+                        <thead className="text-[10px] font-black text-slate-400 uppercase tracking-wider">
                             <tr>
                                 <th className="px-6 py-4">Klasifikasi Aset Neto</th>
                                 <th className="px-6 py-4 text-right">Saldo Awal (1 Jan)</th>
                                 <th className="px-6 py-4 text-right">Surplus / (Defisit)</th>
-                                <th className="px-6 py-4 text-right bg-slate-50/50">Saldo Akhir (31 Des)</th>
+                                <th className="px-6 py-4 text-right bg-slate-50/80">Saldo Akhir (31 Des)</th>
                             </tr>
                         </thead>
                         <tbody>
                             {reportData.map(data => (
-                                <Fragment key={data.id}>
-                                    <ReportRow 
-                                        id={data.id}
-                                        name={data.name}
-                                        valCurr={data.akhir}
-                                        valPrev={data.awal}
-                                        type="category"
-                                        // This report is special, it shows Awal, Surplus, Akhir.
-                                        // ReportRow expects valCurr and valPrev for standard comparison.
-                                        // I'll override the rendering slightly or use a custom row for this specific report if needed.
-                                        // Actually, I'll use standard ReportRow but custom columns for this one.
-                                    />
-                                    <tr className="hover:bg-blue-50/30 transition-colors group">
-                                        <td className="px-8 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-7 h-7 flex items-center justify-center">
-                                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                                </div>
-                                                <div>
-                                                    <p className="font-black text-slate-900 tracking-tight uppercase text-sm">{data.name}</p>
-                                                    <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Sesuai Klasifikasi PSAK 35</p>
-                                                </div>
+                                <tr key={data.id} className="hover:bg-blue-50/20 transition-colors group">
+                                    <td className="px-6 py-5">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-2 h-2 rounded-full bg-blue-500 mt-1.5 shrink-0" />
+                                            <div>
+                                                <p className="font-black text-slate-800 text-sm tracking-tight">{data.name}</p>
+                                                <p className="text-xs text-slate-400 font-medium mt-0.5 leading-relaxed">{data.desc}</p>
                                             </div>
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-bold text-slate-500 tabular-nums">
-                                            <CurrencyDisplay value={data.awal} useColor={false} />
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-black text-emerald-600 tabular-nums">
-                                            <CurrencyDisplay value={data.surplus} />
-                                        </td>
-                                        <td className="px-6 py-4 text-right font-black text-slate-900 bg-blue-50/30 tabular-nums">
-                                            <CurrencyDisplay value={data.akhir} useColor={false} />
-                                        </td>
-                                    </tr>
-                                </Fragment>
+                                        </div>
+                                    </td>
+                                    <td className="px-6 py-5 text-right font-bold text-slate-600 tabular-nums">
+                                        <CurrencyDisplay value={data.awal} useColor={false} />
+                                    </td>
+                                    <td className="px-6 py-5 text-right font-black tabular-nums">
+                                        <CurrencyDisplay value={data.surplus} />
+                                    </td>
+                                    <td className="px-6 py-5 text-right font-black text-slate-900 bg-slate-50/60 tabular-nums text-base">
+                                        <CurrencyDisplay value={data.akhir} useColor={false} />
+                                    </td>
+                                </tr>
                             ))}
                             <tr className="bg-slate-900 text-white font-black">
-                                <td className="px-8 py-8 text-xs uppercase tracking-[0.3em] opacity-60">Total Seluruh Aset Neto</td>
-                                <td className="px-6 py-8 text-right"><CurrencyDisplay value={totalAwal} useColor={false} /></td>
-                                <td className="px-6 py-8 text-right"><CurrencyDisplay value={totalSurplus} useColor={false} /></td>
-                                <td className="px-6 py-8 text-right text-xl"><CurrencyDisplay value={totalAkhir} useColor={false} /></td>
+                                <td className="px-6 py-6 text-xs uppercase tracking-widest text-slate-300">
+                                    Total Seluruh Aset Neto
+                                </td>
+                                <td className="px-6 py-6 text-right tabular-nums">
+                                    <CurrencyDisplay value={totalAwal} useColor={false} />
+                                </td>
+                                <td className="px-6 py-6 text-right tabular-nums">
+                                    <CurrencyDisplay value={totalSurplus} useColor={false} />
+                                </td>
+                                <td className="px-6 py-6 text-right text-xl tabular-nums text-emerald-400">
+                                    <CurrencyDisplay value={totalAkhir} useColor={false} />
+                                </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div className="p-8 bg-blue-50 rounded-[32px] border border-blue-100 space-y-4">
-                        <div className="flex items-center gap-3">
-                            <TrendingUp size={24} className="text-blue-600" />
-                            <h4 className="font-black text-blue-900 uppercase text-xs tracking-widest">Analisis Pertumbuhan</h4>
+                {/* Penjelasan Catatan / Narasi PSAK 35 */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="p-6 bg-blue-50/80 rounded-2xl border border-blue-100 space-y-2">
+                        <div className="flex items-center gap-2 text-blue-900 font-black text-xs uppercase tracking-wider">
+                            <TrendingUp size={18} className="text-blue-600" />
+                            <span>Analisis Pertumbuhan Aset Neto</span>
                         </div>
                         <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                            Aset neto mencerminkan kekayaan bersih yayasan yang tidak terdistribusi ke pemilik. 
-                            Kenaikan per periode sebesar <strong><CurrencyDisplay value={totalSurplus} useColor={false} /></strong> menunjukkan performa aktivitas yang positif.
+                            Aset neto mencerminkan kekayaan bersih yayasan yang tidak terdistribusi ke pemilik/pendiri. 
+                            Perubahan neto pada tahun berjalan sebesar <strong><CurrencyDisplay value={totalSurplus} useColor={false} /></strong> berasal dari aktivitas operasional dan penerimaan donasi yayasan.
                         </p>
                     </div>
-                    <div className="p-8 bg-slate-50 rounded-[32px] border border-slate-100 space-y-4">
-                        <div className="flex items-center gap-3">
-                            <RefreshCw size={24} className="text-slate-400" />
-                            <h4 className="font-black text-slate-500 uppercase text-xs tracking-widest">Kebijakan Klasifikasi</h4>
+
+                    <div className="p-6 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                        <div className="flex items-center gap-2 text-slate-700 font-black text-xs uppercase tracking-wider">
+                            <RefreshCw size={18} className="text-slate-500" />
+                            <span>Kebijakan Batasan (PSAK 35)</span>
                         </div>
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed italic">
-                            Klasifikasi <strong>Dengan Pembatasan</strong> digunakan untuk dana yang memiliki restriksi dari pemberi sumber daya atau tujuan tertentu yang ditetapkan yayasan.
+                        <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                            Dana yang diterima dengan amanah khusus dari donatur atau muzakki diklasifikasikan ke dalam 
+                            <strong> Aset Neto Dengan Pembatasan</strong> sampai amanah atau program tersebut terlaksana.
                         </p>
                     </div>
                 </div>
 
-                <div className="mt-20 pt-8 border-t border-slate-100 text-center text-[10px] font-black text-slate-300 uppercase tracking-widest">
-                    Laporan ini disusun secara otomatis oleh SIKAD (Sistem Keuangan Dareliman) pada {formatTanggal(new Date().toISOString())}
+                {/* Footer Informasi Cetak */}
+                <div className="mt-10 pt-6 border-t border-slate-100 flex justify-between items-center text-xs text-slate-400">
+                    <p>Dicetak melalui SIKAD Yayasan Dareliman pada {formatTanggal(new Date().toISOString())}</p>
+                    <p className="font-mono">Standar PSAK 35 / ISAK 35 (Entitas Nirlaba)</p>
                 </div>
             </div>
         </div>

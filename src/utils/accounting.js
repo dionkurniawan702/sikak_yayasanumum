@@ -41,9 +41,31 @@ export function bangunBukuBesar(journals, accountId, startDate = null, endDate =
 }
 
 /**
- * Membangun neraca saldo (trial balance)
+ * Mendapatkan daftar tahun unik yang memiliki transaksi jurnal (diurutkan menurun)
  */
-export function bangunNeracaSaldo(journals, accounts) {
+export function getAvailableTransactionYears(journals = [], fallbackYear = new Date().getFullYear().toString()) {
+    const yearsSet = new Set();
+    if (Array.isArray(journals)) {
+        journals.forEach(j => {
+            if (j && j.date && !j.isDeleted) {
+                const yr = parseInt(String(j.date).substring(0, 4), 10);
+                if (!isNaN(yr) && yr >= 2000 && yr <= 2100) {
+                    yearsSet.add(yr);
+                }
+            }
+        });
+    }
+    if (yearsSet.size === 0) {
+        const fb = parseInt(fallbackYear, 10) || new Date().getFullYear();
+        yearsSet.add(fb);
+    }
+    return Array.from(yearsSet).sort((a, b) => b - a).map(String);
+}
+
+/**
+ * Membangun neraca saldo (trial balance) dengan filter tahun / periode
+ */
+export function bangunNeracaSaldo(journals, accounts, yearLimit = null, startDate = null, endDate = null, assets = []) {
     const saldoAkun = {};
 
     accounts
@@ -53,12 +75,21 @@ export function bangunNeracaSaldo(journals, accounts) {
         });
 
     journals.forEach(journal => {
-        journal.entries.forEach(entry => {
+        if (journal.isDeleted) return;
+        const jDate = journal.date ? String(journal.date) : '';
+        const jYear = jDate ? parseInt(jDate.substring(0, 4), 10) : null;
+        const jDateOnly = jDate ? jDate.substring(0, 10) : '';
+
+        if (startDate && jDateOnly < startDate) return;
+        if (endDate && jDateOnly > endDate) return;
+        if (!startDate && !endDate && yearLimit && jYear && jYear > parseInt(yearLimit, 10)) return;
+
+        journal.entries?.forEach(entry => {
             if (!saldoAkun[entry.accountId]) {
                 saldoAkun[entry.accountId] = { debit: 0, credit: 0 };
             }
-            saldoAkun[entry.accountId].debit += entry.debit || 0;
-            saldoAkun[entry.accountId].credit += entry.credit || 0;
+            saldoAkun[entry.accountId].debit += (entry.debit || 0);
+            saldoAkun[entry.accountId].credit += (entry.credit || 0);
         });
     });
 
@@ -66,7 +97,7 @@ export function bangunNeracaSaldo(journals, accounts) {
         .filter(acc => acc.category === 'detail')
         .map(acc => {
             const data = saldoAkun[acc.id] || { debit: 0, credit: 0 };
-            const initial = acc.initialBalance || 0;
+            const initial = (!startDate && (!yearLimit || parseInt(yearLimit, 10) >= new Date().getFullYear())) ? (acc.initialBalance || 0) : 0;
             const mutation = data.debit - data.credit;
 
             const netDebit = acc.normalBalance === 'debit'
