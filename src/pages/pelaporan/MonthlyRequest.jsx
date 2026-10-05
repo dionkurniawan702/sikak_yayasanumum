@@ -734,16 +734,54 @@ export default function MonthlyRequest() {
                     if (assetAcc) defaultDebitId = assetAcc.id;
                 } else {
                     const lowerName = (item.name || '').toLowerCase();
-                    if (lowerName.includes('listrik') || lowerName.includes('air') || lowerName.includes('internet') || lowerName.includes('telkom')) {
-                        defaultDebitId = postableAccounts.find(a => a.code === '5-2102')?.id || '';
+                    const findAcc = (code) => postableAccounts.find(a => a.code === code)?.id;
+
+                    if (lowerName.includes('bersih') || lowerName.includes('tisu') || lowerName.includes('sabun') || lowerName.includes('bayclin') || lowerName.includes('pewangi') || lowerName.includes('karbol')) {
+                        defaultDebitId = findAcc('5-4201') || findAcc('5-2103') || '';
+                    } else if (lowerName.includes('atk') || lowerName.includes('kertas') || lowerName.includes('fotokopi') || lowerName.includes('alat tulis')) {
+                        defaultDebitId = findAcc('5-4202') || findAcc('5-2103') || '';
+                    } else if (lowerName.includes('konsumsi') || lowerName.includes('snack') || lowerName.includes('rapat')) {
+                        defaultDebitId = findAcc('5-4203') || findAcc('5-2103') || '';
+                    } else if (lowerName.includes('makan') || lowerName.includes('asrama') || lowerName.includes('dapur')) {
+                        defaultDebitId = findAcc('5-1401') || findAcc('5-4203') || '';
+                    } else if (lowerName.includes('buku') || lowerName.includes('lkpd') || lowerName.includes('modul')) {
+                        defaultDebitId = findAcc('5-1201') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('tahfizh') || lowerName.includes('doa') || lowerName.includes('ibadah')) {
+                        defaultDebitId = findAcc('5-1202') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('seragam') || lowerName.includes('kopiah') || lowerName.includes('baju')) {
+                        defaultDebitId = findAcc('5-1308') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('pramuka')) {
+                        defaultDebitId = findAcc('5-1303') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('osis')) {
+                        defaultDebitId = findAcc('5-1304') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('ujian') || lowerName.includes('asesmen') || lowerName.includes('raport')) {
+                        defaultDebitId = findAcc('5-1305') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('uks') || lowerName.includes('obat') || lowerName.includes('kesehatan') || lowerName.includes('berobat')) {
+                        defaultDebitId = findAcc('5-1307') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('bus') || lowerName.includes('antar') || lowerName.includes('jemput')) {
+                        defaultDebitId = findAcc('5-1402') || findAcc('5-4206') || '';
+                    } else if (lowerName.includes('komputer') || lowerName.includes('labor komputer')) {
+                        defaultDebitId = findAcc('5-1204') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('ipa') || lowerName.includes('sains') || lowerName.includes('labor ipa')) {
+                        defaultDebitId = findAcc('5-1205') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('outing') || lowerName.includes('kunjungan')) {
+                        defaultDebitId = findAcc('5-1306') || findAcc('5-1101') || '';
+                    } else if (lowerName.includes('aplikasi') || lowerName.includes('software') || lowerName.includes('cloud') || lowerName.includes('hosting')) {
+                        defaultDebitId = findAcc('5-4304') || findAcc('5-4303') || '';
+                    } else if (lowerName.includes('listrik') || lowerName.includes('pln')) {
+                        defaultDebitId = findAcc('5-4301') || findAcc('5-2102') || '';
+                    } else if (lowerName.includes('air') || lowerName.includes('pdam')) {
+                        defaultDebitId = findAcc('5-4302') || findAcc('5-2102') || '';
+                    } else if (lowerName.includes('internet') || lowerName.includes('wifi') || lowerName.includes('telkom')) {
+                        defaultDebitId = findAcc('5-4303') || findAcc('5-2102') || '';
                     } else if (lowerName.includes('gaji') || lowerName.includes('honor') || lowerName.includes('insentif')) {
-                        defaultDebitId = postableAccounts.find(a => a.code === '5-2101')?.id || '';
-                    } else if (lowerName.includes('atk') || lowerName.includes('kertas') || lowerName.includes('kantor') || lowerName.includes('konsumsi') || lowerName.includes('snack') || lowerName.includes('makan')) {
-                        defaultDebitId = postableAccounts.find(a => a.code === '5-2103')?.id || '';
-                    } else if (lowerName.includes('pendidikan') || lowerName.includes('santri') || lowerName.includes('siswa') || lowerName.includes('buku') || lowerName.includes('kurikulum')) {
-                        defaultDebitId = postableAccounts.find(a => a.code === '5-1101')?.id || '';
+                        defaultDebitId = findAcc('5-1101') || findAcc('5-2101') || '';
+                    } else if (lowerName.includes('gedung') || lowerName.includes('lokal') || lowerName.includes('bangunan') || lowerName.includes('renovasi')) {
+                        defaultDebitId = findAcc('5-4204') || findAcc('5-2103') || '';
+                    } else if (lowerName.includes('pendidikan') || lowerName.includes('santri') || lowerName.includes('siswa') || lowerName.includes('kurikulum')) {
+                        defaultDebitId = findAcc('5-1101') || '';
                     } else {
-                        defaultDebitId = postableAccounts.find(a => a.code === '5-2103')?.id || expenseAccounts[0]?.id || '';
+                        defaultDebitId = findAcc('5-4201') || findAcc('5-2103') || expenseAccounts[0]?.id || '';
                     }
                 }
             }
