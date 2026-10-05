@@ -30,11 +30,11 @@ export const initialAccounts = [
 
     // === 2. LIABILITAS ===
     { id: '2-0000', code: '2-0000', name: 'LIABILITAS', type: 'Kewajiban', subType: 'Liabilitas', fund: 'Umum', category: 'header', normalBalance: 'kredit' },
-    { id: '2-1000', code: '2-1000', name: 'Liabilitas Jangka Pendek', type: 'Kewajiban', subType: 'Liabilitas', fund: 'Umum', category: 'header', normalBalance: 'kredit' },
-    { id: '2-1100', code: '2-1100', name: 'Utang Usaha & Operasional', type: 'Kewajiban', subType: 'Liabilitas', fund: 'Umum', category: 'header', normalBalance: 'kredit' },
-    { id: '2-1101', code: '2-1101', name: 'Utang Supplier (Buku/Atk)', type: 'Kewajiban', subType: 'Liabilitas', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
-    { id: '2-1102', code: '2-1102', name: 'Utang Gaji & Honorarium', type: 'Kewajiban', subType: 'Liabilitas', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
-    { id: '2-1200', code: '2-1200', name: 'Penerimaan Dimuka', type: 'Kewajiban', subType: 'Liabilitas', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
+    { id: '2-1000', code: '2-1000', name: 'Liabilitas Jangka Pendek', type: 'Kewajiban', subType: 'Liabilitas Jangka Pendek', fund: 'Umum', category: 'header', normalBalance: 'kredit' },
+    { id: '2-1100', code: '2-1100', name: 'Utang Usaha & Operasional', type: 'Kewajiban', subType: 'Liabilitas Jangka Pendek', fund: 'Umum', category: 'header', normalBalance: 'kredit' },
+    { id: '2-1101', code: '2-1101', name: 'Utang Supplier (Buku/Atk)', type: 'Kewajiban', subType: 'Liabilitas Jangka Pendek', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
+    { id: '2-1102', code: '2-1102', name: 'Utang Gaji & Honorarium', type: 'Kewajiban', subType: 'Liabilitas Jangka Pendek', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
+    { id: '2-1200', code: '2-1200', name: 'Penerimaan Dimuka', type: 'Kewajiban', subType: 'Liabilitas Jangka Pendek', fund: 'Dana Umum', category: 'detail', normalBalance: 'kredit', initialBalance: 0 },
 
     // === 3. ASET NETO (EKUITAS PSAK 35) ===
     { id: '3-0000', code: '3-0000', name: 'ASET NETO', type: 'Aset Neto', subType: 'Aset Neto', fund: 'Umum', category: 'header', normalBalance: 'kredit' },

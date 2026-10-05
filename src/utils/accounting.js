@@ -285,9 +285,18 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         if (header.code?.endsWith('0000')) {
             if (!showEmpty) return; // Grand class headers are only for Bagan Akun (showEmpty = true)
             resolvedSubType = header.type || 'Aset';
-        } else if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Lainnya') {
+        } else if (!resolvedSubType || resolvedSubType === 'Aset' || resolvedSubType === 'Liabilitas' || resolvedSubType === 'Kewajiban' || resolvedSubType === 'Lainnya') {
             if (header.code?.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
             else if (header.code?.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
+            else if (header.code?.startsWith('2-1')) resolvedSubType = 'Liabilitas Jangka Pendek';
+            else if (header.code?.startsWith('2-2')) resolvedSubType = 'Liabilitas Jangka Panjang';
+            else if (header.code?.startsWith('3-1')) resolvedSubType = 'Aset Neto Tanpa Pembatasan';
+            else if (header.code?.startsWith('3-2')) resolvedSubType = 'Aset Neto Dengan Pembatasan';
+            else if (header.code?.startsWith('4-1')) resolvedSubType = 'Penghasilan Tanpa Pembatasan';
+            else if (header.code?.startsWith('4-2')) resolvedSubType = 'Penghasilan Dengan Pembatasan';
+            else if (header.code?.startsWith('5-1')) resolvedSubType = 'Beban Program';
+            else if (header.code?.startsWith('5-3')) resolvedSubType = 'Beban Program BOS';
+            else if (header.code?.startsWith('5-2') || header.code?.startsWith('5-4')) resolvedSubType = 'Beban Umum & Administrasi';
         }
 
         if (showEmpty || visibleChildren.length > 0 || totalSaldo !== 0) {
@@ -324,15 +333,15 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
                 }
             } else if (type === 'Kewajiban') {
                 if (child.code?.startsWith('2-1')) {
-                    groupKey = 'Kewajiban Jangka Pendek';
+                    groupKey = 'Liabilitas Jangka Pendek';
                     groupCode = '2-1000';
                     groupName = 'Liabilitas Jangka Pendek';
-                    subType = 'Kewajiban Jangka Pendek';
+                    subType = 'Liabilitas Jangka Pendek';
                 } else {
-                    groupKey = 'Kewajiban Jangka Panjang';
+                    groupKey = 'Liabilitas Jangka Panjang';
                     groupCode = '2-2000';
                     groupName = 'Liabilitas Jangka Panjang';
-                    subType = 'Kewajiban Jangka Panjang';
+                    subType = 'Liabilitas Jangka Panjang';
                 }
             } else if (type === 'Beban') {
                 if (child.code?.startsWith('5-1')) {
@@ -395,18 +404,31 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
     const subTypes = {};
     headerHierarchy.forEach(h => {
         let st = h.subType;
-        if (!st || st === 'Lainnya') {
+        if (!st || st === 'Lainnya' || st === 'Aset' || st === 'Liabilitas' || st === 'Kewajiban') {
             if (h.code?.endsWith('0000')) st = h.type;
             else if (h.code?.startsWith('1-1')) st = 'Aset Lancar';
             else if (h.code?.startsWith('1-2')) st = 'Aset Tidak Lancar';
+            else if (h.code?.startsWith('2-1')) st = 'Liabilitas Jangka Pendek';
+            else if (h.code?.startsWith('2-2')) st = 'Liabilitas Jangka Panjang';
+            else if (h.code?.startsWith('3-1')) st = 'Aset Neto Tanpa Pembatasan';
+            else if (h.code?.startsWith('3-2')) st = 'Aset Neto Dengan Pembatasan';
+            else if (h.code?.startsWith('4-1')) st = 'Penghasilan Tanpa Pembatasan';
+            else if (h.code?.startsWith('4-2')) st = 'Penghasilan Dengan Pembatasan';
+            else if (h.code?.startsWith('5-1')) st = 'Beban Program';
+            else if (h.code?.startsWith('5-3')) st = 'Beban Program BOS';
+            else if (h.code?.startsWith('5-2') || h.code?.startsWith('5-4')) st = 'Beban Umum & Administrasi';
             else st = h.type || 'Lainnya';
         }
         if (!subTypes[st]) {
             subTypes[st] = {
                 name: st,
+                minCode: h.code || '9-9999',
                 headers: [],
                 saldo: 0
             };
+        }
+        if (h.code && h.code.localeCompare(subTypes[st].minCode, undefined, { numeric: true, sensitivity: 'base' }) < 0) {
+            subTypes[st].minCode = h.code;
         }
         subTypes[st].headers.push(h);
     });
@@ -426,6 +448,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
             'Aset Lancar': 2,
             'Aset Tidak Lancar': 3,
             'Kewajiban': 4,
+            'Liabilitas': 4,
             'Liabilitas Jangka Pendek': 5,
             'Kewajiban Jangka Pendek': 5,
             'Liabilitas Jangka Panjang': 6,
@@ -445,7 +468,8 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         };
         const orderA = order[a.name] !== undefined ? order[a.name] : 99;
         const orderB = order[b.name] !== undefined ? order[b.name] : 99;
-        return orderA - orderB;
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.minCode || '').localeCompare(b.minCode || '', undefined, { numeric: true, sensitivity: 'base' });
     });
 }
 /**
