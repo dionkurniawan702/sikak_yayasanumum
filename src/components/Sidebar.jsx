@@ -223,7 +223,6 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/neraca-saldo', label: 'Neraca Saldo', icon: Scale },
                         { path: '/neraca', label: 'Posisi Keuangan', icon: Building2 },
                         { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
-                        { path: '/realisasi-anggaran', label: 'Realisasi Anggaran', icon: Target },
                         { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
                         { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
                         { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
