@@ -871,6 +871,32 @@ export default function MonthlyRequest() {
         handleChangeTargetUnitBank(creditId);
     };
 
+    const handleApplyGlobalDebit = (debitId) => {
+        if (!debitId) return;
+        setReviewRequest(prev => {
+            if (!prev) return prev;
+            const updatedMappings = { ...(prev.itemMappings || {}) };
+            (prev.req.items || []).forEach(item => {
+                updatedMappings[item.componentId] = {
+                    ...(updatedMappings[item.componentId] || {}),
+                    debitAccountId: debitId
+                };
+            });
+            return {
+                ...prev,
+                globalDebitAccountId: debitId,
+                itemMappings: updatedMappings
+            };
+        });
+    };
+
+    const scrollToRincian = () => {
+        const el = document.getElementById('rincian-items-section');
+        if (el) {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    };
+
     // Helper to generate the Transfer Kas journal entry for approved budget request
     const createTransferJournal = (targetReq, approvedItems, sourceBankId, targetUnitBankId) => {
         const accTotal = approvedItems.reduce((s, i) => s + (parseFloat(i.amount) || 0), 0);
@@ -1974,159 +2000,220 @@ export default function MonthlyRequest() {
             {reviewRequest && (
                 <div className="fixed inset-0 z-[1200] flex items-center justify-center p-4">
                     <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setReviewRequest(null)} />
-                    <div className="bg-slate-50 rounded-[3rem] w-full max-w-4xl max-h-[90vh] overflow-hidden relative z-10 shadow-2xl flex flex-col animate-in slide-in-from-bottom-8">
-                        <div className="p-10 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="bg-slate-50 rounded-[2.5rem] w-full max-w-5xl max-h-[92vh] overflow-hidden relative z-10 shadow-2xl flex flex-col animate-in slide-in-from-bottom-8">
+                        <div className="px-8 py-5 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                             <div>
-                                <h2 className="text-3xl font-black text-slate-900 mb-1">Review Rincian Dana</h2>
-                                <p className="text-slate-500 font-medium italic">Anda dapat menyetujui (ACC) atau Menolak per-rincian. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></p>
+                                <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-1">Review Rincian Dana</h2>
+                                <p className="text-slate-500 text-xs md:text-sm font-medium italic">Anda dapat menyetujui (ACC) atau Menolak per-rincian. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></p>
                             </div>
-                            <div className="flex flex-col gap-3">
-                                <div className="relative">
+                            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                                <div className="relative min-w-[200px]">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                                     <input 
                                         type="text" 
                                         placeholder="Cari rincian..." 
                                         value={modalSearchTerm}
                                         onChange={(e) => setModalSearchTerm(e.target.value)}
-                                        className="w-full bg-slate-50 border-0 rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
                                     />
                                 </div>
                                 <div className="flex gap-2">
                                     <button onClick={() => {
                                         setReviewRequest(prev => ({ ...prev, accIds: prev.req.items.map(i => i.componentId), tolakIds: [] }));
-                                    }} className="flex-1 px-4 py-3 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"><Check size={16}/> ACC SEMUA</button>
+                                    }} className="px-3.5 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-1.5"><Check size={14}/> ACC SEMUA</button>
                                     <button onClick={() => {
                                         setReviewRequest(prev => ({ ...prev, tolakIds: prev.req.items.map(i => i.componentId), accIds: [] }));
-                                    }} className="flex-1 px-4 py-3 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"><XCircle size={16}/> TOLAK SEMUA</button>
+                                    }} className="px-3.5 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-1.5"><XCircle size={14}/> TOLAK SEMUA</button>
                                 </div>
                             </div>
                         </div>
 
-                        {(() => {
-                            const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
-                            const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource, reviewRequest.req.academicYearId);
-                            if (!superadminUnreturnedInfo.hasUnreturned) return null;
-                            return (
-                                <div className="mx-10 mt-6 p-5 bg-rose-50 rounded-2xl border border-rose-200 flex items-start gap-3 text-rose-800">
-                                    <AlertCircle className="shrink-0 text-rose-600 mt-0.5" size={20} />
-                                    <div className="flex-1">
-                                        <h5 className="font-black text-xs uppercase tracking-widest text-rose-900 mb-1">Pencairan Ditangguhkan (Blocked)</h5>
-                                        <p className="text-xs font-semibold leading-relaxed">
-                                            Unit/Bidang pemohon memiliki sisa saldo dana <b>{superadminUnreturnedInfo.isBos ? 'BOS' : 'Yayasan'}</b> bulan sebelumnya yang belum dipertanggungjawabkan/dikembalikan sebesar <span className="font-black text-rose-700">{formatRupiah(superadminUnreturnedInfo.amount)}</span>.
-                                            Pencairan otomatis ditangguhkan sampai sisa saldo dikembalikan dan disetujui.
-                                        </p>
-                                    </div>
-                                </div>
-                            );
-                        })()}
-
-                        {/* Dual Bank Account Configuration & Transfer Flow */}
-                        <div className="mx-6 md:mx-10 mt-6 p-5 md:p-6 bg-gradient-to-br from-indigo-50/90 via-sky-50/60 to-purple-50/80 border-2 border-indigo-100 rounded-3xl shadow-sm">
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 pb-5 border-b border-indigo-100/80">
-                                <div className="flex items-center gap-3.5">
-                                    <div className="w-12 h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 shrink-0">
-                                        <ArrowRightLeft size={22} className="animate-pulse" />
-                                    </div>
-                                    <div>
-                                        <div className="flex items-center gap-2">
-                                            <h4 className="text-sm font-black uppercase tracking-wider text-indigo-950">
-                                                Otomasi Jurnal Pencairan Dana & Pemindahbukuan Kas
-                                            </h4>
-                                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-600 text-white tracking-wider shadow-sm">
-                                                JURNAL OTOMATIS
-                                            </span>
+                        {/* Scrollable Container covering Alerts, Dual-Bank Journal Config, and Rincian Items */}
+                        <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6 custom-scrollbar text-slate-900 bg-slate-50/50 flex flex-col gap-6">
+                            {(() => {
+                                const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
+                                const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource, reviewRequest.req.academicYearId);
+                                if (!superadminUnreturnedInfo.hasUnreturned) return null;
+                                return (
+                                    <div className="p-5 bg-rose-50 rounded-2xl border border-rose-200 flex items-start gap-3 text-rose-800">
+                                        <AlertCircle className="shrink-0 text-rose-600 mt-0.5" size={20} />
+                                        <div className="flex-1">
+                                            <h5 className="font-black text-xs uppercase tracking-widest text-rose-900 mb-1">Pencairan Ditangguhkan (Blocked)</h5>
+                                            <p className="text-xs font-semibold leading-relaxed">
+                                                Unit/Bidang pemohon memiliki sisa saldo dana <b>{superadminUnreturnedInfo.isBos ? 'BOS' : 'Yayasan'}</b> bulan sebelumnya yang belum dipertanggungjawabkan/dikembalikan sebesar <span className="font-black text-rose-700">{formatRupiah(superadminUnreturnedInfo.amount)}</span>.
+                                                Pencairan otomatis ditangguhkan sampai sisa saldo dikembalikan dan disetujui.
+                                            </p>
                                         </div>
-                                        <p className="text-xs text-slate-600 font-medium mt-0.5">
-                                            Tentukan rekening kas yayasan dan rekening operasional unit. Saat disetujui (ACC), sistem langsung membukukan jurnal pemindahan kas dan mengunci COA belanja unit.
-                                        </p>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Dual Bank Account Configuration & Transfer Flow */}
+                            <div className="p-5 md:p-6 bg-gradient-to-br from-indigo-50/90 via-sky-50/60 to-purple-50/80 border-2 border-indigo-100 rounded-3xl shadow-sm flex flex-col gap-4">
+                                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-indigo-100/80">
+                                    <div className="flex items-center gap-3.5">
+                                        <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-lg shadow-indigo-600/30 shrink-0">
+                                            <ArrowRightLeft size={20} className="animate-pulse" />
+                                        </div>
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <h4 className="text-sm font-black uppercase tracking-wider text-indigo-950">
+                                                    Otomasi Jurnal Pencairan Dana & Pemindahbukuan Kas
+                                                </h4>
+                                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-indigo-600 text-white tracking-wider shadow-sm">
+                                                    JURNAL OTOMATIS
+                                                </span>
+                                            </div>
+                                            <p className="text-xs text-slate-600 font-medium mt-0.5">
+                                                Tentukan rekening kas yayasan dan rekening operasional unit. Saat disetujui (ACC), sistem otomatis membukukan jurnal pemindahan kas dan mengunci COA belanja unit.
+                                            </p>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* Quick Summary Pill */}
+                                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-3.5 py-1.5 rounded-2xl border border-indigo-200/80 shadow-sm text-xs font-bold text-indigo-900 shrink-0 self-start lg:self-auto">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                        <span>Total ACC: <strong className="text-emerald-700 font-black">{formatRupiah((reviewRequest.req.items || []).filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}</strong></span>
                                     </div>
                                 </div>
-                                
-                                {/* Quick Summary Pill */}
-                                <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-4 py-2 rounded-2xl border border-indigo-200/80 shadow-sm text-xs font-bold text-indigo-900 shrink-0 self-start lg:self-auto">
-                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                    <span>Total ACC: <strong className="text-emerald-700 font-black">{formatRupiah((reviewRequest.req.items || []).filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}</strong></span>
+
+                                {/* Dual Selector: Rekening Sumber Yayasan & Rekening Operasional Unit */}
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* 1. Rekening Sumber Kas Yayasan (Pusat / Induk) */}
+                                    <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm flex flex-col justify-between gap-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
+                                                    1
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                                        Rekening Kas/Bank Induk Yayasan (Sumber)
+                                                    </label>
+                                                    <span className="text-[10px] font-semibold text-rose-600">Sisi Kredit saat pencairan (Dana Keluar Yayasan)</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Yayasan Pusat</span>
+                                        </div>
+                                        <select
+                                            value={reviewRequest.sourceBankAccountId || ''}
+                                            onChange={(e) => handleChangeSourceBank(e.target.value)}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-300 focus:bg-white outline-none transition-all cursor-pointer"
+                                        >
+                                            <option value="" disabled>-- Pilih Rekening Kas / Bank Yayasan --</option>
+                                            {cashBankAccounts.map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* 2. Rekening Operasional Unit Tujuan */}
+                                    <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between gap-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs">
+                                                    2
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                                        Rekening Operasional Unit (Tujuan & Belanja)
+                                                    </label>
+                                                    <span className="text-[10px] font-semibold text-emerald-600">Sisi Debit saat pencairan & Kredit saat unit belanja LPJ</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Unit Pemohon</span>
+                                        </div>
+                                        <select
+                                            value={reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || ''}
+                                            onChange={(e) => handleChangeTargetUnitBank(e.target.value)}
+                                            className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-300 focus:bg-white outline-none transition-all cursor-pointer"
+                                        >
+                                            <option value="" disabled>-- Pilih Rekening Operasional Unit --</option>
+                                            {cashBankAccounts.map(a => (
+                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Visual Flow Indicator & Clickable Actions */}
+                                <div className="pt-3 border-t border-indigo-100/80 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-bold text-indigo-900">Alur Jurnal:</span>
+                                        <span className="bg-white/80 px-2.5 py-1 rounded-lg border border-indigo-200 font-mono text-[10px] text-indigo-800">
+                                            Pencairan: (D) Rekening Unit ⟵ (K) Rekening Yayasan
+                                        </span>
+                                        <span className="text-slate-400">➔</span>
+                                        <span className="bg-white/80 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono text-[10px] text-emerald-800">
+                                            Belanja LPJ: (D) Beban/Aset di bawah ⟵ (K) Rekening Unit
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        {/* Quick Batch Debit COA Selector */}
+                                        <div className="flex items-center gap-1.5 bg-white/90 border border-indigo-200 rounded-xl px-2.5 py-1 shadow-sm">
+                                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">⚡ Terapkan Beban ke Semua:</span>
+                                            <select
+                                                value={reviewRequest.globalDebitAccountId || ''}
+                                                onChange={(e) => handleApplyGlobalDebit(e.target.value)}
+                                                className="bg-transparent text-[11px] font-bold text-indigo-900 outline-none cursor-pointer max-w-[180px] truncate"
+                                                title="Pilih akun COA beban/aset sekaligus untuk diterapkan ke seluruh rincian"
+                                            >
+                                                <option value="">-- Pilih COA Sekaligus --</option>
+                                                {expenseAccounts.length > 0 && (
+                                                    <optgroup label="Beban Operasional (5-xxxx)">
+                                                        {expenseAccounts.map(a => (
+                                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                                {assetAccounts.length > 0 && (
+                                                    <optgroup label="Aset / Peralatan (1-xxxx)">
+                                                        {assetAccounts.map(a => (
+                                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                        ))}
+                                                    </optgroup>
+                                                )}
+                                                <optgroup label="Akun Lainnya">
+                                                    {postableAccounts.filter(a => !expenseAccounts.some(e => e.id === a.id) && !assetAccounts.some(as => as.id === a.id)).map(a => (
+                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                    ))}
+                                                </optgroup>
+                                            </select>
+                                        </div>
+
+                                        {/* Interactive Button to Scroll to Rincian Items */}
+                                        <button
+                                            type="button"
+                                            onClick={scrollToRincian}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white shadow-md hover:shadow-indigo-500/25 transition-all group"
+                                            title="Klik untuk langsung memilih akun COA untuk masing-masing rincian permintaan"
+                                        >
+                                            <BookOpen size={13} className="text-indigo-200 group-hover:text-white transition-colors" />
+                                            <span>Pilih COA Beban Per-Rincian</span>
+                                            <ChevronDown size={14} className="animate-bounce" />
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Dual Selector: Rekening Sumber Yayasan & Rekening Operasional Unit */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
-                                {/* 1. Rekening Sumber Kas Yayasan (Pusat / Induk) */}
-                                <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm flex flex-col justify-between">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
-                                                1
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                                                    Rekening Kas/Bank Induk Yayasan (Sumber)
-                                                </label>
-                                                <span className="text-[10px] font-semibold text-rose-600">Sisi Kredit saat pencairan (Dana Keluar Yayasan)</span>
-                                            </div>
-                                        </div>
-                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Yayasan Pusat</span>
-                                    </div>
-                                    <select
-                                        value={reviewRequest.sourceBankAccountId || ''}
-                                        onChange={(e) => handleChangeSourceBank(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-300 focus:bg-white outline-none transition-all cursor-pointer"
-                                    >
-                                        <option value="" disabled>-- Pilih Rekening Kas / Bank Yayasan --</option>
-                                        {cashBankAccounts.map(a => (
-                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                        ))}
-                                    </select>
+                            {/* Section Anchor & Heading for Rincian Items */}
+                            <div id="rincian-items-section" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                                <div>
+                                    <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                                        <BookOpen size={18} className="text-indigo-600" />
+                                        Penetapan COA Beban / Aset Per-Rincian Permintaan
+                                    </h3>
+                                    <p className="text-xs text-slate-500 font-medium">
+                                        Superadmin dapat menentukan atau menyesuaikan akun Beban/Aset (Debit) secara mandiri untuk masing-masing rincian belanja:
+                                    </p>
                                 </div>
-
-                                {/* 2. Rekening Operasional Unit Tujuan */}
-                                <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs">
-                                                2
-                                            </div>
-                                            <div>
-                                                <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                                                    Rekening Operasional Unit (Tujuan & Belanja)
-                                                </label>
-                                                <span className="text-[10px] font-semibold text-emerald-600">Sisi Debit saat pencairan & Kredit saat unit belanja LPJ</span>
-                                            </div>
-                                        </div>
-                                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Unit Pemohon</span>
-                                    </div>
-                                    <select
-                                        value={reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || ''}
-                                        onChange={(e) => handleChangeTargetUnitBank(e.target.value)}
-                                        className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-300 focus:bg-white outline-none transition-all cursor-pointer"
-                                    >
-                                        <option value="" disabled>-- Pilih Rekening Operasional Unit --</option>
-                                        {cashBankAccounts.map(a => (
-                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {/* Visual Flow Indicator */}
-                            <div className="mt-4 pt-3.5 border-t border-indigo-100/80 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-bold text-indigo-900">Alur Jurnal:</span>
-                                    <span className="bg-white/80 px-2.5 py-1 rounded-lg border border-indigo-200 font-mono text-[10px] text-indigo-800">
-                                        Pencairan: (D) Rekening Unit ⟵ (K) Rekening Yayasan
-                                    </span>
-                                    <span className="text-slate-400">➔</span>
-                                    <span className="bg-white/80 px-2.5 py-1 rounded-lg border border-emerald-200 font-mono text-[10px] text-emerald-800">
-                                        Belanja LPJ: (D) Beban/Aset di bawah ⟵ (K) Rekening Unit
-                                    </span>
-                                </div>
-                                <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100/60 px-2 py-0.5 rounded-full">
-                                    Superadmin menetapkan COA Beban di rincian bawah ↓
+                                <span className="text-xs font-black text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-xl shrink-0 self-start sm:self-auto">
+                                    {(modalSearchTerm ? reviewRequest.req.items.filter(i => i.name.toLowerCase().includes(modalSearchTerm.toLowerCase())) : reviewRequest.req.items).length} Rincian Permintaan
                                 </span>
                             </div>
-                        </div>
 
-                        <div className="flex-1 overflow-y-auto p-10 custom-scrollbar text-slate-900 bg-slate-50/50">
+                            {/* List of Rincian Cards */}
                             <div className="grid grid-cols-1 gap-4">
                                 {(modalSearchTerm ? reviewRequest.req.items.filter(i => i.name.toLowerCase().includes(modalSearchTerm.toLowerCase())) : reviewRequest.req.items).map(item => {
                                     const isAcc = reviewRequest.accIds.includes(item.componentId);
@@ -2135,7 +2222,7 @@ export default function MonthlyRequest() {
                                     const itemCreditId = reviewRequest.itemMappings?.[item.componentId]?.creditAccountId || reviewRequest.globalCreditAccountId || '';
                                     
                                     return (
-                                        <div key={item.componentId} className={`p-6 rounded-[2rem] border-2 transition-all flex flex-col gap-4 group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
+                                        <div key={item.componentId} className={`p-5 md:p-6 rounded-[2rem] border-2 transition-all flex flex-col gap-4 group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                                 <div className="flex items-center gap-5">
                                                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${isAcc ? 'bg-emerald-50 text-emerald-600' : isTolak ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
@@ -2276,28 +2363,29 @@ export default function MonthlyRequest() {
                             </div>
                         </div>
 
+                        {/* Modal Footer */}
                         {(() => {
                             const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
                             const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource, reviewRequest.req.academicYearId);
                             const hasBlock = superadminUnreturnedInfo.hasUnreturned;
 
                             return (
-                                <div className="p-10 bg-white border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-6">
+                                <div className="px-8 py-5 bg-white border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Di-ACC</p>
-                                        <h3 className="text-3xl font-black text-emerald-600 italic tracking-tighter">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Di-ACC</p>
+                                        <h3 className="text-2xl md:text-3xl font-black text-emerald-600 italic tracking-tighter">
                                             {formatRupiah(reviewRequest.req.items.filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}
                                         </h3>
                                     </div>
                                     <div className="flex flex-wrap gap-3 items-center">
-                                        <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                                        <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
                                         
                                         <button
                                             onClick={() => handleSaveReview()}
                                             disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || hasBlock}
-                                            className="btn bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-3 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all"
+                                            className="btn bg-indigo-600 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2.5 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all cursor-pointer"
                                         >
-                                            {processingId === 'saving-review' ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                            {processingId === 'saving-review' ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                                             SIMPAN PERSETUJUAN
                                         </button>
                                     </div>
