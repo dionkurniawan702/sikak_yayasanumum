@@ -225,8 +225,8 @@ export default function Sidebar({ isOpen, onClose }) {
                         { path: '/laporan-aktivitas', label: 'Laporan Aktivitas', icon: TrendingUp },
                         { path: '/arus-kas', label: 'Arus Kas', icon: Banknote },
                         { path: '/perubahan-dana', label: 'Perubahan Aset Neto', icon: TrendingUp },
-                        { path: '/laporan-program', label: 'Laporan Per Program', icon: List },
-                        { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText }
+                        { path: '/calk', label: 'Catatan Laporan (CALK)', icon: FileText },
+                        { path: '/laporan-program', label: 'Program Donasi', icon: List }
                     ]
                 },
                 {

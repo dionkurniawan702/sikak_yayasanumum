@@ -94,8 +94,8 @@ export default function ProgramReport() {
         <div className="p-8">
             <div className="flex justify-between items-center mb-8 print:hidden">
                 <div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Laporan Per Program</h2>
-                    <p className="text-slate-500 font-medium tracking-tight">Analisis performa dan penggunaan dana per kegiatan yayasan</p>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Program Donasi</h2>
+                    <p className="text-slate-500 font-medium tracking-tight">Analisis penerimaan donasi dan penyaluran dana per program sosial yayasan</p>
                 </div>
                 <div className="flex gap-4">
                     <div className="flex bg-slate-100 p-1 rounded-2xl">
@@ -118,7 +118,7 @@ export default function ProgramReport() {
             <div className="animate-in" ref={reportRef}>
                 <div className="hidden print:block text-center mb-12">
                     <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">SIKAD DARELIMAN</h1>
-                    <h2 className="text-xl font-bold text-slate-600">LAPORAN REALISASI PROGRAM</h2>
+                    <h2 className="text-xl font-bold text-slate-600">LAPORAN PROGRAM DONASI</h2>
                     <p className="text-xs font-black text-slate-300 tracking-[0.3em] uppercase mt-2">Periode Konsolidasi Program Tahun {curYear}</p>
                 </div>
 
