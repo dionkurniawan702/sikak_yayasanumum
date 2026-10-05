@@ -382,13 +382,30 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
 
     return Object.values(subTypes).sort((a, b) => {
         const order = {
-            'Aset': 0, 'Aset Lancar': 1, 'Aset Tidak Lancar': 2,
-            'Kewajiban': 2.5, 'Kewajiban Jangka Pendek': 3, 'Liabilitas Jangka Pendek': 3, 'Kewajiban Jangka Panjang': 4, 'Liabilitas Jangka Panjang': 4,
-            'Aset Neto': 4.5, 'Aset Neto Tanpa Pembatasan': 4.6, 'Aset Neto Dengan Pembatasan': 4.7, 'Saldo Dana': 5,
-            'Pendapatan': 6, 'Penghasilan': 6, 'Penghasilan Tanpa Pembatasan': 6.1, 'Penghasilan Dengan Pembatasan': 6.2,
-            'Beban': 7, 'Beban Program': 7.1, 'Beban Program BOS': 7.2, 'Beban Umum & Administrasi': 7.3
+            'Aset': 1,
+            'Aset Lancar': 2,
+            'Aset Tidak Lancar': 3,
+            'Kewajiban': 4,
+            'Liabilitas Jangka Pendek': 5,
+            'Kewajiban Jangka Pendek': 5,
+            'Liabilitas Jangka Panjang': 6,
+            'Kewajiban Jangka Panjang': 6,
+            'Aset Neto': 7,
+            'Aset Neto Tanpa Pembatasan': 8,
+            'Aset Neto Dengan Pembatasan': 9,
+            'Saldo Dana': 10,
+            'Pendapatan': 11,
+            'Penghasilan': 11,
+            'Penghasilan Tanpa Pembatasan': 12,
+            'Penghasilan Dengan Pembatasan': 13,
+            'Beban': 14,
+            'Beban Program': 15,
+            'Beban Program BOS': 16,
+            'Beban Umum & Administrasi': 17
         };
-        return (order[a.name] || 99) - (order[b.name] || 99);
+        const orderA = order[a.name] !== undefined ? order[a.name] : 99;
+        const orderB = order[b.name] !== undefined ? order[b.name] : 99;
+        return orderA - orderB;
     });
 }
 /**
