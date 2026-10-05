@@ -29,7 +29,7 @@ export default function ChartOfAccounts() {
     const exportToExcel = () => {
         const data = [];
         subTypeHierarchy.forEach(st => {
-            data.push({ 'Tipe': st.name, 'Kode': '', 'Nama': '', 'Saldo': st.saldo });
+            data.push({ 'Tipe': st.name, 'Kode': '', 'Nama': '', 'Saldo': '' });
             st.headers.forEach(h => {
                 data.push({ 'Tipe': '', 'Kode': h.code, 'Nama': h.name, 'Saldo': h.saldo });
                 h.children.forEach(c => {
@@ -202,7 +202,6 @@ export default function ChartOfAccounts() {
                                         <td colSpan={4} className="px-8 py-4 font-black text-xs text-slate-800 flex items-center gap-3">
                                             <div className="w-1.5 h-4 bg-blue-600 rounded-full"></div>
                                             {st.name.toUpperCase()} 
-                                            <span className="ml-auto text-slate-400 font-bold"><CurrencyDisplay value={st.saldo} /></span>
                                         </td>
                                     </tr>
                                     {st.headers.map(header => (
