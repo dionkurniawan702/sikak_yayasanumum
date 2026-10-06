@@ -1416,6 +1416,10 @@ const ensureBudgetOperationalColumns = async () => {
         if (!repFields.includes('category')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN category VARCHAR(255)');
         // New columns for enhanced laporan form
         if (!repFields.includes('buktiTeks')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN buktiTeks TEXT');
+        if (!repFields.includes('buktiFoto')) {
+            console.log(`[Self-Healing] Adding buktiFoto column to budget_reports...`);
+            await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN buktiFoto LONGTEXT');
+        }
         if (!repFields.includes('nomorNota')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN nomorNota VARCHAR(255)');
         if (!repFields.includes('volume')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN volume DECIMAL(15,4)');
         if (!repFields.includes('satuan')) await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN satuan VARCHAR(100)');

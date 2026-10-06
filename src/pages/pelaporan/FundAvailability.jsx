@@ -1,5 +1,5 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye, Calendar, Tag, Filter, Lock, Unlock } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
+import { Landmark, TrendingUp, Info, ShieldCheck, HelpCircle, Layers, Wallet, Clock, CheckCircle, Building2, ChevronDown, ChevronRight, Users, HandCoins, X, UploadCloud, Save, Loader2, FileCheck, Eye, Calendar, Tag, Filter, Lock, Unlock, FileText, Image as ImageIcon, ExternalLink, Download, ZoomIn, Trash2, AlertCircle, Paperclip } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
@@ -265,11 +265,95 @@ export default function FundAvailability() {
     const { currentUser, budgetRequests, budgetReports, units, fields, globalAcademicYearId } = state;
 
     const [showReturnModal, setShowReturnModal] = useState(false);
-    const [returnForm, setReturnForm] = useState({ amount: '', buktiTeks: '', description: '', budgetRequestId: '' });
+    const [returnForm, setReturnForm] = useState({ 
+        amount: '', 
+        buktiTeks: '', 
+        description: '', 
+        budgetRequestId: '',
+        buktiFoto: null,
+        fileName: '',
+        fileType: ''
+    });
     const [isReturnAmountLocked, setIsReturnAmountLocked] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [processingId, setProcessingId] = useState(null);
-    const [reviewData, setReviewData] = useState(null);
+    const [reviewReturn, setReviewReturn] = useState(null);
+    const [lightboxImage, setLightboxImage] = useState(null);
+    const fileInputRef = useRef(null);
+
+    // Helper get proof data (photo / pdf) with localStorage fallback
+    const getProofData = (ret) => {
+        if (!ret) return null;
+        return ret.buktiFoto || localStorage.getItem('sikak_proof_' + ret.id) || null;
+    };
+
+    // Handler upload file bukti (Image auto-compressed via canvas, PDF read as base64)
+    const handleReturnFileChange = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+            if (file.size > 5 * 1024 * 1024) {
+                alert('Ukuran dokumen PDF maksimal 5 MB!');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setReturnForm(prev => ({
+                    ...prev,
+                    buktiFoto: event.target.result,
+                    fileName: file.name,
+                    fileType: 'pdf'
+                }));
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    let width = img.width;
+                    let height = img.height;
+                    const maxDim = 1200;
+                    if (width > maxDim || height > maxDim) {
+                        if (width > height) {
+                            height = Math.round((height * maxDim) / width);
+                            width = maxDim;
+                        } else {
+                            width = Math.round((width * maxDim) / height);
+                            height = maxDim;
+                        }
+                    }
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                    setReturnForm(prev => ({
+                        ...prev,
+                        buktiFoto: compressedDataUrl,
+                        fileName: file.name,
+                        fileType: 'image'
+                    }));
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            alert('Format file tidak didukung! Harap unggah foto struk (JPG/PNG/WEBP) atau dokumen PDF.');
+        }
+    };
+
+    const handleRemoveReturnFile = () => {
+        setReturnForm(prev => ({
+            ...prev,
+            buktiFoto: null,
+            fileName: '',
+            fileType: ''
+        }));
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    };
     
     // STATES: Filter Bulan & Mode Tampilan
     const [selectedMonth, setSelectedMonth] = useState('ALL');
@@ -560,7 +644,7 @@ export default function FundAvailability() {
             return alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa pagu riil yang belum dilaporkan (${formatRupiah(chosenCard.reqSisa)})!\n\nJika ada nota belanja yang belum diinput, silakan laporkan nota tersebut terlebih dahulu agar perhitungan sisa klop.`);
         }
         if (amt > (statBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
-        if (!returnForm.buktiTeks) return alert('Bukti transfer wajib dilampirkan!');
+        if (!returnForm.buktiTeks && !returnForm.buktiFoto) return alert('Bukti transfer (foto struk / dokumen PDF atau nomor referensi) wajib dilampirkan!');
 
         setIsSubmitting(true);
         window.dispatchEvent(new CustomEvent('app-processing-start', { 
@@ -582,17 +666,28 @@ export default function FundAvailability() {
                 date: new Date().toISOString().split('T')[0],
                 amount: amt,
                 description: returnForm.description || 'Pengembalian Sisa Dana Kas',
-                buktiTeks: returnForm.buktiTeks,
+                buktiTeks: returnForm.buktiTeks || (returnForm.fileName ? `File: ${returnForm.fileName}` : 'Bukti Transfer Terlampir'),
+                buktiFoto: returnForm.buktiFoto || null,
                 kategoriAset: 'PENGEMBALIAN',
                 status: 'PENDING',
                 notified: false
             };
 
+            // Local storage backup cache so proof is immediately safe
+            if (returnForm.buktiFoto) {
+                try {
+                    localStorage.setItem('sikak_proof_' + newReturn.id, returnForm.buktiFoto);
+                } catch (e) {
+                    console.warn('LocalStorage limit for proof cache:', e);
+                }
+            }
+
             dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
             await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
             
             setShowReturnModal(false);
-            setReturnForm({ amount: '', buktiTeks: '', description: '', budgetRequestId: '' });
+            setReturnForm({ amount: '', buktiTeks: '', description: '', budgetRequestId: '', buktiFoto: null, fileName: '', fileType: '' });
+            if (fileInputRef.current) fileInputRef.current.value = '';
             alert('Pengajuan pengembalian dana berhasil dikirim dan menunggu ACC Yayasan.');
         } catch (err) {
             console.error(err);
@@ -625,7 +720,7 @@ export default function FundAvailability() {
             alert('Gagal menyetujui pengembalian dana: ' + error.message);
         } finally {
             setProcessingId(null);
-            setReviewData(null);
+            setReviewReturn(null);
             window.dispatchEvent(new CustomEvent('app-processing-end'));
         }
     };
@@ -652,7 +747,7 @@ export default function FundAvailability() {
                 alert('Gagal menolak pengembalian dana: ' + error.message);
             } finally {
                 setProcessingId(null);
-                setReviewData(null);
+                setReviewReturn(null);
                 window.dispatchEvent(new CustomEvent('app-processing-end'));
             }
         }
@@ -1142,35 +1237,80 @@ export default function FundAvailability() {
                     <div className="p-6 divide-y divide-slate-100">
                         {pendingReturns.map(ret => {
                             const uName = units?.find(u => u.id === ret.unitId)?.name || fields?.find(f => f.id === ret.fieldId)?.name || 'Unit/Bidang';
+                            const proofData = getProofData(ret);
+                            const isPdf = proofData && (proofData.startsWith('data:application/pdf') || proofData.endsWith('.pdf'));
+                            const isImg = proofData && (proofData.startsWith('data:image/') || (!isPdf && (proofData.includes('.jpg') || proofData.includes('.png') || proofData.includes('.webp'))));
+
                             return (
-                                <div key={ret.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-1">
+                                <div key={ret.id} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-slate-50/60 p-3 rounded-2xl transition-colors">
+                                    <div className="flex-1">
+                                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                                             <span className="font-black text-slate-800 text-sm">{uName}</span>
                                             <span className="text-[10px] font-bold text-slate-400">({ret.date})</span>
+                                            {isImg && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setLightboxImage(proofData)}
+                                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold transition-all shadow-xs"
+                                                    title="Klik untuk melihat foto bukti transfer"
+                                                >
+                                                    <ImageIcon size={11} />
+                                                    <span>Foto Bukti</span>
+                                                    <Eye size={10} className="text-amber-500" />
+                                                </button>
+                                            )}
+                                            {isPdf && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setReviewReturn(ret)}
+                                                    className="inline-flex items-center gap-1 px-2 py-0.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 rounded-md text-[10px] font-bold transition-all shadow-xs"
+                                                    title="Dokumen PDF terlampir"
+                                                >
+                                                    <FileText size={11} />
+                                                    <span>Dokumen PDF</span>
+                                                    <ExternalLink size={10} />
+                                                </button>
+                                            )}
                                         </div>
                                         <div className="text-xs text-slate-500">{ret.description}</div>
                                         {ret.buktiTeks && (
-                                            <div className="text-[11px] font-mono bg-slate-50 p-2 rounded border border-slate-100 mt-2 text-slate-600">
-                                                Bukti Transfer: {ret.buktiTeks}
+                                            <div className="text-[11px] font-mono bg-slate-50 p-2 rounded-lg border border-slate-100 mt-2 text-slate-600 flex items-center justify-between gap-2">
+                                                <span>Bukti Transfer: <strong className="text-slate-800 font-bold">{ret.buktiTeks}</strong></span>
+                                                {proofData && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setReviewReturn(ret)}
+                                                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1 shrink-0"
+                                                    >
+                                                        <Eye size={11} /> Buka Bukti
+                                                    </button>
+                                                )}
                                             </div>
                                         )}
                                     </div>
-                                    <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-4 shrink-0">
                                         <div className="text-right">
-                                            <div className="text-[10px] font-black text-slate-400 uppercase">Nominal</div>
+                                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Nominal</div>
                                             <div className="text-lg font-black text-indigo-600">{formatRupiah(ret.amount)}</div>
                                         </div>
-                                        <div className="flex gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setReviewReturn(ret)}
+                                                className="px-3.5 py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white border border-indigo-200 hover:border-indigo-600 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm active:scale-95"
+                                                title="Lihat rincian lengkap sebelum ACC"
+                                            >
+                                                <Eye size={13} />
+                                                <span>Lihat Rincian</span>
+                                            </button>
                                             <button
                                                 onClick={() => handleApproveReturn(ret)}
-                                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all"
+                                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-500/20 active:scale-95"
                                             >
                                                 ACC
                                             </button>
                                             <button
                                                 onClick={() => handleRejectReturn(ret)}
-                                                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all"
+                                                className="px-4 py-2 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl text-xs font-bold transition-all active:scale-95"
                                             >
                                                 Tolak
                                             </button>
@@ -1324,17 +1464,130 @@ export default function FundAvailability() {
                                     );
                                 })()}
                             </div>
+                            {/* Upload Foto / PDF Bukti Transfer */}
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Bukti Transfer (Nomor/Teks Bukti)</label>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1.5 flex items-center justify-between">
+                                    <span>Lampiran Foto / Dokumen PDF Bukti Transfer</span>
+                                    <span className="text-[10px] text-indigo-600 font-bold lowercase">(foto struk / resi pdf)</span>
+                                </label>
+
+                                <input
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/jpeg,image/png,image/webp,image/jpg,application/pdf"
+                                    className="hidden"
+                                    onChange={handleReturnFileChange}
+                                />
+
+                                {!returnForm.buktiFoto ? (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-indigo-50/30 hover:bg-indigo-50/60 rounded-2xl p-5 text-center cursor-pointer transition-all group"
+                                    >
+                                        <div className="w-12 h-12 bg-white rounded-2xl shadow-sm border border-indigo-100 text-indigo-600 flex items-center justify-center mx-auto mb-2.5 group-hover:scale-105 transition-transform">
+                                            <UploadCloud size={24} />
+                                        </div>
+                                        <div className="text-xs font-black text-slate-700 mb-0.5">
+                                            Klik untuk Unggah Foto Struk / Dokumen PDF
+                                        </div>
+                                        <p className="text-[10px] text-slate-400 font-medium">
+                                            Mendukung foto/screenshot (JPG, PNG) & resi bank (PDF). Maks 5 MB.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="p-3.5 bg-indigo-50/50 rounded-2xl border border-indigo-200 relative group animate-in fade-in zoom-in-95">
+                                        {returnForm.fileType === 'pdf' || returnForm.buktiFoto.startsWith('data:application/pdf') ? (
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-12 h-12 bg-rose-500 text-white rounded-xl flex items-center justify-center shrink-0 shadow-sm">
+                                                    <FileText size={24} />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-xs font-black text-slate-800 truncate">
+                                                        {returnForm.fileName || 'Dokumen_Bukti_Transfer.pdf'}
+                                                    </div>
+                                                    <div className="text-[10px] text-emerald-600 font-bold flex items-center gap-1 mt-0.5">
+                                                        <CheckCircle size={11} /> Dokumen PDF Siap Dikirim
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => fileInputRef.current?.click()}
+                                                        className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold border border-slate-200 transition-colors"
+                                                    >
+                                                        Ganti
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleRemoveReturnFile}
+                                                        className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                                                        title="Hapus berkas"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2.5">
+                                                <div className="relative rounded-xl overflow-hidden border border-indigo-200 bg-slate-900/5 max-h-48 flex items-center justify-center">
+                                                    <img
+                                                        src={returnForm.buktiFoto}
+                                                        alt="Pratinjau Bukti"
+                                                        className="max-h-48 w-full object-contain"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setLightboxImage(returnForm.buktiFoto)}
+                                                        className="absolute bottom-2 right-2 px-2.5 py-1 bg-black/70 hover:bg-black/90 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 backdrop-blur-xs transition-colors"
+                                                    >
+                                                        <ZoomIn size={11} /> Perbesar
+                                                    </button>
+                                                </div>
+                                                <div className="flex items-center justify-between gap-2 pt-1 border-t border-indigo-100">
+                                                    <div className="text-[11px] font-bold text-slate-700 truncate flex items-center gap-1.5">
+                                                        <ImageIcon size={13} className="text-indigo-600 shrink-0" />
+                                                        <span className="truncate">{returnForm.fileName || 'Foto Bukti Transfer'}</span>
+                                                        <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">Dikompres</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => fileInputRef.current?.click()}
+                                                            className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 rounded-lg text-[10px] font-bold border border-slate-200 transition-colors"
+                                                        >
+                                                            Ganti
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleRemoveReturnFile}
+                                                            className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-colors"
+                                                            title="Hapus foto"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Nomor / Catatan Referensi Transfer */}
+                            <div>
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">
+                                    Nomor Referensi / Catatan Struk {returnForm.buktiFoto ? '(Opsional)' : <span className="text-rose-500">*</span>}
+                                </label>
                                 <input
                                     type="text"
                                     value={returnForm.buktiTeks}
                                     onChange={e => setReturnForm({ ...returnForm, buktiTeks: e.target.value })}
-                                    placeholder="Contoh: No. Ref TRX123456"
+                                    placeholder="Contoh: No. Ref TRX123456 / No. Struk ATM"
                                     className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                    required
+                                    required={!returnForm.buktiFoto}
                                 />
                             </div>
+
                             <div>
                                 <label className="block text-xs font-bold text-slate-500 uppercase mb-1">Keterangan / Catatan</label>
                                 <textarea
@@ -1372,6 +1625,349 @@ export default function FundAvailability() {
                                 })()}
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ── MODAL RINCIAN VERIFIKASI PENGEMBALIAN DANA (SUPERADMIN) */}
+            {reviewReturn && (() => {
+                const uName = units?.find(u => u.id === reviewReturn.unitId)?.name || fields?.find(f => f.id === reviewReturn.fieldId)?.name || 'Unit/Bidang';
+                const reqOrigin = budgetRequests?.find(r => r.id === reviewReturn.budgetRequestId || r.id === reviewReturn.requestId);
+                
+                // Realization reports
+                const relatedReports = (budgetReports || []).filter(r => 
+                    (r.budgetRequestId === reqOrigin?.id || r.requestId === reqOrigin?.id) && 
+                    r.status === 'APPROVED' && 
+                    r.kategoriAset !== 'PENGEMBALIAN'
+                );
+                const totalBelanjaNota = relatedReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+                const totalPaguDicairkan = reqOrigin ? (parseFloat(reqOrigin.totalAmount) || parseFloat(reqOrigin.amount) || 0) : 0;
+                const sisaPaguRiil = Math.max(0, totalPaguDicairkan - totalBelanjaNota);
+                const returnAmount = parseFloat(reviewReturn.amount || 0);
+
+                const proofData = getProofData(reviewReturn);
+                const isPdf = proofData && (proofData.startsWith('data:application/pdf') || proofData.endsWith('.pdf'));
+                const isImg = proofData && (proofData.startsWith('data:image/') || (!isPdf && (proofData.includes('.jpg') || proofData.includes('.png') || proofData.includes('.webp'))));
+
+                return (
+                    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
+                        <div className="bg-white rounded-[2.5rem] max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in zoom-in-95">
+                            {/* Header */}
+                            <div className="p-6 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white border border-white/20">
+                                        <HandCoins size={24} />
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-black tracking-widest uppercase bg-white/20 px-2 py-0.5 rounded-full text-indigo-100">
+                                            Verifikasi Yayasan
+                                        </span>
+                                        <h3 className="font-black text-lg text-white mt-0.5">
+                                            Rincian Pengembalian Sisa Dana
+                                        </h3>
+                                    </div>
+                                </div>
+                                <button
+                                    onClick={() => setReviewReturn(null)}
+                                    className="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors"
+                                >
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="p-6 md:p-8 space-y-6 max-h-[75vh] overflow-y-auto">
+                                {/* Unit Info & Tanggal */}
+                                <div className="flex flex-wrap items-center justify-between gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Unit / Bidang</span>
+                                        <span className="text-base font-black text-slate-800">{uName}</span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Tanggal Pengajuan</span>
+                                        <span className="text-xs font-bold text-slate-700">
+                                            {reviewReturn.date ? new Date(reviewReturn.date).toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' }) : '-'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">Bulan Permintaan (REQ)</span>
+                                        <span className="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2.5 py-1 rounded-lg inline-block">
+                                            {reqOrigin ? formatMonthLabel(reqOrigin.month) : (reviewReturn.budgetRequestId ? reviewReturn.budgetRequestId.slice(-8) : 'Umum')}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Ringkasan 4 Kartu Metrik Anggaran */}
+                                <div>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+                                        <Layers size={14} className="text-indigo-600" />
+                                        <span>Komparasi Pagu Realisasi Belanja</span>
+                                    </h4>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div className="p-4 rounded-2xl bg-indigo-50/60 border border-indigo-100">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase block">1. Pagu Dicairkan</span>
+                                            <span className="text-sm font-black text-indigo-700 block mt-1">{formatRupiah(totalPaguDicairkan)}</span>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-100">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase block">2. Belanja (Nota ACC)</span>
+                                            <span className="text-sm font-black text-rose-600 block mt-1">{formatRupiah(totalBelanjaNota)}</span>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-100">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase block">3. Sisa Pagu Riil</span>
+                                            <span className="text-sm font-black text-amber-700 block mt-1">{formatRupiah(sisaPaguRiil)}</span>
+                                        </div>
+                                        <div className="p-4 rounded-2xl bg-emerald-50/60 border border-emerald-100 ring-2 ring-emerald-500/20">
+                                            <span className="text-[10px] font-bold text-slate-500 uppercase block">4. Pengembalian</span>
+                                            <span className="text-base font-black text-emerald-700 block mt-1">{formatRupiah(returnAmount)}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Status Validasi Klop */}
+                                    <div className="mt-3">
+                                        {returnAmount === sisaPaguRiil && returnAmount > 0 && (
+                                            <div className="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center gap-2 text-emerald-800 text-xs font-bold">
+                                                <CheckCircle size={16} className="text-emerald-600 shrink-0" />
+                                                <span>Nominal Pas 100% sesuai sisa pagu riil yang belum dilaporkan ({formatRupiah(sisaPaguRiil)}).</span>
+                                            </div>
+                                        )}
+                                        {returnAmount < sisaPaguRiil && (
+                                            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center gap-2 text-amber-800 text-xs font-bold">
+                                                <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                                                <span>Pengembalian sebagian ({formatRupiah(returnAmount)}). Sisa {formatRupiah(sisaPaguRiil - returnAmount)} tetap tercatat sebagai sisa pagu yang masih harus dilaporkan unit.</span>
+                                            </div>
+                                        )}
+                                        {returnAmount > sisaPaguRiil && (
+                                            <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-bold">
+                                                <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                                                <span>Nominal pengembalian MELEBIHI sisa pagu riil ({formatRupiah(sisaPaguRiil)})! Kelebihan {formatRupiah(returnAmount - sisaPaguRiil)}.</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Breakdown Pos Belanja dari Surat Permintaan */}
+                                {reqOrigin?.items && reqOrigin.items.length > 0 && (
+                                    <div>
+                                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-2.5">
+                                            Rincian Pos Komponen Belanja (REQ: {reqOrigin.id})
+                                        </h4>
+                                        <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                                            <table className="w-full text-left text-xs">
+                                                <thead className="bg-slate-100 text-slate-600 font-black uppercase text-[10px]">
+                                                    <tr>
+                                                        <th className="p-3">Pos Belanja</th>
+                                                        <th className="p-3 text-right">Pagu</th>
+                                                        <th className="p-3 text-right">Realisasi</th>
+                                                        <th className="p-3 text-right">Sisa</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-100">
+                                                    {reqOrigin.items.map((item, idx) => {
+                                                        const iAmt = parseFloat(item.amount || 0);
+                                                        const iUsed = relatedReports
+                                                            .filter(r => (item.componentId && r.componentId === item.componentId) || ((r.category || r.description || '').trim().toLowerCase() === (item.name || '').trim().toLowerCase()))
+                                                            .reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+                                                        const iSisa = Math.max(0, iAmt - iUsed);
+                                                        return (
+                                                            <tr key={idx} className="hover:bg-slate-50/50">
+                                                                <td className="p-3 font-bold text-slate-800">{item.name || 'Pos Belanja'}</td>
+                                                                <td className="p-3 text-right font-medium text-slate-600">{formatRupiah(iAmt)}</td>
+                                                                <td className="p-3 text-right font-medium text-rose-600">{formatRupiah(iUsed)}</td>
+                                                                <td className="p-3 text-right font-black text-emerald-700">{formatRupiah(iSisa)}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Bukti Transfer & Catatan */}
+                                <div>
+                                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-1.5">
+                                        <ShieldCheck size={14} className="text-indigo-600" />
+                                        <span>Bukti Transfer & Catatan Unit</span>
+                                    </h4>
+
+                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200 space-y-4">
+                                        {reviewReturn.buktiTeks && (
+                                            <div>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                                                    Nomor Referensi / Catatan Struk:
+                                                </span>
+                                                <div className="text-xs font-mono font-bold text-slate-800 bg-white p-3 rounded-xl border border-slate-200">
+                                                    {reviewReturn.buktiTeks}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {reviewReturn.description && (
+                                            <div>
+                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                                                    Keterangan Tambahan Unit:
+                                                </span>
+                                                <div className="text-xs text-slate-700 bg-white p-3 rounded-xl border border-slate-200 font-medium">
+                                                    {reviewReturn.description}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Tampilan Lampiran Bukti File (Foto atau PDF) */}
+                                        <div>
+                                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">
+                                                Lampiran Berkas Bukti:
+                                            </span>
+
+                                            {isImg && (
+                                                <div className="space-y-3">
+                                                    <div
+                                                        onClick={() => setLightboxImage(proofData)}
+                                                        className="relative rounded-2xl overflow-hidden border border-slate-200 bg-slate-900/5 group cursor-pointer max-h-80 flex items-center justify-center shadow-xs"
+                                                    >
+                                                        <img
+                                                            src={proofData}
+                                                            alt="Bukti Transfer"
+                                                            className="w-full max-h-80 object-contain group-hover:scale-102 transition-transform duration-200"
+                                                        />
+                                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity backdrop-blur-xs text-white font-bold text-xs gap-1.5">
+                                                            <ZoomIn size={18} /> Klik untuk Memperbesar Foto
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setLightboxImage(proofData)}
+                                                            className="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold border border-indigo-200 flex items-center gap-1.5 transition-colors"
+                                                        >
+                                                            <ZoomIn size={14} /> Perbesar Foto
+                                                        </button>
+                                                        <a
+                                                            href={proofData}
+                                                            download={`Bukti_Transfer_${uName}_${reviewReturn.id}.jpg`}
+                                                            className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-colors"
+                                                        >
+                                                            <Download size={14} /> Unduh Foto
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {isPdf && (
+                                                <div className="space-y-3">
+                                                    <div className="p-4 bg-white rounded-2xl border border-rose-200 flex items-center justify-between gap-3 shadow-xs">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-12 h-12 bg-rose-500 text-white rounded-xl flex items-center justify-center shrink-0">
+                                                                <FileText size={24} />
+                                                            </div>
+                                                            <div>
+                                                                <div className="text-xs font-black text-slate-800">
+                                                                    Dokumen Bukti Transfer (PDF)
+                                                                </div>
+                                                                <div className="text-[10px] text-slate-500 font-medium">
+                                                                    Resi transfer resmi format PDF
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            <a
+                                                                href={proofData}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="px-3 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors shadow-sm"
+                                                            >
+                                                                <ExternalLink size={13} /> Buka PDF
+                                                            </a>
+                                                            <a
+                                                                href={proofData}
+                                                                download={`Bukti_Transfer_${uName}_${reviewReturn.id}.pdf`}
+                                                                className="px-3 py-2 bg-white hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold border border-slate-200 flex items-center gap-1.5 transition-colors"
+                                                            >
+                                                                <Download size={13} /> Unduh
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                    <div className="rounded-2xl border border-slate-200 overflow-hidden">
+                                                        <iframe
+                                                            src={proofData}
+                                                            title="Preview Dokumen PDF"
+                                                            className="w-full h-80 bg-slate-100"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {!proofData && (
+                                                <div className="p-4 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-xs font-medium flex items-start gap-2">
+                                                    <Info size={16} className="text-amber-600 mt-0.5 shrink-0" />
+                                                    <span>Tidak ada file foto/PDF terlampir. Pengajuan ini hanya menyertakan teks catatan struk transfer.</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Footer Modal dengan Tombol ACC dan Tolak */}
+                            <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setReviewReturn(null)}
+                                    className="w-full sm:w-auto px-6 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-bold text-xs transition-colors"
+                                >
+                                    Tutup Rincian
+                                </button>
+                                <div className="flex items-center gap-3 w-full sm:w-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRejectReturn(reviewReturn)}
+                                        disabled={processingId === reviewReturn.id}
+                                        className="flex-1 sm:flex-initial px-5 py-3 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-xl font-bold text-xs transition-all border border-rose-200"
+                                    >
+                                        Tolak Pengembalian
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleApproveReturn(reviewReturn)}
+                                        disabled={processingId === reviewReturn.id}
+                                        className="flex-1 sm:flex-initial px-7 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2"
+                                    >
+                                        <CheckCircle size={16} />
+                                        <span>Setujui (ACC Pengembalian)</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ── LIGHTBOX MODAL (ZOOM FOTO BUKTI FULLSCREEN) */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-[70] bg-black/90 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh] flex flex-col items-center" onClick={e => e.stopPropagation()}>
+                        <div className="absolute -top-12 right-0 flex items-center gap-2">
+                            <a
+                                href={lightboxImage}
+                                download="Bukti_Transfer_Penuh.jpg"
+                                className="px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 backdrop-blur-md transition-colors"
+                            >
+                                <Download size={14} /> Unduh
+                            </a>
+                            <button
+                                onClick={() => setLightboxImage(null)}
+                                className="w-9 h-9 rounded-xl bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        </div>
+                        <img
+                            src={lightboxImage}
+                            alt="Foto Bukti Ukuran Penuh"
+                            className="max-h-[85vh] max-w-full rounded-2xl shadow-2xl object-contain border border-white/10"
+                        />
                     </div>
                 </div>
             )}

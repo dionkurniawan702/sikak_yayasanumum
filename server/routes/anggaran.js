@@ -1105,7 +1105,7 @@ router.post('/budget-reports', async (req, res) => {
         const {
             id, budgetRequestId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
-            buktiTeks, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, namaAset, assetName, status, planId, source
+            buktiTeks, buktiFoto, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, namaAset, assetName, status, planId, source
         } = req.body;
         const prisma = getPrisma(req);
 
@@ -1134,6 +1134,7 @@ router.post('/budget-reports', async (req, res) => {
                     source: source || null,
                     // New fields
                     buktiTeks: buktiTeks || null,
+                    buktiFoto: buktiFoto || null,
                     nomorNota: nomorNota || null,
                     volume: volume ? parseFloat(volume) : null,
                     satuan: satuan || null,
@@ -1289,7 +1290,7 @@ router.put('/budget-reports/:id', async (req, res) => {
         const ALLOWED_FIELDS = [
             'status', 'amount', 'description', 'date', 'expenseItemId',
             'unitId', 'fieldId', 'academicYearId', 'category', 'source',
-            'buktiTeks', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
+            'buktiTeks', 'buktiFoto', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
             'kategoriAset', 'umurEkonomis', 'namaAset', 'isDeleted', 'planId', 'budgetRequestId'
         ];
 

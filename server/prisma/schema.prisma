@@ -397,6 +397,7 @@ model BudgetReport {
   isDeleted       Boolean       @default(false)
   // New fields for enhanced laporan form
   buktiTeks       String?       @db.Text
+  buktiFoto       String?       @db.LongText
   nomorNota       String?
   volume          Decimal?      @db.Decimal(15, 4)
   satuan          String?
