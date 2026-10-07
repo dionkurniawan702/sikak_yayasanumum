@@ -671,23 +671,44 @@ export default function JournalEntry() {
     const isBalanced = totalDebit > 0 && Math.abs(totalDebit - totalCredit) < 0.01;
     const difference = Math.abs(totalDebit - totalCredit);
 
+    const isEntryPending = (e) => {
+        if (!e) return true;
+        const accId = String(e.accountId || '').trim();
+        const accName = String(e.accountName || '').trim();
+        if (!accId || accId === 'PENDING' || accId === '-') return true;
+        if (accName.toLowerCase().includes('menunggu coa')) return true;
+        return false;
+    };
+
+    const isJournalPending = (j) => {
+        const entries = j.entries || [];
+        if (!Array.isArray(entries) || entries.length === 0) return true;
+        return entries.some(isEntryPending);
+    };
+
+    const isJournalComplete = (j) => {
+        const entries = j.entries || [];
+        if (!Array.isArray(entries) || entries.length < 2) return false;
+        return !entries.some(isEntryPending);
+    };
+
     const activeJournals = selectedPeriod === 'LATEST_500' ? journals : monthJournals;
 
     const countTotal = selectedPeriod === 'LATEST_500' 
         ? (state.totalJournalsCount || journals.length) 
         : (monthTotalCount ?? activeJournals.length);
 
-    const countDone = activeJournals.filter(j => !j.entries?.some(e => !e.accountId)).length;
-    const countPending = activeJournals.filter(j => j.entries?.some(e => !e.accountId)).length;
+    const countDone = activeJournals.filter(j => isJournalComplete(j)).length;
+    const countPending = activeJournals.filter(j => isJournalPending(j)).length;
 
     const filteredJournals = activeJournals
         .filter(j => !j.isDeleted)
         .filter(j => {
             if (historyStatusFilter === 'PENDING') {
-                return j.entries?.some(e => !e.accountId);
+                return isJournalPending(j);
             }
             if (historyStatusFilter === 'DONE') {
-                return !j.entries?.some(e => !e.accountId);
+                return isJournalComplete(j);
             }
             return true;
         })
@@ -1463,18 +1484,32 @@ export default function JournalEntry() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {/* Total Jurnal */}
                         <div 
-                            onClick={() => setHistoryStatusFilter('ALL')}
-                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
+                            onClick={() => {
+                                setHistoryStatusFilter('ALL');
+                                setCurrentPage(1);
+                            }}
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg relative overflow-hidden ${
                                 historyStatusFilter === 'ALL' 
-                                    ? 'bg-blue-50/50 border-blue-200 shadow-blue-100/50' 
-                                    : 'bg-white border-slate-100 hover:border-blue-100 shadow-sm'
+                                    ? 'bg-blue-50/70 border-blue-300 ring-2 ring-blue-500 shadow-md shadow-blue-500/10' 
+                                    : 'bg-white border-slate-100 hover:border-blue-200 shadow-sm'
                             }`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="p-3 bg-blue-100 text-blue-600 rounded-2xl">
                                     <List size={20} />
                                 </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Jurnal</span>
+                                <div className="flex items-center gap-2">
+                                    {historyStatusFilter === 'ALL' ? (
+                                        <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full text-[9px] font-black uppercase tracking-wider">
+                                            Aktif
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-lg border border-slate-100">
+                                            Klik untuk lihat
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Jurnal</span>
+                                </div>
                             </div>
                             <div className="mt-4">
                                 <h3 className="text-3xl font-black text-slate-800">{countTotal.toLocaleString('id-ID')}</h3>
@@ -1486,48 +1521,110 @@ export default function JournalEntry() {
                             </div>
                         </div>
 
-                        {/* Jurnal Terisi */}
+                        {/* Jurnal Terisi (Terisi COA) */}
                         <div 
-                            onClick={() => setHistoryStatusFilter('DONE')}
-                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
+                            onClick={() => {
+                                setHistoryStatusFilter(prev => prev === 'DONE' ? 'ALL' : 'DONE');
+                                setCurrentPage(1);
+                            }}
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg relative overflow-hidden ${
                                 historyStatusFilter === 'DONE' 
-                                    ? 'bg-emerald-50/50 border-emerald-200 shadow-emerald-100/50' 
-                                    : 'bg-white border-slate-100 hover:border-emerald-100 shadow-sm'
+                                    ? 'bg-emerald-50/80 border-emerald-300 ring-2 ring-emerald-500 shadow-md shadow-emerald-500/10' 
+                                    : 'bg-white border-slate-100 hover:border-emerald-200 shadow-sm'
                             }`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="p-3 bg-emerald-100 text-emerald-600 rounded-2xl">
                                     <CheckCircle size={20} />
                                 </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Terisi COA</span>
+                                <div className="flex items-center gap-2">
+                                    {historyStatusFilter === 'DONE' ? (
+                                        <span className="px-2.5 py-1 bg-emerald-600 text-white rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm animate-in fade-in">
+                                            ✓ Filter Aktif
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-colors">
+                                            Klik untuk lihat
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Terisi COA</span>
+                                </div>
                             </div>
                             <div className="mt-4">
-                                <h3 className="text-3xl font-black text-slate-800">{countDone.toLocaleString('id-ID')}</h3>
-                                <p className="text-xs text-slate-400 font-bold mt-1">Transaksi dengan akun lengkap</p>
+                                <h3 className="text-3xl font-black text-emerald-700">{countDone.toLocaleString('id-ID')}</h3>
+                                <p className="text-xs text-emerald-600/80 font-bold mt-1">Transaksi dengan akun lengkap</p>
                             </div>
                         </div>
 
                         {/* Menunggu COA */}
                         <div 
-                            onClick={() => setHistoryStatusFilter('PENDING')}
-                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg ${
+                            onClick={() => {
+                                setHistoryStatusFilter(prev => prev === 'PENDING' ? 'ALL' : 'PENDING');
+                                setCurrentPage(1);
+                            }}
+                            className={`p-6 rounded-[2rem] border transition-all cursor-pointer hover:-translate-y-1 hover:shadow-lg relative overflow-hidden ${
                                 historyStatusFilter === 'PENDING' 
-                                    ? 'bg-amber-50/50 border-amber-200 shadow-amber-100/50' 
-                                    : 'bg-white border-slate-100 hover:border-amber-100 shadow-sm'
+                                    ? 'bg-amber-50/80 border-amber-300 ring-2 ring-amber-500 shadow-md shadow-amber-500/10' 
+                                    : 'bg-white border-slate-100 hover:border-amber-200 shadow-sm'
                             }`}
                         >
                             <div className="flex items-center justify-between">
                                 <div className="p-3 bg-amber-100 text-amber-600 rounded-2xl animate-pulse">
                                     <Hourglass size={20} />
                                 </div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Menunggu COA</span>
+                                <div className="flex items-center gap-2">
+                                    {historyStatusFilter === 'PENDING' ? (
+                                        <span className="px-2.5 py-1 bg-amber-600 text-white rounded-full text-[9px] font-black uppercase tracking-wider shadow-sm animate-in fade-in">
+                                            ⏳ Filter Aktif
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors">
+                                            Klik untuk lihat
+                                        </span>
+                                    )}
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Menunggu COA</span>
+                                </div>
                             </div>
                             <div className="mt-4">
-                                <h3 className="text-3xl font-black text-slate-800">{countPending.toLocaleString('id-ID')}</h3>
-                                <p className="text-xs text-slate-400 font-bold mt-1">Perlu pemetaan akun COA</p>
+                                <h3 className="text-3xl font-black text-amber-700">{countPending.toLocaleString('id-ID')}</h3>
+                                <p className="text-xs text-amber-600/80 font-bold mt-1">Perlu pemetaan akun COA</p>
                             </div>
                         </div>
                     </div>
+
+                    {/* Active Filter Banner */}
+                    {historyStatusFilter !== 'ALL' && (
+                        <div className={`p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in ${
+                            historyStatusFilter === 'DONE' 
+                                ? 'bg-emerald-50 border-emerald-200 text-emerald-950' 
+                                : 'bg-amber-50 border-amber-200 text-amber-950'
+                        }`}>
+                            <div className="flex items-center gap-3">
+                                <span className={`w-3 h-3 rounded-full ${historyStatusFilter === 'DONE' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`}></span>
+                                <div>
+                                    <p className="text-xs font-black">
+                                        {historyStatusFilter === 'DONE' 
+                                            ? `Menampilkan ${filteredJournals.length} Transaksi dengan Akun Lengkap (Terisi COA)`
+                                            : `Menampilkan ${filteredJournals.length} Transaksi yang Menunggu Pemetaan Akun (Menunggu COA)`}
+                                    </p>
+                                    <p className="text-[11px] opacity-75">
+                                        {historyStatusFilter === 'DONE'
+                                            ? 'Daftar transaksi di bawah ini telah terisi akun Debit & Kredit secara lengkap.'
+                                            : 'Daftar transaksi ini perlu dipetakan akun COA sebelum tutup buku.'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setHistoryStatusFilter('ALL');
+                                    setCurrentPage(1);
+                                }}
+                                className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-rose-300 hover:text-rose-600 text-xs font-bold text-slate-600 shadow-sm transition-all shrink-0"
+                            >
+                                <X size={14} /> Tampilkan Semua Transaksi
+                            </button>
+                        </div>
+                    )}
 
                     {/* Table List Container */}
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden animate-in">
@@ -1642,15 +1739,82 @@ export default function JournalEntry() {
                                                 <p className="text-slate-500 text-xs font-medium">{formatTanggal(j.date)}</p>
                                             </td>
                                             <td className="px-8 py-4">
-                                                <p className="font-bold text-slate-800 text-sm">{j.description}</p>
-                                                <div className="flex gap-2 mt-1 items-center">
+                                                <p className="font-bold text-slate-800 text-sm leading-snug">{j.description}</p>
+                                                <div className="flex flex-wrap gap-2 mt-1.5 items-center">
                                                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{programs.find(p => p.id === j.programId)?.name || 'Umum'}</p>
-                                                    {j.entries?.some(e => !e.accountId) && (
-                                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
-                                                            <AlertTriangle size={10} /> Menunggu COA
+                                                    {isJournalPending(j) ? (
+                                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                            <AlertTriangle size={10} className="text-amber-600" /> Menunggu COA
+                                                        </span>
+                                                    ) : (
+                                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded-lg text-[9px] font-black uppercase tracking-widest flex items-center gap-1">
+                                                            <CheckCircle size={10} className="text-emerald-600" /> Terisi COA
                                                         </span>
                                                     )}
+                                                    {j.reference && (
+                                                        <span className="text-[10px] text-slate-400 font-medium">Ref: {j.reference}</span>
+                                                    )}
+                                                    {j.name && (
+                                                        <span className="text-[10px] text-slate-400 font-medium">• {j.name}</span>
+                                                    )}
                                                 </div>
+
+                                                {/* Detail Rincian Akun Debit & Kredit */}
+                                                {(() => {
+                                                    const debits = (j.entries || []).filter(e => (parseFloat(e.debit) || 0) > 0);
+                                                    const credits = (j.entries || []).filter(e => (parseFloat(e.credit) || 0) > 0);
+
+                                                    if (debits.length === 0 && credits.length === 0) return null;
+
+                                                    return (
+                                                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                                                            {debits.map((d, dIdx) => {
+                                                                const res = resolveEntryAccount(d);
+                                                                const isPend = isEntryPending(d);
+                                                                return (
+                                                                    <span 
+                                                                        key={`d-${dIdx}`} 
+                                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] ${
+                                                                            isPend 
+                                                                                ? 'bg-amber-50 text-amber-800 border border-amber-200 font-bold' 
+                                                                                : 'bg-emerald-50 text-emerald-900 border border-emerald-200/80 font-medium'
+                                                                        }`}
+                                                                        title={`Debit: ${res.name} (${(parseFloat(d.debit) || 0).toLocaleString('id-ID')})`}
+                                                                    >
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                                                                        <span className="font-black text-emerald-700 text-[10px]">D:</span>
+                                                                        {res.code && res.code !== '-' && (
+                                                                            <strong className="font-mono text-[10px] bg-white/80 px-1 py-0.5 rounded border border-emerald-200">{res.code}</strong>
+                                                                        )}
+                                                                        <span className="truncate max-w-[240px]">{res.name}</span>
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                            {credits.map((c, cIdx) => {
+                                                                const res = resolveEntryAccount(c);
+                                                                const isPend = isEntryPending(c);
+                                                                return (
+                                                                    <span 
+                                                                        key={`c-${cIdx}`} 
+                                                                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] ${
+                                                                            isPend 
+                                                                                ? 'bg-amber-50 text-amber-800 border border-amber-200 font-bold' 
+                                                                                : 'bg-blue-50 text-blue-900 border border-blue-200/80 font-medium'
+                                                                        }`}
+                                                                        title={`Kredit: ${res.name} (${(parseFloat(c.credit) || 0).toLocaleString('id-ID')})`}
+                                                                    >
+                                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                                        <span className="font-black text-blue-700 text-[10px]">K:</span>
+                                                                        {res.code && res.code !== '-' && (
+                                                                            <strong className="font-mono text-[10px] bg-white/80 px-1 py-0.5 rounded border border-blue-200">{res.code}</strong>
+                                                                        )}
+                                                                        <span className="truncate max-w-[240px]">{res.name}</span>
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    );
+                                                })()}
                                             </td>
                                             <td className="px-8 py-4 text-right font-black text-slate-800">
                                                 <CurrencyDisplay value={(j.entries || []).reduce((s, e) => s + (e.debit || 0), 0)} />
