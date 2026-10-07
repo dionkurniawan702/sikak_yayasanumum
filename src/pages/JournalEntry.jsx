@@ -7,6 +7,8 @@ import {
     ChevronLeft, ChevronRight, Loader2, ArrowUpDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 import CurrencyDisplay from '../components/CurrencyDisplay';
 import { api } from '../services/api';
 
@@ -176,16 +178,208 @@ export default function JournalEntry() {
         return () => { isMounted = false; };
     }, [selectedPeriod]);
 
-    const downloadTemplate = () => {
-        const wsData = [
-            ['Tanggal', 'Pihak Terkait', 'Deskripsi', 'No Referensi', 'Program', 'Kode Akun', 'Debit', 'Kredit'],
-            ['2026-07-14', 'TAUD', 'Pembelian Alat Jilid (Stapler)', 'Nota-01', 'Umum', '11101', 325000, 0],
-            ['', '', '', '', '', '11102', 0, 325000]
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(wsData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Template Jurnal');
-        XLSX.writeFile(wb, 'SIKAD-Template-Impor-Jurnal.xlsx');
+    const getColLetter = (colIndex) => {
+        let temp = '', letter = '';
+        while (colIndex > 0) {
+            temp = (colIndex - 1) % 26;
+            letter = String.fromCharCode(65 + temp) + letter;
+            colIndex = Math.floor((colIndex - temp - 1) / 26);
+        }
+        return letter;
+    };
+
+    const resolveEntryAccount = (entry) => {
+        if (!entry) return { code: '-', name: '-' };
+        const accId = String(entry.accountId || '').trim();
+        const accName = String(entry.accountName || '').trim();
+
+        if (!accId && !accName) return { code: '-', name: '-' };
+        if (accName.toLowerCase().includes('menunggu coa') || accId === 'PENDING') {
+            return { code: '-', name: accName || 'MENUNGGU COA' };
+        }
+
+        // 1. Try finding in accounts list by ID, code, or name
+        const acc = accounts.find(a => 
+            (accId && a.id === accId) ||
+            (accId && a.code === accId) ||
+            (accName && a.name.toLowerCase() === accName.toLowerCase()) ||
+            (accName && `${a.code} - ${a.name}`.toLowerCase() === accName.toLowerCase())
+        );
+        if (acc) {
+            return { code: acc.code || '-', name: acc.name || accName };
+        }
+
+        // 2. Check if accName is like "5-4301 - Beban Listrik (PLN)"
+        const match = accName.match(/^([0-9\-\.]+)\s*-\s*(.+)$/);
+        if (match) {
+            const foundByCode = accounts.find(a => a.code === match[1].trim());
+            if (foundByCode) {
+                return { code: foundByCode.code, name: foundByCode.name };
+            }
+            return { code: match[1].trim(), name: match[2].trim() };
+        }
+
+        // 3. Fallback: check if accId is a UUID or a clean code
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(accId);
+        return {
+            code: !isUUID && accId ? accId : '-',
+            name: accName || (!isUUID && accId ? accId : '-')
+        };
+    };
+
+    const downloadTemplate = async () => {
+        try {
+            const workbook = new ExcelJS.Workbook();
+            const ws = workbook.addWorksheet('Template Impor Jurnal 1 Baris');
+
+            ws.columns = [
+                { header: 'Tanggal', key: 'tanggal', width: 14 },
+                { header: 'Pihak Terkait', key: 'pihak', width: 24 },
+                { header: 'Deskripsi Transaksi', key: 'deskripsi', width: 36 },
+                { header: 'No Referensi', key: 'referensi', width: 18 },
+                { header: 'Program', key: 'program', width: 24 },
+                { header: 'Kode Akun Debit', key: 'kodeDebit', width: 18 },
+                { header: 'Nama Akun Debit', key: 'namaDebit', width: 34 },
+                { header: 'Kode Akun Kredit', key: 'kodeKredit', width: 18 },
+                { header: 'Nama Akun Kredit', key: 'namaKredit', width: 34 },
+                { header: 'Nominal (Rp)', key: 'nominal', width: 18 }
+            ];
+
+            // Header styling
+            const headerRow = ws.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+            headerRow.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF059669' } // Emerald 600
+            };
+            headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+            headerRow.height = 26;
+
+            // Sheet DataRef
+            const refSheet = workbook.addWorksheet('DataRef');
+            refSheet.getCell('A1').value = 'Daftar Program';
+            refSheet.getCell('B1').value = 'Nama Akun (COA)';
+            refSheet.getCell('C1').value = 'Kode Akun';
+            refSheet.getCell('D1').value = 'Kategori Akun';
+
+            const refHeader = refSheet.getRow(1);
+            refHeader.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+            refHeader.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: 'FF2563EB' } // Blue 600
+            };
+            refHeader.alignment = { vertical: 'middle', horizontal: 'center' };
+            refHeader.height = 24;
+
+            const programOptions = Array.from(new Set([
+                'Umum / Tanpa Program',
+                ...programs.map(p => p.name.trim()).filter(Boolean)
+            ]));
+
+            const accountOptions = [];
+            const seenAccountNames = new Set();
+            for (const acc of detailAccounts) {
+                const aName = (acc.name || '').trim();
+                if (aName && !seenAccountNames.has(aName)) {
+                    seenAccountNames.add(aName);
+                    accountOptions.push({
+                        name: aName,
+                        code: acc.code || '-',
+                        type: acc.type || 'Akun'
+                    });
+                }
+            }
+
+            programOptions.forEach((p, idx) => {
+                refSheet.getCell(`A${idx + 2}`).value = p;
+            });
+
+            accountOptions.forEach((a, idx) => {
+                refSheet.getCell(`B${idx + 2}`).value = a.name;
+                refSheet.getCell(`C${idx + 2}`).value = a.code;
+                refSheet.getCell(`D${idx + 2}`).value = a.type;
+            });
+
+            // Find sample accounts
+            const sampleExpenseAcc = accountOptions.find(a => a.code.startsWith('5-') || a.type === 'Beban') || accountOptions[0];
+            const sampleCashAcc = accountOptions.find(a => a.code.startsWith('1-1101') || a.name.toLowerCase().includes('kas yayasan') || a.name.toLowerCase().includes('kas')) || accountOptions[1] || accountOptions[0];
+            const sampleIncomeAcc = accountOptions.find(a => a.code.startsWith('4-') || a.type === 'Pendapatan') || accountOptions[2] || accountOptions[0];
+
+            const maxRefAccRow = accountOptions.length + 1;
+
+            // Row 2 Example (Pengeluaran Operasional)
+            const row2 = ws.addRow({
+                tanggal: '2026-07-14',
+                pihak: 'Toko ATK Berkah',
+                deskripsi: 'Pembelian Kertas HVS & Tinta Printer',
+                referensi: 'Nota-001',
+                program: 'Umum / Tanpa Program',
+                kodeDebit: { formula: `IFERROR(VLOOKUP(G2, DataRef!$B$2:$C$${maxRefAccRow}, 2, FALSE), "")`, result: sampleExpenseAcc?.code || '5-4301' },
+                namaDebit: sampleExpenseAcc?.name || 'Beban Operasional Kantor',
+                kodeKredit: { formula: `IFERROR(VLOOKUP(I2, DataRef!$B$2:$C$${maxRefAccRow}, 2, FALSE), "")`, result: sampleCashAcc?.code || '1-1101' },
+                namaKredit: sampleCashAcc?.name || 'Kas Yayasan (Tunai)',
+                nominal: 275000
+            });
+            row2.getCell('nominal').numFmt = '#,##0';
+
+            // Row 3 Example (Penerimaan Infaq/Donasi)
+            const row3 = ws.addRow({
+                tanggal: '2026-07-15',
+                pihak: 'Donatur Hamba Allah',
+                deskripsi: 'Penerimaan Infaq Operasional Dakwah',
+                referensi: 'KW-002',
+                program: programOptions.find(p => p.toLowerCase().includes('dakwah') || p.toLowerCase().includes('sosial')) || 'Umum / Tanpa Program',
+                kodeDebit: { formula: `IFERROR(VLOOKUP(G3, DataRef!$B$2:$C$${maxRefAccRow}, 2, FALSE), "")`, result: sampleCashAcc?.code || '1-1101' },
+                namaDebit: sampleCashAcc?.name || 'Kas Yayasan (Tunai)',
+                kodeKredit: { formula: `IFERROR(VLOOKUP(I3, DataRef!$B$2:$C$${maxRefAccRow}, 2, FALSE), "")`, result: sampleIncomeAcc?.code || '4-1101' },
+                namaKredit: sampleIncomeAcc?.name || 'Pendapatan Infaq / Donasi',
+                nominal: 1500000
+            });
+            row3.getCell('nominal').numFmt = '#,##0';
+
+            // Data validations (Dropdowns) for rows 2 to 2000
+            // Col E: Program
+            ws.dataValidations.add('E2:E2000', {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`DataRef!$A$2:$A$${programOptions.length + 1}`],
+                showErrorMessage: true,
+                errorTitle: 'Pilihan Program',
+                error: 'Silakan pilih Program dari dropdown daftar yang tersedia.'
+            });
+
+            // Col G: Nama Akun Debit
+            ws.dataValidations.add('G2:G2000', {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`DataRef!$B$2:$B$${accountOptions.length + 1}`],
+                showErrorMessage: true,
+                errorTitle: 'Pilihan Akun Debit',
+                error: 'Silakan pilih Nama Akun Debit dari dropdown daftar yang tersedia.'
+            });
+
+            // Col I: Nama Akun Kredit
+            ws.dataValidations.add('I2:I2000', {
+                type: 'list',
+                allowBlank: true,
+                formulae: [`DataRef!$B$2:$B$${accountOptions.length + 1}`],
+                showErrorMessage: true,
+                errorTitle: 'Pilihan Akun Kredit',
+                error: 'Silakan pilih Nama Akun Kredit dari dropdown daftar yang tersedia.'
+            });
+
+            // Auto-filter
+            ws.autoFilter = 'A1:J1';
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, 'SIKAD-Template-Impor-Jurnal-1-Baris.xlsx');
+        } catch (err) {
+            console.error('[Download Template Error]', err);
+            alert('Gagal mengunduh template: ' + err.message);
+        }
     };
 
     const handleImportExcel = (e) => {
@@ -195,88 +389,239 @@ export default function JournalEntry() {
         const reader = new FileReader();
         reader.onload = async (evt) => {
             try {
-                const data = evt.target.result;
-                const workbook = XLSX.read(data, { type: 'binary', cellDates: true });
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, { type: 'array', cellDates: true });
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 const rows = XLSX.utils.sheet_to_json(worksheet);
 
-                if (rows.length === 0) return alert('File Excel kosong!');
+                if (!rows || rows.length === 0) return alert('File Excel kosong atau tidak terbaca!');
 
                 const journalsGrouped = [];
-                let currentJournal = null;
 
-                for (let i = 0; i < rows.length; i++) {
-                    const row = rows[i];
-                    
-                    const rowDate = row['Tanggal'];
-                    const rowDesc = row['Deskripsi'] || row['Keterangan'];
-                    const rowName = row['Pihak Terkait'] || row['Nama'];
-                    const rowRef = String(row['No Referensi'] || row['Referensi'] || '');
-                    const rowProg = String(row['Program'] || '');
-                    const rowCode = String(row['Kode Akun'] || row['Akun'] || '').trim();
-                    const rowDebit = parseFloat(row['Debit']) || 0;
-                    const rowCredit = parseFloat(row['Kredit']) || 0;
+                // Cek apakah file menggunakan format 1 Baris (debit & kredit sejajar)
+                const isSingleRowFormat = rows.some(r => 
+                    r['Kode Akun Debit'] !== undefined || 
+                    r['Nama Akun Debit'] !== undefined || 
+                    r['Kode Akun Kredit'] !== undefined || 
+                    r['Nama Akun Kredit'] !== undefined
+                );
 
-                    if (!rowCode) continue; // Skip empty rows
+                // Helper untuk mencocokkan akun di COA (berdasarkan kode atau nama)
+                const findAccount = (codeVal, nameVal) => {
+                    const cleanCode = String(codeVal || '').trim();
+                    const cleanName = String(nameVal || '').trim();
 
-                    const isNewJournal = rowDate || rowDesc || !currentJournal;
+                    if (!cleanCode && !cleanName) return null;
+                    if (cleanName.toLowerCase().includes('menunggu coa') || cleanCode === '-' || cleanCode === 'PENDING') {
+                        return { id: '', code: '-', name: cleanName || 'MENUNGGU COA' };
+                    }
 
-                    if (isNewJournal) {
-                        if (currentJournal) {
-                            journalsGrouped.push(currentJournal);
+                    // 1. Berdasarkan kode atau ID
+                    if (cleanCode && cleanCode !== '-') {
+                        const found = detailAccounts.find(a => a.code === cleanCode || a.id === cleanCode);
+                        if (found) return found;
+                    }
+
+                    // 2. Berdasarkan nama persis
+                    if (cleanName && cleanName !== '-') {
+                        const found = detailAccounts.find(a => a.name.toLowerCase() === cleanName.toLowerCase());
+                        if (found) return found;
+                    }
+
+                    // 3. Berdasarkan format "Kode - Nama"
+                    if (cleanName) {
+                        const match = cleanName.match(/^([0-9\-\.]+)\s*-\s*(.+)$/);
+                        if (match) {
+                            const byCode = detailAccounts.find(a => a.code === match[1].trim());
+                            if (byCode) return byCode;
+                            const byName = detailAccounts.find(a => a.name.toLowerCase() === match[2].trim().toLowerCase());
+                            if (byName) return byName;
                         }
+                    }
+
+                    // 4. Berdasarkan pencarian sebagian nama (contains)
+                    if (cleanName && cleanName !== '-') {
+                        const found = detailAccounts.find(a => a.name.toLowerCase().includes(cleanName.toLowerCase()));
+                        if (found) return found;
+                    }
+
+                    return null;
+                };
+
+                const invalidJournals = [];
+
+                if (isSingleRowFormat) {
+                    // PARSING FORMAT 1 BARIS (DEBIT & KREDIT SEJAJAR)
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
                         
-                        let parsedDate = new Date();
-                        if (rowDate) {
-                            parsedDate = new Date(rowDate);
-                            if (isNaN(parsedDate.getTime())) parsedDate = new Date();
+                        const rowDate = row['Tanggal'];
+                        const rowName = row['Pihak Terkait'] || row['Nama'] || '';
+                        const rowDesc = row['Deskripsi Transaksi'] || row['Deskripsi'] || row['Keterangan'] || '';
+                        const rowRef = String(row['No Referensi'] || row['Referensi'] || '');
+                        const rowProg = String(row['Program'] || '');
+                        
+                        const rawNominal = row['Nominal (Rp)'] ?? row['Nominal'] ?? row['Jumlah'] ?? row['Debit'] ?? 0;
+                        const nominal = typeof rawNominal === 'number' 
+                            ? rawNominal 
+                            : parseFloat(String(rawNominal).replace(/[^\d.-]/g, '')) || 0;
+
+                        const debitCode = row['Kode Akun Debit'];
+                        const debitName = row['Nama Akun Debit'];
+                        const creditCode = row['Kode Akun Kredit'];
+                        const creditName = row['Nama Akun Kredit'];
+
+                        // Lewati baris jika benar-benar kosong
+                        if (!rowDate && !rowDesc && !debitName && !creditName && nominal === 0) {
+                            continue;
                         }
 
+                        // Format Tanggal
+                        let dateStr = '';
+                        if (rowDate instanceof Date) {
+                            dateStr = rowDate.toISOString().slice(0, 10);
+                        } else if (typeof rowDate === 'string' && rowDate.trim()) {
+                            const trimmed = rowDate.trim();
+                            if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+                                dateStr = trimmed.slice(0, 10);
+                            } else {
+                                const d = new Date(trimmed);
+                                dateStr = !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+                            }
+                        } else if (typeof rowDate === 'number') {
+                            const d = new Date(Math.round((rowDate - 25569) * 86400 * 1000));
+                            dateStr = !isNaN(d.getTime()) ? d.toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
+                        } else {
+                            dateStr = new Date().toISOString().slice(0, 10);
+                        }
+
+                        // Format Program
                         let matchedProgId = 'PRG-GEN';
-                        if (rowProg) {
-                            const p = programs.find(pr => pr.name.toLowerCase().includes(rowProg.toLowerCase()) || pr.id.toLowerCase() === rowProg.toLowerCase());
+                        if (rowProg && rowProg.trim() && !rowProg.toLowerCase().includes('umum / tanpa')) {
+                            const p = programs.find(pr => 
+                                pr.name.toLowerCase() === rowProg.toLowerCase().trim() || 
+                                pr.id.toLowerCase() === rowProg.toLowerCase().trim() ||
+                                pr.name.toLowerCase().includes(rowProg.toLowerCase().trim())
+                            );
                             if (p) matchedProgId = p.id;
                         }
 
-                        currentJournal = {
-                            date: parsedDate.toISOString().slice(0, 10),
-                            name: rowName || '',
-                            description: rowDesc || 'Jurnal Impor',
-                            reference: rowRef || '',
+                        // Pencocokan Akun Debit & Kredit
+                        const debitAcc = findAccount(debitCode, debitName);
+                        const creditAcc = findAccount(creditCode, creditName);
+
+                        if (!debitAcc) {
+                            invalidJournals.push(`Baris ${i + 2}: Akun Debit ("${debitName || debitCode || 'Kosong'}") tidak ditemukan di COA!`);
+                            continue;
+                        }
+                        if (!creditAcc) {
+                            invalidJournals.push(`Baris ${i + 2}: Akun Kredit ("${creditName || creditCode || 'Kosong'}") tidak ditemukan di COA!`);
+                            continue;
+                        }
+                        if (nominal <= 0) {
+                            invalidJournals.push(`Baris ${i + 2} (${rowDesc || 'Transaksi'}): Nilai Nominal harus lebih besar dari 0.`);
+                            continue;
+                        }
+
+                        journalsGrouped.push({
+                            date: dateStr,
+                            name: rowName,
+                            description: rowDesc || 'Jurnal Impor (1 Baris)',
+                            reference: rowRef,
                             programId: matchedProgId,
-                            entries: []
-                        };
+                            entries: [
+                                {
+                                    accountId: debitAcc.id || '',
+                                    accountName: debitAcc.name || 'MENUNGGU COA (Debit)',
+                                    debit: nominal,
+                                    credit: 0
+                                },
+                                {
+                                    accountId: creditAcc.id || '',
+                                    accountName: creditAcc.name || 'MENUNGGU COA (Kredit)',
+                                    debit: 0,
+                                    credit: nominal
+                                }
+                            ]
+                        });
+                    }
+                } else {
+                    // PARSING FORMAT LAMA (MULTI-BARIS DEBIT & KREDIT TERPISAH)
+                    let currentJournal = null;
+
+                    for (let i = 0; i < rows.length; i++) {
+                        const row = rows[i];
+                        
+                        const rowDate = row['Tanggal'];
+                        const rowDesc = row['Deskripsi'] || row['Keterangan'];
+                        const rowName = row['Pihak Terkait'] || row['Nama'];
+                        const rowRef = String(row['No Referensi'] || row['Referensi'] || '');
+                        const rowProg = String(row['Program'] || '');
+                        const rowCode = String(row['Kode Akun'] || row['Akun'] || '').trim();
+                        const rowDebit = parseFloat(row['Debit']) || 0;
+                        const rowCredit = parseFloat(row['Kredit']) || 0;
+
+                        if (!rowCode) continue;
+
+                        const isNewJournal = rowDate || rowDesc || !currentJournal;
+
+                        if (isNewJournal) {
+                            if (currentJournal) {
+                                journalsGrouped.push(currentJournal);
+                            }
+                            
+                            let parsedDate = new Date();
+                            if (rowDate) {
+                                parsedDate = new Date(rowDate);
+                                if (isNaN(parsedDate.getTime())) parsedDate = new Date();
+                            }
+
+                            let matchedProgId = 'PRG-GEN';
+                            if (rowProg) {
+                                const p = programs.find(pr => pr.name.toLowerCase().includes(rowProg.toLowerCase()) || pr.id.toLowerCase() === rowProg.toLowerCase());
+                                if (p) matchedProgId = p.id;
+                            }
+
+                            currentJournal = {
+                                date: parsedDate.toISOString().slice(0, 10),
+                                name: rowName || '',
+                                description: rowDesc || 'Jurnal Impor',
+                                reference: rowRef || '',
+                                programId: matchedProgId,
+                                entries: []
+                            };
+                        }
+
+                        const account = detailAccounts.find(a => a.code === rowCode || a.name === rowCode);
+                        if (!account) {
+                            invalidJournals.push(`Baris ${i + 2}: Kode Akun "${rowCode}" tidak ditemukan di Chart of Accounts (COA)!`);
+                            continue;
+                        }
+
+                        currentJournal.entries.push({
+                            accountId: account.id,
+                            accountName: account.name,
+                            debit: rowDebit,
+                            credit: rowCredit
+                        });
                     }
 
-                    const account = detailAccounts.find(a => a.code === rowCode || a.name === rowCode);
-                    if (!account) {
-                        throw new Error(`Baris ${i + 2}: Kode Akun "${rowCode}" tidak ditemukan di Chart of Accounts (COA)!`);
+                    if (currentJournal) {
+                        journalsGrouped.push(currentJournal);
                     }
 
-                    currentJournal.entries.push({
-                        accountId: account.id,
-                        accountName: account.name,
-                        debit: rowDebit,
-                        credit: rowCredit
-                    });
-                }
-
-                if (currentJournal) {
-                    journalsGrouped.push(currentJournal);
-                }
-
-                // Validasi balance
-                const invalidJournals = [];
-                for (let i = 0; i < journalsGrouped.length; i++) {
-                    const j = journalsGrouped[i];
-                    const totalD = j.entries.reduce((sum, entry) => sum + entry.debit, 0);
-                    const totalC = j.entries.reduce((sum, entry) => sum + entry.credit, 0);
-                    
-                    if (j.entries.length < 2) {
-                        invalidJournals.push(`Jurnal ke-${i+1} (${j.description}): Harus memiliki minimal 2 entri rekening.`);
-                    } else if (Math.abs(totalD - totalC) > 0.01 || totalD === 0) {
-                        invalidJournals.push(`Jurnal ke-${i+1} (${j.description}): Nilai Debit (${totalD}) dan Kredit (${totalC}) tidak seimbang atau bernilai 0.`);
+                    // Validasi balance format lama
+                    for (let i = 0; i < journalsGrouped.length; i++) {
+                        const j = journalsGrouped[i];
+                        const totalD = j.entries.reduce((sum, entry) => sum + entry.debit, 0);
+                        const totalC = j.entries.reduce((sum, entry) => sum + entry.credit, 0);
+                        
+                        if (j.entries.length < 2) {
+                            invalidJournals.push(`Jurnal ke-${i+1} (${j.description}): Harus memiliki minimal 2 entri rekening.`);
+                        } else if (Math.abs(totalD - totalC) > 0.01 || totalD === 0) {
+                            invalidJournals.push(`Jurnal ke-${i+1} (${j.description}): Nilai Debit (${totalD}) dan Kredit (${totalC}) tidak seimbang atau bernilai 0.`);
+                        }
                     }
                 }
 
@@ -285,7 +630,12 @@ export default function JournalEntry() {
                     return;
                 }
 
-                if (window.confirm(`Berhasil memvalidasi ${journalsGrouped.length} jurnal. Lanjutkan untuk memposting ke database?`)) {
+                if (journalsGrouped.length === 0) {
+                    alert('Tidak ada baris transaksi valid yang dapat diimpor.');
+                    return;
+                }
+
+                if (window.confirm(`Berhasil memvalidasi ${journalsGrouped.length} transaksi jurnal. Lanjutkan untuk memposting ke database?`)) {
                     for (const j of journalsGrouped) {
                         const journalId = `JRN-${Date.now()}-${generateId()}`;
                         const payload = {
@@ -301,10 +651,11 @@ export default function JournalEntry() {
                 }
 
             } catch (err) {
+                console.error('[Import Excel Error]', err);
                 alert('Gagal memproses file Excel: ' + err.message);
             }
         };
-        reader.readAsBinaryString(file);
+        reader.readAsArrayBuffer(file);
     };
 
     const TAX_GROUPS = [
@@ -478,14 +829,92 @@ export default function JournalEntry() {
                 ? 'Semua-Periode' 
                 : `${exportStartDate || 'Awal'}_sd_${exportEndDate || 'Akhir'}`;
 
-            if (exportFormat === 'DETAILED') {
-                // DETAILED EXPORT - 1 BARIS PER TRANSAKSI (DEBIT & KREDIT SEJAJAR)
-                const detailedRows = [];
-                let rowNumber = 1;
+            // Reference Options for Excel Dropdowns
+            const programOptions = Array.from(new Set([
+                'Umum / Tanpa Program',
+                ...programs.map(p => p.name.trim()).filter(Boolean)
+            ]));
 
-                processed.forEach(j => {
-                    const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
-                    // Enrichment fallback from local state if budgetReport/budgetRequest is missing
+            const accountOptions = [];
+            const seenAccountNames = new Set();
+            for (const acc of detailAccounts) {
+                const aName = (acc.name || '').trim();
+                if (aName && !seenAccountNames.has(aName)) {
+                    seenAccountNames.add(aName);
+                    accountOptions.push({
+                        name: aName,
+                        code: acc.code || '-',
+                        type: acc.type || 'Akun'
+                    });
+                }
+            }
+
+            if (exportFormat === 'DETAILED') {
+                // DETAILED EXPORT - 1 BARIS PER TRANSAKSI (DEBIT & KREDIT SEJAJAR DENGAN DROPDOWN)
+                const workbook = new ExcelJS.Workbook();
+                const ws = workbook.addWorksheet('Detail Jurnal 1 Baris');
+
+                // Base columns
+                const columns = [
+                    { header: 'No', key: 'no', width: 6 },
+                    { header: 'Tanggal', key: 'tanggal', width: 14 },
+                    { header: 'ID Jurnal', key: 'idJurnal', width: 22 },
+                    { header: 'Pihak Terkait', key: 'pihak', width: 24 },
+                    { header: 'Deskripsi Transaksi', key: 'deskripsi', width: 38 },
+                    { header: 'No Referensi', key: 'referensi', width: 18 },
+                    { header: 'Program', key: 'program', width: 24 },
+                    { header: 'Kode Akun Debit', key: 'kodeDebit', width: 18 },
+                    { header: 'Nama Akun Debit', key: 'namaDebit', width: 34 },
+                    { header: 'Kode Akun Kredit', key: 'kodeKredit', width: 18 },
+                    { header: 'Nama Akun Kredit', key: 'namaKredit', width: 34 },
+                    { header: 'Nominal (Rp)', key: 'nominal', width: 18 }
+                ];
+
+                if (exportIncludeBudget) {
+                    columns.push(
+                        { header: 'No. Permintaan Dana (Req ID)', key: 'reqId', width: 26 },
+                        { header: 'Rincian Dana Permintaan', key: 'rincianDana', width: 34 },
+                        { header: 'Unit Pemohon', key: 'unit', width: 22 },
+                        { header: 'Item Pengeluaran', key: 'itemPengeluaran', width: 26 },
+                        { header: 'No. Nota SPJ', key: 'noNota', width: 18 },
+                        { header: 'Volume', key: 'volume', width: 16 },
+                        { header: 'Harga Satuan (Rp)', key: 'harga', width: 18 },
+                        { header: 'Diskon (Rp)', key: 'diskon', width: 16 },
+                        { header: 'Kategori Aset', key: 'kategoriAset', width: 18 }
+                    );
+                }
+
+                ws.columns = columns;
+
+                // Reference Sheet DataRef
+                const refSheet = workbook.addWorksheet('DataRef');
+                refSheet.getCell('A1').value = 'Daftar Program';
+                refSheet.getCell('B1').value = 'Nama Akun (COA)';
+                refSheet.getCell('C1').value = 'Kode Akun';
+                refSheet.getCell('D1').value = 'Kategori Akun';
+
+                const refHeader = refSheet.getRow(1);
+                refHeader.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+                refHeader.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF2563EB' } // Blue 600
+                };
+                refHeader.alignment = { vertical: 'middle', horizontal: 'center' };
+                refHeader.height = 24;
+
+                programOptions.forEach((p, idx) => {
+                    refSheet.getCell(`A${idx + 2}`).value = p;
+                });
+
+                accountOptions.forEach((a, idx) => {
+                    refSheet.getCell(`B${idx + 2}`).value = a.name;
+                    refSheet.getCell(`C${idx + 2}`).value = a.code;
+                    refSheet.getCell(`D${idx + 2}`).value = a.type;
+                });
+
+                processed.forEach((j, idx) => {
+                    const progName = programs.find(p => p.id === j.programId)?.name || 'Umum / Tanpa Program';
                     const rep = j.budgetReport || (state.budgetReports || []).find(r => r.journalId === j.id);
                     const req = j.budgetRequest || (rep?.budgetRequestId ? (state.budgetRequests || []).find(rq => rq.id === rep.budgetRequestId) : null);
                     const unitName = rep?.unitName || (rep?.unitId ? (state.units || []).find(u => u.id === rep.unitId)?.name : null) || j.name || '-';
@@ -500,18 +929,15 @@ export default function JournalEntry() {
                     let debitAmount = 0;
 
                     if (debits.length === 1) {
-                        const acc = accounts.find(a => a.id === debits[0].accountId);
-                        debitCode = acc?.code || debits[0].accountId || '-';
-                        debitName = acc?.name || debits[0].accountName || '-';
+                        const res = resolveEntryAccount(debits[0]);
+                        debitCode = res.code;
+                        debitName = res.name;
                         debitAmount = parseFloat(debits[0].debit) || 0;
                     } else if (debits.length > 1) {
-                        debitCode = debits.map(d => {
-                            const acc = accounts.find(a => a.id === d.accountId);
-                            return acc?.code || d.accountId || '-';
-                        }).join('; ');
+                        debitCode = debits.map(d => resolveEntryAccount(d).code).join('; ');
                         debitName = debits.map(d => {
-                            const acc = accounts.find(a => a.id === d.accountId);
-                            return `${acc?.name || d.accountName || '-'} (${(parseFloat(d.debit) || 0).toLocaleString('id-ID')})`;
+                            const res = resolveEntryAccount(d);
+                            return `${res.name} (${(parseFloat(d.debit) || 0).toLocaleString('id-ID')})`;
                         }).join('; ');
                         debitAmount = debits.reduce((sum, d) => sum + (parseFloat(d.debit) || 0), 0);
                     }
@@ -522,18 +948,15 @@ export default function JournalEntry() {
                     let creditAmount = 0;
 
                     if (credits.length === 1) {
-                        const acc = accounts.find(a => a.id === credits[0].accountId);
-                        creditCode = acc?.code || credits[0].accountId || '-';
-                        creditName = acc?.name || credits[0].accountName || '-';
+                        const res = resolveEntryAccount(credits[0]);
+                        creditCode = res.code;
+                        creditName = res.name;
                         creditAmount = parseFloat(credits[0].credit) || 0;
                     } else if (credits.length > 1) {
-                        creditCode = credits.map(c => {
-                            const acc = accounts.find(a => a.id === c.accountId);
-                            return acc?.code || c.accountId || '-';
-                        }).join('; ');
+                        creditCode = credits.map(c => resolveEntryAccount(c).code).join('; ');
                         creditName = credits.map(c => {
-                            const acc = accounts.find(a => a.id === c.accountId);
-                            return `${acc?.name || c.accountName || '-'} (${(parseFloat(c.credit) || 0).toLocaleString('id-ID')})`;
+                            const res = resolveEntryAccount(c);
+                            return `${res.name} (${(parseFloat(c.credit) || 0).toLocaleString('id-ID')})`;
                         }).join('; ');
                         creditAmount = credits.reduce((sum, c) => sum + (parseFloat(c.credit) || 0), 0);
                     }
@@ -541,22 +964,21 @@ export default function JournalEntry() {
                     const nominalTotal = debitAmount || creditAmount || (j.entries || []).reduce((s, e) => s + (parseFloat(e.debit) || 0), 0);
 
                     const baseRow = {
-                        'No': rowNumber,
-                        'Tanggal': j.date ? j.date.split('T')[0] : '',
-                        'ID Jurnal': j.id,
-                        'Pihak Terkait': j.name || '-',
-                        'Deskripsi Transaksi': j.description || '-',
-                        'No Referensi': j.reference || '-',
-                        'Program': progName,
-                        'Kode Akun Debit': debitCode,
-                        'Nama Akun Debit': debitName,
-                        'Kode Akun Kredit': creditCode,
-                        'Nama Akun Kredit': creditName,
-                        'Nominal (Rp)': nominalTotal
+                        no: idx + 1,
+                        tanggal: j.date ? j.date.split('T')[0] : '',
+                        idJurnal: j.id,
+                        pihak: j.name || '-',
+                        deskripsi: j.description || '-',
+                        referensi: j.reference || '-',
+                        program: progName,
+                        kodeDebit: debitCode,
+                        namaDebit: debitName,
+                        kodeKredit: creditCode,
+                        namaKredit: creditName,
+                        nominal: nominalTotal
                     };
 
                     if (exportIncludeBudget) {
-                        // Resolve precise Rincian Pengeluaran / Dana Permintaan (from SPJ category or Request Item)
                         let rincianDana = '-';
                         if (rep) {
                             if (rep.category && rep.category !== 'General' && rep.category !== '-') {
@@ -585,67 +1007,130 @@ export default function JournalEntry() {
                             rincianDana = j.description || '-';
                         }
 
-                        baseRow['No. Permintaan Dana (Req ID)'] = req?.id || '-';
-                        baseRow['Rincian Dana Permintaan'] = rincianDana;
-                        baseRow['Unit Pemohon'] = unitName;
-                        baseRow['Item Pengeluaran'] = expName;
-                        baseRow['No. Nota SPJ'] = rep?.nomorNota || '-';
-                        baseRow['Volume'] = rep?.volume ? `${rep.volume} ${rep.satuan || ''}`.trim() : '-';
-                        baseRow['Harga Satuan (Rp)'] = rep?.harga || '-';
-                        baseRow['Diskon (Rp)'] = rep?.diskon || 0;
-                        baseRow['Kategori Aset'] = rep?.kategoriAset || '-';
+                        baseRow.reqId = req?.id || '-';
+                        baseRow.rincianDana = rincianDana;
+                        baseRow.unit = unitName;
+                        baseRow.itemPengeluaran = expName;
+                        baseRow.noNota = rep?.nomorNota || '-';
+                        baseRow.volume = rep?.volume ? `${rep.volume} ${rep.satuan || ''}`.trim() : '-';
+                        baseRow.harga = typeof rep?.harga === 'number' ? rep.harga : (parseFloat(rep?.harga) || rep?.harga || '-');
+                        baseRow.diskon = typeof rep?.diskon === 'number' ? rep.diskon : (parseFloat(rep?.diskon) || 0);
+                        baseRow.kategoriAset = rep?.kategoriAset || '-';
                     }
 
-                    detailedRows.push(baseRow);
-                    rowNumber++;
+                    const addedRow = ws.addRow(baseRow);
+                    addedRow.getCell('nominal').numFmt = '#,##0';
+                    if (exportIncludeBudget && typeof baseRow.harga === 'number') {
+                        addedRow.getCell('harga').numFmt = '#,##0';
+                    }
+                    if (exportIncludeBudget && typeof baseRow.diskon === 'number') {
+                        addedRow.getCell('diskon').numFmt = '#,##0';
+                    }
                 });
 
-                const ws = XLSX.utils.json_to_sheet(detailedRows);
-                
-                // Column widths
-                const colWidths = [
-                    { wch: 6 },  // No
-                    { wch: 12 }, // Tanggal
-                    { wch: 18 }, // ID Jurnal
-                    { wch: 22 }, // Pihak Terkait
-                    { wch: 35 }, // Deskripsi
-                    { wch: 18 }, // Referensi
-                    { wch: 15 }, // Program
-                    { wch: 16 }, // Kode Akun Debit
-                    { wch: 30 }, // Nama Akun Debit
-                    { wch: 16 }, // Kode Akun Kredit
-                    { wch: 30 }, // Nama Akun Kredit
-                    { wch: 16 }  // Nominal
+                // Header styling
+                const headerRow = ws.getRow(1);
+                headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+                headerRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF059669' } // Emerald 600
+                };
+                headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+                headerRow.height = 26;
+
+                // Data Validations (Dropdowns) for rows 2 to maxValRow
+                const maxValRow = Math.max(processed.length + 500, 2000);
+
+                // Col G (Column 7): Program
+                ws.dataValidations.add(`G2:G${maxValRow}`, {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`DataRef!$A$2:$A$${programOptions.length + 1}`],
+                    showErrorMessage: true,
+                    errorTitle: 'Pilihan Program',
+                    error: 'Silakan pilih Program dari dropdown daftar yang tersedia.'
+                });
+
+                // Col I (Column 9): Nama Akun Debit
+                ws.dataValidations.add(`I2:I${maxValRow}`, {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`DataRef!$B$2:$B$${accountOptions.length + 1}`],
+                    showErrorMessage: true,
+                    errorTitle: 'Pilihan Akun Debit',
+                    error: 'Silakan pilih Nama Akun Debit dari dropdown daftar yang tersedia.'
+                });
+
+                // Col K (Column 11): Nama Akun Kredit
+                ws.dataValidations.add(`K2:K${maxValRow}`, {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`DataRef!$B$2:$B$${accountOptions.length + 1}`],
+                    showErrorMessage: true,
+                    errorTitle: 'Pilihan Akun Kredit',
+                    error: 'Silakan pilih Nama Akun Kredit dari dropdown daftar yang tersedia.'
+                });
+
+                // Auto-filter
+                const lastColLetter = getColLetter(columns.length);
+                ws.autoFilter = `A1:${lastColLetter}1`;
+
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                saveAs(blob, `SIKAD-Detail-Jurnal-${dateTag}.xlsx`);
+            } else {
+                // SUMMARY EXPORT
+                const workbook = new ExcelJS.Workbook();
+                const ws = workbook.addWorksheet('Ringkasan Jurnal');
+
+                const summaryCols = [
+                    { header: 'No', key: 'no', width: 6 },
+                    { header: 'ID Jurnal', key: 'idJurnal', width: 22 },
+                    { header: 'Tanggal', key: 'tanggal', width: 14 },
+                    { header: 'Pihak Terkait', key: 'pihak', width: 24 },
+                    { header: 'Deskripsi Transaksi', key: 'deskripsi', width: 38 },
+                    { header: 'No Referensi', key: 'referensi', width: 18 },
+                    { header: 'Program', key: 'program', width: 24 },
+                    { header: 'Total Transaksi (Rp)', key: 'total', width: 20 }
                 ];
 
                 if (exportIncludeBudget) {
-                    colWidths.push(
-                        { wch: 25 }, // No Req
-                        { wch: 32 }, // Rincian Dana Permintaan
-                        { wch: 20 }, // Unit Pemohon
-                        { wch: 25 }, // Item Pengeluaran
-                        { wch: 18 }, // No Nota
-                        { wch: 15 }, // Volume
-                        { wch: 16 }, // Harga
-                        { wch: 14 }, // Diskon
-                        { wch: 16 }  // Kategori Aset
+                    summaryCols.push(
+                        { header: 'No. Permintaan Dana (Req ID)', key: 'reqId', width: 26 },
+                        { header: 'Rincian Dana Permintaan', key: 'rincianDana', width: 34 },
+                        { header: 'Unit Pemohon', key: 'unit', width: 22 },
+                        { header: 'Item Pengeluaran', key: 'itemPengeluaran', width: 26 },
+                        { header: 'No. Nota SPJ', key: 'noNota', width: 18 }
                     );
                 }
-                ws['!cols'] = colWidths;
-                ws['!autofilter'] = { ref: ws['!ref'] };
 
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal 1 Baris');
-                XLSX.writeFile(wb, `SIKAD-Detail-Jurnal-${dateTag}.xlsx`);
-            } else {
-                // SUMMARY EXPORT
-                const summaryRows = processed.map((j, idx) => {
-                    const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
+                ws.columns = summaryCols;
+
+                // Reference Sheet DataRef
+                const refSheet = workbook.addWorksheet('DataRef');
+                refSheet.getCell('A1').value = 'Daftar Program';
+                const refHeader = refSheet.getRow(1);
+                refHeader.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+                refHeader.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF2563EB' }
+                };
+                refHeader.alignment = { vertical: 'middle', horizontal: 'center' };
+                refHeader.height = 24;
+
+                programOptions.forEach((p, idx) => {
+                    refSheet.getCell(`A${idx + 2}`).value = p;
+                });
+
+                processed.forEach((j, idx) => {
+                    const progName = programs.find(p => p.id === j.programId)?.name || 'Umum / Tanpa Program';
                     const rep = j.budgetReport || (state.budgetReports || []).find(r => r.journalId === j.id);
                     const req = j.budgetRequest || (rep?.budgetRequestId ? (state.budgetRequests || []).find(rq => rq.id === rep.budgetRequestId) : null);
                     const unitName = rep?.unitName || (rep?.unitId ? (state.units || []).find(u => u.id === rep.unitId)?.name : null) || j.name || '-';
                     const expName = rep?.expenseItemName || (rep?.expenseItemId ? (state.expenseItems || []).find(ei => ei.id === rep.expenseItemId)?.name : null) || '-';
-                    const totalVal = (j.entries || []).reduce((s, e) => s + (e.debit || 0), 0);
+                    const totalVal = (j.entries || []).reduce((s, e) => s + (parseFloat(e.debit) || 0), 0);
 
                     let rincianDana = '-';
                     if (rep) {
@@ -675,49 +1160,54 @@ export default function JournalEntry() {
                         rincianDana = j.description || '-';
                     }
 
-                    const row = {
-                        'No': idx + 1,
-                        'ID Jurnal': j.id,
-                        'Tanggal': j.date ? j.date.split('T')[0] : '',
-                        'Pihak Terkait': j.name || '-',
-                        'Deskripsi': j.description,
-                        'Referensi': j.reference || '-',
-                        'Program': progName,
-                        'Total Transaksi (Rp)': totalVal
+                    const rowObj = {
+                        no: idx + 1,
+                        idJurnal: j.id,
+                        tanggal: j.date ? j.date.split('T')[0] : '',
+                        pihak: j.name || '-',
+                        deskripsi: j.description,
+                        referensi: j.reference || '-',
+                        program: progName,
+                        total: totalVal
                     };
 
                     if (exportIncludeBudget) {
-                        row['No. Permintaan Dana (Req ID)'] = req?.id || '-';
-                        row['Rincian Dana Permintaan'] = rincianDana;
-                        row['Unit Pemohon'] = unitName;
-                        row['Item Pengeluaran'] = expName;
-                        row['No. Nota SPJ'] = rep?.nomorNota || '-';
+                        rowObj.reqId = req?.id || '-';
+                        rowObj.rincianDana = rincianDana;
+                        rowObj.unit = unitName;
+                        rowObj.itemPengeluaran = expName;
+                        rowObj.noNota = rep?.nomorNota || '-';
                     }
 
-                    return row;
+                    const addedRow = ws.addRow(rowObj);
+                    addedRow.getCell('total').numFmt = '#,##0';
                 });
 
-                const ws = XLSX.utils.json_to_sheet(summaryRows);
-                ws['!cols'] = [
-                    { wch: 6 },
-                    { wch: 18 },
-                    { wch: 12 },
-                    { wch: 22 },
-                    { wch: 35 },
-                    { wch: 18 },
-                    { wch: 15 },
-                    { wch: 18 },
-                    { wch: 25 },
-                    { wch: 32 },
-                    { wch: 20 },
-                    { wch: 25 },
-                    { wch: 18 }
-                ];
-                ws['!autofilter'] = { ref: ws['!ref'] };
+                // Header styling
+                const headerRow = ws.getRow(1);
+                headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 10 };
+                headerRow.fill = {
+                    type: 'pattern',
+                    pattern: 'solid',
+                    fgColor: { argb: 'FF1E293B' } // Slate 800
+                };
+                headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+                headerRow.height = 26;
 
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
-                XLSX.writeFile(wb, `SIKAD-Ringkasan-Jurnal-${dateTag}.xlsx`);
+                // Dropdown on Program (Col G)
+                const maxValRow = Math.max(processed.length + 500, 2000);
+                ws.dataValidations.add(`G2:G${maxValRow}`, {
+                    type: 'list',
+                    allowBlank: true,
+                    formulae: [`DataRef!$A$2:$A$${programOptions.length + 1}`]
+                });
+
+                const lastColLetter = getColLetter(summaryCols.length);
+                ws.autoFilter = `A1:${lastColLetter}1`;
+
+                const buffer = await workbook.xlsx.writeBuffer();
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                saveAs(blob, `SIKAD-Ringkasan-Jurnal-${dateTag}.xlsx`);
             }
 
             // Close modal after success
@@ -853,8 +1343,8 @@ export default function JournalEntry() {
                     {/* Bulk Import Action Bar */}
                     <div className="flex flex-col sm:flex-row justify-between items-center bg-slate-50/80 border border-slate-100 p-6 rounded-2xl mb-8 gap-4">
                         <div>
-                            <h4 className="text-sm font-black text-slate-800">Impor Jurnal Massal (Excel)</h4>
-                            <p className="text-xs text-slate-400 mt-1">Posting beberapa transaksi sekaligus dengan mengunggah template Excel</p>
+                            <h4 className="text-sm font-black text-slate-800">Impor Jurnal Massal (Excel 1 Baris)</h4>
+                            <p className="text-xs text-slate-400 mt-1">Posting transaksi dengan template Excel 1 baris (dilengkapi pilihan dropdown Program & Akun COA)</p>
                         </div>
                         <div className="flex gap-2">
                             {/* Hidden File Input */}
@@ -865,8 +1355,12 @@ export default function JournalEntry() {
                                 accept=".xlsx, .xls" 
                                 className="hidden" 
                             />
-                            <button onClick={downloadTemplate} className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
-                                <Download size={12} /> Template Impor
+                            <button 
+                                onClick={downloadTemplate} 
+                                title="Unduh Template Excel 1 Baris dengan Pilihan Dropdown Program & Akun COA" 
+                                className="flex items-center gap-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all"
+                            >
+                                <Download size={12} /> Template Impor (1 Baris)
                             </button>
                             <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all">
                                 <Upload size={12} /> Impor Banyak
