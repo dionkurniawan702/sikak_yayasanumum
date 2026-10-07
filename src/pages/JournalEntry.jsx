@@ -44,6 +44,8 @@ export default function JournalEntry() {
     const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
     const [historySearch, setHistorySearch] = useState('');
     const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
+    const [historyProgramFilter, setHistoryProgramFilter] = useState('ALL');
+    const [historyAccountFilter, setHistoryAccountFilter] = useState('ALL');
     const [selectedPeriod, setSelectedPeriod] = useState('LATEST_500'); // 'LATEST_500' | 'YYYY-MM'
     const [monthJournals, setMonthJournals] = useState([]);
     const [monthTotalCount, setMonthTotalCount] = useState(null);
@@ -51,13 +53,15 @@ export default function JournalEntry() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
 
-    // Enhanced Export State (Rentang Tanggal, Filter Akun, Unit, dan Rincian Permintaan Dana)
+    // Enhanced Export State (Rentang Tanggal, Filter Akun, Unit, Program, dan Rincian Permintaan Dana)
     const [isExportModalOpen, setIsExportModalOpen] = useState(false);
     const [exportFormat, setExportFormat] = useState('DETAILED'); // 'DETAILED' | 'SUMMARY'
     const [exportPreset, setExportPreset] = useState('THIS_ACADEMIC_YEAR');
     const [exportStartDate, setExportStartDate] = useState('');
     const [exportEndDate, setExportEndDate] = useState('');
     const [exportAccountId, setExportAccountId] = useState('ALL');
+    const [exportAccountPosition, setExportAccountPosition] = useState('ALL'); // 'ALL' | 'DEBIT' | 'CREDIT'
+    const [exportProgramId, setExportProgramId] = useState('ALL');
     const [exportUnitId, setExportUnitId] = useState('ALL');
     const [exportIncludeBudget, setExportIncludeBudget] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
@@ -337,6 +341,18 @@ export default function JournalEntry() {
             return true;
         })
         .filter(j => {
+            if (historyProgramFilter !== 'ALL') {
+                return (j.programId || 'PRG-GEN') === historyProgramFilter;
+            }
+            return true;
+        })
+        .filter(j => {
+            if (historyAccountFilter !== 'ALL') {
+                return (j.entries || []).some(e => e.accountId === historyAccountFilter);
+            }
+            return true;
+        })
+        .filter(j => {
             if (!historySearch.trim()) return true;
             const q = historySearch.toLowerCase();
             return (
@@ -355,6 +371,8 @@ export default function JournalEntry() {
     const openExportModal = (format = 'DETAILED') => {
         setExportFormat(format);
         setExportError(null);
+        if (historyProgramFilter !== 'ALL') setExportProgramId(historyProgramFilter);
+        if (historyAccountFilter !== 'ALL') setExportAccountId(historyAccountFilter);
         setIsExportModalOpen(true);
     };
 
@@ -371,6 +389,9 @@ export default function JournalEntry() {
             if (exportPreset !== 'ALL') {
                 if (exportStartDate) queryParams.push(`startDate=${exportStartDate}`);
                 if (exportEndDate) queryParams.push(`endDate=${exportEndDate}`);
+            }
+            if (exportProgramId !== 'ALL') {
+                queryParams.push(`programId=${exportProgramId}`);
             }
 
             const url = `/journals?${queryParams.join('&')}`;
@@ -408,11 +429,23 @@ export default function JournalEntry() {
                 }
             }
 
-            // Filter by Account (COA) if selected
+            // Filter by Program if selected
+            if (exportProgramId !== 'ALL') {
+                processed = processed.filter(j => (j.programId || 'PRG-GEN') === exportProgramId);
+            }
+
+            // Filter by Account (COA) & Position if selected
             if (exportAccountId !== 'ALL') {
-                processed = processed.filter(j => 
-                    (j.entries || []).some(e => e.accountId === exportAccountId)
-                );
+                processed = processed.filter(j => {
+                    const entries = j.entries || [];
+                    if (exportAccountPosition === 'DEBIT') {
+                        return entries.some(e => e.accountId === exportAccountId && (parseFloat(e.debit) || 0) > 0);
+                    }
+                    if (exportAccountPosition === 'CREDIT') {
+                        return entries.some(e => e.accountId === exportAccountId && (parseFloat(e.credit) || 0) > 0);
+                    }
+                    return entries.some(e => e.accountId === exportAccountId);
+                });
             }
 
             // Filter by Unit if selected
@@ -432,7 +465,7 @@ export default function JournalEntry() {
             }
 
             if (processed.length === 0) {
-                setExportError('Tidak ada data jurnal yang cocok dengan filter Akun / Unit yang dipilih.');
+                setExportError('Tidak ada data jurnal yang cocok dengan filter yang dipilih.');
                 setIsExporting(false);
                 return;
             }
@@ -525,7 +558,6 @@ export default function JournalEntry() {
                     if (exportIncludeBudget) {
                         baseRow['No. Permintaan Dana (Req ID)'] = req?.id || '-';
                         baseRow['Keterangan Pengajuan Dana'] = req?.description || '-';
-                        baseRow['Total Pengajuan Dana (Rp)'] = req?.totalAmount || '-';
                         baseRow['Unit Pemohon'] = unitName;
                         baseRow['Mata Anggaran / Komponen'] = expName;
                         baseRow['No. Nota SPJ'] = rep?.nomorNota || '-';
@@ -561,7 +593,6 @@ export default function JournalEntry() {
                     colWidths.push(
                         { wch: 25 }, // No Req
                         { wch: 30 }, // Keterangan Req
-                        { wch: 18 }, // Total Req
                         { wch: 20 }, // Unit Pemohon
                         { wch: 25 }, // Mata Anggaran
                         { wch: 18 }, // No Nota
@@ -572,6 +603,7 @@ export default function JournalEntry() {
                     );
                 }
                 ws['!cols'] = colWidths;
+                ws['!autofilter'] = { ref: ws['!ref'] };
 
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal 1 Baris');
@@ -624,6 +656,7 @@ export default function JournalEntry() {
                     { wch: 18 },
                     { wch: 25 }
                 ];
+                ws['!autofilter'] = { ref: ws['!ref'] };
 
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
@@ -977,6 +1010,36 @@ export default function JournalEntry() {
                                                     </select>
                                                     {isLoadingPeriod && <Loader2 size={14} className="animate-spin text-blue-600 shrink-0" />}
                                                 </div>
+
+                                                {/* Filter Program */}
+                                                <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-sm shrink-0">
+                                                    <select 
+                                                        className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2 max-w-[130px] truncate"
+                                                        value={historyProgramFilter}
+                                                        onChange={e => { setHistoryProgramFilter(e.target.value); setCurrentPage(1); }}
+                                                        title="Filter Berdasarkan Program"
+                                                    >
+                                                        <option value="ALL">Semua Program</option>
+                                                        {programs.map(p => (
+                                                            <option key={p.id} value={p.id}>{p.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                {/* Filter Akun COA */}
+                                                <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-sm shrink-0">
+                                                    <select 
+                                                        className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2 max-w-[150px] truncate"
+                                                        value={historyAccountFilter}
+                                                        onChange={e => { setHistoryAccountFilter(e.target.value); setCurrentPage(1); }}
+                                                        title="Filter Berdasarkan Akun COA"
+                                                    >
+                                                        <option value="ALL">Semua Akun (COA)</option>
+                                                        {detailAccounts.map(a => (
+                                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
+                                                        ))}
+                                                    </select>
+                                                </div>
                                             </div>
                                             
                                             {/* Action Buttons Group */}
@@ -1233,47 +1296,123 @@ export default function JournalEntry() {
                                 )}
                             </div>
 
-                            {/* 3. Filter Tambahan: COA & Unit */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
-                                        Filter Akun COA (Opsional)
+                            {/* 3. Filter Spesifik: Kode Akun, Nama Akun COA, Program & Unit */}
+                            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-black text-slate-600 uppercase tracking-wider">
+                                        Filter Akun (COA), Program & Unit
                                     </label>
-                                    <select
-                                        value={exportAccountId}
-                                        onChange={e => setExportAccountId(e.target.value)}
-                                        className="form-select w-full rounded-xl text-xs py-2.5 border-slate-200 bg-white"
-                                    >
-                                        <option value="ALL">Semua Akun (Semua COA)</option>
-                                        {groupedAccounts.map(g => (
-                                            <optgroup key={g.tipe} label={`--- Kelompok ${g.tipe} ---`}>
-                                                {g.accounts.map(acc => (
-                                                    <option key={acc.id} value={acc.id}>
-                                                        {acc.code} - {acc.name}
-                                                    </option>
-                                                ))}
-                                            </optgroup>
-                                        ))}
-                                    </select>
+                                    <span className="text-[10px] text-slate-400 font-bold">
+                                        Opsional / Kosongkan jika ingin semua
+                                    </span>
                                 </div>
 
-                                <div>
-                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
-                                        Filter Unit / Satuan (Opsional)
-                                    </label>
-                                    <select
-                                        value={exportUnitId}
-                                        onChange={e => setExportUnitId(e.target.value)}
-                                        className="form-select w-full rounded-xl text-xs py-2.5 border-slate-200 bg-white"
-                                    >
-                                        <option value="ALL">Semua Unit / Lembaga</option>
-                                        {(state.units || []).filter(u => !u.isDeleted).map(u => (
-                                            <option key={u.id} value={u.id}>
-                                                {u.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {/* Dropdown 1: Kode Akun */}
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                                            Pilihan Kode Akun:
+                                        </label>
+                                        <select
+                                            value={exportAccountId}
+                                            onChange={e => setExportAccountId(e.target.value)}
+                                            className="form-select w-full rounded-xl text-xs py-2 border-slate-200 bg-white"
+                                        >
+                                            <option value="ALL">Semua Kode Akun</option>
+                                            {detailAccounts.map(acc => (
+                                                <option key={acc.id} value={acc.id}>
+                                                    {acc.code} — {acc.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Dropdown 2: Nama Akun / COA */}
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                                            Pilihan Nama Akun (COA):
+                                        </label>
+                                        <select
+                                            value={exportAccountId}
+                                            onChange={e => setExportAccountId(e.target.value)}
+                                            className="form-select w-full rounded-xl text-xs py-2 border-slate-200 bg-white"
+                                        >
+                                            <option value="ALL">Semua Nama Akun COA</option>
+                                            {groupedAccounts.map(g => (
+                                                <optgroup key={g.tipe} label={`--- Kelompok ${g.tipe} ---`}>
+                                                    {g.accounts.map(acc => (
+                                                        <option key={acc.id} value={acc.id}>
+                                                            {acc.name} [{acc.code}]
+                                                        </option>
+                                                    ))}
+                                                </optgroup>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Dropdown 3: Program */}
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                                            Pilihan Program:
+                                        </label>
+                                        <select
+                                            value={exportProgramId}
+                                            onChange={e => setExportProgramId(e.target.value)}
+                                            className="form-select w-full rounded-xl text-xs py-2 border-slate-200 bg-white"
+                                        >
+                                            <option value="ALL">Semua Program</option>
+                                            {programs.map(p => (
+                                                <option key={p.id} value={p.id}>
+                                                    {p.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Dropdown 4: Unit / Satuan */}
+                                    <div>
+                                        <label className="text-[10px] font-bold text-slate-500 block mb-1">
+                                            Pilihan Unit / Satuan:
+                                        </label>
+                                        <select
+                                            value={exportUnitId}
+                                            onChange={e => setExportUnitId(e.target.value)}
+                                            className="form-select w-full rounded-xl text-xs py-2 border-slate-200 bg-white"
+                                        >
+                                            <option value="ALL">Semua Unit / Lembaga</option>
+                                            {(state.units || []).filter(u => !u.isDeleted).map(u => (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
+
+                                {/* Opsi Posisi Akun jika akun dipilih */}
+                                {exportAccountId !== 'ALL' && (
+                                    <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 mt-1">
+                                        <span className="text-[10px] font-bold text-slate-500">Posisi Akun:</span>
+                                        {[
+                                            { id: 'ALL', label: 'Debit maupun Kredit' },
+                                            { id: 'DEBIT', label: 'Hanya Posisi Debit' },
+                                            { id: 'CREDIT', label: 'Hanya Posisi Kredit' }
+                                        ].map(pos => (
+                                            <button
+                                                key={pos.id}
+                                                type="button"
+                                                onClick={() => setExportAccountPosition(pos.id)}
+                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                                                    exportAccountPosition === pos.id 
+                                                        ? 'bg-emerald-600 text-white shadow-xs' 
+                                                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                                                }`}
+                                            >
+                                                {pos.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
 
                             {/* 4. Opsi Rincian Permintaan Dana */}

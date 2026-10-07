@@ -141,9 +141,13 @@ router.delete('/accounts/:id', async (req, res) => {
 router.get('/journals', async (req, res) => {
     try {
         const prisma = getPrisma(req);
-        const { month, startDate, endDate, limit, page } = req.query;
+        const { month, startDate, endDate, limit, page, programId } = req.query;
 
         let where = { isDeleted: false };
+
+        if (programId && programId !== 'ALL') {
+            where.programId = programId;
+        }
 
         if (month && month !== 'ALL') {
             const [y, m] = month.split('-').map(Number);
