@@ -446,7 +446,7 @@ export default function JournalEntry() {
                 : `${exportStartDate || 'Awal'}_sd_${exportEndDate || 'Akhir'}`;
 
             if (exportFormat === 'DETAILED') {
-                // DETAILED EXPORT
+                // DETAILED EXPORT - 1 BARIS PER TRANSAKSI (DEBIT & KREDIT SEJAJAR)
                 const detailedRows = [];
                 let rowNumber = 1;
 
@@ -458,49 +458,84 @@ export default function JournalEntry() {
                     const unitName = rep?.unitName || (rep?.unitId ? (state.units || []).find(u => u.id === rep.unitId)?.name : null) || j.name || '-';
                     const expName = rep?.expenseItemName || (rep?.expenseItemId ? (state.expenseItems || []).find(ei => ei.id === rep.expenseItemId)?.name : null) || '-';
 
-                    const entriesToShow = exportAccountId !== 'ALL' 
-                        ? (j.entries || []).filter(e => e.accountId === exportAccountId)
-                        : (j.entries || []);
+                    const debits = (j.entries || []).filter(e => (parseFloat(e.debit) || 0) > 0);
+                    const credits = (j.entries || []).filter(e => (parseFloat(e.credit) || 0) > 0);
 
-                    if (entriesToShow.length === 0 && (j.entries || []).length > 0) {
-                        return; // Skip if no entries match
+                    // Resolve Debit Account(s)
+                    let debitCode = '-';
+                    let debitName = '-';
+                    let debitAmount = 0;
+
+                    if (debits.length === 1) {
+                        const acc = accounts.find(a => a.id === debits[0].accountId);
+                        debitCode = acc?.code || debits[0].accountId || '-';
+                        debitName = acc?.name || debits[0].accountName || '-';
+                        debitAmount = parseFloat(debits[0].debit) || 0;
+                    } else if (debits.length > 1) {
+                        debitCode = debits.map(d => {
+                            const acc = accounts.find(a => a.id === d.accountId);
+                            return acc?.code || d.accountId || '-';
+                        }).join('; ');
+                        debitName = debits.map(d => {
+                            const acc = accounts.find(a => a.id === d.accountId);
+                            return `${acc?.name || d.accountName || '-'} (${(parseFloat(d.debit) || 0).toLocaleString('id-ID')})`;
+                        }).join('; ');
+                        debitAmount = debits.reduce((sum, d) => sum + (parseFloat(d.debit) || 0), 0);
                     }
 
-                    entriesToShow.forEach((e, idx) => {
-                        const acc = accounts.find(a => a.id === e.accountId);
-                        const accCode = acc?.code || e.accountId || '';
-                        const accName = acc?.name || e.accountName || '';
+                    // Resolve Credit Account(s)
+                    let creditCode = '-';
+                    let creditName = '-';
+                    let creditAmount = 0;
 
-                        const baseRow = {
-                            'No': idx === 0 ? rowNumber : '',
-                            'Tanggal': idx === 0 ? (j.date ? j.date.split('T')[0] : '') : '',
-                            'ID Jurnal': idx === 0 ? j.id : '',
-                            'Pihak Terkait': idx === 0 ? (j.name || '-') : '',
-                            'Deskripsi Jurnal': idx === 0 ? j.description : '',
-                            'No Referensi': idx === 0 ? (j.reference || '-') : '',
-                            'Program': idx === 0 ? progName : '',
-                            'Kode Akun': accCode,
-                            'Nama Akun': accName,
-                            'Debit (Rp)': e.debit || 0,
-                            'Kredit (Rp)': e.credit || 0
-                        };
+                    if (credits.length === 1) {
+                        const acc = accounts.find(a => a.id === credits[0].accountId);
+                        creditCode = acc?.code || credits[0].accountId || '-';
+                        creditName = acc?.name || credits[0].accountName || '-';
+                        creditAmount = parseFloat(credits[0].credit) || 0;
+                    } else if (credits.length > 1) {
+                        creditCode = credits.map(c => {
+                            const acc = accounts.find(a => a.id === c.accountId);
+                            return acc?.code || c.accountId || '-';
+                        }).join('; ');
+                        creditName = credits.map(c => {
+                            const acc = accounts.find(a => a.id === c.accountId);
+                            return `${acc?.name || c.accountName || '-'} (${(parseFloat(c.credit) || 0).toLocaleString('id-ID')})`;
+                        }).join('; ');
+                        creditAmount = credits.reduce((sum, c) => sum + (parseFloat(c.credit) || 0), 0);
+                    }
 
-                        if (exportIncludeBudget) {
-                            baseRow['No. Permintaan Dana (Req ID)'] = idx === 0 ? (req?.id || '-') : '';
-                            baseRow['Keterangan Pengajuan Dana'] = idx === 0 ? (req?.description || '-') : '';
-                            baseRow['Total Pengajuan Dana (Rp)'] = idx === 0 ? (req?.totalAmount || '-') : '';
-                            baseRow['Unit Pemohon'] = idx === 0 ? unitName : '';
-                            baseRow['Mata Anggaran / Komponen'] = idx === 0 ? expName : '';
-                            baseRow['No. Nota SPJ'] = idx === 0 ? (rep?.nomorNota || '-') : '';
-                            baseRow['Volume'] = idx === 0 ? (rep?.volume ? `${rep.volume} ${rep.satuan || ''}`.trim() : '-') : '';
-                            baseRow['Harga Satuan (Rp)'] = idx === 0 ? (rep?.harga || '-') : '';
-                            baseRow['Diskon (Rp)'] = idx === 0 ? (rep?.diskon || 0) : '';
-                            baseRow['Kategori Aset'] = idx === 0 ? (rep?.kategoriAset || '-') : '';
-                        }
+                    const nominalTotal = debitAmount || creditAmount || (j.entries || []).reduce((s, e) => s + (parseFloat(e.debit) || 0), 0);
 
-                        detailedRows.push(baseRow);
-                    });
+                    const baseRow = {
+                        'No': rowNumber,
+                        'Tanggal': j.date ? j.date.split('T')[0] : '',
+                        'ID Jurnal': j.id,
+                        'Pihak Terkait': j.name || '-',
+                        'Deskripsi Transaksi': j.description || '-',
+                        'No Referensi': j.reference || '-',
+                        'Program': progName,
+                        'Kode Akun Debit': debitCode,
+                        'Nama Akun Debit': debitName,
+                        'Kode Akun Kredit': creditCode,
+                        'Nama Akun Kredit': creditName,
+                        'Nominal (Rp)': nominalTotal
+                    };
 
+                    if (exportIncludeBudget) {
+                        baseRow['No. Permintaan Dana (Req ID)'] = req?.id || '-';
+                        baseRow['Keterangan Pengajuan Dana'] = req?.description || '-';
+                        baseRow['Total Pengajuan Dana (Rp)'] = req?.totalAmount || '-';
+                        baseRow['Unit Pemohon'] = unitName;
+                        baseRow['Mata Anggaran / Komponen'] = expName;
+                        baseRow['No. Nota SPJ'] = rep?.nomorNota || '-';
+                        baseRow['Volume'] = rep?.volume ? `${rep.volume} ${rep.satuan || ''}`.trim() : '-';
+                        baseRow['Harga Satuan (Rp)'] = rep?.harga || '-';
+                        baseRow['Diskon (Rp)'] = rep?.diskon || 0;
+                        baseRow['Kategori Aset'] = rep?.kategoriAset || '-';
+                    }
+
+                    detailedRows.push(baseRow);
                     rowNumber++;
                 });
 
@@ -515,10 +550,11 @@ export default function JournalEntry() {
                     { wch: 35 }, // Deskripsi
                     { wch: 18 }, // Referensi
                     { wch: 15 }, // Program
-                    { wch: 14 }, // Kode Akun
-                    { wch: 30 }, // Nama Akun
-                    { wch: 15 }, // Debit
-                    { wch: 15 }  // Kredit
+                    { wch: 16 }, // Kode Akun Debit
+                    { wch: 30 }, // Nama Akun Debit
+                    { wch: 16 }, // Kode Akun Kredit
+                    { wch: 30 }, // Nama Akun Kredit
+                    { wch: 16 }  // Nominal
                 ];
 
                 if (exportIncludeBudget) {
@@ -538,7 +574,7 @@ export default function JournalEntry() {
                 ws['!cols'] = colWidths;
 
                 const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal');
+                XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal 1 Baris');
                 XLSX.writeFile(wb, `SIKAD-Detail-Jurnal-${dateTag}.xlsx`);
             } else {
                 // SUMMARY EXPORT
@@ -1112,10 +1148,10 @@ export default function JournalEntry() {
                                     >
                                         <span className="font-black text-xs flex items-center gap-1.5">
                                             <span className={`w-2.5 h-2.5 rounded-full ${exportFormat === 'DETAILED' ? 'bg-emerald-600' : 'bg-slate-300'}`}></span>
-                                            Detail Jurnal Lengkap (Rekomendasi)
+                                            Detail 1 Baris (Debit & Kredit Sejajar)
                                         </span>
                                         <span className="text-[11px] text-slate-500 font-medium pl-4">
-                                            Rincian tiap akun Debit/Kredit, nota SPJ, dan rincian permintaan dana
+                                            Akun Debit & Kredit sejajar dalam 1 baris excel (mudah filter & rekap), plus rincian SPJ & Permintaan Dana
                                         </span>
                                     </button>
                                     <button
