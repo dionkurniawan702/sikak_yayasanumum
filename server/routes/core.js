@@ -212,6 +212,8 @@ router.get('/journals', async (req, res) => {
                         ...j,
                         budgetReport: {
                             id: rep.id,
+                            category: rep.category || null,
+                            description: rep.description || null,
                             nomorNota: rep.nomorNota || null,
                             volume: rep.volume !== null && rep.volume !== undefined ? Number(rep.volume) : null,
                             satuan: rep.satuan || null,

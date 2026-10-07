@@ -556,10 +556,39 @@ export default function JournalEntry() {
                     };
 
                     if (exportIncludeBudget) {
+                        // Resolve precise Rincian Pengeluaran / Dana Permintaan (from SPJ category or Request Item)
+                        let rincianDana = '-';
+                        if (rep) {
+                            if (rep.category && rep.category !== 'General' && rep.category !== '-') {
+                                rincianDana = rep.category;
+                            } else if (req) {
+                                const reqItems = Array.isArray(req.items) 
+                                    ? req.items 
+                                    : (typeof req.items === 'string' ? JSON.parse(req.items || '[]') : []);
+                                if (reqItems.length > 0) {
+                                    const matched = (rep.componentId && reqItems.find(i => (i.componentId || i.id) === rep.componentId))
+                                        || (rep.expenseItemId && reqItems.find(i => i.expenseItemId === rep.expenseItemId))
+                                        || (reqItems.length === 1 ? reqItems[0] : null);
+                                    if (matched?.name) {
+                                        rincianDana = matched.name;
+                                    }
+                                }
+                            }
+                            if (rincianDana === '-' && rep.description) {
+                                rincianDana = rep.description;
+                            }
+                        }
+                        if (rincianDana === '-' && req?.description) {
+                            rincianDana = req.description;
+                        }
+                        if (rincianDana === '-') {
+                            rincianDana = j.description || '-';
+                        }
+
                         baseRow['No. Permintaan Dana (Req ID)'] = req?.id || '-';
-                        baseRow['Keterangan Pengajuan Dana'] = req?.description || '-';
+                        baseRow['Rincian Dana Permintaan'] = rincianDana;
                         baseRow['Unit Pemohon'] = unitName;
-                        baseRow['Mata Anggaran / Komponen'] = expName;
+                        baseRow['Item Pengeluaran'] = expName;
                         baseRow['No. Nota SPJ'] = rep?.nomorNota || '-';
                         baseRow['Volume'] = rep?.volume ? `${rep.volume} ${rep.satuan || ''}`.trim() : '-';
                         baseRow['Harga Satuan (Rp)'] = rep?.harga || '-';
@@ -592,9 +621,9 @@ export default function JournalEntry() {
                 if (exportIncludeBudget) {
                     colWidths.push(
                         { wch: 25 }, // No Req
-                        { wch: 30 }, // Keterangan Req
+                        { wch: 32 }, // Rincian Dana Permintaan
                         { wch: 20 }, // Unit Pemohon
-                        { wch: 25 }, // Mata Anggaran
+                        { wch: 25 }, // Item Pengeluaran
                         { wch: 18 }, // No Nota
                         { wch: 15 }, // Volume
                         { wch: 16 }, // Harga
@@ -618,6 +647,34 @@ export default function JournalEntry() {
                     const expName = rep?.expenseItemName || (rep?.expenseItemId ? (state.expenseItems || []).find(ei => ei.id === rep.expenseItemId)?.name : null) || '-';
                     const totalVal = (j.entries || []).reduce((s, e) => s + (e.debit || 0), 0);
 
+                    let rincianDana = '-';
+                    if (rep) {
+                        if (rep.category && rep.category !== 'General' && rep.category !== '-') {
+                            rincianDana = rep.category;
+                        } else if (req) {
+                            const reqItems = Array.isArray(req.items) 
+                                ? req.items 
+                                : (typeof req.items === 'string' ? JSON.parse(req.items || '[]') : []);
+                            if (reqItems.length > 0) {
+                                const matched = (rep.componentId && reqItems.find(i => (i.componentId || i.id) === rep.componentId))
+                                    || (rep.expenseItemId && reqItems.find(i => i.expenseItemId === rep.expenseItemId))
+                                    || (reqItems.length === 1 ? reqItems[0] : null);
+                                if (matched?.name) {
+                                    rincianDana = matched.name;
+                                }
+                            }
+                        }
+                        if (rincianDana === '-' && rep.description) {
+                            rincianDana = rep.description;
+                        }
+                    }
+                    if (rincianDana === '-' && req?.description) {
+                        rincianDana = req.description;
+                    }
+                    if (rincianDana === '-') {
+                        rincianDana = j.description || '-';
+                    }
+
                     const row = {
                         'No': idx + 1,
                         'ID Jurnal': j.id,
@@ -631,10 +688,10 @@ export default function JournalEntry() {
 
                     if (exportIncludeBudget) {
                         row['No. Permintaan Dana (Req ID)'] = req?.id || '-';
-                        row['Keterangan Permintaan Dana'] = req?.description || '-';
+                        row['Rincian Dana Permintaan'] = rincianDana;
                         row['Unit Pemohon'] = unitName;
+                        row['Item Pengeluaran'] = expName;
                         row['No. Nota SPJ'] = rep?.nomorNota || '-';
-                        row['Mata Anggaran'] = expName;
                     }
 
                     return row;
@@ -651,10 +708,10 @@ export default function JournalEntry() {
                     { wch: 15 },
                     { wch: 18 },
                     { wch: 25 },
-                    { wch: 30 },
+                    { wch: 32 },
                     { wch: 20 },
-                    { wch: 18 },
-                    { wch: 25 }
+                    { wch: 25 },
+                    { wch: 18 }
                 ];
                 ws['!autofilter'] = { ref: ws['!ref'] };
 
@@ -1427,7 +1484,7 @@ export default function JournalEntry() {
                                     <div className="flex-1 text-xs">
                                         <span className="font-bold text-slate-800 block">Sertakan Kolom Rincian Permintaan Dana & SPJ</span>
                                         <span className="text-[11px] text-slate-500 block mt-0.5">
-                                            Menambahkan No. Pengajuan Dana, Unit Pemohon, Komponen Anggaran, No. Nota SPJ, dan Rincian Barang (Volume &times; Harga) pada transaksi belanja.
+                                            Menambahkan No. Pengajuan Dana, Rincian Dana Permintaan, Unit Pemohon, Item Pengeluaran, No. Nota SPJ, dan Rincian Barang (Volume &times; Harga) pada transaksi belanja.
                                         </span>
                                     </div>
                                 </label>
