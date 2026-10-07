@@ -51,6 +51,58 @@ export default function JournalEntry() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize, setPageSize] = useState(50);
 
+    // Enhanced Export State (Rentang Tanggal, Filter Akun, Unit, dan Rincian Permintaan Dana)
+    const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+    const [exportFormat, setExportFormat] = useState('DETAILED'); // 'DETAILED' | 'SUMMARY'
+    const [exportPreset, setExportPreset] = useState('THIS_ACADEMIC_YEAR');
+    const [exportStartDate, setExportStartDate] = useState('');
+    const [exportEndDate, setExportEndDate] = useState('');
+    const [exportAccountId, setExportAccountId] = useState('ALL');
+    const [exportUnitId, setExportUnitId] = useState('ALL');
+    const [exportIncludeBudget, setExportIncludeBudget] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
+    const [exportError, setExportError] = useState(null);
+
+    const applyDatePreset = (preset) => {
+        setExportPreset(preset);
+        setExportError(null);
+        const now = new Date();
+        const curYear = now.getFullYear();
+        const curMonth = now.getMonth() + 1; // 1-12
+
+        if (preset === 'THIS_MONTH') {
+            const start = `${curYear}-${String(curMonth).padStart(2, '0')}-01`;
+            const lastDay = new Date(curYear, curMonth, 0).getDate();
+            const end = `${curYear}-${String(curMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            setExportStartDate(start);
+            setExportEndDate(end);
+        } else if (preset === 'LAST_MONTH') {
+            let prevYear = curYear;
+            let prevMonth = curMonth - 1;
+            if (prevMonth === 0) {
+                prevMonth = 12;
+                prevYear -= 1;
+            }
+            const start = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+            const lastDay = new Date(prevYear, prevMonth, 0).getDate();
+            const end = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+            setExportStartDate(start);
+            setExportEndDate(end);
+        } else if (preset === 'THIS_ACADEMIC_YEAR') {
+            let ayStartYear = curMonth >= 7 ? curYear : curYear - 1;
+            let ayEndYear = ayStartYear + 1;
+            setExportStartDate(`${ayStartYear}-07-01`);
+            setExportEndDate(`${ayEndYear}-06-30`);
+        } else if (preset === 'ALL') {
+            setExportStartDate('');
+            setExportEndDate('');
+        }
+    };
+
+    useEffect(() => {
+        applyDatePreset('THIS_ACADEMIC_YEAR');
+    }, []);
+
     const formatMonthLabel = (ymString) => {
         if (!ymString || ymString === 'LATEST_500') return '500 Transaksi Terbaru';
         const [year, month] = ymString.split('-');
@@ -300,47 +352,256 @@ export default function JournalEntry() {
     const startIndex = (currentPage - 1) * pageSize;
     const paginatedJournals = filteredJournals.slice(startIndex, startIndex + pageSize);
 
-    const exportHistoryToExcel = () => {
-        const data = filteredJournals.map(j => ({
-            'ID Jurnal': j.id,
-            'Tanggal': j.date ? j.date.split('T')[0] : '',
-            'Deskripsi': j.description,
-            'Pihak Terkait': j.name || '-',
-            'Referensi': j.reference || '-',
-            'Total': (j.entries || []).reduce((s, e) => s + (e.debit || 0), 0)
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
-        XLSX.writeFile(wb, `SIKAD-Ringkasan-Jurnal-${selectedPeriod}.xlsx`);
+    const openExportModal = (format = 'DETAILED') => {
+        setExportFormat(format);
+        setExportError(null);
+        setIsExportModalOpen(true);
     };
 
-    const exportDetailedHistoryToExcel = () => {
-        const detailedRows = [];
-        filteredJournals.forEach(j => {
-            const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
-            (j.entries || []).forEach((e, idx) => {
-                const acc = accounts.find(a => a.id === e.accountId);
-                const accCode = acc?.code || e.accountId || '';
-                const accName = acc?.name || e.accountName || '';
-                detailedRows.push({
-                    'Tanggal': idx === 0 ? (j.date ? j.date.split('T')[0] : '') : '',
-                    'Pihak Terkait': idx === 0 ? (j.name || '-') : '',
-                    'Deskripsi': idx === 0 ? j.description : '',
-                    'No Referensi': idx === 0 ? (j.reference || '-') : '',
-                    'Program': idx === 0 ? progName : '',
-                    'Kode Akun': accCode,
-                    'Nama Akun': accName,
-                    'Debit': e.debit || 0,
-                    'Kredit': e.credit || 0
-                });
-            });
-        });
+    const exportHistoryToExcel = () => openExportModal('SUMMARY');
+    const exportDetailedHistoryToExcel = () => openExportModal('DETAILED');
 
-        const ws = XLSX.utils.json_to_sheet(detailedRows);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal');
-        XLSX.writeFile(wb, `SIKAD-Detail-Jurnal-${selectedPeriod}.xlsx`);
+    const executeExport = async () => {
+        try {
+            setIsExporting(true);
+            setExportError(null);
+
+            // Construct query URL
+            let queryParams = ['includeBudgetDetails=true'];
+            if (exportPreset !== 'ALL') {
+                if (exportStartDate) queryParams.push(`startDate=${exportStartDate}`);
+                if (exportEndDate) queryParams.push(`endDate=${exportEndDate}`);
+            }
+
+            const url = `/journals?${queryParams.join('&')}`;
+            console.log('[Export] Fetching journals for export with URL:', url);
+
+            let rawJournals = [];
+            try {
+                const res = await api.get(url);
+                rawJournals = res?.data || [];
+            } catch (fetchErr) {
+                console.warn('[Export] Remote fetch failed, falling back to local state:', fetchErr);
+                rawJournals = journals;
+            }
+
+            if (!rawJournals || rawJournals.length === 0) {
+                setExportError('Tidak ada data jurnal yang ditemukan pada rentang tanggal/periode yang dipilih.');
+                setIsExporting(false);
+                return;
+            }
+
+            // Parse entries
+            let processed = rawJournals.map(j => ({
+                ...j,
+                programId: j.programId || 'PRG-GEN',
+                entries: typeof j.entries === 'string' ? JSON.parse(j.entries) : (j.entries || [])
+            }));
+
+            // Filter by date if local fallback was used
+            if (exportPreset !== 'ALL') {
+                if (exportStartDate) {
+                    processed = processed.filter(j => j.date && j.date.slice(0, 10) >= exportStartDate);
+                }
+                if (exportEndDate) {
+                    processed = processed.filter(j => j.date && j.date.slice(0, 10) <= exportEndDate);
+                }
+            }
+
+            // Filter by Account (COA) if selected
+            if (exportAccountId !== 'ALL') {
+                processed = processed.filter(j => 
+                    (j.entries || []).some(e => e.accountId === exportAccountId)
+                );
+            }
+
+            // Filter by Unit if selected
+            if (exportUnitId !== 'ALL') {
+                const selectedUnitObj = (state.units || []).find(u => u.id === exportUnitId);
+                const selectedUnitName = selectedUnitObj?.name?.toLowerCase() || '';
+                processed = processed.filter(j => {
+                    const jName = (j.name || '').toLowerCase();
+                    const repUnitId = j.budgetReport?.unitId;
+                    const repUnitName = (j.budgetReport?.unitName || '').toLowerCase();
+                    return (
+                        repUnitId === exportUnitId ||
+                        (selectedUnitName && repUnitName.includes(selectedUnitName)) ||
+                        (selectedUnitName && jName.includes(selectedUnitName))
+                    );
+                });
+            }
+
+            if (processed.length === 0) {
+                setExportError('Tidak ada data jurnal yang cocok dengan filter Akun / Unit yang dipilih.');
+                setIsExporting(false);
+                return;
+            }
+
+            // Sort descending by date
+            processed.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+            // Generate filename based on filters
+            const dateTag = exportPreset === 'ALL' 
+                ? 'Semua-Periode' 
+                : `${exportStartDate || 'Awal'}_sd_${exportEndDate || 'Akhir'}`;
+
+            if (exportFormat === 'DETAILED') {
+                // DETAILED EXPORT
+                const detailedRows = [];
+                let rowNumber = 1;
+
+                processed.forEach(j => {
+                    const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
+                    // Enrichment fallback from local state if budgetReport/budgetRequest is missing
+                    const rep = j.budgetReport || (state.budgetReports || []).find(r => r.journalId === j.id);
+                    const req = j.budgetRequest || (rep?.budgetRequestId ? (state.budgetRequests || []).find(rq => rq.id === rep.budgetRequestId) : null);
+                    const unitName = rep?.unitName || (rep?.unitId ? (state.units || []).find(u => u.id === rep.unitId)?.name : null) || j.name || '-';
+                    const expName = rep?.expenseItemName || (rep?.expenseItemId ? (state.expenseItems || []).find(ei => ei.id === rep.expenseItemId)?.name : null) || '-';
+
+                    const entriesToShow = exportAccountId !== 'ALL' 
+                        ? (j.entries || []).filter(e => e.accountId === exportAccountId)
+                        : (j.entries || []);
+
+                    if (entriesToShow.length === 0 && (j.entries || []).length > 0) {
+                        return; // Skip if no entries match
+                    }
+
+                    entriesToShow.forEach((e, idx) => {
+                        const acc = accounts.find(a => a.id === e.accountId);
+                        const accCode = acc?.code || e.accountId || '';
+                        const accName = acc?.name || e.accountName || '';
+
+                        const baseRow = {
+                            'No': idx === 0 ? rowNumber : '',
+                            'Tanggal': idx === 0 ? (j.date ? j.date.split('T')[0] : '') : '',
+                            'ID Jurnal': idx === 0 ? j.id : '',
+                            'Pihak Terkait': idx === 0 ? (j.name || '-') : '',
+                            'Deskripsi Jurnal': idx === 0 ? j.description : '',
+                            'No Referensi': idx === 0 ? (j.reference || '-') : '',
+                            'Program': idx === 0 ? progName : '',
+                            'Kode Akun': accCode,
+                            'Nama Akun': accName,
+                            'Debit (Rp)': e.debit || 0,
+                            'Kredit (Rp)': e.credit || 0
+                        };
+
+                        if (exportIncludeBudget) {
+                            baseRow['No. Permintaan Dana (Req ID)'] = idx === 0 ? (req?.id || '-') : '';
+                            baseRow['Keterangan Pengajuan Dana'] = idx === 0 ? (req?.description || '-') : '';
+                            baseRow['Total Pengajuan Dana (Rp)'] = idx === 0 ? (req?.totalAmount || '-') : '';
+                            baseRow['Unit Pemohon'] = idx === 0 ? unitName : '';
+                            baseRow['Mata Anggaran / Komponen'] = idx === 0 ? expName : '';
+                            baseRow['No. Nota SPJ'] = idx === 0 ? (rep?.nomorNota || '-') : '';
+                            baseRow['Volume'] = idx === 0 ? (rep?.volume ? `${rep.volume} ${rep.satuan || ''}`.trim() : '-') : '';
+                            baseRow['Harga Satuan (Rp)'] = idx === 0 ? (rep?.harga || '-') : '';
+                            baseRow['Diskon (Rp)'] = idx === 0 ? (rep?.diskon || 0) : '';
+                            baseRow['Kategori Aset'] = idx === 0 ? (rep?.kategoriAset || '-') : '';
+                        }
+
+                        detailedRows.push(baseRow);
+                    });
+
+                    rowNumber++;
+                });
+
+                const ws = XLSX.utils.json_to_sheet(detailedRows);
+                
+                // Column widths
+                const colWidths = [
+                    { wch: 6 },  // No
+                    { wch: 12 }, // Tanggal
+                    { wch: 18 }, // ID Jurnal
+                    { wch: 22 }, // Pihak Terkait
+                    { wch: 35 }, // Deskripsi
+                    { wch: 18 }, // Referensi
+                    { wch: 15 }, // Program
+                    { wch: 14 }, // Kode Akun
+                    { wch: 30 }, // Nama Akun
+                    { wch: 15 }, // Debit
+                    { wch: 15 }  // Kredit
+                ];
+
+                if (exportIncludeBudget) {
+                    colWidths.push(
+                        { wch: 25 }, // No Req
+                        { wch: 30 }, // Keterangan Req
+                        { wch: 18 }, // Total Req
+                        { wch: 20 }, // Unit Pemohon
+                        { wch: 25 }, // Mata Anggaran
+                        { wch: 18 }, // No Nota
+                        { wch: 15 }, // Volume
+                        { wch: 16 }, // Harga
+                        { wch: 14 }, // Diskon
+                        { wch: 16 }  // Kategori Aset
+                    );
+                }
+                ws['!cols'] = colWidths;
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Detail Jurnal');
+                XLSX.writeFile(wb, `SIKAD-Detail-Jurnal-${dateTag}.xlsx`);
+            } else {
+                // SUMMARY EXPORT
+                const summaryRows = processed.map((j, idx) => {
+                    const progName = programs.find(p => p.id === j.programId)?.name || 'Umum';
+                    const rep = j.budgetReport || (state.budgetReports || []).find(r => r.journalId === j.id);
+                    const req = j.budgetRequest || (rep?.budgetRequestId ? (state.budgetRequests || []).find(rq => rq.id === rep.budgetRequestId) : null);
+                    const unitName = rep?.unitName || (rep?.unitId ? (state.units || []).find(u => u.id === rep.unitId)?.name : null) || j.name || '-';
+                    const expName = rep?.expenseItemName || (rep?.expenseItemId ? (state.expenseItems || []).find(ei => ei.id === rep.expenseItemId)?.name : null) || '-';
+                    const totalVal = (j.entries || []).reduce((s, e) => s + (e.debit || 0), 0);
+
+                    const row = {
+                        'No': idx + 1,
+                        'ID Jurnal': j.id,
+                        'Tanggal': j.date ? j.date.split('T')[0] : '',
+                        'Pihak Terkait': j.name || '-',
+                        'Deskripsi': j.description,
+                        'Referensi': j.reference || '-',
+                        'Program': progName,
+                        'Total Transaksi (Rp)': totalVal
+                    };
+
+                    if (exportIncludeBudget) {
+                        row['No. Permintaan Dana (Req ID)'] = req?.id || '-';
+                        row['Keterangan Permintaan Dana'] = req?.description || '-';
+                        row['Unit Pemohon'] = unitName;
+                        row['No. Nota SPJ'] = rep?.nomorNota || '-';
+                        row['Mata Anggaran'] = expName;
+                    }
+
+                    return row;
+                });
+
+                const ws = XLSX.utils.json_to_sheet(summaryRows);
+                ws['!cols'] = [
+                    { wch: 6 },
+                    { wch: 18 },
+                    { wch: 12 },
+                    { wch: 22 },
+                    { wch: 35 },
+                    { wch: 18 },
+                    { wch: 15 },
+                    { wch: 18 },
+                    { wch: 25 },
+                    { wch: 30 },
+                    { wch: 20 },
+                    { wch: 18 },
+                    { wch: 25 }
+                ];
+
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Ringkasan Jurnal');
+                XLSX.writeFile(wb, `SIKAD-Ringkasan-Jurnal-${dateTag}.xlsx`);
+            }
+
+            // Close modal after success
+            setIsExportModalOpen(false);
+        } catch (err) {
+            console.error('[Export Error]', err);
+            setExportError(`Terjadi kesalahan saat mengekspor: ${err.message}`);
+        } finally {
+            setIsExporting(false);
+        }
     };
 
 
@@ -683,15 +944,23 @@ export default function JournalEntry() {
                                             </div>
                                             
                                             {/* Action Buttons Group */}
-                                            <div className="flex flex-wrap gap-2 w-full xl:w-auto justify-start xl:justify-end">
-                                                {/* Export Summary */}
-                                                <button onClick={exportHistoryToExcel} className="flex items-center gap-1.5 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all shadow-sm">
-                                                    <FileSpreadsheet size={12} /> Ekspor Ringkasan
+                                            <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto justify-start xl:justify-end">
+                                                {/* Main Enhanced Export Button */}
+                                                <button 
+                                                    onClick={() => openExportModal('DETAILED')} 
+                                                    className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2.5 rounded-2xl font-black text-[11px] tracking-wide uppercase transition-all shadow-md shadow-emerald-600/20 active:scale-95"
+                                                    title="Ekspor Jurnal dengan Filter Tanggal, Akun COA, dan Rincian Permintaan Dana"
+                                                >
+                                                    <FileSpreadsheet size={15} /> Ekspor Excel (Filter Periode & COA)
                                                 </button>
 
-                                                {/* Export Detailed */}
-                                                <button onClick={exportDetailedHistoryToExcel} className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-100 px-4 py-2.5 rounded-xl font-black text-[10px] tracking-wide uppercase transition-all shadow-sm">
-                                                    <FileSpreadsheet size={12} /> Ekspor Detail Jurnal
+                                                {/* Quick Summary Export */}
+                                                <button 
+                                                    onClick={() => openExportModal('SUMMARY')} 
+                                                    className="flex items-center gap-1.5 bg-white text-slate-600 hover:bg-slate-50 border border-slate-200 px-4 py-2.5 rounded-2xl font-black text-[10px] tracking-wide uppercase transition-all shadow-sm"
+                                                    title="Ekspor Ringkasan Transaksi Jurnal"
+                                                >
+                                                    <List size={13} /> Ringkasan
                                                 </button>
                                             </div>
                                         </div>
@@ -794,6 +1063,245 @@ export default function JournalEntry() {
                                     </button>
                                 </div>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Dialog Ekspor Jurnal Lengkap */}
+            {isExportModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+                        {/* Modal Header */}
+                        <div className="px-6 py-5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2.5 bg-white/10 rounded-2xl backdrop-blur-md">
+                                    <FileSpreadsheet size={22} className="text-white" />
+                                </div>
+                                <div>
+                                    <h3 className="text-lg font-black tracking-tight">Ekspor Jurnal Umum ke Excel</h3>
+                                    <p className="text-xs text-emerald-100 font-medium">Atur rentang tanggal, filter akun, dan rincian belanja</p>
+                                </div>
+                            </div>
+                            <button 
+                                type="button"
+                                disabled={isExporting}
+                                onClick={() => setIsExportModalOpen(false)}
+                                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-xl transition-all disabled:opacity-50"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Modal Body */}
+                        <div className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            {/* 1. Format Ekspor */}
+                            <div>
+                                <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-2">
+                                    Format Laporan Excel
+                                </label>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setExportFormat('DETAILED')}
+                                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col gap-1 ${
+                                            exportFormat === 'DETAILED' 
+                                                ? 'border-emerald-500 bg-emerald-50/60 text-emerald-950 ring-2 ring-emerald-500/20' 
+                                                : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                        }`}
+                                    >
+                                        <span className="font-black text-xs flex items-center gap-1.5">
+                                            <span className={`w-2.5 h-2.5 rounded-full ${exportFormat === 'DETAILED' ? 'bg-emerald-600' : 'bg-slate-300'}`}></span>
+                                            Detail Jurnal Lengkap (Rekomendasi)
+                                        </span>
+                                        <span className="text-[11px] text-slate-500 font-medium pl-4">
+                                            Rincian tiap akun Debit/Kredit, nota SPJ, dan rincian permintaan dana
+                                        </span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setExportFormat('SUMMARY')}
+                                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col gap-1 ${
+                                            exportFormat === 'SUMMARY' 
+                                                ? 'border-emerald-500 bg-emerald-50/60 text-emerald-950 ring-2 ring-emerald-500/20' 
+                                                : 'border-slate-200 hover:bg-slate-50 text-slate-600'
+                                        }`}
+                                    >
+                                        <span className="font-black text-xs flex items-center gap-1.5">
+                                            <span className={`w-2.5 h-2.5 rounded-full ${exportFormat === 'SUMMARY' ? 'bg-emerald-600' : 'bg-slate-300'}`}></span>
+                                            Ringkasan Transaksi
+                                        </span>
+                                        <span className="text-[11px] text-slate-500 font-medium pl-4">
+                                            1 baris per voucher transaksi dengan total nilai mutasi
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 2. Pilihan Rentang Tanggal */}
+                            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-100 space-y-3">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-[11px] font-black text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                                        <Calendar size={14} className="text-emerald-600" /> Rentang Tanggal Ekspor
+                                    </label>
+                                    <span className="text-[11px] text-emerald-700 font-bold bg-emerald-100/70 px-2.5 py-0.5 rounded-full">
+                                        Mencegah aplikasi berat
+                                    </span>
+                                </div>
+
+                                {/* Preset buttons */}
+                                <div className="flex flex-wrap gap-1.5">
+                                    {[
+                                        { id: 'THIS_ACADEMIC_YEAR', label: 'Tahun Ajaran Ini' },
+                                        { id: 'THIS_MONTH', label: 'Bulan Ini' },
+                                        { id: 'LAST_MONTH', label: 'Bulan Lalu' },
+                                        { id: 'ALL', label: 'Semua Riwayat (7.000+)' },
+                                        { id: 'CUSTOM', label: 'Kustom' },
+                                    ].map(p => (
+                                        <button
+                                            key={p.id}
+                                            type="button"
+                                            onClick={() => applyDatePreset(p.id)}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                                exportPreset === p.id 
+                                                    ? 'bg-emerald-600 text-white shadow-sm' 
+                                                    : 'bg-white text-slate-600 hover:bg-slate-200 border border-slate-200'
+                                            }`}
+                                        >
+                                            {p.label}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {exportPreset !== 'ALL' && (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Dari Tanggal:</label>
+                                            <input 
+                                                type="date"
+                                                value={exportStartDate}
+                                                onChange={e => { setExportStartDate(e.target.value); setExportPreset('CUSTOM'); }}
+                                                className="form-input w-full rounded-xl text-xs py-2 border-slate-200"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold text-slate-400 block mb-1">Sampai Tanggal:</label>
+                                            <input 
+                                                type="date"
+                                                value={exportEndDate}
+                                                onChange={e => { setExportEndDate(e.target.value); setExportPreset('CUSTOM'); }}
+                                                className="form-input w-full rounded-xl text-xs py-2 border-slate-200"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* 3. Filter Tambahan: COA & Unit */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
+                                        Filter Akun COA (Opsional)
+                                    </label>
+                                    <select
+                                        value={exportAccountId}
+                                        onChange={e => setExportAccountId(e.target.value)}
+                                        className="form-select w-full rounded-xl text-xs py-2.5 border-slate-200 bg-white"
+                                    >
+                                        <option value="ALL">Semua Akun (Semua COA)</option>
+                                        {groupedAccounts.map(g => (
+                                            <optgroup key={g.tipe} label={`--- Kelompok ${g.tipe} ---`}>
+                                                {g.accounts.map(acc => (
+                                                    <option key={acc.id} value={acc.id}>
+                                                        {acc.code} - {acc.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="text-[11px] font-black text-slate-500 uppercase tracking-wider block mb-1.5">
+                                        Filter Unit / Satuan (Opsional)
+                                    </label>
+                                    <select
+                                        value={exportUnitId}
+                                        onChange={e => setExportUnitId(e.target.value)}
+                                        className="form-select w-full rounded-xl text-xs py-2.5 border-slate-200 bg-white"
+                                    >
+                                        <option value="ALL">Semua Unit / Lembaga</option>
+                                        {(state.units || []).filter(u => !u.isDeleted).map(u => (
+                                            <option key={u.id} value={u.id}>
+                                                {u.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* 4. Opsi Rincian Permintaan Dana */}
+                            <div className="pt-2">
+                                <label className="flex items-start gap-3 p-3.5 bg-blue-50/60 border border-blue-100 rounded-2xl cursor-pointer hover:bg-blue-50 transition-colors">
+                                    <input 
+                                        type="checkbox"
+                                        checked={exportIncludeBudget}
+                                        onChange={e => setExportIncludeBudget(e.target.checked)}
+                                        className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                                    />
+                                    <div className="flex-1 text-xs">
+                                        <span className="font-bold text-slate-800 block">Sertakan Kolom Rincian Permintaan Dana & SPJ</span>
+                                        <span className="text-[11px] text-slate-500 block mt-0.5">
+                                            Menambahkan No. Pengajuan Dana, Unit Pemohon, Komponen Anggaran, No. Nota SPJ, dan Rincian Barang (Volume &times; Harga) pada transaksi belanja.
+                                        </span>
+                                    </div>
+                                </label>
+                            </div>
+
+                            {/* Error Message if any */}
+                            {exportError && (
+                                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
+                                    <AlertTriangle size={16} className="shrink-0 text-rose-600" />
+                                    <span>{exportError}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-xs text-slate-400 font-medium">
+                                {exportPreset === 'ALL' 
+                                    ? 'Menyiapkan penarikan seluruh data riwayat' 
+                                    : (exportStartDate && exportEndDate ? `Periode: ${exportStartDate} s/d ${exportEndDate}` : 'Pilih tanggal')}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    type="button"
+                                    disabled={isExporting}
+                                    onClick={() => setIsExportModalOpen(false)}
+                                    className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all disabled:opacity-50"
+                                >
+                                    Batal
+                                </button>
+                                <button
+                                    type="button"
+                                    disabled={isExporting}
+                                    onClick={executeExport}
+                                    className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-600/20 flex items-center gap-2 disabled:opacity-60"
+                                >
+                                    {isExporting ? (
+                                        <>
+                                            <Loader2 size={16} className="animate-spin" />
+                                            <span>Memproses Ekspor...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Download size={16} />
+                                            <span>Unduh File Excel</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

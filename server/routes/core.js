@@ -172,7 +172,69 @@ router.get('/journals', async (req, res) => {
             }
         }
 
-        const data = await prisma.journal.findMany(queryOptions);
+        let data = await prisma.journal.findMany(queryOptions);
+
+        if (req.query.includeBudgetDetails === 'true' && data.length > 0) {
+            try {
+                const journalIds = data.map(j => j.id);
+                const reports = await prisma.budgetReport.findMany({
+                    where: {
+                        journalId: { in: journalIds },
+                        isDeleted: false
+                    },
+                    include: {
+                        budgetRequest: true,
+                        expenseItem: true
+                    }
+                });
+
+                const unitIds = [...new Set(reports.map(r => r.unitId).filter(Boolean))];
+                const units = unitIds.length > 0 ? await prisma.unit.findMany({
+                    where: { id: { in: unitIds } }
+                }) : [];
+                const unitMap = new Map(units.map(u => [u.id, u.name]));
+
+                const reportMap = new Map();
+                for (const rep of reports) {
+                    if (rep.journalId) {
+                        reportMap.set(rep.journalId, rep);
+                    }
+                }
+
+                data = data.map(j => {
+                    const rep = reportMap.get(j.id);
+                    if (!rep) return j;
+                    return {
+                        ...j,
+                        budgetReport: {
+                            id: rep.id,
+                            nomorNota: rep.nomorNota || null,
+                            volume: rep.volume !== null && rep.volume !== undefined ? Number(rep.volume) : null,
+                            satuan: rep.satuan || null,
+                            harga: rep.harga !== null && rep.harga !== undefined ? Number(rep.harga) : null,
+                            diskon: rep.diskon !== null && rep.diskon !== undefined ? Number(rep.diskon) : null,
+                            kategoriAset: rep.kategoriAset || null,
+                            namaAset: rep.namaAset || null,
+                            unitId: rep.unitId || null,
+                            unitName: rep.unitId ? (unitMap.get(rep.unitId) || null) : null,
+                            expenseItemName: rep.expenseItem?.name || null
+                        },
+                        budgetRequest: rep.budgetRequest ? {
+                            id: rep.budgetRequest.id,
+                            description: rep.budgetRequest.description || null,
+                            totalAmount: rep.budgetRequest.totalAmount !== null && rep.budgetRequest.totalAmount !== undefined ? Number(rep.budgetRequest.totalAmount) : null,
+                            source: rep.budgetRequest.source || null,
+                            month: rep.budgetRequest.month || null,
+                            year: rep.budgetRequest.year || null,
+                            items: rep.budgetRequest.items || null
+                        } : null
+                    };
+                });
+            } catch (enrichErr) {
+                console.error('[Journal Enrich Error]', enrichErr.message);
+            }
+        }
+
         res.json({ data, totalCount });
     } catch (error) {
         res.status(500).json({ error: error.message });

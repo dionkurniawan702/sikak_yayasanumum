@@ -25,3 +25,5 @@ dist-ssr
 *.sw?
 # Scratch scripts
 server/scratch/
+__pycache__/
+*.pyc
