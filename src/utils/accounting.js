@@ -491,8 +491,8 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
             'Beban Tanpa Pembatasan': 14.5,
             'Beban Dengan Pembatasan': 14.6,
             'Beban Program': 15,
-            'Beban Program BOS': 16,
-            'Beban Umum & Administrasi': 17
+            'Beban Umum & Administrasi': 16,
+            'Beban Program BOS': 17
         };
         const orderA = order[a.name] !== undefined ? order[a.name] : 99;
         const orderB = order[b.name] !== undefined ? order[b.name] : 99;
