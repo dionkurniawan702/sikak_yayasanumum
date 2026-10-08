@@ -233,6 +233,20 @@ export function resolveAccountSubType(acc) {
     const type = acc.type || '';
     let st = acc.subType;
 
+    if (code.endsWith('0000')) {
+        return type || 'Aset';
+    }
+
+    // Khusus akun Beban: Jika nama atau subType mengandung "tanpa pembatasan" atau "dengan pembatasan"
+    if (type === 'Beban' || code.startsWith('5-')) {
+        if (name.includes('tanpa pembatasan') || (st && st.toLowerCase().includes('tanpa pembatasan'))) {
+            return 'Beban Tanpa Pembatasan';
+        }
+        if (name.includes('dengan pembatasan') || (st && st.toLowerCase().includes('dengan pembatasan'))) {
+            return 'Beban Dengan Pembatasan';
+        }
+    }
+
     // Cek apakah subType saat ini generic atau kontradiktif dengan prefix kode / tipe akun
     const isContradictory = () => {
         if (!st) return true;
@@ -245,10 +259,6 @@ export function resolveAccountSubType(acc) {
         return false;
     };
 
-    if (code.endsWith('0000')) {
-        return type || 'Aset';
-    }
-
     if (isContradictory()) {
         if (code.startsWith('1-1')) return 'Aset Lancar';
         if (code.startsWith('1-2')) return 'Aset Tidak Lancar';
@@ -258,18 +268,10 @@ export function resolveAccountSubType(acc) {
         if (code.startsWith('3-2')) return 'Aset Neto Dengan Pembatasan';
         if (code.startsWith('4-1')) return 'Penghasilan Tanpa Pembatasan';
         if (code.startsWith('4-2')) return 'Penghasilan Dengan Pembatasan';
-        if (code.startsWith('5-1')) {
-            if (name.includes('tanpa pembatasan')) return 'Beban Tanpa Pembatasan';
-            if (name.includes('dengan pembatasan')) return 'Beban Dengan Pembatasan';
-            return 'Beban Program';
-        }
+        if (code.startsWith('5-1')) return 'Beban Program';
         if (code.startsWith('5-3')) return 'Beban Program BOS';
         if (code.startsWith('5-2') || code.startsWith('5-4')) return 'Beban Umum & Administrasi';
-        if (code.startsWith('5-')) {
-            if (name.includes('tanpa pembatasan')) return 'Beban Tanpa Pembatasan';
-            if (name.includes('dengan pembatasan')) return 'Beban Dengan Pembatasan';
-            return 'Beban';
-        }
+        if (code.startsWith('5-')) return 'Beban';
         return type || 'Lainnya';
     }
 
