@@ -83,7 +83,24 @@ router.put('/accounts/:id', async (req, res) => {
         }
 
         if (!target) {
-            return res.status(404).json({ error: 'Akun tidak ditemukan' });
+            // Jika akun belum ada di database (misal akun header virtual atau belum tersimpan), buat otomatis sebagai akun baru
+            const cleanId = (req.params.id && !req.params.id.startsWith('ORPHAN-')) ? req.params.id : undefined;
+            const data = await prisma.account.create({
+                data: {
+                    id: cleanId,
+                    code: code || req.params.id,
+                    name: name || 'Akun Baru',
+                    category: category || (isParent ? 'header' : 'detail'),
+                    type: type || 'Beban',
+                    subType: subType || 'Beban',
+                    fund: fund || 'Dana Umum',
+                    balance: initialBalance !== undefined ? parseFloat(initialBalance) : (balance !== undefined ? parseFloat(balance) : 0),
+                    isParent: isParent !== undefined ? Boolean(isParent) : (category === 'header'),
+                    isDeleted: false
+                }
+            });
+            console.log(`[Account Update -> Auto Create] Success: ${data.code} - ${data.name}`);
+            return res.json({ data });
         }
 
         const data = await prisma.account.update({

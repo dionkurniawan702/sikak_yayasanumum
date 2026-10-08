@@ -126,7 +126,7 @@ export default function ChartOfAccounts() {
 
         setIsSaving(true);
         try {
-            if (editId) {
+            if (editId && !editId.startsWith('ORPHAN-')) {
                 const payload = { ...finalForm, id: editId };
                 dispatch({ type: 'EDIT_ACCOUNT', payload });
                 await api.pushAction({ type: 'EDIT_ACCOUNT', payload }, state);

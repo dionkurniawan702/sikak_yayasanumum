@@ -152,7 +152,16 @@ export const api = {
                     break;
                 }
                 case 'EDIT_ACCOUNT':
-                    await syncItem('accounts', payload.id, payload, 'PUT');
+                    try {
+                        await syncItem('accounts', payload.id, payload, 'PUT');
+                    } catch (err) {
+                        if (err.message && (err.message.includes('Akun tidak ditemukan') || err.message.includes('404'))) {
+                            console.log('[API] Akun belum ada di server saat update, membuat via POST...');
+                            await syncItem('accounts', null, payload, 'POST');
+                        } else {
+                            throw err;
+                        }
+                    }
                     break;
                 case 'DELETE_ACCOUNT':
                     await syncItem('accounts', payload, null, 'DELETE');
