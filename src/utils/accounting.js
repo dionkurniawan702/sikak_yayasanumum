@@ -237,10 +237,15 @@ export function resolveAccountSubType(acc) {
         return type || 'Aset';
     }
 
-    // Khusus akun Beban: Jika nama atau subType mengandung "tanpa pembatasan" atau "dengan pembatasan"
+    // Ubah Beban Program menjadi Beban
+    if (st === 'Beban Program') {
+        st = 'Beban';
+    }
+
+    // Khusus akun Beban: Akun 5-1xxx dikelompokkan sebagai "Beban"
     if (type === 'Beban' || code.startsWith('5-')) {
-        if (name.includes('tanpa pembatasan') || (st && st.toLowerCase().includes('tanpa pembatasan'))) {
-            return 'Beban Tanpa Pembatasan';
+        if (code.startsWith('5-1') || name.includes('tanpa pembatasan') || (st && (st.toLowerCase() === 'beban program' || st.toLowerCase().includes('tanpa pembatasan')))) {
+            return 'Beban';
         }
         if (name.includes('dengan pembatasan') || (st && st.toLowerCase().includes('dengan pembatasan'))) {
             return 'Beban Dengan Pembatasan';
@@ -250,7 +255,7 @@ export function resolveAccountSubType(acc) {
     // Cek apakah subType saat ini generic atau kontradiktif dengan prefix kode / tipe akun
     const isContradictory = () => {
         if (!st) return true;
-        if (['Lainnya', 'Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan', 'Beban'].includes(st)) return true;
+        if (['Lainnya', 'Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan'].includes(st)) return true;
         if ((type === 'Beban' || code.startsWith('5-')) && !st.toLowerCase().startsWith('beban')) return true;
         if ((type === 'Pendapatan' || code.startsWith('4-')) && !st.toLowerCase().includes('penghasilan') && !st.toLowerCase().includes('pendapatan')) return true;
         if ((type === 'Aset Neto' || type === 'Saldo Dana' || code.startsWith('3-')) && !st.toLowerCase().includes('aset neto') && !st.toLowerCase().includes('saldo dana')) return true;
@@ -268,7 +273,7 @@ export function resolveAccountSubType(acc) {
         if (code.startsWith('3-2')) return 'Aset Neto Dengan Pembatasan';
         if (code.startsWith('4-1')) return 'Penghasilan Tanpa Pembatasan';
         if (code.startsWith('4-2')) return 'Penghasilan Dengan Pembatasan';
-        if (code.startsWith('5-1')) return 'Beban Program';
+        if (code.startsWith('5-1')) return 'Beban';
         if (code.startsWith('5-3')) return 'Beban Program BOS';
         if (code.startsWith('5-2') || code.startsWith('5-4')) return 'Beban Umum & Administrasi';
         if (code.startsWith('5-')) return 'Beban';
@@ -388,10 +393,10 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
                 }
             } else if (type === 'Beban') {
                 if (child.code?.startsWith('5-1')) {
-                    groupKey = 'Beban Program';
+                    groupKey = 'Beban';
                     groupCode = '5-1000';
-                    groupName = 'Beban Program';
-                    subType = 'Beban Program';
+                    groupName = 'Beban';
+                    subType = 'Beban';
                 } else if (child.code?.startsWith('5-3')) {
                     groupKey = 'Beban Program BOS';
                     groupCode = '5-3000';
