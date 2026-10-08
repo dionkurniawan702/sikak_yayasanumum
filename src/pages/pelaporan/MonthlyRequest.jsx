@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck, Banknote, ArrowRightLeft, BookOpen, Layers } from 'lucide-react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck, Banknote, ArrowRightLeft, BookOpen, Layers, Sparkles } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -707,16 +707,109 @@ export default function MonthlyRequest() {
         }
     };
 
+    // Helper to intelligently guess debit account (expense / asset) from name or keywords
+    const guessDebitAccountForItem = useCallback((item) => {
+        if (isItemAsset(item)) {
+            const assetAcc = assetAccounts[0] || postableAccounts.find(a => a.code?.startsWith('1-2') || a.code?.startsWith('1-3'));
+            if (assetAcc) return assetAcc.id;
+        }
+        const lowerName = (item.name || '').toLowerCase();
+        const findAcc = (code) => postableAccounts.find(a => a.code === code)?.id;
+
+        if (lowerName.includes('bersih') || lowerName.includes('tisu') || lowerName.includes('sabun') || lowerName.includes('bayclin') || lowerName.includes('pewangi') || lowerName.includes('karbol')) {
+            return findAcc('5-4201') || findAcc('5-2103') || '';
+        } else if (lowerName.includes('atk') || lowerName.includes('kertas') || lowerName.includes('fotokopi') || lowerName.includes('alat tulis')) {
+            return findAcc('5-4202') || findAcc('5-2103') || '';
+        } else if (lowerName.includes('konsumsi') || lowerName.includes('snack') || lowerName.includes('rapat')) {
+            return findAcc('5-4203') || findAcc('5-2103') || '';
+        } else if (lowerName.includes('makan') || lowerName.includes('asrama') || lowerName.includes('dapur')) {
+            return findAcc('5-1401') || findAcc('5-4203') || '';
+        } else if (lowerName.includes('buku') || lowerName.includes('lkpd') || lowerName.includes('modul')) {
+            return findAcc('5-1201') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('tahfizh') || lowerName.includes('doa') || lowerName.includes('ibadah')) {
+            return findAcc('5-1202') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('seragam') || lowerName.includes('kopiah') || lowerName.includes('baju')) {
+            return findAcc('5-1308') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('pramuka')) {
+            return findAcc('5-1303') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('osis')) {
+            return findAcc('5-1304') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('ujian') || lowerName.includes('asesmen') || lowerName.includes('raport')) {
+            return findAcc('5-1305') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('uks') || lowerName.includes('obat') || lowerName.includes('kesehatan') || lowerName.includes('berobat')) {
+            return findAcc('5-1307') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('bus') || lowerName.includes('antar') || lowerName.includes('jemput')) {
+            return findAcc('5-1402') || findAcc('5-4206') || '';
+        } else if (lowerName.includes('komputer') || lowerName.includes('labor komputer')) {
+            return findAcc('5-1204') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('ipa') || lowerName.includes('sains') || lowerName.includes('labor ipa')) {
+            return findAcc('5-1205') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('outing') || lowerName.includes('kunjungan')) {
+            return findAcc('5-1306') || findAcc('5-1101') || '';
+        } else if (lowerName.includes('aplikasi') || lowerName.includes('software') || lowerName.includes('cloud') || lowerName.includes('hosting')) {
+            return findAcc('5-4304') || findAcc('5-4303') || '';
+        } else if (lowerName.includes('listrik') || lowerName.includes('pln')) {
+            return findAcc('5-4301') || findAcc('5-2102') || '';
+        } else if (lowerName.includes('air') || lowerName.includes('pdam')) {
+            return findAcc('5-4302') || findAcc('5-2102') || '';
+        } else if (lowerName.includes('internet') || lowerName.includes('wifi') || lowerName.includes('telkom')) {
+            return findAcc('5-4303') || findAcc('5-2102') || '';
+        } else if (lowerName.includes('gaji') || lowerName.includes('honor') || lowerName.includes('insentif')) {
+            return findAcc('5-1101') || findAcc('5-2101') || '';
+        } else if (lowerName.includes('gedung') || lowerName.includes('lokal') || lowerName.includes('bangunan') || lowerName.includes('renovasi')) {
+            return findAcc('5-4204') || findAcc('5-2103') || '';
+        } else if (lowerName.includes('pendidikan') || lowerName.includes('santri') || lowerName.includes('siswa') || lowerName.includes('kurikulum')) {
+            return findAcc('5-1101') || '';
+        } else {
+            return findAcc('5-4201') || findAcc('5-2103') || expenseAccounts[0]?.id || '';
+        }
+    }, [isItemAsset, assetAccounts, postableAccounts, expenseAccounts]);
+
+    // Helper: Cari debit account dari riwayat pengajuan sebelumnya yang pernah di-ACC ("Menjemput ke belakang")
+    const findDebitAccountFromHistory = useCallback((item, currentReqId) => {
+        if (!item) return '';
+        const itemNameTrimmed = (item.name || '').trim().toLowerCase();
+        
+        for (const r of (budgetRequests || [])) {
+            if (r.id === currentReqId) continue;
+            if (r.status !== 'APPROVED' || !r.items) continue;
+            for (const it of r.items) {
+                if (it.debitAccountId) {
+                    if ((it.componentId && it.componentId === item.componentId) || 
+                        (it.name && it.name.trim().toLowerCase() === itemNameTrimmed)) {
+                        return it.debitAccountId;
+                    }
+                }
+            }
+        }
+        return '';
+    }, [budgetRequests]);
+
     const handleOpenReview = (req) => {
+        const isAlreadyApproved = req.status === 'APPROVED';
         const isBosReq = req.source === 'BOS' || (req.items || []).some(i => i.planId?.endsWith('-BOS'));
         
         // 1. Rekening Sumber Kas Yayasan (Pusat / Induk) -> Sisi KREDIT saat pencairan dana
+        let initialSourceBankId = req.sourceBankAccountId || '';
+        let initialTargetUnitBankId = req.targetUnitBankAccountId || req.creditAccountId || '';
+
+        // Jika belum tersimpan di request, periksa apakah ada jurnal transfer TRF sebelumnya
+        const existingTrf = (state.journals || []).find(j => j.reference === `TRF-${req.id}` || (req.transferJournalId && j.id === req.transferJournalId));
+        if (existingTrf && existingTrf.entries) {
+            const jCredit = existingTrf.entries.find(e => (parseFloat(e.credit) || 0) > 0);
+            const jDebit = existingTrf.entries.find(e => (parseFloat(e.debit) || 0) > 0);
+            if (!initialSourceBankId && jCredit?.accountId) initialSourceBankId = jCredit.accountId;
+            if (!initialTargetUnitBankId && jDebit?.accountId) initialTargetUnitBankId = jDebit.accountId;
+        }
+
         const defaultSourceBankAcc = cashBankAccounts.find(a => 
             isBosReq ? (a.code === '1-1112' || a.name?.toLowerCase().includes('terikat') || a.name?.toLowerCase().includes('bos')) 
                      : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('bsi') || a.name?.toLowerCase().includes('yayasan'))
         ) || cashBankAccounts[0] || null;
 
-        const initialSourceBankId = req.sourceBankAccountId || defaultSourceBankAcc?.id || '';
+        if (!initialSourceBankId) {
+            initialSourceBankId = defaultSourceBankAcc?.id || '';
+        }
 
         // 2. Rekening Operasional Unit Tujuan -> Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja riil
         const reqUnit = (units || []).find(u => u.id === req.unitId);
@@ -734,75 +827,28 @@ export default function MonthlyRequest() {
             return a.id !== initialSourceBankId && (a.name?.toLowerCase().includes('operasional') || a.name?.toLowerCase().includes('unit'));
         }) || cashBankAccounts.find(a => a.id !== initialSourceBankId) || cashBankAccounts[0] || null;
 
-        const initialTargetUnitBankId = req.targetUnitBankAccountId || req.creditAccountId || matchedUnitBankAcc?.id || initialSourceBankId || '';
+        if (!initialTargetUnitBankId) {
+            initialTargetUnitBankId = matchedUnitBankAcc?.id || initialSourceBankId || '';
+        }
 
         const initialMappings = {};
         (req.items || []).forEach(item => {
             let defaultDebitId = item.debitAccountId || '';
             
-            // If not set, check from master expenseItems
+            // 1. Jemput ke belakang dari riwayat transaksi lampau jika belum ada
+            if (!defaultDebitId) {
+                defaultDebitId = findDebitAccountFromHistory(item, req.id);
+            }
+
+            // 2. Check from master expenseItems
             if (!defaultDebitId && item.expenseItemId) {
                 const exp = (expenseItems || []).find(e => e.id === item.expenseItemId);
                 if (exp) defaultDebitId = exp.debitAccountId || exp.accountId || '';
             }
 
-            // Smart guess if still not set
+            // 3. Smart pattern guess if still not set
             if (!defaultDebitId) {
-                if (isItemAsset(item)) {
-                    const assetAcc = assetAccounts[0] || postableAccounts.find(a => a.code?.startsWith('1-2') || a.code?.startsWith('1-3'));
-                    if (assetAcc) defaultDebitId = assetAcc.id;
-                } else {
-                    const lowerName = (item.name || '').toLowerCase();
-                    const findAcc = (code) => postableAccounts.find(a => a.code === code)?.id;
-
-                    if (lowerName.includes('bersih') || lowerName.includes('tisu') || lowerName.includes('sabun') || lowerName.includes('bayclin') || lowerName.includes('pewangi') || lowerName.includes('karbol')) {
-                        defaultDebitId = findAcc('5-4201') || findAcc('5-2103') || '';
-                    } else if (lowerName.includes('atk') || lowerName.includes('kertas') || lowerName.includes('fotokopi') || lowerName.includes('alat tulis')) {
-                        defaultDebitId = findAcc('5-4202') || findAcc('5-2103') || '';
-                    } else if (lowerName.includes('konsumsi') || lowerName.includes('snack') || lowerName.includes('rapat')) {
-                        defaultDebitId = findAcc('5-4203') || findAcc('5-2103') || '';
-                    } else if (lowerName.includes('makan') || lowerName.includes('asrama') || lowerName.includes('dapur')) {
-                        defaultDebitId = findAcc('5-1401') || findAcc('5-4203') || '';
-                    } else if (lowerName.includes('buku') || lowerName.includes('lkpd') || lowerName.includes('modul')) {
-                        defaultDebitId = findAcc('5-1201') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('tahfizh') || lowerName.includes('doa') || lowerName.includes('ibadah')) {
-                        defaultDebitId = findAcc('5-1202') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('seragam') || lowerName.includes('kopiah') || lowerName.includes('baju')) {
-                        defaultDebitId = findAcc('5-1308') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('pramuka')) {
-                        defaultDebitId = findAcc('5-1303') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('osis')) {
-                        defaultDebitId = findAcc('5-1304') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('ujian') || lowerName.includes('asesmen') || lowerName.includes('raport')) {
-                        defaultDebitId = findAcc('5-1305') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('uks') || lowerName.includes('obat') || lowerName.includes('kesehatan') || lowerName.includes('berobat')) {
-                        defaultDebitId = findAcc('5-1307') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('bus') || lowerName.includes('antar') || lowerName.includes('jemput')) {
-                        defaultDebitId = findAcc('5-1402') || findAcc('5-4206') || '';
-                    } else if (lowerName.includes('komputer') || lowerName.includes('labor komputer')) {
-                        defaultDebitId = findAcc('5-1204') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('ipa') || lowerName.includes('sains') || lowerName.includes('labor ipa')) {
-                        defaultDebitId = findAcc('5-1205') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('outing') || lowerName.includes('kunjungan')) {
-                        defaultDebitId = findAcc('5-1306') || findAcc('5-1101') || '';
-                    } else if (lowerName.includes('aplikasi') || lowerName.includes('software') || lowerName.includes('cloud') || lowerName.includes('hosting')) {
-                        defaultDebitId = findAcc('5-4304') || findAcc('5-4303') || '';
-                    } else if (lowerName.includes('listrik') || lowerName.includes('pln')) {
-                        defaultDebitId = findAcc('5-4301') || findAcc('5-2102') || '';
-                    } else if (lowerName.includes('air') || lowerName.includes('pdam')) {
-                        defaultDebitId = findAcc('5-4302') || findAcc('5-2102') || '';
-                    } else if (lowerName.includes('internet') || lowerName.includes('wifi') || lowerName.includes('telkom')) {
-                        defaultDebitId = findAcc('5-4303') || findAcc('5-2102') || '';
-                    } else if (lowerName.includes('gaji') || lowerName.includes('honor') || lowerName.includes('insentif')) {
-                        defaultDebitId = findAcc('5-1101') || findAcc('5-2101') || '';
-                    } else if (lowerName.includes('gedung') || lowerName.includes('lokal') || lowerName.includes('bangunan') || lowerName.includes('renovasi')) {
-                        defaultDebitId = findAcc('5-4204') || findAcc('5-2103') || '';
-                    } else if (lowerName.includes('pendidikan') || lowerName.includes('santri') || lowerName.includes('siswa') || lowerName.includes('kurikulum')) {
-                        defaultDebitId = findAcc('5-1101') || '';
-                    } else {
-                        defaultDebitId = findAcc('5-4201') || findAcc('5-2103') || expenseAccounts[0]?.id || '';
-                    }
-                }
+                defaultDebitId = guessDebitAccountForItem(item);
             }
 
             initialMappings[item.componentId] = {
@@ -813,13 +859,57 @@ export default function MonthlyRequest() {
 
         setReviewRequest({
             req,
-            accIds: [],
+            isAlreadyApproved,
+            accIds: isAlreadyApproved ? (req.items || []).map(i => i.componentId) : [],
             tolakIds: [],
             sourceBankAccountId: initialSourceBankId,
             targetUnitBankAccountId: initialTargetUnitBankId,
             globalCreditAccountId: initialTargetUnitBankId,
             itemMappings: initialMappings
         });
+    };
+
+    // Tombol Cerdas: Jemput Otomatis COA dari Riwayat Transaksi Lampau & Master Belanja
+    const handleAutoFetchHistoricalCOA = () => {
+        if (!reviewRequest) return;
+        let matchedCount = 0;
+        const updatedMappings = { ...(reviewRequest.itemMappings || {}) };
+        const currentTargetBank = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
+
+        (reviewRequest.req.items || []).forEach(item => {
+            let foundDebitId = updatedMappings[item.componentId]?.debitAccountId;
+
+            // 1. Cek riwayat approval sebelumnya
+            if (!foundDebitId) {
+                foundDebitId = findDebitAccountFromHistory(item, reviewRequest.req.id);
+            }
+
+            // 2. Cek master belanja
+            if (!foundDebitId && item.expenseItemId) {
+                const exp = (expenseItems || []).find(e => e.id === item.expenseItemId);
+                if (exp) foundDebitId = exp.debitAccountId || exp.accountId || '';
+            }
+
+            // 3. Cek pola kata kunci cerdas
+            if (!foundDebitId) {
+                foundDebitId = guessDebitAccountForItem(item);
+            }
+
+            if (foundDebitId) {
+                updatedMappings[item.componentId] = {
+                    ...(updatedMappings[item.componentId] || {}),
+                    debitAccountId: foundDebitId,
+                    creditAccountId: updatedMappings[item.componentId]?.creditAccountId || currentTargetBank
+                };
+                matchedCount++;
+            }
+        });
+
+        setReviewRequest(prev => ({
+            ...prev,
+            itemMappings: updatedMappings
+        }));
+        showToast(`Berhasil menjemput dan mencocokkan COA untuk ${matchedCount} rincian item!`);
     };
 
     const handleUpdateItemMapping = (componentId, field, value) => {
@@ -986,8 +1076,8 @@ export default function MonthlyRequest() {
             const sourceBankAccountId = reviewRequest.sourceBankAccountId;
             const targetUnitBankAccountId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
 
-            // If all are ACC
-            if (accItems.length === req.items.length) {
+            // If already approved (Edit/Review COA mode) OR all are ACC
+            if (reviewRequest.isAlreadyApproved || accItems.length === req.items.length) {
                 const updated = { 
                     ...req, 
                     status: 'APPROVED', 
@@ -999,12 +1089,29 @@ export default function MonthlyRequest() {
                 };
                 const trfJournal = createTransferJournal(updated, accItems, sourceBankAccountId, targetUnitBankAccountId);
                 if (trfJournal) {
-                    updated.transferJournalId = trfJournal.id;
-                    dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
-                    api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                    const prevJournal = (state.journals || []).find(j => j.reference === `TRF-${req.id}` || (req.transferJournalId && j.id === req.transferJournalId));
+                    if (prevJournal) {
+                        const updatedJournal = {
+                            ...prevJournal,
+                            date: trfJournal.date,
+                            name: trfJournal.name,
+                            description: trfJournal.description,
+                            entries: trfJournal.entries
+                        };
+                        updated.transferJournalId = prevJournal.id;
+                        dispatch({ type: 'EDIT_JOURNAL', payload: updatedJournal });
+                        api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                    } else {
+                        updated.transferJournalId = trfJournal.id;
+                        dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
+                        api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                    }
                 }
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
-                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
+                await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, bypassBalanceCheck: true } }, state);
+                showToast(reviewRequest.isAlreadyApproved ? 'Penetapan COA & Jurnal Pemindahbukuan Kas berhasil diperbarui!' : 'Persetujuan berhasil disimpan!');
+                setReviewRequest(null);
+                return;
             } 
             // If all are TOLAK
             else if (tolakItems.length === req.items.length) {
@@ -1691,10 +1798,25 @@ export default function MonthlyRequest() {
                                                     {req.status === 'APPROVED' && (() => {
                                                         const srcAcc = accounts.find(a => a.id === req.sourceBankAccountId);
                                                         const tgtAcc = accounts.find(a => a.id === req.targetUnitBankAccountId || a.id === req.creditAccountId);
+                                                        const unmappedCount = (req.items || []).filter(i => !i.debitAccountId).length;
+
                                                         return (
-                                                            <div className="mt-2.5 flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-200 px-3 py-1 rounded-xl w-fit">
-                                                                <ArrowRightLeft size={12} className="text-emerald-600 shrink-0" />
-                                                                <span>Transfer Pencairan: (D) {tgtAcc ? tgtAcc.name : 'Rekening Unit'} ⟵ (K) {srcAcc ? srcAcc.name : 'Rekening Yayasan'}</span>
+                                                            <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                                                                <div className="flex items-center gap-2 text-[10px] font-bold text-emerald-700 bg-emerald-50/80 border border-emerald-200 px-3 py-1 rounded-xl w-fit">
+                                                                    <ArrowRightLeft size={12} className="text-emerald-600 shrink-0" />
+                                                                    <span>Transfer Pencairan: (D) {tgtAcc ? tgtAcc.name : 'Rekening Unit'} ⟵ (K) {srcAcc ? srcAcc.name : 'Rekening Yayasan'}</span>
+                                                                </div>
+                                                                {unmappedCount > 0 ? (
+                                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[10px] font-black bg-amber-50 text-amber-800 border border-amber-200 animate-pulse">
+                                                                        <AlertCircle size={12} className="text-amber-600 shrink-0" />
+                                                                        <span>{unmappedCount} Rincian Belum Memiliki COA</span>
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                                                        <Check size={12} className="text-emerald-600 shrink-0" />
+                                                                        <span>COA Lengkap</span>
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         );
                                                     })()}
@@ -1769,6 +1891,28 @@ export default function MonthlyRequest() {
                                                 REVIEW RINCIAN
                                             </button>
                                         )}
+                                        {isSuperAdmin && req.status === 'APPROVED' && (() => {
+                                            const unmappedCoaCount = (req.items || []).filter(i => !i.debitAccountId).length;
+                                            const isCoaComplete = unmappedCoaCount === 0 && (req.targetUnitBankAccountId || req.creditAccountId);
+
+                                            return (
+                                                <button
+                                                    onClick={() => handleOpenReview(req)}
+                                                    className={`p-3 rounded-xl transition-all shadow-sm flex items-center gap-2 font-black text-[10px] uppercase tracking-widest ${
+                                                        isCoaComplete 
+                                                            ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white border border-indigo-200' 
+                                                            : 'bg-gradient-to-r from-amber-500 to-indigo-600 hover:from-amber-600 hover:to-indigo-700 text-white shadow-md shadow-indigo-500/20 active:scale-95'
+                                                    }`}
+                                                    title="Review dan kelola akun COA rincian belanja & sinkronkan jurnal pencairan kas"
+                                                >
+                                                    <BookOpen size={16} strokeWidth={2.5} />
+                                                    <span>{isCoaComplete ? 'REVIEW COA' : 'LENGKAPI COA'}</span>
+                                                    {!isCoaComplete && (
+                                                        <span className="w-2 h-2 rounded-full bg-amber-300 animate-ping"></span>
+                                                    )}
+                                                </button>
+                                            );
+                                        })()}
                                         {isSuperAdmin && (req.status === 'APPROVED' || req.status === 'REJECTED') && (
                                             <button
                                                 onClick={async () => {
@@ -2003,8 +2147,22 @@ export default function MonthlyRequest() {
                     <div className="bg-slate-50 rounded-[2.5rem] w-full max-w-5xl max-h-[92vh] overflow-hidden relative z-10 shadow-2xl flex flex-col animate-in slide-in-from-bottom-8">
                         <div className="px-8 py-5 bg-white border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4 shrink-0">
                             <div>
-                                <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-1">Review Rincian Dana</h2>
-                                <p className="text-slate-500 text-xs md:text-sm font-medium italic">Anda dapat menyetujui (ACC) atau Menolak per-rincian. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></p>
+                                <div className="flex items-center gap-2">
+                                    <h2 className="text-2xl md:text-3xl font-black text-slate-900 mb-1">
+                                        {reviewRequest.isAlreadyApproved ? 'Review & Kelola COA Permintaan' : 'Review Rincian Dana'}
+                                    </h2>
+                                    {reviewRequest.isAlreadyApproved && (
+                                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider">
+                                            Sudah Disetujui (ACC)
+                                        </span>
+                                    )}
+                                </div>
+                                <p className="text-slate-500 text-xs md:text-sm font-medium italic">
+                                    {reviewRequest.isAlreadyApproved
+                                        ? <>Kelola atau lengkapi akun COA rincian belanja & sinkronkan jurnal pencairan kas. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></>
+                                        : <>Anda dapat menyetujui (ACC) atau Menolak per-rincian. ID: <span className="font-bold text-indigo-600">{reviewRequest.req.id}</span></>
+                                    }
+                                </p>
                             </div>
                             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                                 <div className="relative min-w-[200px]">
@@ -2031,6 +2189,7 @@ export default function MonthlyRequest() {
                         {/* Scrollable Container covering Alerts, Dual-Bank Journal Config, and Rincian Items */}
                         <div className="flex-1 overflow-y-auto px-6 md:px-8 py-6 custom-scrollbar text-slate-900 bg-slate-50/50 flex flex-col gap-6">
                             {(() => {
+                                if (reviewRequest.isAlreadyApproved) return null;
                                 const reqSource = reviewRequest.req.source || ((reviewRequest.req.items || []).some(item => item.planId?.endsWith('-BOS')) ? 'BOS' : 'YAYASAN');
                                 const superadminUnreturnedInfo = getUnreturnedBalanceInfo(state, reviewRequest.req.unitId, reviewRequest.req.fieldId, reviewRequest.req.month, reqSource, reviewRequest.req.academicYearId);
                                 if (!superadminUnreturnedInfo.hasUnreturned) return null;
@@ -2150,6 +2309,17 @@ export default function MonthlyRequest() {
                                     </div>
 
                                     <div className="flex items-center gap-2 flex-wrap">
+                                        {/* Smart Auto-Fetch / Lookback Button */}
+                                        <button
+                                            type="button"
+                                            onClick={handleAutoFetchHistoricalCOA}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white shadow-md hover:shadow-amber-500/25 transition-all group"
+                                            title="Otomatis jemput dan isi pasangan COA dari riwayat transaksi masa lalu yang pernah di-ACC dan master belanja"
+                                        >
+                                            <Sparkles size={13} className="text-amber-200 group-hover:text-white transition-colors animate-pulse" />
+                                            <span>⚡ Jemput COA dari Riwayat</span>
+                                        </button>
+
                                         {/* Quick Batch Debit COA Selector */}
                                         <div className="flex items-center gap-1.5 bg-white/90 border border-indigo-200 rounded-xl px-2.5 py-1 shadow-sm">
                                             <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">⚡ Terapkan Beban ke Semua:</span>
@@ -2381,12 +2551,12 @@ export default function MonthlyRequest() {
                                         <button onClick={() => setReviewRequest(null)} className="btn bg-slate-100 text-slate-600 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
                                         
                                         <button
-                                            onClick={() => handleSaveReview()}
-                                            disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || hasBlock}
+                                            onClick={() => handleSaveReview(reviewRequest.isAlreadyApproved)}
+                                            disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || (hasBlock && !reviewRequest.isAlreadyApproved)}
                                             className="btn bg-indigo-600 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2.5 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all cursor-pointer"
                                         >
                                             {processingId === 'saving-review' ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                            SIMPAN PERSETUJUAN
+                                            {reviewRequest.isAlreadyApproved ? 'SIMPAN PERUBAHAN COA & JURNAL' : 'SIMPAN PERSETUJUAN'}
                                         </button>
                                     </div>
                                 </div>
