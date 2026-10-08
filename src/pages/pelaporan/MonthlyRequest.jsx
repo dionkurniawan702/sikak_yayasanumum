@@ -3,6 +3,7 @@ import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, Tren
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
+import SearchableCoaDropdown from '../../components/SearchableCoaDropdown';
 
 // ─── Helper to Check Prior Unreturned Balances ───────────────────────────────
 function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSource = 'YAYASAN', academicYearId = null) {
@@ -2254,16 +2255,15 @@ export default function MonthlyRequest() {
                                             </div>
                                             <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Yayasan Pusat</span>
                                         </div>
-                                        <select
+                                        <SearchableCoaDropdown
                                             value={reviewRequest.sourceBankAccountId || ''}
-                                            onChange={(e) => handleChangeSourceBank(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-300 focus:bg-white outline-none transition-all cursor-pointer"
-                                        >
-                                            <option value="" disabled>-- Pilih Rekening Kas / Bank Yayasan --</option>
-                                            {cashBankAccounts.map(a => (
-                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                            ))}
-                                        </select>
+                                            onChange={(val) => handleChangeSourceBank(val)}
+                                            accounts={accounts}
+                                            placeholder="-- Pilih Rekening Kas / Bank Yayasan --"
+                                            initialTab="KAS"
+                                            showCategoryTabs={true}
+                                            triggerClassName="py-2 px-3 bg-slate-50 border-slate-200"
+                                        />
                                     </div>
 
                                     {/* 2. Rekening Operasional Unit Tujuan */}
@@ -2282,16 +2282,15 @@ export default function MonthlyRequest() {
                                             </div>
                                             <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Unit Pemohon</span>
                                         </div>
-                                        <select
+                                        <SearchableCoaDropdown
                                             value={reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || ''}
-                                            onChange={(e) => handleChangeTargetUnitBank(e.target.value)}
-                                            className="w-full bg-slate-50 border border-emerald-200 rounded-xl px-3.5 py-2.5 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-emerald-300 focus:bg-white outline-none transition-all cursor-pointer"
-                                        >
-                                            <option value="" disabled>-- Pilih Rekening Operasional Unit --</option>
-                                            {cashBankAccounts.map(a => (
-                                                <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                            ))}
-                                        </select>
+                                            onChange={(val) => handleChangeTargetUnitBank(val)}
+                                            accounts={accounts}
+                                            placeholder="-- Pilih Rekening Operasional Unit --"
+                                            initialTab="KAS"
+                                            showCategoryTabs={true}
+                                            triggerClassName="py-2 px-3 bg-slate-50 border-emerald-200"
+                                        />
                                     </div>
                                 </div>
 
@@ -2323,33 +2322,16 @@ export default function MonthlyRequest() {
                                         {/* Quick Batch Debit COA Selector */}
                                         <div className="flex items-center gap-1.5 bg-white/90 border border-indigo-200 rounded-xl px-2.5 py-1 shadow-sm">
                                             <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">⚡ Terapkan Beban ke Semua:</span>
-                                            <select
+                                            <SearchableCoaDropdown
                                                 value={reviewRequest.globalDebitAccountId || ''}
-                                                onChange={(e) => handleApplyGlobalDebit(e.target.value)}
-                                                className="bg-transparent text-[11px] font-bold text-indigo-900 outline-none cursor-pointer max-w-[180px] truncate"
-                                                title="Pilih akun COA beban/aset sekaligus untuk diterapkan ke seluruh rincian"
-                                            >
-                                                <option value="">-- Pilih COA Sekaligus --</option>
-                                                {expenseAccounts.length > 0 && (
-                                                    <optgroup label="Beban Operasional (5-xxxx)">
-                                                        {expenseAccounts.map(a => (
-                                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                )}
-                                                {assetAccounts.length > 0 && (
-                                                    <optgroup label="Aset / Peralatan (1-xxxx)">
-                                                        {assetAccounts.map(a => (
-                                                            <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                        ))}
-                                                    </optgroup>
-                                                )}
-                                                <optgroup label="Akun Lainnya">
-                                                    {postableAccounts.filter(a => !expenseAccounts.some(e => e.id === a.id) && !assetAccounts.some(as => as.id === a.id)).map(a => (
-                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                    ))}
-                                                </optgroup>
-                                            </select>
+                                                onChange={(val) => handleApplyGlobalDebit(val)}
+                                                accounts={accounts}
+                                                placeholder="-- Pilih COA Sekaligus --"
+                                                initialTab="ALL"
+                                                showCategoryTabs={true}
+                                                className="min-w-[220px]"
+                                                triggerClassName="py-1 px-2.5 text-xs bg-slate-50 border-indigo-100"
+                                            />
                                         </div>
 
                                         {/* Interactive Button to Scroll to Rincian Items */}
@@ -2468,32 +2450,14 @@ export default function MonthlyRequest() {
                                                             </span>
                                                             <span className="text-[9px] font-semibold text-indigo-600">Ditentukan Superadmin</span>
                                                         </label>
-                                                        <select
+                                                        <SearchableCoaDropdown
                                                             value={itemDebitId}
-                                                            onChange={(e) => handleUpdateItemMapping(item.componentId, 'debitAccountId', e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm cursor-pointer"
-                                                        >
-                                                            <option value="">-- Pilih Akun Beban / Aset --</option>
-                                                            {expenseAccounts.length > 0 && (
-                                                                <optgroup label="Beban Operasional (5-xxxx)">
-                                                                    {expenseAccounts.map(a => (
-                                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                                    ))}
-                                                                </optgroup>
-                                                            )}
-                                                            {assetAccounts.length > 0 && (
-                                                                <optgroup label="Aset / Peralatan (1-xxxx)">
-                                                                    {assetAccounts.map(a => (
-                                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                                    ))}
-                                                                </optgroup>
-                                                            )}
-                                                            <optgroup label="Daftar Akun Lainnya">
-                                                                {postableAccounts.filter(a => !expenseAccounts.some(e => e.id === a.id) && !assetAccounts.some(as => as.id === a.id)).map(a => (
-                                                                    <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                                ))}
-                                                            </optgroup>
-                                                        </select>
+                                                            onChange={(val) => handleUpdateItemMapping(item.componentId, 'debitAccountId', val)}
+                                                            accounts={accounts}
+                                                            placeholder="-- Pilih Akun Beban / Aset --"
+                                                            initialTab="ALL"
+                                                            showCategoryTabs={true}
+                                                        />
                                                     </div>
 
                                                     {/* Akun Kredit */}
@@ -2505,25 +2469,14 @@ export default function MonthlyRequest() {
                                                             </span>
                                                             <span className="text-[9px] font-semibold text-emerald-600">Rekening Unit</span>
                                                         </label>
-                                                        <select
+                                                        <SearchableCoaDropdown
                                                             value={itemCreditId}
-                                                            onChange={(e) => handleUpdateItemMapping(item.componentId, 'creditAccountId', e.target.value)}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-200 outline-none shadow-sm cursor-pointer"
-                                                        >
-                                                            <option value="">-- Pilih Rekening Kas / Bank Unit --</option>
-                                                            {cashBankAccounts.length > 0 && (
-                                                                <optgroup label="Kas & Bank">
-                                                                    {cashBankAccounts.map(a => (
-                                                                        <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                                    ))}
-                                                                </optgroup>
-                                                            )}
-                                                            <optgroup label="Daftar Akun Lainnya">
-                                                                {postableAccounts.filter(a => !cashBankAccounts.some(c => c.id === a.id)).map(a => (
-                                                                    <option key={a.id} value={a.id}>{a.code} - {a.name}</option>
-                                                                ))}
-                                                            </optgroup>
-                                                        </select>
+                                                            onChange={(val) => handleUpdateItemMapping(item.componentId, 'creditAccountId', val)}
+                                                            accounts={accounts}
+                                                            placeholder="-- Pilih Rekening Kas / Bank Unit --"
+                                                            initialTab="KAS"
+                                                            showCategoryTabs={true}
+                                                        />
                                                     </div>
                                                 </div>
                                             </div>
