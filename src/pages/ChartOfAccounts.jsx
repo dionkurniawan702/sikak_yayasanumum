@@ -1,8 +1,8 @@
-import { useState, Fragment, useRef } from 'react';
+import { useState, Fragment, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Pencil, Trash2, X, Search, Wallet, CreditCard, PieChart, Activity, Info, FileSpreadsheet } from 'lucide-react';
 import { formatRupiah, generateId } from '../utils/format';
-import { hitungSaldoAkun, hitungSaldoPerTipe, buildHierarchyAccounts } from '../utils/accounting';
+import { hitungSaldoAkun, hitungSaldoPerTipe, buildHierarchyAccounts, resolveAccountSubType } from '../utils/accounting';
 import { api } from '../services/api';
 import * as XLSX from 'xlsx';
 import CurrencyDisplay from '../components/CurrencyDisplay';
@@ -11,7 +11,7 @@ const TIPE_AKUN = ['Aset', 'Kewajiban', 'Aset Neto', 'Saldo Dana', 'Pendapatan',
 const JENIS_DANA = ['Dana Umum', 'Dana Terikat'];
 const KATEGORI = ['header', 'detail'];
 
-const emptyForm = { code: '', name: '', type: 'Aset', subType: 'Aset Lancar', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 };
+const emptyForm = { code: '', name: '', type: 'Aset', subType: '', fund: 'Dana Umum', category: 'detail', normalBalance: 'debit', initialBalance: 0 };
 
 export default function ChartOfAccounts() {
     const { state, dispatch } = useApp();
@@ -28,6 +28,23 @@ export default function ChartOfAccounts() {
     const [isSaving, setIsSaving] = useState(false);
     const [deleteLoadingId, setDeleteLoadingId] = useState(null);
     const fileInputRef = useRef(null);
+
+    // Auto-repair any accounts with mismatched/corrupted subType in state & remote
+    useEffect(() => {
+        if (!accounts || accounts.length === 0) return;
+        accounts.forEach(async (acc) => {
+            const correctSubType = resolveAccountSubType(acc);
+            if (acc.subType !== correctSubType) {
+                const fixedAcc = { ...acc, subType: correctSubType };
+                dispatch({ type: 'EDIT_ACCOUNT', payload: fixedAcc });
+                try {
+                    await api.pushAction({ type: 'EDIT_ACCOUNT', payload: fixedAcc }, state);
+                } catch (err) {
+                    console.warn('[ChartOfAccounts] Auto-repair sync notice:', err);
+                }
+            }
+        });
+    }, [accounts.length]);
 
     const exportToExcel = () => {
         const data = [];
@@ -98,22 +115,7 @@ export default function ChartOfAccounts() {
     async function handleSave() {
         if (!form.code || !form.name) return alert('Kode dan Nama Akun wajib diisi!');
         const isDebit = ['Aset', 'Beban'].includes(form.type);
-
-        let resolvedSubType = form.subType;
-        if (!resolvedSubType || ['Pendapatan', 'Penghasilan', 'Beban', 'Aset', 'Kewajiban', 'Liabilitas'].includes(resolvedSubType)) {
-            if (form.code.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
-            else if (form.code.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
-            else if (form.code.startsWith('2-1')) resolvedSubType = 'Liabilitas Jangka Pendek';
-            else if (form.code.startsWith('2-2')) resolvedSubType = 'Liabilitas Jangka Panjang';
-            else if (form.code.startsWith('3-1')) resolvedSubType = 'Aset Neto Tanpa Pembatasan';
-            else if (form.code.startsWith('3-2')) resolvedSubType = 'Aset Neto Dengan Pembatasan';
-            else if (form.code.startsWith('4-1')) resolvedSubType = 'Penghasilan Tanpa Pembatasan';
-            else if (form.code.startsWith('4-2')) resolvedSubType = 'Penghasilan Dengan Pembatasan';
-            else if (form.code.startsWith('5-1')) resolvedSubType = 'Beban Program';
-            else if (form.code.startsWith('5-3')) resolvedSubType = 'Beban Program BOS';
-            else if (form.code.startsWith('5-4') || form.code.startsWith('5-2')) resolvedSubType = 'Beban Umum & Administrasi';
-            else resolvedSubType = form.type;
-        }
+        const resolvedSubType = resolveAccountSubType(form);
 
         const finalForm = {
             ...form,
@@ -309,7 +311,7 @@ export default function ChartOfAccounts() {
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Tipe Akun</label>
-                                    <select className="form-select rounded-2xl border-slate-200" value={form.type} onChange={e => setForm({...form, type: e.target.value})}>
+                                    <select className="form-select rounded-2xl border-slate-200" value={form.type} onChange={e => setForm({ ...form, type: e.target.value, subType: '' })}>
                                         {TIPE_AKUN.map(t => <option key={t} value={t}>{t}</option>)}
                                     </select>
                                 </div>

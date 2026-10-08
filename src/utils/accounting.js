@@ -224,6 +224,59 @@ export function hitungPersentaseProgram(totalPenyaluran, totalPenerimaan) {
 }
 
 /**
+ * Helper untuk menentukan subType yang valid dan konsisten dengan kode/tipe akun
+ */
+export function resolveAccountSubType(acc) {
+    if (!acc) return 'Lainnya';
+    const code = acc.code || '';
+    const name = (acc.name || '').toLowerCase();
+    const type = acc.type || '';
+    let st = acc.subType;
+
+    // Cek apakah subType saat ini generic atau kontradiktif dengan prefix kode / tipe akun
+    const isContradictory = () => {
+        if (!st) return true;
+        if (['Lainnya', 'Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan', 'Beban'].includes(st)) return true;
+        if ((type === 'Beban' || code.startsWith('5-')) && !st.toLowerCase().startsWith('beban')) return true;
+        if ((type === 'Pendapatan' || code.startsWith('4-')) && !st.toLowerCase().includes('penghasilan') && !st.toLowerCase().includes('pendapatan')) return true;
+        if ((type === 'Aset Neto' || type === 'Saldo Dana' || code.startsWith('3-')) && !st.toLowerCase().includes('aset neto') && !st.toLowerCase().includes('saldo dana')) return true;
+        if ((type === 'Kewajiban' || code.startsWith('2-')) && !st.toLowerCase().includes('liabilitas') && !st.toLowerCase().includes('kewajiban') && !st.toLowerCase().includes('utang')) return true;
+        if ((type === 'Aset' || code.startsWith('1-')) && !st.toLowerCase().startsWith('aset')) return true;
+        return false;
+    };
+
+    if (code.endsWith('0000')) {
+        return type || 'Aset';
+    }
+
+    if (isContradictory()) {
+        if (code.startsWith('1-1')) return 'Aset Lancar';
+        if (code.startsWith('1-2')) return 'Aset Tidak Lancar';
+        if (code.startsWith('2-1')) return 'Liabilitas Jangka Pendek';
+        if (code.startsWith('2-2')) return 'Liabilitas Jangka Panjang';
+        if (code.startsWith('3-1')) return 'Aset Neto Tanpa Pembatasan';
+        if (code.startsWith('3-2')) return 'Aset Neto Dengan Pembatasan';
+        if (code.startsWith('4-1')) return 'Penghasilan Tanpa Pembatasan';
+        if (code.startsWith('4-2')) return 'Penghasilan Dengan Pembatasan';
+        if (code.startsWith('5-1')) {
+            if (name.includes('tanpa pembatasan')) return 'Beban Tanpa Pembatasan';
+            if (name.includes('dengan pembatasan')) return 'Beban Dengan Pembatasan';
+            return 'Beban Program';
+        }
+        if (code.startsWith('5-3')) return 'Beban Program BOS';
+        if (code.startsWith('5-2') || code.startsWith('5-4')) return 'Beban Umum & Administrasi';
+        if (code.startsWith('5-')) {
+            if (name.includes('tanpa pembatasan')) return 'Beban Tanpa Pembatasan';
+            if (name.includes('dengan pembatasan')) return 'Beban Dengan Pembatasan';
+            return 'Beban';
+        }
+        return type || 'Lainnya';
+    }
+
+    return st;
+}
+
+/**
  * Helper Universal Pembuat Hierarki Induk->Anak (Grup -> Header -> Detail)
  */
 export function buildHierarchyAccounts(journals, accounts, type, funds = null, yearLimit = null, assets = [], isYearOnly = false, showEmpty = false) {
@@ -281,22 +334,10 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
         }
 
         // Ensure subType aligns with account code if missing or generic
-        let resolvedSubType = header.subType;
+        let resolvedSubType = resolveAccountSubType(header);
         if (header.code?.endsWith('0000')) {
             if (!showEmpty) return; // Grand class headers are only for Bagan Akun (showEmpty = true)
             resolvedSubType = header.type || 'Aset';
-        } else if (!resolvedSubType || ['Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan', 'Beban', 'Lainnya'].includes(resolvedSubType)) {
-            if (header.code?.startsWith('1-1')) resolvedSubType = 'Aset Lancar';
-            else if (header.code?.startsWith('1-2')) resolvedSubType = 'Aset Tidak Lancar';
-            else if (header.code?.startsWith('2-1')) resolvedSubType = 'Liabilitas Jangka Pendek';
-            else if (header.code?.startsWith('2-2')) resolvedSubType = 'Liabilitas Jangka Panjang';
-            else if (header.code?.startsWith('3-1')) resolvedSubType = 'Aset Neto Tanpa Pembatasan';
-            else if (header.code?.startsWith('3-2')) resolvedSubType = 'Aset Neto Dengan Pembatasan';
-            else if (header.code?.startsWith('4-1')) resolvedSubType = 'Penghasilan Tanpa Pembatasan';
-            else if (header.code?.startsWith('4-2')) resolvedSubType = 'Penghasilan Dengan Pembatasan';
-            else if (header.code?.startsWith('5-1')) resolvedSubType = 'Beban Program';
-            else if (header.code?.startsWith('5-3')) resolvedSubType = 'Beban Program BOS';
-            else if (header.code?.startsWith('5-2') || header.code?.startsWith('5-4')) resolvedSubType = 'Beban Umum & Administrasi';
         }
 
         if (showEmpty || visibleChildren.length > 0 || totalSaldo !== 0) {
@@ -403,22 +444,7 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
 
     const subTypes = {};
     headerHierarchy.forEach(h => {
-        let st = h.subType;
-        if (!st || ['Lainnya', 'Aset', 'Liabilitas', 'Kewajiban', 'Pendapatan', 'Penghasilan', 'Beban'].includes(st)) {
-            if (h.code?.endsWith('0000')) st = h.type;
-            else if (h.code?.startsWith('1-1')) st = 'Aset Lancar';
-            else if (h.code?.startsWith('1-2')) st = 'Aset Tidak Lancar';
-            else if (h.code?.startsWith('2-1')) st = 'Liabilitas Jangka Pendek';
-            else if (h.code?.startsWith('2-2')) st = 'Liabilitas Jangka Panjang';
-            else if (h.code?.startsWith('3-1')) st = 'Aset Neto Tanpa Pembatasan';
-            else if (h.code?.startsWith('3-2')) st = 'Aset Neto Dengan Pembatasan';
-            else if (h.code?.startsWith('4-1')) st = 'Penghasilan Tanpa Pembatasan';
-            else if (h.code?.startsWith('4-2')) st = 'Penghasilan Dengan Pembatasan';
-            else if (h.code?.startsWith('5-1')) st = 'Beban Program';
-            else if (h.code?.startsWith('5-3')) st = 'Beban Program BOS';
-            else if (h.code?.startsWith('5-2') || h.code?.startsWith('5-4')) st = 'Beban Umum & Administrasi';
-            else st = h.type || 'Lainnya';
-        }
+        const st = resolveAccountSubType(h);
         if (!subTypes[st]) {
             subTypes[st] = {
                 name: st,
@@ -462,6 +488,8 @@ export function buildHierarchyAccounts(journals, accounts, type, funds = null, y
             'Penghasilan Tanpa Pembatasan': 12,
             'Penghasilan Dengan Pembatasan': 13,
             'Beban': 14,
+            'Beban Tanpa Pembatasan': 14.5,
+            'Beban Dengan Pembatasan': 14.6,
             'Beban Program': 15,
             'Beban Program BOS': 16,
             'Beban Umum & Administrasi': 17
