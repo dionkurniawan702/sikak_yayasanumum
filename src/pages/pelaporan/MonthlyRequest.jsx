@@ -1,5 +1,6 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck, Banknote, ArrowRightLeft, BookOpen, Layers, Sparkles } from 'lucide-react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { Wallet, Plus, Clock, CheckCircle, XCircle, FileText, ChevronRight, TrendingUp, AlertCircle, Calendar, Send, Building2, Landmark, Check, Search, Loader2, Gem, RotateCcw, Save, ChevronDown, ChevronUp, Package, ShieldCheck, Banknote, ArrowRightLeft, BookOpen, Layers, Sparkles, Download, Upload, FileSpreadsheet } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import { useApp } from '../../context/AppContext';
 import { formatRupiah, generateId } from '../../utils/format';
 import { api } from '../../services/api';
@@ -139,6 +140,7 @@ export default function MonthlyRequest() {
     const [filterStatus, setFilterStatus] = useState('ALL');
     const [modalSearchTerm, setModalSearchTerm] = useState('');
     const [expandedCards, setExpandedCards] = useState({});
+    const excelCoaInputRef = useRef(null);
 
     const showToast = useCallback((message, type = 'success') => {
         setToast({ message, type });
@@ -986,6 +988,181 @@ export default function MonthlyRequest() {
                 itemMappings: updatedMappings
             };
         });
+    };
+
+    // ─── Ekspor Excel Pemetaan COA Belanja ──────────────────────────────
+    const handleExportCoaExcel = () => {
+        if (!reviewRequest || !reviewRequest.req) return;
+        try {
+            const req = reviewRequest.req;
+            const targetUnit = units.find(u => u.id === req.unitId);
+            const targetField = fields.find(f => f.id === req.fieldId);
+            const entityName = targetUnit?.name || targetField?.name || 'Unit';
+
+            // 1. Sheet Utama: Daftar Rincian Belanja
+            const rows = (req.items || []).map((item, idx) => {
+                const currentDebitId = reviewRequest.itemMappings?.[item.componentId]?.debitAccountId || item.debitAccountId || '';
+                const acc = accounts.find(a => a.id === currentDebitId);
+                const isTolak = reviewRequest.tolakIds.includes(item.componentId);
+
+                return {
+                    'No': idx + 1,
+                    'ID Rincian': item.componentId,
+                    'Nama Belanja': item.name || '',
+                    'Volume': item.volume ? `${item.volume} ${item.satuan || ''}`.trim() : '-',
+                    'Nominal Belanja (Rp)': parseFloat(item.amount) || 0,
+                    'Status Approval': isTolak ? 'TOLAK' : 'ACC',
+                    'Kode Akun Beban (Debit)': acc ? acc.code : '',
+                    'Nama Akun Beban': acc ? acc.name : ''
+                };
+            });
+
+            const wb = XLSX.utils.book_new();
+            const wsItems = XLSX.utils.json_to_sheet(rows);
+
+            // Set column widths
+            wsItems['!cols'] = [
+                { wch: 6 },  // No
+                { wch: 28 }, // ID Rincian
+                { wch: 40 }, // Nama Belanja
+                { wch: 15 }, // Volume
+                { wch: 22 }, // Nominal
+                { wch: 16 }, // Status Approval
+                { wch: 24 }, // Kode Akun Beban
+                { wch: 40 }  // Nama Akun Beban
+            ];
+
+            XLSX.utils.book_append_sheet(wb, wsItems, 'Pemetaan COA Belanja');
+
+            // 2. Sheet Referensi: Daftar Akun Beban & Aset yang Tersedia
+            const refAccounts = (accounts || [])
+                .filter(a => !a.isParent && !a.isDeleted && (
+                    a.code?.startsWith('5') || 
+                    a.code?.startsWith('1-2') || 
+                    a.code?.startsWith('1-3') ||
+                    a.type?.toLowerCase().includes('beban') || 
+                    a.type?.toLowerCase().includes('biaya') ||
+                    a.type?.toLowerCase().includes('aset')
+                ))
+                .sort((a, b) => (a.code || '').localeCompare(b.code || ''))
+                .map(a => ({
+                    'Kode Akun': a.code,
+                    'Nama Akun': a.name,
+                    'Kategori / Tipe': a.type || (a.code.startsWith('5') ? 'Beban' : 'Aset')
+                }));
+
+            if (refAccounts.length > 0) {
+                const wsRef = XLSX.utils.json_to_sheet(refAccounts);
+                wsRef['!cols'] = [
+                    { wch: 15 },
+                    { wch: 45 },
+                    { wch: 22 }
+                ];
+                XLSX.utils.book_append_sheet(wb, wsRef, 'Referensi Akun Beban');
+            }
+
+            const safeEntity = entityName.replace(/[^a-zA-Z0-9_-]/g, '_');
+            const fileName = `Form_COA_${safeEntity}_${req.month || 'Periode'}.xlsx`;
+            XLSX.writeFile(wb, fileName);
+            showToast('Template Excel COA berhasil diunduh! Silakan isi kolom Kode Akun Beban dan unggah kembali.');
+        } catch (err) {
+            console.error('Error exporting COA excel:', err);
+            showToast('Gagal mengekspor file Excel: ' + err.message, 'error');
+        }
+    };
+
+    // ─── Impor Excel Pemetaan COA Belanja ──────────────────────────────
+    const handleImportCoaExcel = (e) => {
+        const file = e.target.files?.[0];
+        if (!file || !reviewRequest) return;
+        e.target.value = '';
+
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const bstr = evt.target.result;
+                const wb = XLSX.read(bstr, { type: 'binary' });
+                const firstSheetName = wb.SheetNames[0];
+                const ws = wb.Sheets[firstSheetName];
+                const data = XLSX.utils.sheet_to_json(ws);
+
+                if (!data || data.length === 0) {
+                    showToast('File Excel kosong atau format tidak sesuai!', 'error');
+                    return;
+                }
+
+                let matchedCount = 0;
+                let statusUpdatedCount = 0;
+                const updatedMappings = { ...(reviewRequest.itemMappings || {}) };
+                const newAccIds = new Set(reviewRequest.accIds || []);
+                const newTolakIds = new Set(reviewRequest.tolakIds || []);
+                const currentTargetBank = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
+
+                data.forEach(row => {
+                    const compId = row['ID Rincian'] || row['ID'] || row['id'] || row['componentId'];
+                    const rowName = String(row['Nama Belanja'] || row['Nama Rincian Belanja'] || row['Nama'] || '').trim().toLowerCase();
+
+                    // Find corresponding item in request
+                    const targetItem = (reviewRequest.req.items || []).find(i => 
+                        (compId && String(i.componentId).trim() === String(compId).trim()) ||
+                        (rowName && i.name && i.name.trim().toLowerCase() === rowName)
+                    );
+
+                    if (!targetItem) return;
+
+                    const idKey = targetItem.componentId;
+
+                    // 1. Match Debit Account (by Code first, then Name)
+                    const rawCode = String(row['Kode Akun Beban (Debit)'] || row['Kode Akun Beban'] || row['Kode Akun'] || row['Kode'] || '').trim();
+                    const rawName = String(row['Nama Akun Beban'] || row['Nama Akun'] || '').trim().toLowerCase();
+
+                    let foundAcc = null;
+                    if (rawCode) {
+                        foundAcc = accounts.find(a => a.code === rawCode || a.code?.replace(/[-\s]/g, '') === rawCode.replace(/[-\s]/g, ''));
+                        if (!foundAcc) {
+                            foundAcc = accounts.find(a => `${a.code} - ${a.name}`.toLowerCase().includes(rawCode.toLowerCase()));
+                        }
+                    }
+                    if (!foundAcc && rawName) {
+                        foundAcc = accounts.find(a => a.name?.trim().toLowerCase() === rawName);
+                    }
+
+                    if (foundAcc) {
+                        updatedMappings[idKey] = {
+                            ...(updatedMappings[idKey] || {}),
+                            debitAccountId: foundAcc.id,
+                            creditAccountId: updatedMappings[idKey]?.creditAccountId || currentTargetBank
+                        };
+                        matchedCount++;
+                    }
+
+                    // 2. Status Approval (ACC vs TOLAK)
+                    const rawStatus = String(row['Status Approval'] || row['Status'] || '').trim().toUpperCase();
+                    if (rawStatus === 'ACC') {
+                        newAccIds.add(idKey);
+                        newTolakIds.delete(idKey);
+                        statusUpdatedCount++;
+                    } else if (rawStatus === 'TOLAK' || rawStatus === 'REJECT' || rawStatus === 'REJECTED') {
+                        newTolakIds.add(idKey);
+                        newAccIds.delete(idKey);
+                        statusUpdatedCount++;
+                    }
+                });
+
+                setReviewRequest(prev => ({
+                    ...prev,
+                    itemMappings: updatedMappings,
+                    accIds: Array.from(newAccIds),
+                    tolakIds: Array.from(newTolakIds)
+                }));
+
+                showToast(`Berhasil mengimpor COA! ${matchedCount} akun beban berhasil dipetakan.`);
+            } catch (err) {
+                console.error('Error importing COA excel:', err);
+                showToast('Gagal memproses file Excel: ' + err.message, 'error');
+            }
+        };
+        reader.readAsBinaryString(file);
     };
 
     const scrollToRincian = () => {
@@ -2316,15 +2493,46 @@ export default function MonthlyRequest() {
                                     </div>
 
                                     <div className="flex items-center gap-2 flex-wrap">
+                                        {/* Input File Hidden untuk Import Excel COA */}
+                                        <input
+                                            type="file"
+                                            ref={excelCoaInputRef}
+                                            onChange={handleImportCoaExcel}
+                                            accept=".xlsx, .xls"
+                                            className="hidden"
+                                        />
+
                                         {/* Smart Auto-Fetch / Lookback Button */}
                                         <button
                                             type="button"
                                             onClick={handleAutoFetchHistoricalCOA}
-                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white shadow-md hover:shadow-amber-500/25 transition-all group"
+                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 active:scale-95 text-white shadow-md hover:shadow-amber-500/25 transition-all group"
                                             title="Otomatis jemput dan isi pasangan COA dari riwayat transaksi masa lalu yang pernah di-ACC dan master belanja"
                                         >
                                             <Sparkles size={13} className="text-amber-200 group-hover:text-white transition-colors animate-pulse" />
-                                            <span>⚡ Jemput COA dari Riwayat</span>
+                                            <span>⚡ Jemput dari Riwayat</span>
+                                        </button>
+
+                                        {/* Tombol Ekspor Form Excel COA */}
+                                        <button
+                                            type="button"
+                                            onClick={handleExportCoaExcel}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white shadow-md hover:shadow-emerald-600/25 transition-all group"
+                                            title="Unduh daftar rincian belanja ke Excel untuk pengisian kode akun COA offline atau massal"
+                                        >
+                                            <Download size={13} className="text-emerald-200 group-hover:text-white transition-colors" />
+                                            <span>📥 Unduh Excel COA</span>
+                                        </button>
+
+                                        {/* Tombol Impor Form Excel COA */}
+                                        <button
+                                            type="button"
+                                            onClick={() => excelCoaInputRef.current?.click()}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black bg-teal-700 hover:bg-teal-800 active:scale-95 text-white shadow-md hover:shadow-teal-700/25 transition-all group"
+                                            title="Unggah file Excel yang sudah diisi kolom Kode Akun Beban untuk memetakan seluruh rincian secara instan"
+                                        >
+                                            <Upload size={13} className="text-teal-200 group-hover:text-white transition-colors" />
+                                            <span>📤 Impor Excel COA</span>
                                         </button>
 
                                         {/* Quick Batch Debit COA Selector */}
@@ -2337,7 +2545,7 @@ export default function MonthlyRequest() {
                                                 placeholder="-- Pilih COA Sekaligus --"
                                                 initialTab="ALL"
                                                 showCategoryTabs={true}
-                                                className="min-w-[220px]"
+                                                className="min-w-[200px]"
                                                 triggerClassName="py-1 px-2.5 text-xs bg-slate-50 border-indigo-100"
                                             />
                                         </div>
@@ -2350,7 +2558,7 @@ export default function MonthlyRequest() {
                                             title="Klik untuk langsung memilih akun COA untuk masing-masing rincian permintaan"
                                         >
                                             <BookOpen size={13} className="text-indigo-200 group-hover:text-white transition-colors" />
-                                            <span>Pilih COA Beban Per-Rincian</span>
+                                            <span>Pilih COA Per-Rincian</span>
                                             <ChevronDown size={14} className="animate-bounce" />
                                         </button>
                                     </div>
@@ -2448,43 +2656,52 @@ export default function MonthlyRequest() {
                                                         </span>
                                                     )}
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                    {/* Akun Debit */}
-                                                    <div>
+                                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-center">
+                                                    {/* Akun Debit (Beban / Aset) - 7 cols */}
+                                                    <div className="lg:col-span-7">
                                                         <label className="block text-[10px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                                                             <span className="flex items-center gap-1.5">
                                                                 <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>
-                                                                Debit (Beban / Aset Unit):
+                                                                Debit (Akun Beban / Aset Belanja):
                                                             </span>
-                                                            <span className="text-[9px] font-semibold text-indigo-600">Ditentukan Superadmin</span>
+                                                            <span className="text-[9px] font-semibold text-indigo-600">Pilih Beban / Dari Excel</span>
                                                         </label>
                                                         <SearchableCoaDropdown
                                                             value={itemDebitId}
                                                             onChange={(val) => handleUpdateItemMapping(item.componentId, 'debitAccountId', val)}
                                                             accounts={accounts}
-                                                            placeholder="-- Pilih Akun Beban / Aset --"
+                                                            placeholder="-- Cari & Pilih Akun Beban / Aset --"
                                                             initialTab="ALL"
                                                             showCategoryTabs={true}
                                                         />
                                                     </div>
 
-                                                    {/* Akun Kredit */}
-                                                    <div>
+                                                    {/* Akun Kredit (Kas Unit) - 5 cols - Otomatis */}
+                                                    <div className="lg:col-span-5">
                                                         <label className="block text-[10px] font-bold text-slate-700 mb-1 flex items-center justify-between">
                                                             <span className="flex items-center gap-1.5">
                                                                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-                                                                Kredit (Kas Operasional Belanja Unit):
+                                                                Kredit (Kas Operasional Unit):
                                                             </span>
-                                                            <span className="text-[9px] font-semibold text-emerald-600">Rekening Unit</span>
+                                                            <span className="text-[8px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-1.5 py-0.5 rounded">Otomatis Kas Unit</span>
                                                         </label>
-                                                        <SearchableCoaDropdown
-                                                            value={itemCreditId}
-                                                            onChange={(val) => handleUpdateItemMapping(item.componentId, 'creditAccountId', val)}
-                                                            accounts={accounts}
-                                                            placeholder="-- Pilih Rekening Kas / Bank Unit --"
-                                                            initialTab="KAS"
-                                                            showCategoryTabs={true}
-                                                        />
+                                                        <div className="px-3 py-2 bg-emerald-50/80 border border-emerald-200/90 rounded-2xl flex items-center gap-2.5 text-xs text-emerald-950 shadow-2xs">
+                                                            <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                                                                <Landmark size={13} />
+                                                            </div>
+                                                            <div className="truncate flex-1">
+                                                                <div className="text-[11px] font-black truncate">
+                                                                    {(() => {
+                                                                        const curTargetBankId = itemCreditId || reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
+                                                                        const tgt = accounts.find(a => a.id === curTargetBankId);
+                                                                        return tgt ? `${tgt.code} - ${tgt.name}` : 'Kas Operasional Unit';
+                                                                    })()}
+                                                                </div>
+                                                                <div className="text-[8px] text-emerald-700 font-semibold truncate">
+                                                                    Mengikuti rekening operasional unit pemohon
+                                                                </div>
+                                                            </div>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
