@@ -847,6 +847,113 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
     }
 }
 
+// Helper to cascade sync existing budget reports and their journals when BudgetRequest COA changes
+async function syncLinkedBudgetReportsJournals(prisma, request) {
+    try {
+        if (!request || !request.id || !request.items) return;
+
+        const items = Array.isArray(request.items) 
+            ? request.items 
+            : (typeof request.items === 'string' ? JSON.parse(request.items) : []);
+        if (items.length === 0) return;
+
+        // Find all linked reports for this request
+        const linkedReports = await prisma.budgetReport.findMany({
+            where: {
+                budgetRequestId: request.id,
+                isDeleted: false
+            }
+        });
+
+        if (linkedReports.length === 0) return;
+
+        console.log(`[API] Syncing COA & journals for ${linkedReports.length} reports linked to BudgetRequest ${request.id}`);
+
+        for (const report of linkedReports) {
+            let matchedItem = null;
+            if (report.planId) {
+                matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.planId && i.planId === report.planId));
+            }
+            if (!matchedItem && report.expenseItemId) {
+                matchedItem = items.find(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
+            }
+            if (!matchedItem && report.description) {
+                const d = report.description.trim().toLowerCase();
+                matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
+            }
+            if (!matchedItem && items.length === 1) {
+                matchedItem = items[0];
+            }
+
+            if (!matchedItem) continue;
+
+            const debitId = matchedItem.debitAccountId || '';
+            const creditId = matchedItem.creditAccountId || request.targetUnitBankAccountId || request.creditAccountId || '';
+
+            if (!debitId && !creditId) continue;
+
+            let debitAcc = debitId ? await prisma.account.findUnique({ where: { id: debitId } }) : null;
+            let creditAcc = creditId ? await prisma.account.findUnique({ where: { id: creditId } }) : null;
+
+            // Update linked journal
+            let targetJournal = null;
+            if (report.journalId) {
+                targetJournal = await prisma.journal.findUnique({ where: { id: report.journalId } });
+            }
+            if (!targetJournal) {
+                const possibleRefs = [
+                    report.nomorNota,
+                    report.planId,
+                    `REPORT-${report.id.substring(0, 8)}`
+                ].filter(Boolean);
+                targetJournal = await prisma.journal.findFirst({
+                    where: {
+                        isDeleted: false,
+                        OR: possibleRefs.map(r => ({ reference: r }))
+                    }
+                });
+            }
+
+            if (targetJournal && targetJournal.entries) {
+                const entries = typeof targetJournal.entries === 'string' 
+                    ? JSON.parse(targetJournal.entries) 
+                    : targetJournal.entries;
+                
+                const amount = parseFloat(report.amount || targetJournal.entries?.[0]?.debit || 0);
+
+                const newEntries = [
+                    {
+                        accountId: debitId || entries[0]?.accountId || '',
+                        accountName: debitAcc ? `${debitAcc.code} - ${debitAcc.name}` : (entries[0]?.accountName || 'Debit'),
+                        debit: amount,
+                        credit: 0
+                    },
+                    {
+                        accountId: creditId || entries[1]?.accountId || '',
+                        accountName: creditAcc ? `${creditAcc.code} - ${creditAcc.name}` : (entries[1]?.accountName || 'Kas / Bank'),
+                        debit: 0,
+                        credit: amount
+                    }
+                ];
+
+                await prisma.journal.update({
+                    where: { id: targetJournal.id },
+                    data: { entries: newEntries }
+                });
+
+                if (!report.journalId) {
+                    await prisma.budgetReport.update({
+                        where: { id: report.id },
+                        data: { journalId: targetJournal.id }
+                    });
+                }
+            }
+        }
+    } catch (err) {
+        console.error(`[API Error] Failed to cascade sync budget report journals for BudgetRequest ${request?.id}:`, err.message);
+    }
+}
+
 router.post('/budget-requests', async (req, res) => {
     try {
         const ALLOWED_FIELDS = ['id', 'status', 'description', 'month', 'year',
@@ -995,6 +1102,7 @@ router.put('/budget-requests/:id', async (req, res) => {
         // Auto-journaling for Transfer Kas when status is APPROVED or remains APPROVED
         if (data.status === 'APPROVED' || existing.status === 'APPROVED') {
             await syncBudgetRequestTransferJournal(prisma, request, req.body);
+            await syncLinkedBudgetReportsJournals(prisma, request);
         } else if (data.status === 'REJECTED') {
             await prisma.journal.updateMany({
                 where: { reference: `TRF-${req.params.id}` },
@@ -1209,9 +1317,41 @@ router.post('/budget-reports', async (req, res) => {
                     }
                 }
 
-                // Resolve Debit & Credit Accounts (Check ExpenseProgram first, then ExpenseItem)
-                const resolvedDebitId = expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
-                const resolvedCreditId = expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+                // Resolve Debit & Credit Accounts:
+                // Priority 1: Check if parent BudgetRequest has predefined COAs for this item
+                let reqDebitId = '';
+                let reqCreditId = '';
+                if (budgetRequestId) {
+                    const parentReq = await tx.budgetRequest.findUnique({ where: { id: budgetRequestId } });
+                    if (parentReq && parentReq.items) {
+                        const bItems = Array.isArray(parentReq.items) ? parentReq.items : (typeof parentReq.items === 'string' ? JSON.parse(parentReq.items) : []);
+                        let matchedItem = null;
+                        if (planId) {
+                            matchedItem = bItems.find(i => (i.componentId && i.componentId === planId) || (i.planId && i.planId === planId));
+                        }
+                        if (!matchedItem && actualExpenseItemId) {
+                            matchedItem = bItems.find(i => i.expenseItemId === actualExpenseItemId || i.componentId === actualExpenseItemId);
+                        }
+                        if (!matchedItem && description) {
+                            const d = description.trim().toLowerCase();
+                            matchedItem = bItems.find(i => i.name && i.name.trim().toLowerCase() === d);
+                        }
+                        if (!matchedItem && bItems.length === 1) {
+                            matchedItem = bItems[0];
+                        }
+                        if (matchedItem) {
+                            if (matchedItem.debitAccountId) reqDebitId = matchedItem.debitAccountId;
+                            if (matchedItem.creditAccountId) reqCreditId = matchedItem.creditAccountId;
+                        }
+                        if (!reqCreditId && (parentReq.targetUnitBankAccountId || parentReq.creditAccountId)) {
+                            reqCreditId = parentReq.targetUnitBankAccountId || parentReq.creditAccountId;
+                        }
+                    }
+                }
+
+                // Priority 2: ExpenseProgram or ExpenseItem
+                const resolvedDebitId = reqDebitId || expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                const resolvedCreditId = reqCreditId || expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
 
                 let debitAccObj = null;
                 if (resolvedDebitId) {

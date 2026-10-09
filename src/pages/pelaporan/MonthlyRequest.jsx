@@ -126,7 +126,7 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
 
 export default function MonthlyRequest() {
     const { state, dispatch } = useApp();
-    const { currentUser, rabPlans, budgetRequests, units, fields, academicYears, globalAcademicYearId, accounts = [], expenseItems = [] } = state;
+    const { currentUser, rabPlans, budgetRequests, budgetReports = [], units, fields, academicYears, globalAcademicYearId, accounts = [], expenseItems = [] } = state;
     const [showRequestModal, setShowRequestModal] = useState(false);
     const [processingId, setProcessingId] = useState(null);
     const [selectedComponents, setSelectedComponents] = useState([]);
@@ -1294,7 +1294,64 @@ export default function MonthlyRequest() {
                 }
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                 await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, bypassBalanceCheck: true } }, state);
-                showToast(reviewRequest.isAlreadyApproved ? 'Penetapan COA & Jurnal Pemindahbukuan Kas berhasil diperbarui!' : 'Persetujuan berhasil disimpan!');
+
+                // Cascade update local journals for already reported receipts (budgetReports) linked to this request
+                const linkedReports = (budgetReports || []).filter(rep => rep.budgetRequestId === req.id && !rep.isDeleted);
+                if (linkedReports.length > 0) {
+                    linkedReports.forEach(rep => {
+                        let matchedItem = null;
+                        if (rep.planId) {
+                            matchedItem = accItems.find(i => (i.componentId && i.componentId === rep.planId) || (i.planId && i.planId === rep.planId));
+                        }
+                        if (!matchedItem && rep.expenseItemId) {
+                            matchedItem = accItems.find(i => i.expenseItemId === rep.expenseItemId || i.componentId === rep.expenseItemId);
+                        }
+                        if (!matchedItem && rep.description) {
+                            const d = rep.description.trim().toLowerCase();
+                            matchedItem = accItems.find(i => i.name && i.name.trim().toLowerCase() === d);
+                        }
+                        if (!matchedItem && accItems.length === 1) {
+                            matchedItem = accItems[0];
+                        }
+                        if (matchedItem && (matchedItem.debitAccountId || matchedItem.creditAccountId)) {
+                            const repDebitId = matchedItem.debitAccountId || '';
+                            const repCreditId = matchedItem.creditAccountId || targetUnitBankAccountId || req.creditAccountId || '';
+                            const dAcc = accounts.find(a => a.id === repDebitId);
+                            const cAcc = accounts.find(a => a.id === repCreditId);
+
+                            const repJrn = (state.journals || []).find(j => 
+                                (rep.journalId && j.id === rep.journalId) || 
+                                (rep.nomorNota && j.reference === rep.nomorNota) ||
+                                (rep.planId && j.reference === rep.planId) ||
+                                (j.reference === `REPORT-${rep.id?.substring(0, 8)}`)
+                            );
+                            if (repJrn && repJrn.entries) {
+                                const amount = parseFloat(rep.amount || repJrn.entries[0]?.debit || 0);
+                                const updatedRepJrn = {
+                                    ...repJrn,
+                                    entries: [
+                                        {
+                                            accountId: repDebitId,
+                                            accountName: dAcc ? `${dAcc.code} - ${dAcc.name}` : (repJrn.entries[0]?.accountName || 'Debit'),
+                                            debit: amount,
+                                            credit: 0
+                                        },
+                                        {
+                                            accountId: repCreditId,
+                                            accountName: cAcc ? `${cAcc.code} - ${cAcc.name}` : (repJrn.entries[1]?.accountName || 'Kas / Bank'),
+                                            debit: 0,
+                                            credit: amount
+                                        }
+                                    ]
+                                };
+                                dispatch({ type: 'EDIT_JOURNAL', payload: updatedRepJrn });
+                                api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedRepJrn }, state).catch(() => {});
+                            }
+                        }
+                    });
+                }
+
+                showToast(reviewRequest.isAlreadyApproved ? 'Penetapan COA & Seluruh Jurnal Transaksi Berhasil Diperbarui!' : 'Persetujuan berhasil disimpan!');
                 setReviewRequest(null);
                 return;
             } 
