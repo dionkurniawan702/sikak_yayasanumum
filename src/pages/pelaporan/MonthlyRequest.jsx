@@ -829,6 +829,13 @@ export default function MonthlyRequest() {
         }) || cashBankAccounts.find(a => a.id !== initialSourceBankId) || cashBankAccounts[0] || null;
 
         if (!initialTargetUnitBankId) {
+            if (req.items && req.items.length > 0) {
+                const itemWithCredit = req.items.find(i => i.creditAccountId);
+                if (itemWithCredit) initialTargetUnitBankId = itemWithCredit.creditAccountId;
+            }
+        }
+
+        if (!initialTargetUnitBankId) {
             initialTargetUnitBankId = matchedUnitBankAcc?.id || initialSourceBankId || '';
         }
 
@@ -1101,11 +1108,11 @@ export default function MonthlyRequest() {
                         };
                         updated.transferJournalId = prevJournal.id;
                         dispatch({ type: 'EDIT_JOURNAL', payload: updatedJournal });
-                        api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                        await api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
                     } else {
                         updated.transferJournalId = trfJournal.id;
                         dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
-                        api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                        await api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
                     }
                 }
                 dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
@@ -1147,7 +1154,7 @@ export default function MonthlyRequest() {
                         if (trfJournal) {
                             updated.transferJournalId = trfJournal.id;
                             dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
-                            api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                            await api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
                         }
                         dispatch({ type: 'EDIT_BUDGET_REQUEST', payload: updated });
                         await api.pushAction({ type: 'EDIT_BUDGET_REQUEST', payload: { ...updated, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
@@ -1170,7 +1177,7 @@ export default function MonthlyRequest() {
                         if (trfJournal) {
                             newAcc.transferJournalId = trfJournal.id;
                             dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });
-                            api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                            await api.pushAction({ type: 'ADD_JOURNAL', payload: trfJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
                         }
                         dispatch({ type: 'ADD_BUDGET_REQUEST', payload: newAcc });
                         await api.pushAction({ type: 'ADD_BUDGET_REQUEST', payload: { ...newAcc, ...(bypassBalance ? { bypassBalanceCheck: true } : {}) } }, state);
@@ -1798,7 +1805,7 @@ export default function MonthlyRequest() {
                                                     )}
                                                     {req.status === 'APPROVED' && (() => {
                                                         const srcAcc = accounts.find(a => a.id === req.sourceBankAccountId);
-                                                        const tgtAcc = accounts.find(a => a.id === req.targetUnitBankAccountId || a.id === req.creditAccountId);
+                                                        const tgtAcc = accounts.find(a => a.id === req.targetUnitBankAccountId || a.id === req.creditAccountId || (req.items && req.items[0]?.creditAccountId && a.id === req.items[0].creditAccountId));
                                                         const unmappedCount = (req.items || []).filter(i => !i.debitAccountId).length;
 
                                                         return (
@@ -1894,7 +1901,8 @@ export default function MonthlyRequest() {
                                         )}
                                         {isSuperAdmin && req.status === 'APPROVED' && (() => {
                                             const unmappedCoaCount = (req.items || []).filter(i => !i.debitAccountId).length;
-                                            const isCoaComplete = unmappedCoaCount === 0 && (req.targetUnitBankAccountId || req.creditAccountId);
+                                            const hasCreditAccount = req.targetUnitBankAccountId || req.creditAccountId || (req.items && req.items.length > 0 && req.items.every(i => i.creditAccountId));
+                                            const isCoaComplete = unmappedCoaCount === 0 && Boolean(hasCreditAccount);
 
                                             return (
                                                 <button

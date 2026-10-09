@@ -747,8 +747,8 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
         const totalNominal = parseFloat(request.totalAmount || 0);
         if (totalNominal <= 0) return;
 
-        const sourceId = reqBody.sourceBankAccountId;
-        const targetId = reqBody.targetUnitBankAccountId || reqBody.creditAccountId;
+        const sourceId = reqBody.sourceBankAccountId || request.sourceBankAccountId;
+        const targetId = reqBody.targetUnitBankAccountId || reqBody.creditAccountId || request.targetUnitBankAccountId || request.creditAccountId;
         const isBos = request.source === 'BOS' || (request.items && JSON.stringify(request.items).includes('-BOS'));
 
         let sourceAcc = sourceId ? await prisma.account.findUnique({ where: { id: sourceId } }) : null;
@@ -830,9 +830,15 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
                     data: journalPayload
                 });
             } else {
-                await prisma.journal.create({
+                const createdJournal = await prisma.journal.create({
                     data: journalPayload
                 });
+                if (!request.transferJournalId) {
+                    await prisma.budgetRequest.update({
+                        where: { id: request.id },
+                        data: { transferJournalId: createdJournal.id }
+                    }).catch(() => {});
+                }
             }
             console.log(`[API] Successfully created/updated transfer journal ${transferRef} for BudgetRequest ${request.id}`);
         }
@@ -845,7 +851,8 @@ router.post('/budget-requests', async (req, res) => {
     try {
         const ALLOWED_FIELDS = ['id', 'status', 'description', 'month', 'year',
             'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
-            'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed'];
+            'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed',
+            'creditAccountId', 'sourceBankAccountId', 'targetUnitBankAccountId', 'transferJournalId'];
 
         const data = {};
         ALLOWED_FIELDS.forEach(f => {
@@ -888,7 +895,8 @@ router.put('/budget-requests/:id', async (req, res) => {
         // Sending unknown fields (e.g. approvedAt, rejectedAt) causes Prisma to throw
         const ALLOWED_FIELDS = ['status', 'description', 'month', 'year',
             'totalAmount', 'amount', 'items', 'unitId', 'fieldId', 'academicYearId',
-            'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed'];
+            'date', 'expenseItemId', 'isDeleted', 'source', 'notified', 'isClosed',
+            'creditAccountId', 'sourceBankAccountId', 'targetUnitBankAccountId', 'transferJournalId'];
 
         const data = {};
         ALLOWED_FIELDS.forEach(f => {
@@ -984,8 +992,8 @@ router.put('/budget-requests/:id', async (req, res) => {
             data
         });
 
-        // Auto-journaling for Transfer Kas when status is APPROVED
-        if (data.status === 'APPROVED') {
+        // Auto-journaling for Transfer Kas when status is APPROVED or remains APPROVED
+        if (data.status === 'APPROVED' || existing.status === 'APPROVED') {
             await syncBudgetRequestTransferJournal(prisma, request, req.body);
         } else if (data.status === 'REJECTED') {
             await prisma.journal.updateMany({
@@ -1400,8 +1408,8 @@ router.put('/budget-reports/:id', async (req, res) => {
                             if (matchedItem.debitAccountId) reqDebitId = matchedItem.debitAccountId;
                             if (matchedItem.creditAccountId) reqCreditId = matchedItem.creditAccountId;
                         }
-                        if (!reqCreditId && parentReq.creditAccountId) {
-                            reqCreditId = parentReq.creditAccountId;
+                        if (!reqCreditId && (parentReq.targetUnitBankAccountId || parentReq.creditAccountId)) {
+                            reqCreditId = parentReq.targetUnitBankAccountId || parentReq.creditAccountId;
                         }
                     }
                 }

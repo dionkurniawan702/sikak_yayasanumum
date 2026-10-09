@@ -367,11 +367,15 @@ model BudgetRequest {
   year          Int?
   source        String?     @db.VarChar(20)
   description   String?
-  status        String      @default("PENDING") // PENDING, APPROVED, REJECTED
-  notified      Boolean     @default(false)
-  isDeleted     Boolean     @default(false)
+  status                  String        @default("PENDING") // PENDING, APPROVED, REJECTED
+  notified                Boolean       @default(false)
+  isDeleted               Boolean       @default(false)
+  sourceBankAccountId     String?
+  targetUnitBankAccountId String?
+  creditAccountId         String?
+  transferJournalId       String?
 
-  reports       BudgetReport[]
+  reports                 BudgetReport[]
 
   @@map("budget_requests")
 }

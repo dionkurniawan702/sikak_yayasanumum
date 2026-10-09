@@ -792,10 +792,6 @@ app.post('/api/sync', async (req, res) => {
                         if (cleanItem.reports) delete cleanItem.reports;
                         delete cleanItem.hasAsset;
                         delete cleanItem.sarprasStatus;
-                        delete cleanItem.creditAccountId;
-                        delete cleanItem.sourceBankAccountId;
-                        delete cleanItem.targetUnitBankAccountId;
-                        delete cleanItem.transferJournalId;
                         delete cleanItem.bypassBalanceCheck;
                     }
                     if (model === 'budgetReport') {
@@ -1413,6 +1409,10 @@ const ensureBudgetOperationalColumns = async () => {
         if (!reqFields.includes('academicYearId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN academicYearId VARCHAR(255)');
         if (!reqFields.includes('totalAmount')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN totalAmount DECIMAL(15, 2)');
         if (!reqFields.includes('items')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN items JSON');
+        if (!reqFields.includes('sourceBankAccountId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN sourceBankAccountId VARCHAR(255) NULL');
+        if (!reqFields.includes('targetUnitBankAccountId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN targetUnitBankAccountId VARCHAR(255) NULL');
+        if (!reqFields.includes('creditAccountId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN creditAccountId VARCHAR(255) NULL');
+        if (!reqFields.includes('transferJournalId')) await client.$executeRawUnsafe('ALTER TABLE `budget_requests` ADD COLUMN transferJournalId VARCHAR(255) NULL');
 
         // Fix month column (might be Int, we want String for flexible month IDs like "2026-07")
         const monthCol = reqCols.find(c => (c.Field === 'month' || c.field === 'month'));
