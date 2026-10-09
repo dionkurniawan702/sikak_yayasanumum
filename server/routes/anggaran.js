@@ -847,15 +847,97 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
     }
 }
 
+// Helper to resolve debit & credit accounts for Pengembalian Dana (Refund)
+// Rules:
+// DEBIT: Rekening Bank Yayasan / Penampung (misal rek TK 91: 1-1114 BSI 55-91)
+// KREDIT: Kas Operasional Unit (misal Kas Unit TKIT: 1-1143)
+async function resolveRefundAccounts(prisma, report, budgetRequest = null) {
+    let req = budgetRequest;
+    if (!req && report.budgetRequestId) {
+        req = await prisma.budgetRequest.findUnique({ where: { id: report.budgetRequestId } });
+    }
+    const unitId = report.unitId || req?.unitId;
+
+    let yayasanBankAcc = null;
+    let unitKasAcc = null;
+
+    // 1. Check from parent budget request accounts
+    if (req) {
+        const candidateIds = [req.sourceBankAccountId, req.targetUnitBankAccountId, req.creditAccountId].filter(Boolean);
+        for (const cid of candidateIds) {
+            const acc = await prisma.account.findUnique({ where: { id: cid } });
+            if (!acc) continue;
+            if (acc.code.startsWith('1-114') || acc.code.startsWith('1-115') || acc.name.toLowerCase().includes('kas unit')) {
+                if (!unitKasAcc) unitKasAcc = acc;
+            } else if (acc.code.startsWith('1-111') || acc.code.startsWith('1-110') || acc.code.startsWith('1-112') || acc.code.startsWith('1-113') || acc.name.toLowerCase().includes('bsi') || acc.name.toLowerCase().includes('nagari') || acc.name.toLowerCase().includes('bank')) {
+                if (!yayasanBankAcc) yayasanBankAcc = acc;
+            }
+        }
+    }
+
+    // 2. Resolve Kas Operasional Unit if not found
+    if (!unitKasAcc && unitId) {
+        const u = await prisma.unit.findUnique({ where: { id: unitId } });
+        const uName = (u?.name || '').toLowerCase();
+        const allKas = await prisma.account.findMany({
+            where: {
+                isDeleted: false,
+                isParent: false,
+                OR: [{ code: { startsWith: '1-114' } }, { code: { startsWith: '1-115' } }, { name: { contains: 'Kas Unit' } }]
+            }
+        });
+        unitKasAcc = allKas.find(a => uName && a.name.toLowerCase().includes(uName)) ||
+                     (uName.includes('tk') ? allKas.find(a => a.code === '1-1143') : null) ||
+                     (uName.includes('sd') ? allKas.find(a => a.code === '1-1142') : null) ||
+                     (uName.includes('smp') ? allKas.find(a => a.code === '1-1141') : null) ||
+                     allKas[0] || null;
+    }
+
+    // 3. Resolve Bank Yayasan / Rekening Unit if not found
+    if (!yayasanBankAcc && unitId) {
+        const u = await prisma.unit.findUnique({ where: { id: unitId } });
+        const uName = (u?.name || '').toLowerCase();
+        const allBanks = await prisma.account.findMany({
+            where: {
+                isDeleted: false,
+                isParent: false,
+                OR: [{ code: { startsWith: '1-111' } }, { code: { startsWith: '1-110' } }, { code: { startsWith: '1-112' } }, { code: { startsWith: '1-113' } }]
+            }
+        });
+
+        if (uName.includes('tk') || uName.includes('tkit')) {
+            yayasanBankAcc = allBanks.find(a => a.code === '1-1114') || allBanks.find(a => a.name.toLowerCase().includes('spp tk'));
+        } else if (uName.includes('sd') || uName.includes('sdit')) {
+            yayasanBankAcc = allBanks.find(a => a.code === '1-1107') || allBanks.find(a => a.name.toLowerCase().includes('spp sd'));
+        } else if (uName.includes('smp') || uName.includes('smpit')) {
+            yayasanBankAcc = allBanks.find(a => a.code === '1-1109') || allBanks.find(a => a.name.toLowerCase().includes('spp smp'));
+        } else if (uName.includes('taud')) {
+            yayasanBankAcc = allBanks.find(a => a.code === '1-1118') || allBanks.find(a => a.name.toLowerCase().includes('taud'));
+        } else if (uName.includes('mit')) {
+            yayasanBankAcc = allBanks.find(a => a.code === '1-1119') || allBanks.find(a => a.name.toLowerCase().includes('mit'));
+        }
+
+        if (!yayasanBankAcc) {
+            yayasanBankAcc = allBanks.find(a => uName && a.name.toLowerCase().includes(uName)) ||
+                             allBanks.find(a => a.code === '1-1111') ||
+                             allBanks.find(a => a.code === '1-1101') || null;
+        }
+    }
+
+    return {
+        debitAccount: yayasanBankAcc,
+        creditAccount: unitKasAcc
+    };
+}
+
 // Helper to cascade sync existing budget reports and their journals when BudgetRequest COA changes
 async function syncLinkedBudgetReportsJournals(prisma, request) {
     try {
-        if (!request || !request.id || !request.items) return;
+        if (!request || !request.id) return;
 
         const items = Array.isArray(request.items) 
             ? request.items 
             : (typeof request.items === 'string' ? JSON.parse(request.items) : []);
-        if (items.length === 0) return;
 
         // Find all linked reports for this request
         const linkedReports = await prisma.budgetReport.findMany({
@@ -870,30 +952,49 @@ async function syncLinkedBudgetReportsJournals(prisma, request) {
         console.log(`[API] Syncing COA & journals for ${linkedReports.length} reports linked to BudgetRequest ${request.id}`);
 
         for (const report of linkedReports) {
-            let matchedItem = null;
-            if (report.planId) {
-                matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.planId && i.planId === report.planId));
-            }
-            if (!matchedItem && report.expenseItemId) {
-                matchedItem = items.find(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
-            }
-            if (!matchedItem && report.description) {
-                const d = report.description.trim().toLowerCase();
-                matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
-            }
-            if (!matchedItem && items.length === 1) {
-                matchedItem = items[0];
-            }
+            let debitId = '';
+            let creditId = '';
+            let debitAcc = null;
+            let creditAcc = null;
 
-            if (!matchedItem) continue;
+            if (report.kategoriAset === 'PENGEMBALIAN') {
+                // Pengembalian sisa dana kas unit ke Yayasan:
+                // DEBIT: Rekening Bank Yayasan (rek TK 91 / BSI unit penampung)
+                // KREDIT: Kas Operasional Unit (Kas Unit TKIT 1)
+                const refundAccounts = await resolveRefundAccounts(prisma, report, request);
+                debitAcc = refundAccounts.debitAccount;
+                creditAcc = refundAccounts.creditAccount;
+                debitId = debitAcc?.id || '';
+                creditId = creditAcc?.id || '';
+                if (!debitId && !creditId) continue;
+            } else {
+                if (items.length === 0) continue;
 
-            const debitId = matchedItem.debitAccountId || '';
-            const creditId = matchedItem.creditAccountId || request.targetUnitBankAccountId || request.creditAccountId || '';
+                let matchedItem = null;
+                if (report.planId) {
+                    matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.planId && i.planId === report.planId));
+                }
+                if (!matchedItem && report.expenseItemId) {
+                    matchedItem = items.find(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
+                }
+                if (!matchedItem && report.description) {
+                    const d = report.description.trim().toLowerCase();
+                    matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
+                }
+                if (!matchedItem && items.length === 1) {
+                    matchedItem = items[0];
+                }
 
-            if (!debitId && !creditId) continue;
+                if (!matchedItem) continue;
 
-            let debitAcc = debitId ? await prisma.account.findUnique({ where: { id: debitId } }) : null;
-            let creditAcc = creditId ? await prisma.account.findUnique({ where: { id: creditId } }) : null;
+                debitId = matchedItem.debitAccountId || '';
+                creditId = matchedItem.creditAccountId || request.targetUnitBankAccountId || request.creditAccountId || '';
+
+                if (!debitId && !creditId) continue;
+
+                debitAcc = debitId ? await prisma.account.findUnique({ where: { id: debitId } }) : null;
+                creditAcc = creditId ? await prisma.account.findUnique({ where: { id: creditId } }) : null;
+            }
 
             // Update linked journal
             let targetJournal = null;
@@ -904,7 +1005,8 @@ async function syncLinkedBudgetReportsJournals(prisma, request) {
                 const possibleRefs = [
                     report.nomorNota,
                     report.planId,
-                    `REPORT-${report.id.substring(0, 8)}`
+                    `REPORT-${report.id.substring(0, 8)}`,
+                    `RET-${report.id}`
                 ].filter(Boolean);
                 targetJournal = await prisma.journal.findFirst({
                     where: {
@@ -1349,29 +1451,44 @@ router.post('/budget-reports', async (req, res) => {
                     }
                 }
 
-                // Priority 2: ExpenseProgram or ExpenseItem
-                const resolvedDebitId = reqDebitId || expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
-                const resolvedCreditId = reqCreditId || expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+                let debitAccount = '';
+                let creditAccount = '';
+                let debitName = '';
+                let creditName = '';
 
-                let debitAccObj = null;
-                if (resolvedDebitId) {
-                    debitAccObj = await tx.account.findUnique({ where: { id: resolvedDebitId } });
+                if (kategoriAset === 'PENGEMBALIAN') {
+                    const refundAccounts = await resolveRefundAccounts(tx, report, budgetRequestId ? await tx.budgetRequest.findUnique({ where: { id: budgetRequestId } }) : null);
+                    const dAcc = refundAccounts.debitAccount;
+                    const cAcc = refundAccounts.creditAccount;
+                    debitAccount = dAcc?.id || '';
+                    creditAccount = cAcc?.id || '';
+                    debitName = dAcc ? `${dAcc.code} - ${dAcc.name}` : 'Rekening Bank Yayasan (Debit)';
+                    creditName = cAcc ? `${cAcc.code} - ${cAcc.name}` : 'Kas Unit (Kredit)';
+                } else {
+                    // Priority 2: ExpenseProgram or ExpenseItem
+                    const resolvedDebitId = reqDebitId || expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                    const resolvedCreditId = reqCreditId || expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+
+                    let debitAccObj = null;
+                    if (resolvedDebitId) {
+                        debitAccObj = await tx.account.findUnique({ where: { id: resolvedDebitId } });
+                    }
+
+                    let creditAccObj = null;
+                    if (resolvedCreditId) {
+                        creditAccObj = await tx.account.findUnique({ where: { id: resolvedCreditId } });
+                    }
+
+                    debitAccount = resolvedDebitId || '';
+                    debitName = debitAccObj 
+                        ? `${debitAccObj.code} - ${debitAccObj.name}` 
+                        : (resolvedDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
+                    
+                    creditAccount = resolvedCreditId || '';
+                    creditName = creditAccObj 
+                        ? `${creditAccObj.code} - ${creditAccObj.name}` 
+                        : (resolvedCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
                 }
-
-                let creditAccObj = null;
-                if (resolvedCreditId) {
-                    creditAccObj = await tx.account.findUnique({ where: { id: resolvedCreditId } });
-                }
-
-                const debitAccount = resolvedDebitId || '';
-                const debitName = debitAccObj 
-                    ? `${debitAccObj.code} - ${debitAccObj.name}` 
-                    : (resolvedDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
-                
-                const creditAccount = resolvedCreditId || '';
-                const creditName = creditAccObj 
-                    ? `${creditAccObj.code} - ${creditAccObj.name}` 
-                    : (resolvedCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
                 const journal = await tx.journal.create({
                     data: {
@@ -1591,37 +1708,40 @@ router.put('/budget-reports/:id', async (req, res) => {
                     }
                 }
 
-                // Special handling for PENGEMBALIAN:
-                // In refund, cash comes IN to Kas/Bank (Debit) and expense/fund is Credited
-                let finalDebitId = resolvedDebitId;
-                let finalCreditId = resolvedCreditId;
+                let debitAccount = '';
+                let creditAccount = '';
+                let debitName = '';
+                let creditName = '';
 
                 if (updated.kategoriAset === 'PENGEMBALIAN') {
-                    // Kas/Bank receives cash -> Debit
-                    finalDebitId = resolvedCreditId;
-                    // Expense or previous account is reduced -> Credit
-                    finalCreditId = resolvedDebitId;
-                }
+                    const refundAccounts = await resolveRefundAccounts(tx, updated);
+                    const dAcc = refundAccounts.debitAccount;
+                    const cAcc = refundAccounts.creditAccount;
+                    debitAccount = dAcc?.id || '';
+                    creditAccount = cAcc?.id || '';
+                    debitName = dAcc ? `${dAcc.code} - ${dAcc.name}` : 'Rekening Bank Yayasan (Debit)';
+                    creditName = cAcc ? `${cAcc.code} - ${cAcc.name}` : 'Kas Unit (Kredit)';
+                } else {
+                    let debitAccObj = null;
+                    if (resolvedDebitId) {
+                        debitAccObj = await tx.account.findUnique({ where: { id: resolvedDebitId } });
+                    }
 
-                let debitAccObj = null;
-                if (finalDebitId) {
-                    debitAccObj = await tx.account.findUnique({ where: { id: finalDebitId } });
-                }
+                    let creditAccObj = null;
+                    if (resolvedCreditId) {
+                        creditAccObj = await tx.account.findUnique({ where: { id: resolvedCreditId } });
+                    }
 
-                let creditAccObj = null;
-                if (finalCreditId) {
-                    creditAccObj = await tx.account.findUnique({ where: { id: finalCreditId } });
+                    debitAccount = resolvedDebitId || '';
+                    debitName = debitAccObj 
+                        ? `${debitAccObj.code} - ${debitAccObj.name}` 
+                        : (resolvedDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
+                    
+                    creditAccount = resolvedCreditId || '';
+                    creditName = creditAccObj 
+                        ? `${creditAccObj.code} - ${creditAccObj.name}` 
+                        : (resolvedCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
                 }
-
-                const debitAccount = finalDebitId || '';
-                const debitName = debitAccObj 
-                    ? `${debitAccObj.code} - ${debitAccObj.name}` 
-                    : (finalDebitId ? (expenseProgram?.name || expenseItem?.name || 'Debit') : 'MENUNGGU COA (Debit)');
-                
-                const creditAccount = finalCreditId || '';
-                const creditName = creditAccObj 
-                    ? `${creditAccObj.code} - ${creditAccObj.name}` 
-                    : (finalCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
                 const journal = await tx.journal.create({
                     data: {

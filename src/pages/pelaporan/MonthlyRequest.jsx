@@ -1299,6 +1299,47 @@ export default function MonthlyRequest() {
                 const linkedReports = (budgetReports || []).filter(rep => rep.budgetRequestId === req.id && !rep.isDeleted);
                 if (linkedReports.length > 0) {
                     linkedReports.forEach(rep => {
+                        if (rep.kategoriAset === 'PENGEMBALIAN') {
+                            // DEBIT: Rekening Bank Yayasan (rek TK 91 / sourceBankAccountId / bank unit)
+                            // KREDIT: Kas Operasional Unit (Kas Unit TKIT / targetUnitBankAccountId)
+                            const bankAcc = accounts.find(a => a.id === sourceBankAccountId) ||
+                                            accounts.find(a => a.code === '1-1114') ||
+                                            accounts.find(a => a.name?.toLowerCase().includes('spp tk'));
+                            const kasAcc = accounts.find(a => a.id === targetUnitBankAccountId) ||
+                                           accounts.find(a => a.code === '1-1143') ||
+                                           accounts.find(a => a.name?.toLowerCase().includes('kas unit'));
+
+                            const repJrn = (state.journals || []).find(j => 
+                                (rep.journalId && j.id === rep.journalId) || 
+                                (j.reference === `REPORT-${rep.id?.substring(0, 8)}`) ||
+                                (j.reference === `RET-${rep.id}`) ||
+                                (rep.id && j.reference && j.reference.includes(rep.id.substring(0, 8)))
+                            );
+                            if (repJrn && repJrn.entries && (bankAcc || kasAcc)) {
+                                const amount = parseFloat(rep.amount || repJrn.entries[0]?.debit || 0);
+                                const updatedRepJrn = {
+                                    ...repJrn,
+                                    entries: [
+                                        {
+                                            accountId: bankAcc?.id || repJrn.entries[0]?.accountId || '',
+                                            accountName: bankAcc ? `${bankAcc.code} - ${bankAcc.name}` : (repJrn.entries[0]?.accountName || 'Rekening Bank Yayasan'),
+                                            debit: amount,
+                                            credit: 0
+                                        },
+                                        {
+                                            accountId: kasAcc?.id || repJrn.entries[1]?.accountId || '',
+                                            accountName: kasAcc ? `${kasAcc.code} - ${kasAcc.name}` : (repJrn.entries[1]?.accountName || 'Kas Unit'),
+                                            debit: 0,
+                                            credit: amount
+                                        }
+                                    ]
+                                };
+                                dispatch({ type: 'EDIT_JOURNAL', payload: updatedRepJrn });
+                                api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedRepJrn }, state).catch(() => {});
+                            }
+                            return;
+                        }
+
                         let matchedItem = null;
                         if (rep.planId) {
                             matchedItem = accItems.find(i => (i.componentId && i.componentId === rep.planId) || (i.planId && i.planId === rep.planId));
