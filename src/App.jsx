@@ -42,6 +42,7 @@ const BOSMasterManagement = lazy(() => import('./pages/anggaran/BOSMasterManagem
 const ClassManagement = lazy(() => import('./pages/anggaran/ClassManagement'));
 const RAB = lazy(() => import('./pages/anggaran/RAB'));
 const ArchiveRAB = lazy(() => import('./pages/anggaran/ArchiveRAB'));
+const BudgetShiftManagement = lazy(() => import('./pages/anggaran/BudgetShiftManagement'));
 const ArchiveReports = lazy(() => import('./pages/pelaporan/ArchiveReports'));
 const BOSRecipientUnitManagement = lazy(() => import('./pages/anggaran/BOSRecipientUnitManagement'));
 const BOSDatabase = lazy(() => import('./pages/anggaran/BOSDatabase'));
@@ -192,6 +193,8 @@ function AppContent() {
 
                     <Route path="anggaran/rab" element={<RAB />} />
                     <Route path="anggaran/arsip-rab" element={<ArchiveRAB />} />
+                    <Route path="anggaran/pergeseran" element={<BudgetShiftManagement />} />
+                    <Route path="anggaran/pergeseran-anggaran" element={<BudgetShiftManagement />} />
                     <Route path="anggaran/distribusi" element={<DistributionSettings />} />
 
                     <Route path="pelaporan/permintaan" element={<MonthlyRequest />} />

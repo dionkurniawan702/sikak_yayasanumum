@@ -682,7 +682,7 @@ app.post('/api/sync', async (req, res) => {
             accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
-            budgetRequests, budgetReports, classes, rabPlans,
+            budgetRequests, budgetReports, classes, rabPlans, budgetShifts,
             bosStages, bosPosList, bosAllocations,
             assetCategories, assetVendors, assetRooms, assetPics,
             isPurge = false
@@ -888,12 +888,14 @@ app.post('/api/sync', async (req, res) => {
                 if (isPurge) {
                     await tx.$executeRawUnsafe('DELETE FROM `distribution_settings`');
                     await tx.$executeRawUnsafe('DELETE FROM `rab_plans`');
+                    await tx.$executeRawUnsafe('DELETE FROM `budget_shifts`');
                     await tx.$executeRawUnsafe('DELETE FROM `bos_stages`');
                     await tx.$executeRawUnsafe('DELETE FROM `bos_pos`');
                     await tx.$executeRawUnsafe('DELETE FROM `budget_allocations`');
                 }
                 await batchUpsert(tx, 'distributionSetting', distributionSettings);
                 await batchUpsert(tx, 'rabPlan', rabPlans);
+                await batchUpsert(tx, 'budgetShift', budgetShifts);
                 await batchUpsert(tx, 'bosStage', bosStages);
                 await batchUpsert(tx, 'bosPos', bosPosList);
                 await batchUpsert(tx, 'bosAllocation', bosAllocations);
@@ -1050,7 +1052,7 @@ app.get('/api/all-data', async (req, res) => {
             accounts, journals, assets, programs, expensePrograms, users, budgets,
             fields, units, students, incomeItems, expenseItems, distributionSettings,
             academicYears, classGroups, positions, studentStatuses, parentStatuses,
-            budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations,
+            budgetRequests, budgetReports, classes, rabPlans, budgetShifts, bosStages, bosPosList, bosAllocations,
             assetCategories, assetVendors, assetRooms, assetPics, totalJournalsCount
         ] = await Promise.all([
             client.account.findMany({ where: { isDeleted: false }, orderBy: { code: 'asc' } }),
@@ -1116,6 +1118,19 @@ app.get('/api/all-data', async (req, res) => {
                 }
             }),
 
+            client.budgetShift.findMany({
+                where: {
+                    isDeleted: false,
+                    ...(isUnitAdmin ? {
+                        OR: [
+                            { fromUnitId: unitId },
+                            { toUnitId: unitId }
+                        ]
+                    } : {})
+                },
+                orderBy: { createdAt: 'desc' }
+            }).catch(() => []),
+
             client.bosStage.findMany({ where: { isDeleted: false } }),
             client.bosPos.findMany({ where: { isDeleted: false } }),
             client.bosAllocation.findMany({ where: { isDeleted: false } }),
@@ -1132,7 +1147,7 @@ app.get('/api/all-data', async (req, res) => {
                 accounts, journals, assets, programs, expensePrograms, users, budgets,
                 fields, units, students, incomeItems, expenseItems, distributionSettings,
                 academicYears, classGroups, positions, studentStatuses, parentStatuses,
-                budgetRequests, budgetReports, classes, rabPlans, bosStages, bosPosList, bosAllocations,
+                budgetRequests, budgetReports, classes, rabPlans, budgetShifts, bosStages, bosPosList, bosAllocations,
                 assetCategories, assetVendors, assetRooms, assetPics, totalJournalsCount
             }
         });
@@ -1445,6 +1460,45 @@ const ensureBudgetOperationalColumns = async () => {
             }
         } catch (jErr) {
             console.warn(`[Self-Healing Warning] Journals check: ${jErr.message}`);
+        }
+
+        // 4. budget_shifts table
+        try {
+            await client.$executeRawUnsafe(`
+                CREATE TABLE IF NOT EXISTS \`budget_shifts\` (
+                    \`id\` VARCHAR(191) NOT NULL PRIMARY KEY,
+                    \`code\` VARCHAR(100),
+                    \`academicYearId\` VARCHAR(191) NOT NULL,
+                    \`type\` VARCHAR(50) NOT NULL,
+                    \`transferScope\` VARCHAR(50) NOT NULL DEFAULT 'INTERNAL_UNIT',
+                    \`fromUnitId\` VARCHAR(191),
+                    \`fromFieldId\` VARCHAR(191),
+                    \`toUnitId\` VARCHAR(191),
+                    \`toFieldId\` VARCHAR(191),
+                    \`fromExpenseItemId\` VARCHAR(191),
+                    \`toExpenseItemId\` VARCHAR(191),
+                    \`amount\` DECIMAL(15, 2) NOT NULL,
+                    \`letterNumber\` VARCHAR(255),
+                    \`letterDate\` DATETIME(3),
+                    \`fileProof\` LONGTEXT,
+                    \`fileName\` VARCHAR(255),
+                    \`fileType\` VARCHAR(50),
+                    \`reason\` TEXT NOT NULL,
+                    \`status\` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+                    \`requestedBy\` VARCHAR(191),
+                    \`requestedByName\` VARCHAR(255),
+                    \`approvedBy\` VARCHAR(191),
+                    \`approvedByName\` VARCHAR(255),
+                    \`approvedAt\` DATETIME(3),
+                    \`rejectionReason\` TEXT,
+                    \`isDeleted\` BOOLEAN NOT NULL DEFAULT FALSE,
+                    \`createdAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+                    \`updatedAt\` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3)
+                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+            `);
+            console.log(`[Self-Healing] Table budget_shifts checked/created.`);
+        } catch (sErr) {
+            console.warn(`[Self-Healing Warning] Budget shifts table check: ${sErr.message}`);
         }
 
         console.log(`[Self-Healing] Budget tables check complete.`);

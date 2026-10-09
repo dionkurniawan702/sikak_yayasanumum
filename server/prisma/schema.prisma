@@ -426,6 +426,45 @@ model RabPlan {
   @@map("rab_plans")
 }
 
+model BudgetShift {
+  id                String    @id @default(uuid())
+  code              String?   // e.g. PGS/2026/001
+  academicYearId    String
+  type              String    // "UNIT_REQUEST" (Bottom-Up) or "MANAGEMENT_ORDER" (Top-Down)
+  transferScope     String    @default("INTERNAL_UNIT") // "INTERNAL_UNIT" or "CROSS_UNIT"
+  
+  fromUnitId        String?
+  fromFieldId       String?
+  toUnitId          String?
+  toFieldId         String?
+  
+  fromExpenseItemId String?
+  toExpenseItemId   String?
+  
+  amount            Decimal   @db.Decimal(15, 2)
+  
+  letterNumber      String?   // Nomor Surat Permohonan / Nomor Memo Yayasan
+  letterDate        DateTime? // Tanggal Surat / Memo
+  fileProof         String?   @db.LongText // Base64 / LongText
+  fileName          String?   // Original File Name
+  fileType          String?   // pdf, png, jpg, etc.
+  reason            String    @db.Text // Penjelasan & Urgensi
+  
+  status            String    @default("PENDING") // PENDING, APPROVED, REJECTED, APPLIED
+  requestedBy       String?   // User ID
+  requestedByName   String?   // User Name
+  approvedBy        String?   // User ID
+  approvedByName    String?   // User Name
+  approvedAt        DateTime?
+  rejectionReason   String?   @db.Text
+  
+  isDeleted         Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @default(now()) @updatedAt
+
+  @@map("budget_shifts")
+}
+
 model Contact {
   id        String   @id @default(uuid())
   name      String   @unique

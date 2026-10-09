@@ -34,6 +34,7 @@ const defaultState = {
     financialYears: [],
     backupInfo: null,
     rabPlans: [],
+    budgetShifts: [],
     bosStages: [],
     bosPosList: [],
     bosAllocations: [],
@@ -373,6 +374,7 @@ function appReducer(state, action) {
                 })(),
                 budgetRequests: serverData.budgetRequests || state.budgetRequests || [],
                 budgetReports: serverData.budgetReports || state.budgetReports || [],
+                budgetShifts: serverData.budgetShifts || state.budgetShifts || [],
                 academicYears: (serverData.academicYears || state.academicYears || []).map(serverAy => {
                     const localAy = (state.academicYears || []).find(lay => lay.id === serverAy.id);
                     if (!localAy) return serverAy;
@@ -719,6 +721,19 @@ function appReducer(state, action) {
             break;
         case 'DELETE_BUDGET_REPORT':
             newState = { ...state, budgetReports: state.budgetReports.filter(r => r.id !== action.payload) };
+            break;
+
+        case 'SET_BUDGET_SHIFTS':
+            newState = { ...state, budgetShifts: action.payload || [] };
+            break;
+        case 'ADD_BUDGET_SHIFT':
+            newState = { ...state, budgetShifts: [action.payload, ...(state.budgetShifts || [])] };
+            break;
+        case 'UPDATE_BUDGET_SHIFT':
+            newState = { ...state, budgetShifts: (state.budgetShifts || []).map(s => s.id === action.payload.id ? { ...s, ...action.payload } : s) };
+            break;
+        case 'DELETE_BUDGET_SHIFT':
+            newState = { ...state, budgetShifts: (state.budgetShifts || []).filter(s => s.id !== (action.payload.id || action.payload)) };
             break;
 
         case 'ADD_ACADEMIC_YEAR': newState = { ...state, academicYears: [...state.academicYears, action.payload] }; break;

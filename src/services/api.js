@@ -446,6 +446,25 @@ export const api = {
                 case 'DELETE_ACADEMIC_YEAR':
                     await syncItem('academic-years', payload, null, 'DELETE');
                     break;
+                case 'ADD_BUDGET_SHIFT':
+                    if (payload.type === 'MANAGEMENT_ORDER') {
+                        await this.post('/budget-shifts/instruction', payload);
+                    } else {
+                        await this.post('/budget-shifts/request', payload);
+                    }
+                    break;
+                case 'UPDATE_BUDGET_SHIFT':
+                    await this.put(`/budget-shifts/${payload.id}`, payload);
+                    break;
+                case 'APPROVE_BUDGET_SHIFT':
+                    await this.put(`/budget-shifts/${payload.id}/approve`, payload);
+                    break;
+                case 'REJECT_BUDGET_SHIFT':
+                    await this.put(`/budget-shifts/${payload.id}/reject`, payload);
+                    break;
+                case 'DELETE_BUDGET_SHIFT':
+                    await this.delete(`/budget-shifts/${payload.id || payload}`);
+                    break;
                 case 'RESTORE_FROM_TRASH': {
                     const { id, type } = payload;
                     const mapping = {
@@ -574,5 +593,42 @@ export const api = {
     async bulkCancelApproval(ids) {
         if (!isRemote) return { success: ids, failed: [] };
         return await this.post('/budget-reports/bulk-cancel-approval', { ids });
+    },
+
+    async getBudgetShifts(params = {}) {
+        if (!isRemote) return [];
+        const query = new URLSearchParams(params).toString();
+        const res = await this.get(`/budget-shifts${query ? `?${query}` : ''}`);
+        return res?.data || [];
+    },
+
+    async createBudgetShiftRequest(data) {
+        if (!isRemote) return null;
+        return await this.post('/budget-shifts/request', data);
+    },
+
+    async createBudgetShiftInstruction(data) {
+        if (!isRemote) return null;
+        return await this.post('/budget-shifts/instruction', data);
+    },
+
+    async approveBudgetShift(id, data = {}) {
+        if (!isRemote) return null;
+        return await this.put(`/budget-shifts/${id}/approve`, data);
+    },
+
+    async rejectBudgetShift(id, data = {}) {
+        if (!isRemote) return null;
+        return await this.put(`/budget-shifts/${id}/reject`, data);
+    },
+
+    async updateBudgetShift(id, data) {
+        if (!isRemote) return null;
+        return await this.put(`/budget-shifts/${id}`, data);
+    },
+
+    async deleteBudgetShift(id) {
+        if (!isRemote) return null;
+        return await this.delete(`/budget-shifts/${id}`);
     }
 };

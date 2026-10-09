@@ -18,6 +18,7 @@ export default function BudgetDashboard() {
         budgets = [],
         academicYears = [],
         rabPlans = [],
+        budgetShifts = [],
         bosAllocations = []
     } = state;
 
@@ -252,11 +253,45 @@ export default function BudgetDashboard() {
             });
         });
 
+        // 2. Apply Approved/Applied Budget Shifts
+        (budgetShifts || []).filter(s => 
+            !s.isDeleted && 
+            s.academicYearId === selectedAcademicYearId && 
+            (s.status === 'APPROVED' || s.status === 'APPLIED')
+        ).forEach(shift => {
+            const shiftAmt = parseFloat(shift.amount) || 0;
+            if (shiftAmt <= 0) return;
+
+            // Deduct from source pos
+            if (shift.fromUnitId && shift.fromExpenseItemId && uRAB[shift.fromUnitId]) {
+                uRAB[shift.fromUnitId].total -= shiftAmt;
+                uRAB[shift.fromUnitId].items[shift.fromExpenseItemId] = 
+                    (uRAB[shift.fromUnitId].items[shift.fromExpenseItemId] || 0) - shiftAmt;
+            } else if (shift.fromFieldId && shift.fromExpenseItemId && fRAB[shift.fromFieldId]) {
+                fRAB[shift.fromFieldId].total -= shiftAmt;
+                if (fRAB[shift.fromFieldId].items[shift.fromExpenseItemId]) {
+                    fRAB[shift.fromFieldId].items[shift.fromExpenseItemId].total -= shiftAmt;
+                }
+            }
+
+            // Add to destination pos
+            if (shift.toUnitId && shift.toExpenseItemId && uRAB[shift.toUnitId]) {
+                uRAB[shift.toUnitId].total += shiftAmt;
+                uRAB[shift.toUnitId].items[shift.toExpenseItemId] = 
+                    (uRAB[shift.toUnitId].items[shift.toExpenseItemId] || 0) + shiftAmt;
+            } else if (shift.toFieldId && shift.toExpenseItemId && fRAB[shift.toFieldId]) {
+                fRAB[shift.toFieldId].total += shiftAmt;
+                if (fRAB[shift.toFieldId].items[shift.toExpenseItemId]) {
+                    fRAB[shift.toFieldId].items[shift.toExpenseItemId].total += shiftAmt;
+                }
+            }
+        });
+
         // NOTE: Budget Requests removed from RAB total to avoid duplicate info as requested.
         // If needed for "Realisasi", a separate engine/column should be added later.
 
         return { unitRAB: uRAB, fieldRAB: fRAB };
-    }, [rabPlans, units, fields, currentUser, selectedAcademicYearId, expenseItems, selectedAcademicYearName]);
+    }, [rabPlans, budgetShifts, units, fields, currentUser, selectedAcademicYearId, expenseItems, selectedAcademicYearName]);
 
     // ========== Helpers ==========
     const getExpenseName = (id) => {

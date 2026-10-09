@@ -2498,4 +2498,345 @@ router.post('/repair/deduplicate', async (req, res) => {
     }
 });
 
+// ==========================================
+// --- BUDGET SHIFTS (PERGESERAN ANGGARAN) ---
+// ==========================================
+
+// Helper kode referensi pergeseran
+const generateShiftCode = async (prisma) => {
+    try {
+        const count = await prisma.budgetShift.count();
+        const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+        const num = String(count + 1).padStart(3, '0');
+        return `PGS-${dateStr}-${num}`;
+    } catch (e) {
+        return `PGS-${Date.now().toString().slice(-6)}`;
+    }
+};
+
+// 1. GET: Ambil daftar seluruh pergeseran anggaran
+router.get('/budget-shifts', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const { academicYearId, unitId, fieldId, status, type } = req.query;
+
+        const where = {
+            isDeleted: false,
+            ...(academicYearId ? { academicYearId } : {}),
+            ...(status ? { status } : {}),
+            ...(type ? { type } : {})
+        };
+
+        if (unitId) {
+            where.OR = [
+                { fromUnitId: unitId },
+                { toUnitId: unitId }
+            ];
+        }
+
+        if (fieldId) {
+            where.OR = [
+                { fromFieldId: fieldId },
+                { toFieldId: fieldId }
+            ];
+        }
+
+        const data = await prisma.budgetShift.findMany({
+            where,
+            orderBy: { createdAt: 'desc' }
+        });
+
+        res.json({ data });
+    } catch (error) {
+        console.error('[Budget Shifts GET Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 2. POST: Pengajuan Permohonan Pergeseran oleh Unit (Bottom-Up)
+router.post('/budget-shifts/request', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const p = req.body;
+
+        if (!p.academicYearId) {
+            return res.status(400).json({ error: 'Tahun Ajaran wajib dipilih.' });
+        }
+        if (!p.amount || parseFloat(p.amount) <= 0) {
+            return res.status(400).json({ error: 'Nominal pergeseran harus lebih besar dari 0.' });
+        }
+        if (!p.reason || !p.reason.trim()) {
+            return res.status(400).json({ error: 'Alasan / Urgensi pergeseran anggaran wajib diisi.' });
+        }
+
+        const code = p.code || await generateShiftCode(prisma);
+
+        const newShift = await prisma.budgetShift.create({
+            data: {
+                code,
+                academicYearId: p.academicYearId,
+                type: 'UNIT_REQUEST',
+                transferScope: p.transferScope || 'INTERNAL_UNIT',
+                fromUnitId: p.fromUnitId || null,
+                fromFieldId: p.fromFieldId || null,
+                toUnitId: p.toUnitId || null,
+                toFieldId: p.toFieldId || null,
+                fromExpenseItemId: p.fromExpenseItemId || null,
+                toExpenseItemId: p.toExpenseItemId || null,
+                amount: parseFloat(p.amount),
+                letterNumber: p.letterNumber || null,
+                letterDate: p.letterDate ? new Date(p.letterDate) : null,
+                fileProof: p.fileProof || null,
+                fileName: p.fileName || null,
+                fileType: p.fileType || null,
+                reason: p.reason.trim(),
+                status: 'PENDING',
+                requestedBy: p.requestedBy || null,
+                requestedByName: p.requestedByName || null,
+                isDeleted: false
+            }
+        });
+
+        // Audit Log
+        recordAudit(prisma, {
+            req,
+            userId: p.requestedBy,
+            userName: p.requestedByName,
+            action: 'CREATE_REQUEST',
+            entity: 'BudgetShift',
+            entityId: newShift.id,
+            unitId: p.fromUnitId || p.toUnitId,
+            details: {
+                code,
+                amount: p.amount,
+                reason: p.reason,
+                letterNumber: p.letterNumber,
+                type: 'UNIT_REQUEST'
+            }
+        }).catch(() => {});
+
+        res.json({ success: true, data: newShift });
+    } catch (error) {
+        console.error('[Budget Shift Request Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 3. POST: Instruksi Pergeseran oleh Pengurus/Superadmin (Top-Down)
+router.post('/budget-shifts/instruction', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const p = req.body;
+
+        if (!p.academicYearId) {
+            return res.status(400).json({ error: 'Tahun Ajaran wajib dipilih.' });
+        }
+        if (!p.amount || parseFloat(p.amount) <= 0) {
+            return res.status(400).json({ error: 'Nominal pergeseran harus lebih besar dari 0.' });
+        }
+        if (!p.reason || !p.reason.trim()) {
+            return res.status(400).json({ error: 'Dasar kebijakan / alasan instruksi wajib diisi.' });
+        }
+
+        const code = p.code || await generateShiftCode(prisma);
+
+        const newShift = await prisma.budgetShift.create({
+            data: {
+                code,
+                academicYearId: p.academicYearId,
+                type: 'MANAGEMENT_ORDER',
+                transferScope: p.transferScope || 'INTERNAL_UNIT',
+                fromUnitId: p.fromUnitId || null,
+                fromFieldId: p.fromFieldId || null,
+                toUnitId: p.toUnitId || null,
+                toFieldId: p.toFieldId || null,
+                fromExpenseItemId: p.fromExpenseItemId || null,
+                toExpenseItemId: p.toExpenseItemId || null,
+                amount: parseFloat(p.amount),
+                letterNumber: p.letterNumber || null,
+                letterDate: p.letterDate ? new Date(p.letterDate) : null,
+                fileProof: p.fileProof || null,
+                fileName: p.fileName || null,
+                fileType: p.fileType || null,
+                reason: p.reason.trim(),
+                status: 'APPLIED',
+                requestedBy: p.requestedBy || null,
+                requestedByName: p.requestedByName || 'Pengurus/Yayasan',
+                approvedBy: p.approvedBy || p.requestedBy || null,
+                approvedByName: p.approvedByName || p.requestedByName || 'Pengurus/Yayasan',
+                approvedAt: new Date(),
+                isDeleted: false
+            }
+        });
+
+        // Audit Log
+        recordAudit(prisma, {
+            req,
+            userId: p.approvedBy || p.requestedBy,
+            userName: p.approvedByName || p.requestedByName,
+            action: 'INSTRUCTION_APPLIED',
+            entity: 'BudgetShift',
+            entityId: newShift.id,
+            details: {
+                code,
+                amount: p.amount,
+                reason: p.reason,
+                letterNumber: p.letterNumber,
+                type: 'MANAGEMENT_ORDER'
+            }
+        }).catch(() => {});
+
+        res.json({ success: true, data: newShift });
+    } catch (error) {
+        console.error('[Budget Shift Instruction Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 4. PUT: Persetujuan (Approve) oleh Pengurus/Superadmin
+router.put('/budget-shifts/:id/approve', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const { id } = req.params;
+        const { approvedBy, approvedByName, notes } = req.body;
+
+        const existing = await prisma.budgetShift.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ error: 'Data pergeseran anggaran tidak ditemukan.' });
+        }
+
+        const updated = await prisma.budgetShift.update({
+            where: { id },
+            data: {
+                status: 'APPROVED',
+                approvedBy: approvedBy || null,
+                approvedByName: approvedByName || 'Superadmin',
+                approvedAt: new Date()
+            }
+        });
+
+        // Audit Log
+        recordAudit(prisma, {
+            req,
+            userId: approvedBy,
+            userName: approvedByName,
+            action: 'APPROVE_SHIFT',
+            entity: 'BudgetShift',
+            entityId: id,
+            details: {
+                code: updated.code,
+                amount: updated.amount,
+                notes: notes || 'Permohonan pergeseran anggaran disetujui'
+            }
+        }).catch(() => {});
+
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        console.error('[Budget Shift Approve Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 5. PUT: Penolakan (Reject) oleh Pengurus/Superadmin
+router.put('/budget-shifts/:id/reject', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const { id } = req.params;
+        const { approvedBy, approvedByName, rejectionReason } = req.body;
+
+        if (!rejectionReason || !rejectionReason.trim()) {
+            return res.status(400).json({ error: 'Alasan penolakan permohonan wajib diisi.' });
+        }
+
+        const existing = await prisma.budgetShift.findUnique({ where: { id } });
+        if (!existing) {
+            return res.status(404).json({ error: 'Data pergeseran anggaran tidak ditemukan.' });
+        }
+
+        const updated = await prisma.budgetShift.update({
+            where: { id },
+            data: {
+                status: 'REJECTED',
+                rejectionReason: rejectionReason.trim(),
+                approvedBy: approvedBy || null,
+                approvedByName: approvedByName || 'Superadmin',
+                approvedAt: new Date()
+            }
+        });
+
+        // Audit Log
+        recordAudit(prisma, {
+            req,
+            userId: approvedBy,
+            userName: approvedByName,
+            action: 'REJECT_SHIFT',
+            entity: 'BudgetShift',
+            entityId: id,
+            details: {
+                code: updated.code,
+                rejectionReason: rejectionReason.trim()
+            }
+        }).catch(() => {});
+
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        console.error('[Budget Shift Reject Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 6. PUT: Update dokumen/surat susulan (berguna untuk emergency yang suratnya menyusul)
+router.put('/budget-shifts/:id', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const { id } = req.params;
+        const p = req.body;
+
+        const updateData = {};
+        if (p.letterNumber !== undefined) updateData.letterNumber = p.letterNumber;
+        if (p.letterDate !== undefined) updateData.letterDate = p.letterDate ? new Date(p.letterDate) : null;
+        if (p.fileProof !== undefined) updateData.fileProof = p.fileProof;
+        if (p.fileName !== undefined) updateData.fileName = p.fileName;
+        if (p.fileType !== undefined) updateData.fileType = p.fileType;
+        if (p.reason !== undefined) updateData.reason = p.reason;
+        if (p.amount !== undefined) updateData.amount = parseFloat(p.amount);
+
+        const updated = await prisma.budgetShift.update({
+            where: { id },
+            data: updateData
+        });
+
+        res.json({ success: true, data: updated });
+    } catch (error) {
+        console.error('[Budget Shift Update Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// 7. DELETE: Soft delete
+router.delete('/budget-shifts/:id', async (req, res) => {
+    try {
+        const prisma = getPrisma(req);
+        const { id } = req.params;
+
+        await prisma.budgetShift.update({
+            where: { id },
+            data: { isDeleted: true }
+        });
+
+        recordAudit(prisma, {
+            req,
+            action: 'DELETE_SHIFT',
+            entity: 'BudgetShift',
+            entityId: id,
+            details: { message: `Pergeseran anggaran ID ${id} dihapus (soft-delete)` }
+        }).catch(() => {});
+
+        res.json({ success: true, message: 'Data pergeseran anggaran berhasil dihapus.' });
+    } catch (error) {
+        console.error('[Budget Shift Delete Error]', error.message);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 export default router;

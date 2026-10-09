@@ -5,7 +5,7 @@ import {
     Scale, Building2, TrendingUp, Banknote, Landmark, HardDrive, RotateCcw, List, Wallet, Target, Lock,
     User, ShieldCheck, LogOut, Settings, Database, Trash2, Activity, Wifi, WifiOff, AlertCircle, Share2,
     History, Send, Users, Calendar, Layers, Briefcase, UserCheck, Heart, Receipt, Coins, HandCoins, CreditCard, Settings2, Archive, CloudUpload, CloudDownload, RefreshCw, Layout, FolderKanban,
-    ChevronDown, ChevronRight, BookCheck, Tag
+    ChevronDown, ChevronRight, BookCheck, Tag, ArrowLeftRight
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { isRemote, api } from '../services/api';
@@ -242,6 +242,7 @@ export default function Sidebar({ isOpen, onClose }) {
                     items: [
                         { path: '/anggaran/rab?source=Yayasan', label: 'RAB Yayasan', icon: Target },
                         { path: '/anggaran/rab?source=BOS', label: 'RAB BOS', icon: Landmark },
+                        { path: '/anggaran/pergeseran', label: 'Pergeseran Anggaran', icon: ArrowLeftRight },
                         { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive },
                         { path: '/anggaran/distribusi', label: 'Setting Distribusi', icon: Share2 }
                     ]
@@ -323,6 +324,7 @@ export default function Sidebar({ isOpen, onClose }) {
                             ]
                             : [{ path: '/anggaran/rab', label: 'RAB', icon: Target }]
                         ),
+                        { path: '/anggaran/pergeseran', label: 'Pergeseran Anggaran', icon: ArrowLeftRight },
                         { path: '/anggaran/arsip-rab', label: 'Arsip RAB', icon: Archive }
                     ]
                 },
