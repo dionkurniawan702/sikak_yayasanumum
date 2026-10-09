@@ -315,7 +315,7 @@ const getPrisma = () => {
                             let resolvedCreditId = reqCreditId || expenseItem?.creditAccountId || '';
 
                             if (!resolvedCreditId) {
-                                const isBos = report.source === 'BOS' || (report.planId && report.planId.endsWith('-BOS')) || (report.category && report.category.toLowerCase().includes('bos'));
+                                const isBos = report.source === 'BOS' || (report.source !== 'YAYASAN' && report.planId && report.planId.endsWith('-BOS')) || (!report.source && !report.planId && report.category && report.category.trim().toUpperCase() === 'BOS');
                                 if (isBos) {
                                     const bosBank = await prisma.account.findFirst({
                                         where: {

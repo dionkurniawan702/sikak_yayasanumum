@@ -1677,7 +1677,7 @@ router.put('/budget-reports/:id', async (req, res) => {
 
                 // Fallback for Credit (Kas/Bank) if still empty:
                 if (!resolvedCreditId) {
-                    const isBos = updated.source === 'BOS' || (updated.planId && updated.planId.endsWith('-BOS')) || (updated.category && updated.category.toLowerCase().includes('bos'));
+                    const isBos = updated.source === 'BOS' || (updated.source !== 'YAYASAN' && updated.planId && updated.planId.endsWith('-BOS')) || (!updated.source && !updated.planId && updated.category && updated.category.trim().toUpperCase() === 'BOS');
                     if (isBos) {
                         const bosBank = await tx.account.findFirst({
                             where: {

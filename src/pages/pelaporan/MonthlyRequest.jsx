@@ -33,17 +33,37 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
     // Helper to check if a request or report is BOS
     const checkIsBos = (item) => {
         if (!item) return false;
+        // 1. Explicit source flag always takes highest precedence
         if (item.source === 'BOS') return true;
+        if (item.source === 'YAYASAN') return false;
+
+        // 2. PlanId suffix takes precedence
         if (item.planId?.endsWith('-BOS')) return true;
-        if ((item.items || []).some(i => i.planId?.endsWith('-BOS'))) return true;
-        if (item.category?.toLowerCase().includes('bos')) return true;
-        if (item.id?.startsWith('RET-BOS-')) return true;
-        if (item.budgetRequestId) {
-            const parentReq = budgetRequests.find(b => b.id === item.budgetRequestId);
-            if (parentReq && (parentReq.source === 'BOS' || (parentReq.items || []).some(i => i.planId?.endsWith('-BOS')))) {
-                return true;
+        if (item.planId?.endsWith('-YAYASAN')) return false;
+
+        // 3. Parent request source
+        const reqId = item.budgetRequestId || item.requestId;
+        if (reqId) {
+            const parentReq = budgetRequests.find(b => b.id === reqId);
+            if (parentReq) {
+                if (parentReq.source === 'BOS' || (parentReq.items || []).some(i => i.planId?.endsWith('-BOS'))) {
+                    return true;
+                }
+                if (parentReq.source === 'YAYASAN') {
+                    return false;
+                }
             }
         }
+
+        // 4. Return IDs
+        if (item.id?.startsWith('RET-BOS-')) return true;
+        if (item.id?.startsWith('RET-')) return false;
+
+        // 5. Items in request
+        if ((item.items || []).some(i => i.planId?.endsWith('-BOS'))) return true;
+
+        // 6. Category only if exact match or without conflicting source
+        if (item.category?.trim().toUpperCase() === 'BOS') return true;
         return false;
     };
 

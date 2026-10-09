@@ -638,7 +638,7 @@ export default function BOSSaldo() {
         if (!isSuperAdmin && budgetReports && currentUser?.unitId) {
             const unnotified = budgetReports.filter(r => {
                 const isMine = r.unitId === currentUser.unitId;
-                const isBos = r.source === 'BOS' || r.planId?.endsWith('-BOS') || r.category?.toLowerCase().includes('bos') || r.description?.toLowerCase().includes('bos') || r.id?.startsWith('RET-BOS-');
+                const isBos = r.source === 'BOS' || (r.source !== 'YAYASAN' && !r.planId?.endsWith('-YAYASAN') && (r.planId?.endsWith('-BOS') || r.id?.startsWith('RET-BOS-')));
                 return isMine && r.kategoriAset === 'PENGEMBALIAN' && isBos && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
             });
             if (unnotified.length > 0) {

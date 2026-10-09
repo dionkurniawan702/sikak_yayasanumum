@@ -154,13 +154,14 @@ export default function Sidebar({ isOpen, onClose }) {
     }, [state.budgetReports, isSuperAdmin, isAdminUnit, isAdminField, currentUser]);
 
     const isBosReturn = (r) => {
-        return r.kategoriAset === 'PENGEMBALIAN' && (
-            r.source === 'BOS' ||
-            r.planId?.endsWith('-BOS') ||
-            r.category?.toLowerCase().includes('bos') ||
-            r.description?.toLowerCase().includes('bos') ||
-            r.id?.startsWith('RET-BOS-')
-        );
+        if (r.kategoriAset !== 'PENGEMBALIAN') return false;
+        if (r.source === 'BOS') return true;
+        if (r.source === 'YAYASAN') return false;
+        if (r.planId?.endsWith('-BOS')) return true;
+        if (r.planId?.endsWith('-YAYASAN')) return false;
+        if (r.id?.startsWith('RET-BOS-')) return true;
+        if (r.id?.startsWith('RET-')) return false;
+        return r.category?.trim().toUpperCase() === 'BOS';
     };
 
     // Calculate Notifications for Pengembalian Saldo Yayasan
