@@ -853,14 +853,37 @@ export default function MonthlyRequest() {
             }
         }
 
+        // 1. Deteksi apakah initialTargetUnitBankId malah berisi Rekening Yayasan (bukan Kas Unit)
+        const targetAccObj = accounts.find(a => a.id === initialTargetUnitBankId);
+        const isTargetYayasan = targetAccObj && (targetAccObj.code?.startsWith('1-110') || targetAccObj.code?.startsWith('1-111') || targetAccObj.name?.toLowerCase().includes('yayasan') || targetAccObj.name?.toLowerCase().includes('bsi'));
+
+        // 2. Deteksi apakah initialSourceBankId malah berisi Kas Unit (1-114x / Kas Unit)
+        const sourceAccObj = accounts.find(a => a.id === initialSourceBankId);
+        const isSourceAccUnitKas = sourceAccObj && (sourceAccObj.code?.startsWith('1-114') || sourceAccObj.code?.startsWith('1-115') || sourceAccObj.name?.toLowerCase().includes('kas unit'));
+
+        // Jika terbalik (Source = Kas Unit, Target = Yayasan), TUKAR POSISI!
+        if (isSourceAccUnitKas && isTargetYayasan) {
+            const temp = initialSourceBankId;
+            initialSourceBankId = initialTargetUnitBankId;
+            initialTargetUnitBankId = temp;
+        } else {
+            if (isTargetYayasan && matchedUnitBankAcc) {
+                if (!initialSourceBankId || isSourceAccUnitKas) {
+                    initialSourceBankId = initialTargetUnitBankId;
+                }
+                initialTargetUnitBankId = matchedUnitBankAcc.id;
+            }
+            if (isSourceAccUnitKas && defaultSourceBankAcc) {
+                if (!initialTargetUnitBankId && matchedUnitBankAcc) initialTargetUnitBankId = matchedUnitBankAcc.id;
+                initialSourceBankId = defaultSourceBankAcc.id;
+            }
+        }
+
         if (!initialTargetUnitBankId) {
             initialTargetUnitBankId = matchedUnitBankAcc?.id || '';
         }
 
-        // Pastikan Rekening Sumber Kas Yayasan (Kotak 1) bukan akun Kas Unit (1-114x / Kas Unit) dan tidak sama dengan Rekening Unit
-        const sourceAccObj = accounts.find(a => a.id === initialSourceBankId);
-        const isSourceAccUnitKas = sourceAccObj && (sourceAccObj.code?.startsWith('1-114') || sourceAccObj.code?.startsWith('1-115') || sourceAccObj.name?.toLowerCase().includes('kas unit'));
-        if (!initialSourceBankId || isSourceAccUnitKas || (initialTargetUnitBankId && initialSourceBankId === initialTargetUnitBankId)) {
+        if (!initialSourceBankId || (initialTargetUnitBankId && initialSourceBankId === initialTargetUnitBankId)) {
             initialSourceBankId = defaultSourceBankAcc?.id || '';
         }
 
@@ -988,6 +1011,29 @@ export default function MonthlyRequest() {
                 itemMappings: updatedMappings
             };
         });
+    };
+
+    const handleSwapBankAccounts = () => {
+        setReviewRequest(prev => {
+            if (!prev) return prev;
+            const newSource = prev.targetUnitBankAccountId || prev.globalCreditAccountId;
+            const newTarget = prev.sourceBankAccountId;
+            const updatedMappings = { ...(prev.itemMappings || {}) };
+            (prev.req.items || []).forEach(item => {
+                updatedMappings[item.componentId] = {
+                    ...(updatedMappings[item.componentId] || {}),
+                    creditAccountId: newTarget
+                };
+            });
+            return {
+                ...prev,
+                sourceBankAccountId: newSource,
+                targetUnitBankAccountId: newTarget,
+                globalCreditAccountId: newTarget,
+                itemMappings: updatedMappings
+            };
+        });
+        showToast('Posisi Rekening Yayasan dan Rekening Unit berhasil ditukar!');
     };
 
     const handleApplyGlobalCredit = (creditId) => {
@@ -2552,10 +2598,21 @@ export default function MonthlyRequest() {
                                         </div>
                                     </div>
                                     
-                                    {/* Quick Summary Pill */}
-                                    <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-3.5 py-1.5 rounded-2xl border border-indigo-200/80 shadow-sm text-xs font-bold text-indigo-900 shrink-0 self-start lg:self-auto">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                                        <span>Total ACC: <strong className="text-emerald-700 font-black">{formatRupiah((reviewRequest.req.items || []).filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}</strong></span>
+                                    {/* Quick Summary Pill & Swap Button */}
+                                    <div className="flex items-center gap-2 shrink-0 self-start lg:self-auto flex-wrap">
+                                        <button
+                                            type="button"
+                                            onClick={handleSwapBankAccounts}
+                                            className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white hover:bg-indigo-50 border border-indigo-200 text-xs font-bold text-indigo-700 shadow-sm active:scale-95 transition-all group"
+                                            title="Tukar posisi akun antara Rekening Yayasan dan Rekening Unit"
+                                        >
+                                            <ArrowRightLeft size={13} className="text-indigo-600 group-hover:rotate-180 transition-transform duration-300" />
+                                            <span>Tukar Posisi (Swap) ⇄</span>
+                                        </button>
+                                        <div className="flex items-center gap-2 bg-white/90 backdrop-blur px-3.5 py-1.5 rounded-2xl border border-indigo-200/80 shadow-sm text-xs font-bold text-indigo-900">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                                            <span>Total ACC: <strong className="text-emerald-700 font-black">{formatRupiah((reviewRequest.req.items || []).filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}</strong></span>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -2615,6 +2672,44 @@ export default function MonthlyRequest() {
                                         />
                                     </div>
                                 </div>
+
+                                {/* Peringatan Cerdas jika Posisi Rekening Terbalik */}
+                                {(() => {
+                                    const srcAcc = accounts.find(a => a.id === reviewRequest.sourceBankAccountId);
+                                    const tgtAcc = accounts.find(a => a.id === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId));
+                                    const isSrcUnitKas = srcAcc && (srcAcc.code?.startsWith('1-114') || srcAcc.code?.startsWith('1-115') || srcAcc.name?.toLowerCase().includes('kas unit'));
+                                    const isTgtYayasan = tgtAcc && (tgtAcc.code?.startsWith('1-110') || tgtAcc.code?.startsWith('1-111') || tgtAcc.name?.toLowerCase().includes('yayasan') || tgtAcc.name?.toLowerCase().includes('bsi'));
+                                    
+                                    if (isSrcUnitKas && isTgtYayasan) {
+                                        return (
+                                            <div className="p-4 bg-rose-50 rounded-2xl border-2 border-rose-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-950 shadow-md animate-in fade-in">
+                                                <div className="flex items-start gap-3">
+                                                    <AlertCircle size={22} className="text-rose-600 shrink-0 mt-0.5" />
+                                                    <div>
+                                                        <div className="text-xs font-black uppercase tracking-wide text-rose-950 flex items-center gap-2">
+                                                            <span>Posisi Rekening Terbalik!</span>
+                                                            <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-800">Perlu Ditukar</span>
+                                                        </div>
+                                                        <div className="text-[11px] text-rose-800 font-medium mt-1 leading-relaxed">
+                                                            <b>Kotak 1</b> terisi Kas Unit (<i>{srcAcc?.name}</i>) dan <b>Kotak 2</b> terisi Rekening Yayasan (<i>{tgtAcc?.name}</i>).
+                                                            <br />
+                                                            Akibatnya, rincian belanja di bawah keliru mengambil rekening yayasan! Klik tombol di samping untuk menukar posisi secara instan:
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleSwapBankAccounts}
+                                                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 active:scale-95 text-white text-xs font-black shadow-lg flex items-center justify-center gap-2 shrink-0 cursor-pointer transition-all"
+                                                >
+                                                    <ArrowRightLeft size={15} />
+                                                    <span>Tukar Posisi Sekarang ⇄</span>
+                                                </button>
+                                            </div>
+                                        );
+                                    }
+                                    return null;
+                                })()}
 
                                 {/* Peringatan Akuntansi jika Rekening Yayasan & Rekening Unit Dipilih Sama */}
                                 {reviewRequest.sourceBankAccountId && (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) && reviewRequest.sourceBankAccountId === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) && (
