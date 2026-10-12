@@ -1347,7 +1347,8 @@ export default function MonthlyRequest() {
                 });
             };
 
-            const accItems = enrichItems(req.items.filter(i => accIds.includes(i.componentId)));
+            const targetItems = reviewRequest.isAlreadyApproved ? (req.items || []) : req.items.filter(i => accIds.includes(i.componentId));
+            const accItems = enrichItems(targetItems);
             const tolakItems = req.items.filter(i => tolakIds.includes(i.componentId));
             const pendingItems = req.items.filter(i => !accIds.includes(i.componentId) && !tolakIds.includes(i.componentId));
             
@@ -2568,14 +2569,21 @@ export default function MonthlyRequest() {
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs font-bold text-slate-700 focus:ring-2 focus:ring-indigo-100 outline-none"
                                     />
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => {
-                                        setReviewRequest(prev => ({ ...prev, accIds: prev.req.items.map(i => i.componentId), tolakIds: [] }));
-                                    }} className="px-3.5 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-1.5"><Check size={14}/> ACC SEMUA</button>
-                                    <button onClick={() => {
-                                        setReviewRequest(prev => ({ ...prev, tolakIds: prev.req.items.map(i => i.componentId), accIds: [] }));
-                                    }} className="px-3.5 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-1.5"><XCircle size={14}/> TOLAK SEMUA</button>
-                                </div>
+                                {!reviewRequest.isAlreadyApproved ? (
+                                    <div className="flex gap-2">
+                                        <button onClick={() => {
+                                            setReviewRequest(prev => ({ ...prev, accIds: prev.req.items.map(i => i.componentId), tolakIds: [] }));
+                                        }} className="px-3.5 py-2 bg-emerald-50 text-emerald-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-emerald-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-1.5"><Check size={14}/> ACC SEMUA</button>
+                                        <button onClick={() => {
+                                            setReviewRequest(prev => ({ ...prev, tolakIds: prev.req.items.map(i => i.componentId), accIds: [] }));
+                                        }} className="px-3.5 py-2 bg-rose-50 text-rose-600 rounded-xl font-black text-[10px] uppercase tracking-wider hover:bg-rose-600 hover:text-white transition-all shadow-sm flex items-center justify-center gap-1.5"><XCircle size={14}/> TOLAK SEMUA</button>
+                                    </div>
+                                ) : (
+                                    <div className="px-3.5 py-2 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-2xs">
+                                        <Check size={14} className="text-emerald-600" />
+                                        <span>Seluruh Rincian Disetujui</span>
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -2862,16 +2870,16 @@ export default function MonthlyRequest() {
                                     const itemCreditId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || reviewRequest.itemMappings?.[item.componentId]?.creditAccountId || '';
                                     
                                     return (
-                                        <div key={item.componentId} className={`p-5 md:p-6 rounded-[2rem] border-2 transition-all flex flex-col gap-4 group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
+                                        <div key={item.componentId} className={`p-5 md:p-6 rounded-[2rem] border-2 transition-all flex flex-col gap-4 group bg-white ${reviewRequest.isAlreadyApproved ? (itemDebitId ? 'border-emerald-400/90 shadow-md shadow-emerald-500/10' : 'border-amber-300 shadow-md shadow-amber-500/10') : (isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm')}`}>
                                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                                 <div className="flex items-center gap-5">
-                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${isAcc ? 'bg-emerald-50 text-emerald-600' : isTolak ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400'}`}>
-                                                        {isAcc ? <Check size={24} strokeWidth={3} /> : isTolak ? <XCircle size={24} strokeWidth={3} /> : <FileText size={20} />}
+                                                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0 ${reviewRequest.isAlreadyApproved ? (itemDebitId ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600') : (isAcc ? 'bg-emerald-50 text-emerald-600' : isTolak ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-400')}`}>
+                                                        {reviewRequest.isAlreadyApproved ? (itemDebitId ? <Check size={24} strokeWidth={3} /> : <AlertCircle size={24} />) : (isAcc ? <Check size={24} strokeWidth={3} /> : isTolak ? <XCircle size={24} strokeWidth={3} /> : <FileText size={20} />)}
                                                     </div>
                                                     <div>
                                                         <h4 className="font-black text-lg tracking-tight leading-tight mb-1">{item.name}</h4>
                                                         <div className="flex flex-wrap items-center gap-2">
-                                                            <p className={`text-[13px] font-black ${isAcc ? 'text-emerald-600' : isTolak ? 'text-rose-600' : 'text-slate-700'}`}>{formatRupiah(item.amount)}</p>
+                                                            <p className={`text-[13px] font-black ${reviewRequest.isAlreadyApproved ? 'text-slate-800' : (isAcc ? 'text-emerald-600' : isTolak ? 'text-rose-600' : 'text-slate-700')}`}>{formatRupiah(item.amount)}</p>
                                                             {(item.volume && item.satuan) && (
                                                                 <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded">
                                                                     {item.volume} {item.satuan}
@@ -2889,30 +2897,39 @@ export default function MonthlyRequest() {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
-                                                    <button onClick={() => {
-                                                        setReviewRequest(prev => ({
-                                                            ...prev,
-                                                            accIds: isAcc ? prev.accIds.filter(id => id !== item.componentId) : [...prev.accIds, item.componentId],
-                                                            tolakIds: prev.tolakIds.filter(id => id !== item.componentId)
-                                                        }));
-                                                    }} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isAcc ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}`}>
-                                                        <Check size={14} className="inline mr-1.5" /> ACC
-                                                    </button>
-                                                    <button onClick={() => {
-                                                        setReviewRequest(prev => ({
-                                                            ...prev,
-                                                            tolakIds: isTolak ? prev.tolakIds.filter(id => id !== item.componentId) : [...prev.tolakIds, item.componentId],
-                                                            accIds: prev.accIds.filter(id => id !== item.componentId)
-                                                        }));
-                                                    }} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isTolak ? 'bg-rose-500 border-rose-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-rose-500 hover:text-rose-500'}`}>
-                                                        <XCircle size={14} className="inline mr-1.5" /> TOLAK
-                                                    </button>
-                                                </div>
+                                                {reviewRequest.isAlreadyApproved ? (
+                                                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                                        <span className="px-3.5 py-1.5 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5 shadow-2xs">
+                                                            <Check size={13} strokeWidth={3} className="text-emerald-600" />
+                                                            <span>Disetujui</span>
+                                                        </span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                                                        <button onClick={() => {
+                                                            setReviewRequest(prev => ({
+                                                                ...prev,
+                                                                accIds: isAcc ? prev.accIds.filter(id => id !== item.componentId) : [...prev.accIds, item.componentId],
+                                                                tolakIds: prev.tolakIds.filter(id => id !== item.componentId)
+                                                            }));
+                                                        }} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isAcc ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-emerald-500 hover:text-emerald-500'}`}>
+                                                            <Check size={14} className="inline mr-1.5" /> ACC
+                                                        </button>
+                                                        <button onClick={() => {
+                                                            setReviewRequest(prev => ({
+                                                                ...prev,
+                                                                tolakIds: isTolak ? prev.tolakIds.filter(id => id !== item.componentId) : [...prev.tolakIds, item.componentId],
+                                                                accIds: prev.accIds.filter(id => id !== item.componentId)
+                                                            }));
+                                                        }} className={`px-5 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border-2 ${isTolak ? 'bg-rose-500 border-rose-500 text-white' : 'bg-transparent border-slate-200 text-slate-400 hover:border-rose-500 hover:text-rose-500'}`}>
+                                                            <XCircle size={14} className="inline mr-1.5" /> TOLAK
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
 
                                             {/* Mapping COA Selector Per Item */}
-                                            <div className={`pt-3.5 border-t border-slate-100 rounded-2xl p-4 transition-all ${isAcc ? 'bg-emerald-50/40 border border-emerald-100' : 'bg-slate-50/80 border border-slate-200/60'}`}>
+                                            <div className={`pt-3.5 border-t border-slate-100 rounded-2xl p-4 transition-all ${reviewRequest.isAlreadyApproved ? (itemDebitId ? 'bg-emerald-50/40 border border-emerald-100' : 'bg-amber-50/40 border border-amber-200/80') : (isAcc ? 'bg-emerald-50/40 border border-emerald-100' : 'bg-slate-50/80 border border-slate-200/60')}`}>
                                                 <div className="flex items-center justify-between mb-2.5">
                                                     <span className="text-[10px] font-black uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
                                                         <BookOpen size={12} className="text-indigo-600" />
@@ -2992,9 +3009,11 @@ export default function MonthlyRequest() {
                             return (
                                 <div className="px-8 py-5 bg-white border-t border-slate-100 flex flex-col md:flex-row items-center justify-between gap-4 shrink-0">
                                     <div>
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Total Di-ACC</p>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">
+                                            {reviewRequest.isAlreadyApproved ? 'Total Dana Disetujui' : 'Total Di-ACC'}
+                                        </p>
                                         <h3 className="text-2xl md:text-3xl font-black text-emerald-600 italic tracking-tighter">
-                                            {formatRupiah(reviewRequest.req.items.filter(i => reviewRequest.accIds.includes(i.componentId)).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}
+                                            {formatRupiah((reviewRequest.isAlreadyApproved ? (reviewRequest.req.items || []) : reviewRequest.req.items.filter(i => reviewRequest.accIds.includes(i.componentId))).reduce((s, i) => s + (parseFloat(i.amount)||0), 0))}
                                         </h3>
                                     </div>
                                     <div className="flex flex-wrap gap-3 items-center">
@@ -3002,11 +3021,11 @@ export default function MonthlyRequest() {
                                         
                                         <button
                                             onClick={() => handleSaveReview(reviewRequest.isAlreadyApproved)}
-                                            disabled={processingId === 'saving-review' || (reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || (hasBlock && !reviewRequest.isAlreadyApproved)}
+                                            disabled={processingId === 'saving-review' || (!reviewRequest.isAlreadyApproved && reviewRequest.accIds.length === 0 && reviewRequest.tolakIds.length === 0) || (hasBlock && !reviewRequest.isAlreadyApproved)}
                                             className="btn bg-indigo-600 text-white px-7 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest flex items-center gap-2.5 shadow-xl hover:bg-indigo-700 disabled:opacity-50 disabled:scale-100 transition-all cursor-pointer"
                                         >
                                             {processingId === 'saving-review' ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                                            {reviewRequest.isAlreadyApproved ? 'SIMPAN PERUBAHAN COA & JURNAL' : 'SIMPAN PERSETUJUAN'}
+                                            {reviewRequest.isAlreadyApproved ? 'SIMPAN PERUBAHAN COA' : 'SIMPAN PERSETUJUAN'}
                                         </button>
                                     </div>
                                 </div>
