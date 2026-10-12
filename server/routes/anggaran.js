@@ -752,6 +752,9 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
         const isBos = request.source === 'BOS' || (request.items && JSON.stringify(request.items).includes('-BOS'));
 
         let sourceAcc = sourceId ? await prisma.account.findUnique({ where: { id: sourceId } }) : null;
+        if (sourceAcc && (sourceAcc.code.startsWith('1-114') || sourceAcc.name.toLowerCase().includes('kas unit') || sourceId === targetId)) {
+            sourceAcc = null;
+        }
         if (!sourceAcc) {
             sourceAcc = await prisma.account.findFirst({
                 where: {
@@ -759,7 +762,7 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
                     isParent: false,
                     OR: isBos 
                         ? [{ code: '1-1112' }, { name: { contains: 'BOS' } }, { name: { contains: 'Dana Terikat' } }]
-                        : [{ code: '1-1111' }, { code: '1-1101' }, { name: { contains: 'Yayasan' } }]
+                        : [{ code: '1-1111' }, { code: '1-1101' }, { name: { contains: 'Yayasan' } }, { name: { contains: 'BSI' } }]
                 }
             });
         }

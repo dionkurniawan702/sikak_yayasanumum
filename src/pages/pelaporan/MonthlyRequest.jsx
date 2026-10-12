@@ -828,11 +828,7 @@ export default function MonthlyRequest() {
         const defaultSourceBankAcc = cashBankAccounts.find(a => 
             isBosReq ? (a.code === '1-1112' || a.name?.toLowerCase().includes('terikat') || a.name?.toLowerCase().includes('bos')) 
                      : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('bsi') || a.name?.toLowerCase().includes('yayasan'))
-        ) || cashBankAccounts[0] || null;
-
-        if (!initialSourceBankId) {
-            initialSourceBankId = defaultSourceBankAcc?.id || '';
-        }
+        ) || cashBankAccounts.find(a => !a.code?.startsWith('1-114') && !a.name?.toLowerCase().includes('kas unit')) || cashBankAccounts[0] || null;
 
         // 2. Rekening Operasional Unit Tujuan -> Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja riil
         const reqUnit = (units || []).find(u => u.id === req.unitId);
@@ -847,8 +843,8 @@ export default function MonthlyRequest() {
             if (unitCodeLower && accName.includes(unitCodeLower)) return true;
             return false;
         }) || cashBankAccounts.find(a => {
-            return a.id !== initialSourceBankId && (a.name?.toLowerCase().includes('operasional') || a.name?.toLowerCase().includes('unit'));
-        }) || cashBankAccounts.find(a => a.id !== initialSourceBankId) || cashBankAccounts[0] || null;
+            return (a.name?.toLowerCase().includes('operasional') || a.name?.toLowerCase().includes('unit'));
+        }) || null;
 
         if (!initialTargetUnitBankId) {
             if (req.items && req.items.length > 0) {
@@ -858,7 +854,14 @@ export default function MonthlyRequest() {
         }
 
         if (!initialTargetUnitBankId) {
-            initialTargetUnitBankId = matchedUnitBankAcc?.id || initialSourceBankId || '';
+            initialTargetUnitBankId = matchedUnitBankAcc?.id || '';
+        }
+
+        // Pastikan Rekening Sumber Kas Yayasan (Kotak 1) bukan akun Kas Unit (1-114x / Kas Unit) dan tidak sama dengan Rekening Unit
+        const sourceAccObj = accounts.find(a => a.id === initialSourceBankId);
+        const isSourceAccUnitKas = sourceAccObj && (sourceAccObj.code?.startsWith('1-114') || sourceAccObj.code?.startsWith('1-115') || sourceAccObj.name?.toLowerCase().includes('kas unit'));
+        if (!initialSourceBankId || isSourceAccUnitKas || (initialTargetUnitBankId && initialSourceBankId === initialTargetUnitBankId)) {
+            initialSourceBankId = defaultSourceBankAcc?.id || '';
         }
 
         const initialMappings = {};
@@ -1280,6 +1283,22 @@ export default function MonthlyRequest() {
             
             const sourceBankAccountId = reviewRequest.sourceBankAccountId;
             const targetUnitBankAccountId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
+
+            if (sourceBankAccountId && targetUnitBankAccountId && sourceBankAccountId === targetUnitBankAccountId) {
+                const sameAcc = accounts.find(a => a.id === sourceBankAccountId);
+                const proceed = window.confirm(
+                    `PERINGATAN AKUNTANSI PENTING:\n\n` +
+                    `Rekening Kas/Bank Induk Yayasan (Sumber) dan Rekening Operasional Unit (Tujuan) yang dipilih adalah SAMA:\n` +
+                    `• ${sameAcc ? `${sameAcc.code} - ${sameAcc.name}` : sourceBankAccountId}\n\n` +
+                    `Hal ini akan menyebabkan jurnal transfer berpindah ke akun kas yang sama (tidak memotong kas yayasan dan kas unit tidak bertambah dari pusat).\n\n` +
+                    `Apakah Anda yakin tetap ingin melanjutkan dengan rekening yang sama?`
+                );
+                if (!proceed) {
+                    setProcessingId(null);
+                    window.dispatchEvent(new CustomEvent('app-processing-end'));
+                    return;
+                }
+            }
 
             // If already approved (Edit/Review COA mode) OR all are ACC
             if (reviewRequest.isAlreadyApproved || accItems.length === req.items.length) {
@@ -2597,6 +2616,21 @@ export default function MonthlyRequest() {
                                     </div>
                                 </div>
 
+                                {/* Peringatan Akuntansi jika Rekening Yayasan & Rekening Unit Dipilih Sama */}
+                                {reviewRequest.sourceBankAccountId && (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) && reviewRequest.sourceBankAccountId === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) && (
+                                    <div className="p-3.5 bg-amber-50 rounded-2xl border-2 border-amber-300 flex items-center gap-3 text-amber-900 shadow-sm animate-in fade-in">
+                                        <AlertCircle size={20} className="text-amber-600 shrink-0" />
+                                        <div>
+                                            <div className="text-xs font-black text-amber-950 uppercase tracking-wide">
+                                                Perhatian: Rekening Kas Induk Yayasan & Rekening Unit Dipilih Sama!
+                                            </div>
+                                            <div className="text-[11px] text-amber-800 font-medium mt-0.5">
+                                                Pastikan <b>Kotak 1</b> adalah Rekening Kas/Bank Induk Yayasan (Sumber Dana Yayasan, misal Bank Yayasan BSI), dan <b>Kotak 2</b> adalah Rekening Kas Operasional Unit (Penerima Dana & Kas Belanja).
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Visual Flow Indicator & Clickable Actions */}
                                 <div className="pt-3 border-t border-indigo-100/80 flex flex-wrap items-center justify-between gap-3 text-[11px] text-slate-600">
                                     <div className="flex items-center gap-2 flex-wrap">
@@ -2816,7 +2850,7 @@ export default function MonthlyRequest() {
                                                                     })()}
                                                                 </div>
                                                                 <div className="text-[8px] text-emerald-700 font-semibold truncate">
-                                                                    Mengikuti rekening operasional unit pemohon
+                                                                    Otomatis mengikuti sisi Debit pencairan kas unit (Tahap 1)
                                                                 </div>
                                                             </div>
                                                         </div>
