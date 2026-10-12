@@ -144,6 +144,30 @@ function getUnreturnedBalanceInfo(state, unitId, fieldId, targetMonth, targetSou
     };
 }
 
+// Helper akuntansi untuk membedakan kas operasional unit vs rekening bank yayasan
+export const isUnitKasAccount = (a) => {
+    if (!a) return false;
+    const name = (a.name || '').toLowerCase();
+    const code = (a.code || '');
+    // Rekening bank bukan kas unit
+    if (/\b(bsi|bank|nagari|mandiri|bca|rekening)\b/i.test(name)) return false;
+    // Kas Operasional Unit
+    if (/kas\b/i.test(name) && /(unit|operasional)/i.test(name)) return true;
+    if (code.startsWith('1-114') || code.startsWith('1-115')) return true;
+    if (code.startsWith('1-110') && /(tkit|sdit|smpit|smait|unit|ponpes|taud|mit)/i.test(name)) return true;
+    return false;
+};
+
+export const isYayasanBankAccount = (a) => {
+    if (!a) return false;
+    const name = (a.name || '').toLowerCase();
+    const code = (a.code || '');
+    if (/\b(bsi|bank|nagari|mandiri|bca|rekening)\b/i.test(name)) return true;
+    if (name.includes('yayasan') || name.includes('pusat')) return true;
+    if (code.startsWith('1-111')) return true;
+    return false;
+};
+
 export default function MonthlyRequest() {
     const { state, dispatch } = useApp();
     const { currentUser, rabPlans, budgetRequests, budgetReports = [], units, fields, academicYears, globalAcademicYearId, accounts = [], expenseItems = [] } = state;
@@ -825,73 +849,63 @@ export default function MonthlyRequest() {
             if (!initialTargetUnitBankId && jDebit?.accountId) initialTargetUnitBankId = jDebit.accountId;
         }
 
-        const defaultSourceBankAcc = cashBankAccounts.find(a => 
-            isBosReq ? (a.code === '1-1112' || a.name?.toLowerCase().includes('terikat') || a.name?.toLowerCase().includes('bos')) 
-                     : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('yayasan'))
-        ) || cashBankAccounts.find(a => !a.code?.startsWith('1-114') && !a.code?.startsWith('1-115') && !a.name?.toLowerCase().includes('kas unit')) || cashBankAccounts[0] || null;
-
-        // 2. Rekening Operasional Unit Tujuan -> Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja riil
         const reqUnit = (units || []).find(u => u.id === req.unitId);
         const reqField = (fields || []).find(f => f.id === req.fieldId);
         const unitNameLower = (reqUnit?.name || reqField?.name || '').toLowerCase();
         const unitCodeLower = (reqUnit?.code || '').toLowerCase();
 
-        // Cari rekening kas unit operasional (prioritaskan 1-114x / Kas Unit spesifik unit ini)
-        const unitKasAccounts = cashBankAccounts.filter(a => 
-            a.code?.startsWith('1-114') || 
-            a.code?.startsWith('1-115') || 
-            a.name?.toLowerCase().includes('kas unit')
-        );
-
-        const matchedUnitBankAcc = unitKasAccounts.find(a => {
+        // 1. Akun Kas Operasional Unit (Sisi DEBIT Pencairan & Sisi KREDIT Belanja LPJ)
+        const unitKasAccounts = cashBankAccounts.filter(isUnitKasAccount);
+        const matchedUnitKasAcc = unitKasAccounts.find(a => {
             const accName = (a.name || '').toLowerCase();
             const accCode = (a.code || '').toLowerCase();
             if (unitNameLower && accName.includes(unitNameLower)) return true;
             if (unitCodeLower && (accName.includes(unitCodeLower) || accCode.includes(unitCodeLower))) return true;
             return false;
-        }) || unitKasAccounts[0] || cashBankAccounts.find(a => {
+        }) || unitKasAccounts.find(a => unitCodeLower && a.name.toLowerCase().includes(unitCodeLower)) || unitKasAccounts[0] || null;
+
+        // 2. Akun Bank Induk Yayasan (Sisi KREDIT Pencairan)
+        const yayasanBankAccounts = cashBankAccounts.filter(isYayasanBankAccount);
+        const defaultSourceBankAcc = yayasanBankAccounts.find(a => {
             const accName = (a.name || '').toLowerCase();
-            if (unitNameLower && accName.includes(unitNameLower)) return true;
-            if (unitCodeLower && accName.includes(unitCodeLower)) return true;
+            if (isBosReq && (accName.includes('bos') || accName.includes('terikat'))) return true;
+            if (!isBosReq && unitNameLower && accName.includes(unitNameLower)) return true;
+            if (!isBosReq && unitCodeLower && accName.includes(unitCodeLower)) return true;
             return false;
-        }) || cashBankAccounts.find(a => {
-            return (a.name?.toLowerCase().includes('operasional') || a.name?.toLowerCase().includes('unit'));
-        }) || null;
+        }) || yayasanBankAccounts.find(a => a.code === '1-1111' || a.name?.toLowerCase().includes('utama') || a.name?.toLowerCase().includes('yayasan')) || yayasanBankAccounts[0] || null;
 
         if (!initialTargetUnitBankId) {
             if (req.items && req.items.length > 0) {
                 const itemWithCredit = req.items.find(i => i.creditAccountId);
-                if (itemWithCredit) initialTargetUnitBankId = itemWithCredit.creditAccountId;
+                if (itemWithCredit && isUnitKasAccount(accounts.find(a => a.id === itemWithCredit.creditAccountId || a.code === itemWithCredit.creditAccountId))) {
+                    initialTargetUnitBankId = itemWithCredit.creditAccountId;
+                }
             }
         }
 
-        if (!initialTargetUnitBankId) {
-            initialTargetUnitBankId = matchedUnitBankAcc?.id || '';
-        }
-
-        // Jika target rekening (Kotak 2) ternyata rekening bank induk yayasan, sedangkan unit punya kas unit:
-        const tgtAccObj = accounts.find(a => a.id === initialTargetUnitBankId || a.code === initialTargetUnitBankId);
-        const isTgtYayasan = tgtAccObj && (tgtAccObj.code?.startsWith('1-110') || tgtAccObj.code?.startsWith('1-111') || tgtAccObj.name?.toLowerCase().includes('yayasan') || tgtAccObj.name?.toLowerCase().includes('bsi'));
-        if (isTgtYayasan && matchedUnitBankAcc && matchedUnitBankAcc.id !== initialTargetUnitBankId) {
-            if (!initialSourceBankId || initialSourceBankId === initialTargetUnitBankId) {
+        // Resolusi Rekening Unit (Harus Akun Kas Unit)
+        const currentTgtAcc = accounts.find(a => a.id === initialTargetUnitBankId || a.code === initialTargetUnitBankId);
+        if (!initialTargetUnitBankId || isYayasanBankAccount(currentTgtAcc)) {
+            if (isYayasanBankAccount(currentTgtAcc) && !initialSourceBankId) {
                 initialSourceBankId = initialTargetUnitBankId;
             }
-            initialTargetUnitBankId = matchedUnitBankAcc.id;
+            initialTargetUnitBankId = matchedUnitKasAcc?.id || '';
         }
 
-        if (!initialSourceBankId || (initialTargetUnitBankId && initialSourceBankId === initialTargetUnitBankId)) {
+        // Resolusi Rekening Yayasan (Harus Akun Bank Yayasan)
+        const currentSrcAcc = accounts.find(a => a.id === initialSourceBankId || a.code === initialSourceBankId);
+        if (!initialSourceBankId || isUnitKasAccount(currentSrcAcc) || initialSourceBankId === initialTargetUnitBankId) {
+            if (isUnitKasAccount(currentSrcAcc) && (!initialTargetUnitBankId || initialTargetUnitBankId === currentSrcAcc.id)) {
+                initialTargetUnitBankId = currentSrcAcc.id;
+            }
             initialSourceBankId = defaultSourceBankAcc?.id || '';
         }
 
-        // Auto-swap safeguard final:
-        // Pastikan Kotak 1 = Kas Yayasan (Pusat) dan Kotak 2 = Kas Operasional Unit
-        const finalSrcAcc = accounts.find(a => a.id === initialSourceBankId || a.code === initialSourceBankId);
-        const finalTgtAcc = accounts.find(a => a.id === initialTargetUnitBankId || a.code === initialTargetUnitBankId);
+        // Safeguard Auto-Swap Final:
+        let finalSrcAcc = accounts.find(a => a.id === initialSourceBankId || a.code === initialSourceBankId);
+        let finalTgtAcc = accounts.find(a => a.id === initialTargetUnitBankId || a.code === initialTargetUnitBankId);
 
-        const isFinalSrcUnitKas = finalSrcAcc && (finalSrcAcc.code?.startsWith('1-114') || finalSrcAcc.code?.startsWith('1-115') || finalSrcAcc.name?.toLowerCase().includes('kas unit'));
-        const isFinalTgtYayasan = finalTgtAcc && (finalTgtAcc.code?.startsWith('1-110') || finalTgtAcc.code?.startsWith('1-111') || finalTgtAcc.name?.toLowerCase().includes('yayasan') || finalTgtAcc.name?.toLowerCase().includes('bsi'));
-
-        if (isFinalSrcUnitKas && isFinalTgtYayasan) {
+        if (isUnitKasAccount(finalSrcAcc) && isYayasanBankAccount(finalTgtAcc)) {
             const temp = initialSourceBankId;
             initialSourceBankId = initialTargetUnitBankId;
             initialTargetUnitBankId = temp;
@@ -2626,23 +2640,50 @@ export default function MonthlyRequest() {
                                     </div>
                                 </div>
 
-                                {/* Dual Selector: Rekening Sumber Yayasan & Rekening Operasional Unit */}
+                                {/* Dual Selector: Rekening Operasional Unit (Kotak 1 / DEBIT) & Rekening Kas Induk Yayasan (Kotak 2 / KREDIT) */}
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* 1. Rekening Sumber Kas Yayasan (Pusat / Induk) */}
-                                    <div className="bg-white p-4 rounded-2xl border border-indigo-200 shadow-sm flex flex-col justify-between gap-2">
+                                    {/* 1. Rekening Operasional Unit (Tujuan & Belanja) -> Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja riil */}
+                                    <div className="bg-white p-4 rounded-2xl border-2 border-emerald-300 shadow-sm flex flex-col justify-between gap-2">
                                         <div className="flex items-center justify-between">
                                             <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-black text-xs">
+                                                <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
                                                     1
+                                                </div>
+                                                <div>
+                                                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
+                                                        Rekening Operasional Unit (Tujuan & Belanja)
+                                                    </label>
+                                                    <span className="text-[10px] font-semibold text-emerald-700">Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja LPJ</span>
+                                                </div>
+                                            </div>
+                                            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded-md">Unit Pemohon</span>
+                                        </div>
+                                        <SearchableCoaDropdown
+                                            value={reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || ''}
+                                            onChange={(val) => handleChangeTargetUnitBank(val)}
+                                            accounts={accounts}
+                                            placeholder="-- Pilih Rekening Kas Operasional Unit --"
+                                            initialTab="KAS"
+                                            showCategoryTabs={true}
+                                            triggerClassName="py-2 px-3 bg-emerald-50/50 border-emerald-300 font-bold"
+                                        />
+                                    </div>
+
+                                    {/* 2. Rekening Kas/Bank Induk Yayasan (Sumber) -> Sisi KREDIT saat pencairan dana */}
+                                    <div className="bg-white p-4 rounded-2xl border-2 border-indigo-200 shadow-sm flex flex-col justify-between gap-2">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-black text-xs shadow-sm">
+                                                    2
                                                 </div>
                                                 <div>
                                                     <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
                                                         Rekening Kas/Bank Induk Yayasan (Sumber)
                                                     </label>
-                                                    <span className="text-[10px] font-semibold text-rose-600">Sisi Kredit saat pencairan (Dana Keluar Yayasan)</span>
+                                                    <span className="text-[10px] font-semibold text-rose-600">Sisi KREDIT saat pencairan (Dana Keluar Yayasan)</span>
                                                 </div>
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-md">Yayasan Pusat</span>
+                                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-md">Yayasan Pusat</span>
                                         </div>
                                         <SearchableCoaDropdown
                                             value={reviewRequest.sourceBankAccountId || ''}
@@ -2654,43 +2695,17 @@ export default function MonthlyRequest() {
                                             triggerClassName="py-2 px-3 bg-slate-50 border-slate-200"
                                         />
                                     </div>
-
-                                    {/* 2. Rekening Operasional Unit Tujuan */}
-                                    <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm flex flex-col justify-between gap-2">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-xs">
-                                                    2
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs font-black text-slate-800 uppercase tracking-wider block">
-                                                        Rekening Operasional Unit (Tujuan & Belanja)
-                                                    </label>
-                                                    <span className="text-[10px] font-semibold text-emerald-600">Sisi Debit saat pencairan & Kredit saat unit belanja LPJ</span>
-                                                </div>
-                                            </div>
-                                            <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md">Unit Pemohon</span>
-                                        </div>
-                                        <SearchableCoaDropdown
-                                            value={reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || ''}
-                                            onChange={(val) => handleChangeTargetUnitBank(val)}
-                                            accounts={accounts}
-                                            placeholder="-- Pilih Rekening Operasional Unit --"
-                                            initialTab="KAS"
-                                            showCategoryTabs={true}
-                                            triggerClassName="py-2 px-3 bg-slate-50 border-emerald-200"
-                                        />
-                                    </div>
                                 </div>
 
                                 {/* Peringatan Cerdas jika Posisi Rekening Terbalik */}
                                 {(() => {
-                                    const srcAcc = accounts.find(a => a.id === reviewRequest.sourceBankAccountId || a.code === reviewRequest.sourceBankAccountId);
-                                    const tgtAcc = accounts.find(a => a.id === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) || a.code === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId));
-                                    const isSrcUnitKas = srcAcc && (srcAcc.code?.startsWith('1-114') || srcAcc.code?.startsWith('1-115') || srcAcc.name?.toLowerCase().includes('kas unit'));
-                                    const isTgtYayasan = tgtAcc && (tgtAcc.code?.startsWith('1-110') || tgtAcc.code?.startsWith('1-111') || tgtAcc.name?.toLowerCase().includes('yayasan') || tgtAcc.name?.toLowerCase().includes('bsi'));
+                                    const unitAcc = accounts.find(a => a.id === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) || a.code === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId));
+                                    const ysnAcc = accounts.find(a => a.id === reviewRequest.sourceBankAccountId || a.code === reviewRequest.sourceBankAccountId);
                                     
-                                    if (isSrcUnitKas && isTgtYayasan) {
+                                    const isUnitAccReversed = isYayasanBankAccount(unitAcc); // Kotak 1 terisi rekening yayasan
+                                    const isYsnAccReversed = isUnitKasAccount(ysnAcc); // Kotak 2 terisi kas unit
+                                    
+                                    if (isUnitAccReversed && isYsnAccReversed) {
                                         return (
                                             <div className="p-4 bg-rose-50 rounded-2xl border-2 border-rose-400 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-rose-950 shadow-md animate-in fade-in">
                                                 <div className="flex items-start gap-3">
@@ -2701,9 +2716,9 @@ export default function MonthlyRequest() {
                                                             <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-rose-200 text-rose-800">Perlu Ditukar</span>
                                                         </div>
                                                         <div className="text-[11px] text-rose-800 font-medium mt-1 leading-relaxed">
-                                                            <b>Kotak 1</b> terisi Kas Unit (<i>{srcAcc?.name}</i>) dan <b>Kotak 2</b> terisi Rekening Yayasan (<i>{tgtAcc?.name}</i>).
+                                                            <b>Kotak 1</b> terisi Rekening Yayasan (<i>{unitAcc?.name}</i>) dan <b>Kotak 2</b> terisi Kas Unit (<i>{ysnAcc?.name}</i>).
                                                             <br />
-                                                            Akibatnya, rincian belanja di bawah keliru mengambil rekening yayasan! Klik tombol di samping untuk menukar posisi secara instan:
+                                                            Klik tombol di samping untuk menukar posisi secara instan:
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2950,12 +2965,12 @@ export default function MonthlyRequest() {
                                                                 <div className="text-[11px] font-black truncate">
                                                                     {(() => {
                                                                         const curTargetBankId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || itemCreditId;
-                                                                        const tgt = accounts.find(a => a.id === curTargetBankId);
+                                                                        const tgt = accounts.find(a => a.id === curTargetBankId || a.code === curTargetBankId);
                                                                         return tgt ? `${tgt.code} - ${tgt.name}` : 'Kas Operasional Unit';
                                                                     })()}
                                                                 </div>
                                                                 <div className="text-[8px] text-emerald-700 font-semibold truncate">
-                                                                    Otomatis mengikuti sisi Debit pencairan kas unit (Tahap 1)
+                                                                    Otomatis mengikuti sisi Debit pencairan kas unit (Kotak 1 di atas)
                                                                 </div>
                                                             </div>
                                                         </div>
