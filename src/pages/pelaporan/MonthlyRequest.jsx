@@ -909,7 +909,7 @@ export default function MonthlyRequest() {
 
             initialMappings[item.componentId] = {
                 debitAccountId: defaultDebitId,
-                creditAccountId: item.creditAccountId || initialTargetUnitBankId
+                creditAccountId: initialTargetUnitBankId
             };
         });
 
@@ -955,7 +955,7 @@ export default function MonthlyRequest() {
                 updatedMappings[item.componentId] = {
                     ...(updatedMappings[item.componentId] || {}),
                     debitAccountId: foundDebitId,
-                    creditAccountId: updatedMappings[item.componentId]?.creditAccountId || currentTargetBank
+                    creditAccountId: currentTargetBank
                 };
                 matchedCount++;
             }
@@ -1200,7 +1200,7 @@ export default function MonthlyRequest() {
                         updatedMappings[idKey] = {
                             ...(updatedMappings[idKey] || {}),
                             debitAccountId: foundAcc.id,
-                            creditAccountId: updatedMappings[idKey]?.creditAccountId || currentTargetBank
+                            creditAccountId: currentTargetBank
                         };
                         matchedCount++;
                     }
@@ -1308,7 +1308,7 @@ export default function MonthlyRequest() {
                 return itemList.map(item => {
                     const mapping = reviewRequest.itemMappings?.[item.componentId] || {};
                     const debitAccountId = mapping.debitAccountId || item.debitAccountId || '';
-                    const creditAccountId = mapping.creditAccountId || reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || item.creditAccountId || '';
+                    const creditAccountId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || mapping.creditAccountId || item.creditAccountId || '';
                     
                     const debitAcc = accounts.find(a => a.id === debitAccountId);
                     const creditAcc = accounts.find(a => a.id === creditAccountId);
@@ -2834,7 +2834,7 @@ export default function MonthlyRequest() {
                                     const isAcc = reviewRequest.accIds.includes(item.componentId);
                                     const isTolak = reviewRequest.tolakIds.includes(item.componentId);
                                     const itemDebitId = reviewRequest.itemMappings?.[item.componentId]?.debitAccountId || '';
-                                    const itemCreditId = reviewRequest.itemMappings?.[item.componentId]?.creditAccountId || reviewRequest.globalCreditAccountId || '';
+                                    const itemCreditId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || reviewRequest.itemMappings?.[item.componentId]?.creditAccountId || '';
                                     
                                     return (
                                         <div key={item.componentId} className={`p-5 md:p-6 rounded-[2rem] border-2 transition-all flex flex-col gap-4 group bg-white ${isAcc ? 'border-emerald-500 shadow-xl shadow-emerald-500/20' : isTolak ? 'border-rose-500 shadow-xl shadow-rose-500/20' : 'border-slate-200 hover:border-indigo-200 shadow-sm'}`}>
@@ -2939,7 +2939,7 @@ export default function MonthlyRequest() {
                                                             <div className="truncate flex-1">
                                                                 <div className="text-[11px] font-black truncate">
                                                                     {(() => {
-                                                                        const curTargetBankId = itemCreditId || reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId;
+                                                                        const curTargetBankId = reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId || itemCreditId;
                                                                         const tgt = accounts.find(a => a.id === curTargetBankId);
                                                                         return tgt ? `${tgt.code} - ${tgt.name}` : 'Kas Operasional Unit';
                                                                     })()}
