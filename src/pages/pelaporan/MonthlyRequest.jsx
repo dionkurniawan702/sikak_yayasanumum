@@ -827,8 +827,8 @@ export default function MonthlyRequest() {
 
         const defaultSourceBankAcc = cashBankAccounts.find(a => 
             isBosReq ? (a.code === '1-1112' || a.name?.toLowerCase().includes('terikat') || a.name?.toLowerCase().includes('bos')) 
-                     : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('bsi') || a.name?.toLowerCase().includes('yayasan'))
-        ) || cashBankAccounts.find(a => !a.code?.startsWith('1-114') && !a.name?.toLowerCase().includes('kas unit')) || cashBankAccounts[0] || null;
+                     : (a.code === '1-1111' || a.code === '1-1101' || a.name?.toLowerCase().includes('yayasan'))
+        ) || cashBankAccounts.find(a => !a.code?.startsWith('1-114') && !a.code?.startsWith('1-115') && !a.name?.toLowerCase().includes('kas unit')) || cashBankAccounts[0] || null;
 
         // 2. Rekening Operasional Unit Tujuan -> Sisi DEBIT saat pencairan & Sisi KREDIT saat unit belanja riil
         const reqUnit = (units || []).find(u => u.id === req.unitId);
@@ -836,8 +836,20 @@ export default function MonthlyRequest() {
         const unitNameLower = (reqUnit?.name || reqField?.name || '').toLowerCase();
         const unitCodeLower = (reqUnit?.code || '').toLowerCase();
 
-        // Cari rekening kas/bank yang secara spesifik milik unit ini
-        const matchedUnitBankAcc = cashBankAccounts.find(a => {
+        // Cari rekening kas unit operasional (prioritaskan 1-114x / Kas Unit spesifik unit ini)
+        const unitKasAccounts = cashBankAccounts.filter(a => 
+            a.code?.startsWith('1-114') || 
+            a.code?.startsWith('1-115') || 
+            a.name?.toLowerCase().includes('kas unit')
+        );
+
+        const matchedUnitBankAcc = unitKasAccounts.find(a => {
+            const accName = (a.name || '').toLowerCase();
+            const accCode = (a.code || '').toLowerCase();
+            if (unitNameLower && accName.includes(unitNameLower)) return true;
+            if (unitCodeLower && (accName.includes(unitCodeLower) || accCode.includes(unitCodeLower))) return true;
+            return false;
+        }) || unitKasAccounts[0] || cashBankAccounts.find(a => {
             const accName = (a.name || '').toLowerCase();
             if (unitNameLower && accName.includes(unitNameLower)) return true;
             if (unitCodeLower && accName.includes(unitCodeLower)) return true;
@@ -853,38 +865,36 @@ export default function MonthlyRequest() {
             }
         }
 
-        // 1. Deteksi apakah initialTargetUnitBankId malah berisi Rekening Yayasan (bukan Kas Unit)
-        const targetAccObj = accounts.find(a => a.id === initialTargetUnitBankId);
-        const isTargetYayasan = targetAccObj && (targetAccObj.code?.startsWith('1-110') || targetAccObj.code?.startsWith('1-111') || targetAccObj.name?.toLowerCase().includes('yayasan') || targetAccObj.name?.toLowerCase().includes('bsi'));
-
-        // 2. Deteksi apakah initialSourceBankId malah berisi Kas Unit (1-114x / Kas Unit)
-        const sourceAccObj = accounts.find(a => a.id === initialSourceBankId);
-        const isSourceAccUnitKas = sourceAccObj && (sourceAccObj.code?.startsWith('1-114') || sourceAccObj.code?.startsWith('1-115') || sourceAccObj.name?.toLowerCase().includes('kas unit'));
-
-        // Jika terbalik (Source = Kas Unit, Target = Yayasan), TUKAR POSISI!
-        if (isSourceAccUnitKas && isTargetYayasan) {
-            const temp = initialSourceBankId;
-            initialSourceBankId = initialTargetUnitBankId;
-            initialTargetUnitBankId = temp;
-        } else {
-            if (isTargetYayasan && matchedUnitBankAcc) {
-                if (!initialSourceBankId || isSourceAccUnitKas) {
-                    initialSourceBankId = initialTargetUnitBankId;
-                }
-                initialTargetUnitBankId = matchedUnitBankAcc.id;
-            }
-            if (isSourceAccUnitKas && defaultSourceBankAcc) {
-                if (!initialTargetUnitBankId && matchedUnitBankAcc) initialTargetUnitBankId = matchedUnitBankAcc.id;
-                initialSourceBankId = defaultSourceBankAcc.id;
-            }
-        }
-
         if (!initialTargetUnitBankId) {
             initialTargetUnitBankId = matchedUnitBankAcc?.id || '';
         }
 
+        // Jika target rekening (Kotak 2) ternyata rekening bank induk yayasan, sedangkan unit punya kas unit:
+        const tgtAccObj = accounts.find(a => a.id === initialTargetUnitBankId || a.code === initialTargetUnitBankId);
+        const isTgtYayasan = tgtAccObj && (tgtAccObj.code?.startsWith('1-110') || tgtAccObj.code?.startsWith('1-111') || tgtAccObj.name?.toLowerCase().includes('yayasan') || tgtAccObj.name?.toLowerCase().includes('bsi'));
+        if (isTgtYayasan && matchedUnitBankAcc && matchedUnitBankAcc.id !== initialTargetUnitBankId) {
+            if (!initialSourceBankId || initialSourceBankId === initialTargetUnitBankId) {
+                initialSourceBankId = initialTargetUnitBankId;
+            }
+            initialTargetUnitBankId = matchedUnitBankAcc.id;
+        }
+
         if (!initialSourceBankId || (initialTargetUnitBankId && initialSourceBankId === initialTargetUnitBankId)) {
             initialSourceBankId = defaultSourceBankAcc?.id || '';
+        }
+
+        // Auto-swap safeguard final:
+        // Pastikan Kotak 1 = Kas Yayasan (Pusat) dan Kotak 2 = Kas Operasional Unit
+        const finalSrcAcc = accounts.find(a => a.id === initialSourceBankId || a.code === initialSourceBankId);
+        const finalTgtAcc = accounts.find(a => a.id === initialTargetUnitBankId || a.code === initialTargetUnitBankId);
+
+        const isFinalSrcUnitKas = finalSrcAcc && (finalSrcAcc.code?.startsWith('1-114') || finalSrcAcc.code?.startsWith('1-115') || finalSrcAcc.name?.toLowerCase().includes('kas unit'));
+        const isFinalTgtYayasan = finalTgtAcc && (finalTgtAcc.code?.startsWith('1-110') || finalTgtAcc.code?.startsWith('1-111') || finalTgtAcc.name?.toLowerCase().includes('yayasan') || finalTgtAcc.name?.toLowerCase().includes('bsi'));
+
+        if (isFinalSrcUnitKas && isFinalTgtYayasan) {
+            const temp = initialSourceBankId;
+            initialSourceBankId = initialTargetUnitBankId;
+            initialTargetUnitBankId = temp;
         }
 
         const initialMappings = {};
@@ -2675,8 +2685,8 @@ export default function MonthlyRequest() {
 
                                 {/* Peringatan Cerdas jika Posisi Rekening Terbalik */}
                                 {(() => {
-                                    const srcAcc = accounts.find(a => a.id === reviewRequest.sourceBankAccountId);
-                                    const tgtAcc = accounts.find(a => a.id === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId));
+                                    const srcAcc = accounts.find(a => a.id === reviewRequest.sourceBankAccountId || a.code === reviewRequest.sourceBankAccountId);
+                                    const tgtAcc = accounts.find(a => a.id === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId) || a.code === (reviewRequest.targetUnitBankAccountId || reviewRequest.globalCreditAccountId));
                                     const isSrcUnitKas = srcAcc && (srcAcc.code?.startsWith('1-114') || srcAcc.code?.startsWith('1-115') || srcAcc.name?.toLowerCase().includes('kas unit'));
                                     const isTgtYayasan = tgtAcc && (tgtAcc.code?.startsWith('1-110') || tgtAcc.code?.startsWith('1-111') || tgtAcc.name?.toLowerCase().includes('yayasan') || tgtAcc.name?.toLowerCase().includes('bsi'));
                                     

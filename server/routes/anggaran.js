@@ -793,6 +793,16 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
             });
         }
 
+        if (sourceAcc && targetAcc) {
+            const isSourceUnit = (sourceAcc.code?.startsWith('1-114') || sourceAcc.code?.startsWith('1-115') || sourceAcc.name?.toLowerCase().includes('kas unit'));
+            const isTargetYayasan = (targetAcc.code?.startsWith('1-110') || targetAcc.code?.startsWith('1-111') || targetAcc.name?.toLowerCase().includes('yayasan') || targetAcc.name?.toLowerCase().includes('bsi'));
+            if (isSourceUnit && isTargetYayasan) {
+                const temp = sourceAcc;
+                sourceAcc = targetAcc;
+                targetAcc = temp;
+            }
+        }
+
         const transferRef = `TRF-${request.id}`;
 
         if (sourceAcc && targetAcc) {
