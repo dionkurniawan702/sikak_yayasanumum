@@ -330,19 +330,45 @@ const getPrisma = () => {
                                     });
                                     if (bosBank) resolvedCreditId = bosBank.id;
                                 } else {
-                                    const yayasanBank = await prisma.account.findFirst({
-                                        where: {
-                                            isDeleted: false,
-                                            isParent: false,
-                                            OR: [
-                                                { code: '1-1111' },
-                                                { code: '1-1101' },
-                                                { name: { contains: 'Bank Yayasan' } },
-                                                { name: { contains: 'Kas Yayasan' } }
-                                            ]
+                                    if (report.unitId && report.unitId !== 'FOUNDATION' && report.unitId !== 'YAYASAN') {
+                                        const UNIT_KAS_CODES = {
+                                            'a8ada0ad-5b27-487c-9448-dfeb34f93761': '1-1142', // SDIT 1
+                                            'mny1yb4u91eun': '1-1143',                         // TKIT 1
+                                            'mo7xk4tfhzmqk': '1-1150',                         // SDIT 2
+                                            'mo7xyewb1btcu': '1-1151',                         // SDIT 3
+                                            'mo7z16fiq1hja': '1-1152',                         // TKIT 2
+                                            'mo7z1fed83f1k': '1-1153',                         // TKIT 3
+                                            'mo7z3mschpyed': '1-1144',                         // TAUD
+                                            'mo7zeqb1gtuh9': '1-1145',                         // MIT
+                                            'mo80p9qllp9ko': '1-1141',                         // SMPIT PDG
+                                            'mo80r64xxxcep': '1-1140',                         // SMAIT
+                                            'mo82mp1zwj0yr': '1-1146',                         // PONPES PUTRA
+                                            'mo84ljcz1maso': '1-1147',                         // PONPES PUTRI
+                                            'mo84m04izb4ls': '1-1148',                         // SMPIT 5O KOTA
+                                            'mqko4qc4kgiru': '1-1149',                         // SDIT 50 KOTA
+                                        };
+                                        if (UNIT_KAS_CODES[report.unitId]) {
+                                            const uKasAcc = await prisma.account.findFirst({
+                                                where: { code: UNIT_KAS_CODES[report.unitId], isDeleted: false }
+                                            });
+                                            if (uKasAcc) resolvedCreditId = uKasAcc.id;
                                         }
-                                    });
-                                    if (yayasanBank) resolvedCreditId = yayasanBank.id;
+                                    }
+                                    if (!resolvedCreditId) {
+                                        const yayasanBank = await prisma.account.findFirst({
+                                            where: {
+                                                isDeleted: false,
+                                                isParent: false,
+                                                OR: [
+                                                    { code: '1-1101' },
+                                                    { code: '1-1111' },
+                                                    { name: { contains: 'Kas Yayasan' } },
+                                                    { name: { contains: 'Bank Yayasan' } }
+                                                ]
+                                            }
+                                        });
+                                        if (yayasanBank) resolvedCreditId = yayasanBank.id;
+                                    }
                                 }
                             }
 

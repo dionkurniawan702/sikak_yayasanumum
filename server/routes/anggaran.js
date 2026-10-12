@@ -860,6 +860,60 @@ async function syncBudgetRequestTransferJournal(prisma, request, reqBody = {}) {
     }
 }
 
+// Helper to resolve Kas Operasional Unit cleanly by Unit ID or Name
+async function resolveUnitKasAccount(prisma, unitId) {
+    if (!unitId || unitId === 'FOUNDATION' || unitId === 'YAYASAN') return null;
+    const UNIT_KAS_CODES = {
+        'a8ada0ad-5b27-487c-9448-dfeb34f93761': '1-1142', // SDIT 1
+        'mny1yb4u91eun': '1-1143',                         // TKIT 1
+        'mo7xk4tfhzmqk': '1-1150',                         // SDIT 2
+        'mo7xyewb1btcu': '1-1151',                         // SDIT 3
+        'mo7z16fiq1hja': '1-1152',                         // TKIT 2
+        'mo7z1fed83f1k': '1-1153',                         // TKIT 3
+        'mo7z3mschpyed': '1-1144',                         // TAUD
+        'mo7zeqb1gtuh9': '1-1145',                         // MIT
+        'mo80p9qllp9ko': '1-1141',                         // SMPIT PDG
+        'mo80r64xxxcep': '1-1140',                         // SMAIT
+        'mo82mp1zwj0yr': '1-1146',                         // PONPES PUTRA
+        'mo84ljcz1maso': '1-1147',                         // PONPES PUTRI
+        'mo84m04izb4ls': '1-1148',                         // SMPIT 5O KOTA
+        'mqko4qc4kgiru': '1-1149',                         // SDIT 50 KOTA
+    };
+    if (UNIT_KAS_CODES[unitId]) {
+        const acc = await prisma.account.findFirst({
+            where: { code: UNIT_KAS_CODES[unitId], isDeleted: false }
+        });
+        if (acc) return acc;
+    }
+    const u = await prisma.unit.findUnique({ where: { id: unitId } });
+    if (!u) return null;
+    const uName = (u.name || '').toLowerCase();
+    const allKas = await prisma.account.findMany({
+        where: {
+            isDeleted: false,
+            isParent: false,
+            OR: [{ code: { startsWith: '1-114' } }, { code: { startsWith: '1-115' } }, { name: { contains: 'Kas Unit' } }]
+        }
+    });
+    if (uName.includes('50 kota')) {
+        if (uName.includes('smp')) return allKas.find(a => a.code === '1-1148') || null;
+        if (uName.includes('sd')) return allKas.find(a => a.code === '1-1149') || null;
+    }
+    if (uName.includes('tkit 2') || uName.includes('tk 2')) return allKas.find(a => a.code === '1-1152') || null;
+    if (uName.includes('tkit 3') || uName.includes('tk 3')) return allKas.find(a => a.code === '1-1153') || null;
+    if (uName.includes('tkit') || uName.includes('tk')) return allKas.find(a => a.code === '1-1143') || null;
+    if (uName.includes('sdit 2') || uName.includes('sd 2')) return allKas.find(a => a.code === '1-1150') || null;
+    if (uName.includes('sdit 3') || uName.includes('sd 3')) return allKas.find(a => a.code === '1-1151') || null;
+    if (uName.includes('sdit') || uName.includes('sd')) return allKas.find(a => a.code === '1-1142') || null;
+    if (uName.includes('smp')) return allKas.find(a => a.code === '1-1141') || null;
+    if (uName.includes('sma')) return allKas.find(a => a.code === '1-1140') || null;
+    if (uName.includes('putra') || uName.includes('pondok putra')) return allKas.find(a => a.code === '1-1146') || null;
+    if (uName.includes('putri') || uName.includes('pondok putri')) return allKas.find(a => a.code === '1-1147') || null;
+    if (uName.includes('taud')) return allKas.find(a => a.code === '1-1144') || null;
+    if (uName.includes('mit')) return allKas.find(a => a.code === '1-1145') || null;
+    return null;
+}
+
 // Helper to resolve debit & credit accounts for Pengembalian Dana (Refund)
 // Rules:
 // DEBIT: Rekening Bank Yayasan / Penampung (misal rek TK 91: 1-1114 BSI 55-91)
@@ -890,20 +944,7 @@ async function resolveRefundAccounts(prisma, report, budgetRequest = null) {
 
     // 2. Resolve Kas Operasional Unit if not found
     if (!unitKasAcc && unitId) {
-        const u = await prisma.unit.findUnique({ where: { id: unitId } });
-        const uName = (u?.name || '').toLowerCase();
-        const allKas = await prisma.account.findMany({
-            where: {
-                isDeleted: false,
-                isParent: false,
-                OR: [{ code: { startsWith: '1-114' } }, { code: { startsWith: '1-115' } }, { name: { contains: 'Kas Unit' } }]
-            }
-        });
-        unitKasAcc = allKas.find(a => uName && a.name.toLowerCase().includes(uName)) ||
-                     (uName.includes('tk') ? allKas.find(a => a.code === '1-1143') : null) ||
-                     (uName.includes('sd') ? allKas.find(a => a.code === '1-1142') : null) ||
-                     (uName.includes('smp') ? allKas.find(a => a.code === '1-1141') : null) ||
-                     allKas[0] || null;
+        unitKasAcc = await resolveUnitKasAccount(prisma, unitId);
     }
 
     // 3. Resolve Bank Yayasan / Rekening Unit if not found
@@ -1001,7 +1042,14 @@ async function syncLinkedBudgetReportsJournals(prisma, request) {
                 if (!matchedItem) continue;
 
                 debitId = matchedItem.debitAccountId || '';
-                creditId = matchedItem.creditAccountId || request.targetUnitBankAccountId || request.creditAccountId || '';
+                creditId = matchedItem.creditAccountId || request.targetUnitBankAccountId || '';
+                if (!creditId && report.unitId && report.unitId !== 'FOUNDATION' && report.unitId !== 'YAYASAN') {
+                    const uKas = await resolveUnitKasAccount(prisma, report.unitId);
+                    if (uKas) creditId = uKas.id;
+                }
+                if (!creditId) {
+                    creditId = request.creditAccountId || '';
+                }
 
                 if (!debitId && !creditId) continue;
 
@@ -1479,8 +1527,27 @@ router.post('/budget-reports', async (req, res) => {
                     creditName = cAcc ? `${cAcc.code} - ${cAcc.name}` : 'Kas Unit (Kredit)';
                 } else {
                     // Priority 2: ExpenseProgram or ExpenseItem
-                    const resolvedDebitId = reqDebitId || expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
-                    const resolvedCreditId = reqCreditId || expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+                    let resolvedDebitId = reqDebitId || expenseProgram?.debitAccountId || expenseItem?.debitAccountId || expenseItem?.accountId || '';
+                    let resolvedCreditId = reqCreditId || expenseProgram?.creditAccountId || expenseItem?.creditAccountId || '';
+
+                    // Fallback for Credit (Kas/Bank) if still empty:
+                    if (!resolvedCreditId) {
+                        const isBos = source === 'BOS' || (planId && planId.endsWith('-BOS')) || (category && category.trim().toUpperCase() === 'BOS');
+                        if (isBos) {
+                            const bosBank = await tx.account.findFirst({
+                                where: { isDeleted: false, isParent: false, OR: [{ code: '1-1112' }, { name: { contains: 'BOS' } }] }
+                            });
+                            if (bosBank) resolvedCreditId = bosBank.id;
+                        } else if (unitId && unitId !== 'FOUNDATION' && unitId !== 'YAYASAN') {
+                            const unitKas = await resolveUnitKasAccount(tx, unitId);
+                            if (unitKas) resolvedCreditId = unitKas.id;
+                        } else {
+                            const yayasanKas = await tx.account.findFirst({
+                                where: { isDeleted: false, isParent: false, OR: [{ code: '1-1101' }, { code: '1-1111' }, { name: { contains: 'Kas Yayasan' } }] }
+                            });
+                            if (yayasanKas) resolvedCreditId = yayasanKas.id;
+                        }
+                    }
 
                     let debitAccObj = null;
                     if (resolvedDebitId) {
@@ -1704,16 +1771,19 @@ router.put('/budget-reports/:id', async (req, res) => {
                             }
                         });
                         if (bosBank) resolvedCreditId = bosBank.id;
+                    } else if (updated.unitId && updated.unitId !== 'FOUNDATION' && updated.unitId !== 'YAYASAN') {
+                        const unitKas = await resolveUnitKasAccount(tx, updated.unitId);
+                        if (unitKas) resolvedCreditId = unitKas.id;
                     } else {
                         const yayasanBank = await tx.account.findFirst({
                             where: {
                                 isDeleted: false,
                                 isParent: false,
                                 OR: [
-                                    { code: '1-1111' },
                                     { code: '1-1101' },
-                                    { name: { contains: 'Bank Yayasan' } },
-                                    { name: { contains: 'Kas Yayasan' } }
+                                    { code: '1-1111' },
+                                    { name: { contains: 'Kas Yayasan' } },
+                                    { name: { contains: 'Bank Yayasan' } }
                                 ]
                             }
                         });
