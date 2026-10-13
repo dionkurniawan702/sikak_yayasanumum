@@ -48,7 +48,9 @@ export default function JournalEntry() {
     const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
     const [historyProgramFilter, setHistoryProgramFilter] = useState('ALL');
     const [historyAccountFilter, setHistoryAccountFilter] = useState('ALL');
-    const [selectedPeriod, setSelectedPeriod] = useState('LATEST_500'); // 'LATEST_500' | 'YYYY-MM'
+    const [selectedPeriod, setSelectedPeriod] = useState('ALL'); // 'ALL' | 'CUSTOM' | 'YYYY-MM'
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterEndDate, setFilterEndDate] = useState('');
     const [monthJournals, setMonthJournals] = useState([]);
     const [monthTotalCount, setMonthTotalCount] = useState(null);
     const [isLoadingPeriod, setIsLoadingPeriod] = useState(false);
@@ -110,7 +112,8 @@ export default function JournalEntry() {
     }, []);
 
     const formatMonthLabel = (ymString) => {
-        if (!ymString || ymString === 'LATEST_500') return '500 Transaksi Terbaru';
+        if (!ymString || ymString === 'ALL') return 'Semua Periode (Keseluruhan)';
+        if (ymString === 'CUSTOM') return 'Kustom Rentang Tanggal';
         const [year, month] = ymString.split('-');
         const monthNames = [
             'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -121,11 +124,14 @@ export default function JournalEntry() {
     };
 
     const availableMonths = useMemo(() => {
-        const options = [{ value: 'LATEST_500', label: '500 Transaksi Terbaru (Default)' }];
+        const options = [
+            { value: 'ALL', label: 'Semua Periode (Keseluruhan)' },
+            { value: 'CUSTOM', label: 'Kustom Rentang Tanggal' }
+        ];
         const now = new Date();
         const curYear = now.getFullYear();
         const curMonth = now.getMonth() + 1;
-        for (let i = 0; i < 18; i++) {
+        for (let i = 0; i < 24; i++) {
             let m = curMonth - i;
             let y = curYear;
             while (m <= 0) {
@@ -141,18 +147,23 @@ export default function JournalEntry() {
     }, []);
 
     useEffect(() => {
-        if (selectedPeriod === 'LATEST_500') {
-            setMonthJournals([]);
-            setMonthTotalCount(null);
-            setCurrentPage(1);
-            return;
-        }
-
         let isMounted = true;
         setIsLoadingPeriod(true);
         setCurrentPage(1);
 
-        api.get(`/journals?month=${selectedPeriod}`)
+        let queryParams = [];
+        if (filterStartDate || filterEndDate) {
+            if (filterStartDate) queryParams.push(`startDate=${filterStartDate}`);
+            if (filterEndDate) queryParams.push(`endDate=${filterEndDate}`);
+        } else if (selectedPeriod && selectedPeriod !== 'ALL' && selectedPeriod !== 'CUSTOM') {
+            queryParams.push(`month=${selectedPeriod}`);
+        } else {
+            queryParams.push(`month=ALL`);
+        }
+
+        const queryString = queryParams.length > 0 ? `?${queryParams.join('&')}` : '';
+
+        api.get(`/journals${queryString}`)
             .then(res => {
                 if (!isMounted) return;
                 const fetched = (res?.data || []).map(j => ({
@@ -166,7 +177,17 @@ export default function JournalEntry() {
             .catch(err => {
                 console.error('[Journal Month Fetch Error]', err);
                 if (isMounted) {
-                    const fallback = journals.filter(j => j.date && j.date.startsWith(selectedPeriod));
+                    let fallback = journals;
+                    if (filterStartDate || filterEndDate) {
+                        fallback = fallback.filter(j => {
+                            const d = (j.date || '').slice(0, 10);
+                            const matchStart = !filterStartDate || d >= filterStartDate;
+                            const matchEnd = !filterEndDate || d <= filterEndDate;
+                            return matchStart && matchEnd;
+                        });
+                    } else if (selectedPeriod && selectedPeriod !== 'ALL' && selectedPeriod !== 'CUSTOM') {
+                        fallback = fallback.filter(j => j.date && j.date.startsWith(selectedPeriod));
+                    }
                     setMonthJournals(fallback);
                     setMonthTotalCount(fallback.length);
                 }
@@ -176,7 +197,7 @@ export default function JournalEntry() {
             });
 
         return () => { isMounted = false; };
-    }, [selectedPeriod]);
+    }, [selectedPeriod, filterStartDate, filterEndDate]);
 
     const getColLetter = (colIndex) => {
         let temp = '', letter = '';
@@ -692,12 +713,9 @@ export default function JournalEntry() {
         return !entries.some(isEntryPending);
     };
 
-    const activeJournals = selectedPeriod === 'LATEST_500' ? journals : monthJournals;
+    const activeJournals = monthJournals;
 
-    const countTotal = selectedPeriod === 'LATEST_500' 
-        ? (state.totalJournalsCount || journals.length) 
-        : (monthTotalCount ?? activeJournals.length);
-
+    const countTotal = monthTotalCount ?? activeJournals.length;
     const countDone = activeJournals.filter(j => isJournalComplete(j)).length;
     const countPending = activeJournals.filter(j => isJournalPending(j)).length;
 
@@ -1302,9 +1320,7 @@ export default function JournalEntry() {
                 const updated = { ...payload, id: editingJournal.id, isDeleted: false };
                 dispatch({ type: 'EDIT_JOURNAL', payload: updated });
                 await api.pushAction({ type: 'EDIT_JOURNAL', payload: updated }, state);
-                if (selectedPeriod !== 'LATEST_500') {
-                    setMonthJournals(prev => prev.map(j => j.id === editingJournal.id ? { ...j, ...updated } : j));
-                }
+                setMonthJournals(prev => prev.map(j => j.id === editingJournal.id ? { ...j, ...updated } : j));
                 setEditingJournal(null);
                 alert('Jurnal berhasil diperbarui!');
             } else {
@@ -1312,9 +1328,7 @@ export default function JournalEntry() {
                 const newJournal = { ...payload, id: newId, isDeleted: false };
                 dispatch({ type: 'ADD_JOURNAL', payload: newJournal });
                 await api.pushAction({ type: 'ADD_JOURNAL', payload: newJournal }, state);
-                if (selectedPeriod !== 'LATEST_500' && date.startsWith(selectedPeriod)) {
-                    setMonthJournals(prev => [newJournal, ...prev]);
-                }
+                setMonthJournals(prev => [newJournal, ...prev]);
                 alert('Jurnal berhasil diposting!');
             }
             resetForm();
@@ -1339,9 +1353,7 @@ export default function JournalEntry() {
         if (window.confirm('Yakin ingin menghapus jurnal ini? Jurnal akan dipindahkan ke tempat sampah.')) {
             dispatch({ type: 'DELETE_JOURNAL', payload: id });
             await api.pushAction({ type: 'DELETE_JOURNAL', payload: id }, state);
-            if (selectedPeriod !== 'LATEST_500') {
-                setMonthJournals(prev => prev.filter(j => j.id !== id));
-            }
+            setMonthJournals(prev => prev.filter(j => j.id !== id));
             alert('Jurnal berhasil dipindahkan ke tempat sampah.');
         }
     };
@@ -1514,9 +1526,11 @@ export default function JournalEntry() {
                             <div className="mt-4">
                                 <h3 className="text-3xl font-black text-slate-800">{countTotal.toLocaleString('id-ID')}</h3>
                                 <p className="text-xs text-slate-400 font-bold mt-1">
-                                    {selectedPeriod === 'LATEST_500' 
-                                        ? `Menampilkan 500 terbaru dari ${(state.totalJournalsCount || countTotal).toLocaleString('id-ID')} di database` 
-                                        : `Transaksi bulan ${formatMonthLabel(selectedPeriod)}`}
+                                    {filterStartDate || filterEndDate 
+                                        ? `Periode: ${filterStartDate || 'Awal'} s.d. ${filterEndDate || 'Akhir'}` 
+                                        : selectedPeriod === 'ALL'
+                                            ? 'Total keseluruhan transaksi jurnal'
+                                            : `Transaksi bulan ${formatMonthLabel(selectedPeriod)}`}
                                 </p>
                             </div>
                         </div>
@@ -1547,12 +1561,12 @@ export default function JournalEntry() {
                                             Klik untuk lihat
                                         </span>
                                     )}
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Terisi COA</span>
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Terisi COA (Berpasangan)</span>
                                 </div>
                             </div>
                             <div className="mt-4">
                                 <h3 className="text-3xl font-black text-emerald-700">{countDone.toLocaleString('id-ID')}</h3>
-                                <p className="text-xs text-emerald-600/80 font-bold mt-1">Transaksi dengan akun lengkap</p>
+                                <p className="text-xs text-emerald-600/80 font-bold mt-1">Transaksi dengan akun berpasangan lengkap</p>
                             </div>
                         </div>
 
@@ -1650,13 +1664,64 @@ export default function JournalEntry() {
                                                     <select 
                                                         className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2"
                                                         value={selectedPeriod}
-                                                        onChange={e => setSelectedPeriod(e.target.value)}
+                                                        onChange={e => {
+                                                            const val = e.target.value;
+                                                            setSelectedPeriod(val);
+                                                            if (val !== 'CUSTOM') {
+                                                                setFilterStartDate('');
+                                                                setFilterEndDate('');
+                                                            }
+                                                            setCurrentPage(1);
+                                                        }}
                                                     >
                                                         {availableMonths.map(opt => (
                                                             <option key={opt.value} value={opt.value}>{opt.label}</option>
                                                         ))}
                                                     </select>
                                                     {isLoadingPeriod && <Loader2 size={14} className="animate-spin text-blue-600 shrink-0" />}
+                                                </div>
+
+                                                {/* Filter Rentang Tanggal (Dari Tanggal s/d Tanggal) */}
+                                                <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 py-1.5 shadow-sm shrink-0">
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Dari:</span>
+                                                    <input 
+                                                        type="date"
+                                                        value={filterStartDate}
+                                                        onChange={e => {
+                                                            setFilterStartDate(e.target.value);
+                                                            setSelectedPeriod('CUSTOM');
+                                                            setCurrentPage(1);
+                                                        }}
+                                                        className="text-xs font-bold text-slate-700 bg-transparent border-none outline-none cursor-pointer"
+                                                        title="Filter dari tanggal"
+                                                    />
+                                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider">s/d</span>
+                                                    <input 
+                                                        type="date"
+                                                        value={filterEndDate}
+                                                        onChange={e => {
+                                                            setFilterEndDate(e.target.value);
+                                                            setSelectedPeriod('CUSTOM');
+                                                            setCurrentPage(1);
+                                                        }}
+                                                        className="text-xs font-bold text-slate-700 bg-transparent border-none outline-none cursor-pointer"
+                                                        title="Filter sampai tanggal"
+                                                    />
+                                                    {(filterStartDate || filterEndDate) && (
+                                                        <button 
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setFilterStartDate('');
+                                                                setFilterEndDate('');
+                                                                setSelectedPeriod('ALL');
+                                                                setCurrentPage(1);
+                                                            }}
+                                                            title="Hapus Filter Tanggal (Tampilkan Semua)"
+                                                            className="p-1 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors ml-1 cursor-pointer"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
 
                                                 {/* Filter Program */}
