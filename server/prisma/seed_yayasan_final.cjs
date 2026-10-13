@@ -35,7 +35,7 @@ async function main() {
         { id: '1-2100', code: '1-2100', name: 'Aset Tetap', type: 'Aset', subType: 'Aset', isParent: true, parentId: '1-2000', level: 2 },
         { id: '1-2101', code: '1-2101', name: 'Tanah', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
         { id: '1-2102', code: '1-2102', name: 'Bangunan & Renovasi', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
-        { id: '1-2103', code: '1-2103', name: 'Peralatan Kantor & Mesin', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
+        { id: '1-2103', code: '1-2103', name: 'Peralatan', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
         { id: '1-2104', code: '1-2104', name: 'Kendaraan Operasional', type: 'Aset', subType: 'Aset', parentId: '1-2100', level: 3 },
 
         { id: '1-2900', code: '1-2900', name: 'Akumulasi Penyusutan', type: 'Aset', subType: 'Aset', isParent: true, parentId: '1-2000', level: 2 },
