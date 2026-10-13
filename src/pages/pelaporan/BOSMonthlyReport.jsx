@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
 import { formatRupiah } from '../../utils/format';
 import { getComponentKeterangan } from '../../utils/budgetEngine';
+import { getAssetDefaultDetails } from '../../utils/depreciation';
 import * as XLSX from 'xlsx';
 
 // ─── Badge Kategori Aset ─────────────────────────────────────────────────────
@@ -542,7 +543,7 @@ export default function BOSMonthlyReport() {
     });
     const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
 
-    const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser, accounts = [] } = state;
+    const { budgetRequests = [], budgetReports = [], expenseItems = [], rabPlans = [], units = [], fields = [], globalAcademicYearId, currentUser, accounts = [], assetCategories = [] } = state;
 
     const monthOptions = useMemo(() => {
         const set = new Set();
@@ -1622,6 +1623,16 @@ export default function BOSMonthlyReport() {
     const handleOpenReportForm = (item) => {
         setEditingDraftId(null);
         setSelectedRequest(item); // Note: item contains both component info and reqId
+
+        const expItem = expenseItems.find(e => e.id === item.expenseItemId || e.id === item.mataAnggaranId);
+        const debitAcc = accounts.find(a => a.id === item.coaId || a.id === item.accountId || a.id === expItem?.coaId || a.id === expItem?.accountId || a.code === expItem?.code);
+        const defaultAsset = getAssetDefaultDetails({
+            item,
+            expenseItem: expItem,
+            account: debitAcc,
+            assetCategories
+        });
+
         setFormData({
             date: new Date().toISOString().split('T')[0],
             amount: item.sisa > 0 ? item.sisa : 0,
@@ -1632,8 +1643,8 @@ export default function BOSMonthlyReport() {
             satuan: '',
             harga: '',
             diskon: '',
-            kategoriAset: 'NON_ASET',
-            umurEkonomis: ''
+            kategoriAset: defaultAsset.isAsset ? 'ASET' : 'NON_ASET',
+            umurEkonomis: defaultAsset.isAsset ? (defaultAsset.umurEkonomis || '4') : ''
         });
         setShowReportForm(true);
     };
@@ -1673,6 +1684,18 @@ export default function BOSMonthlyReport() {
         
         setSelectedRequest(item);
         setEditingDraftId(draft.id);
+
+        const expItem = expenseItems.find(e => e.id === item.expenseItemId || e.id === item.mataAnggaranId);
+        const debitAcc = accounts.find(a => a.id === item.coaId || a.id === item.accountId || a.id === expItem?.coaId || a.id === expItem?.accountId || a.code === expItem?.code);
+        const defaultAsset = getAssetDefaultDetails({
+            item,
+            expenseItem: expItem,
+            account: debitAcc,
+            assetCategories
+        });
+        const initialKategori = draft.kategoriAset || (defaultAsset.isAsset ? 'ASET' : 'NON_ASET');
+        const initialUmur = draft.umurEkonomis || (initialKategori === 'ASET' ? (defaultAsset.umurEkonomis || '4') : '');
+
         setFormData({
             date: draft.date ? draft.date.split('T')[0] : new Date().toISOString().split('T')[0],
             amount: parseFloat(draft.amount || 0),
@@ -1683,8 +1706,8 @@ export default function BOSMonthlyReport() {
             satuan: draft.satuan || '',
             harga: draft.harga || '',
             diskon: draft.diskon || '',
-            kategoriAset: draft.kategoriAset || 'NON_ASET',
-            umurEkonomis: draft.umurEkonomis || ''
+            kategoriAset: initialKategori,
+            umurEkonomis: initialUmur
         });
         setShowReportForm(true);
     };
@@ -3375,7 +3398,22 @@ export default function BOSMonthlyReport() {
                                         { val: 'ASET', label: 'Aset', sub: 'Barang inventaris / Tetap' }].map(opt => (
                                             <div
                                                 key={opt.val}
-                                                onClick={() => setFormData({ ...formData, kategoriAset: opt.val, umurEkonomis: '' })}
+                                                onClick={() => {
+                                                    const isNowAsset = opt.val === 'ASET';
+                                                    let resolvedUmur = '';
+                                                    if (isNowAsset) {
+                                                        const expItem = expenseItems.find(e => e.id === selectedRequest?.expenseItemId || e.id === selectedRequest?.mataAnggaranId);
+                                                        const debitAcc = accounts.find(a => a.id === selectedRequest?.coaId || a.id === selectedRequest?.accountId || a.id === expItem?.coaId || a.id === expItem?.accountId || a.code === expItem?.code);
+                                                        const defaultAsset = getAssetDefaultDetails({
+                                                            item: selectedRequest,
+                                                            expenseItem: expItem,
+                                                            account: debitAcc,
+                                                            assetCategories
+                                                        });
+                                                        resolvedUmur = defaultAsset.umurEkonomis || formData.umurEkonomis || '4';
+                                                    }
+                                                    setFormData({ ...formData, kategoriAset: opt.val, umurEkonomis: resolvedUmur });
+                                                }}
                                                 className={`p-5 rounded-2xl border-2 cursor-pointer transition-all ${formData.kategoriAset === opt.val
                                                     ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
                                                     : 'border-slate-100 hover:border-slate-200 text-slate-600'

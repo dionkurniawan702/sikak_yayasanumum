@@ -729,6 +729,8 @@ export default function MonthlyRequest() {
                         expenseItemId: c.expenseItemId,
                         isAsset: isAsset,
                         assetCategory: c.assetCategory || '',
+                        umurEkonomis: c.umurEkonomis || c.economicLife || '',
+                        economicLife: c.umurEkonomis || c.economicLife || '',
                         assetRoom: c.assetRoom || '',
                         assetProcurementType: c.assetProcurementType || 'BARU',
                         assetName: c.assetName || c.namaAset || c.label || c.name || '',

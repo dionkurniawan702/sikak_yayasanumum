@@ -247,6 +247,8 @@ function RABContent() {
         isAsset: false,
         assetName: '',
         assetCategory: '',
+        umurEkonomis: '',
+        economicLife: '',
         assetRoom: '',
         assetProcurementType: 'BARU',
         sarprasStatus: null,
@@ -1260,6 +1262,9 @@ function RABContent() {
             newSarprasStatus = null;
         }
 
+        const matchedCat = assetCategories.find(c => c.name === entryForm.assetCategory || c.id === entryForm.assetCategory);
+        const resolvedUmur = entryForm.umurEkonomis || entryForm.economicLife || matchedCat?.economicLife || 4;
+
         const newComp = {
             ...entryForm,
             volume: parseFloat(entryForm.volume),
@@ -1272,6 +1277,8 @@ function RABContent() {
             assetName: entryForm.isAsset ? (entryForm.assetName || entryForm.label || '') : '',
             namaAset: entryForm.isAsset ? (entryForm.assetName || entryForm.label || '') : '',
             assetCategory: entryForm.isAsset ? (entryForm.assetCategory || '') : '',
+            umurEkonomis: entryForm.isAsset ? String(resolvedUmur) : null,
+            economicLife: entryForm.isAsset ? String(resolvedUmur) : null,
             assetRoom: entryForm.isAsset ? (entryForm.assetRoom || '') : '',
             assetProcurementType: entryForm.isAsset ? (entryForm.assetProcurementType || 'BARU') : 'BARU',
             sarprasStatus: newSarprasStatus,
@@ -5618,7 +5625,7 @@ function RABContent() {
                                                                     <Package size={40} className="mx-auto text-slate-300 mb-4 opacity-30" />
                                                                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest opacity-50">Belum ada rincian belanja</p>
                                                                     <button
-                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
+                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', umurEkonomis: '', economicLife: '', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                         className="mt-6 px-6 py-3 bg-blue-50 text-blue-600 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all mx-auto inline-flex items-center gap-2"
                                                                     >
                                                                         <Plus size={16} strokeWidth={3} /> Tambah Rincian Pertama
@@ -5811,7 +5818,7 @@ function RABContent() {
                                                                     <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
                                                                         <div className="flex items-center gap-5">
                                                                             <button
-                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
+                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', umurEkonomis: '', economicLife: '', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
                                                                                 className="w-14 h-14 flex items-center justify-center bg-blue-600 text-white rounded-[1.25rem] shadow-lg shadow-blue-200 hover:scale-105 transition-all"
                                                                             >
                                                                                 <Plus size={24} strokeWidth={3} />
@@ -6035,12 +6042,20 @@ function RABContent() {
                                                                             type="checkbox" 
                                                                             disabled={isReadOnlyComp} 
                                                                             checked={!!entryForm.isAsset} 
-                                                                            onChange={e => setEntryForm({ 
-                                                                                ...entryForm, 
-                                                                                isAsset: e.target.checked,
-                                                                                assetName: e.target.checked ? (entryForm.assetName || entryForm.label || '') : '',
-                                                                                assetCategory: e.target.checked ? (entryForm.assetCategory || assetCategories[0]?.name || '') : ''
-                                                                            })} 
+                                                                            onChange={e => {
+                                                                                const isChecked = e.target.checked;
+                                                                                const catName = entryForm.assetCategory || assetCategories[0]?.name || '';
+                                                                                const matchedCat = assetCategories.find(c => c.name === catName || c.id === catName);
+                                                                                const catLife = matchedCat?.economicLife ? String(matchedCat.economicLife) : '4';
+                                                                                setEntryForm({ 
+                                                                                    ...entryForm, 
+                                                                                    isAsset: isChecked,
+                                                                                    assetName: isChecked ? (entryForm.assetName || entryForm.label || '') : '',
+                                                                                    assetCategory: isChecked ? catName : '',
+                                                                                    umurEkonomis: isChecked ? (entryForm.umurEkonomis || catLife) : '',
+                                                                                    economicLife: isChecked ? (entryForm.economicLife || catLife) : ''
+                                                                                });
+                                                                            }} 
                                                                             className="sr-only peer" 
                                                                         />
                                                                         <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
@@ -6082,7 +6097,7 @@ function RABContent() {
                                                                             </datalist>
                                                                         </div>
 
-                                                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                                                             {/* Dropdown Kategori Aset */}
                                                                             <div className="space-y-1">
                                                                                 <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
@@ -6092,7 +6107,17 @@ function RABContent() {
                                                                                     disabled={isReadOnlyComp} 
                                                                                     className="w-full p-3 bg-white border-2 border-indigo-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all disabled:opacity-75"
                                                                                     value={entryForm.assetCategory || ''} 
-                                                                                    onChange={e => setEntryForm({ ...entryForm, assetCategory: e.target.value })}
+                                                                                    onChange={e => {
+                                                                                        const val = e.target.value;
+                                                                                        const matchedCat = assetCategories.find(c => c.name === val || c.id === val);
+                                                                                        const catLife = matchedCat?.economicLife ? String(matchedCat.economicLife) : (entryForm.umurEkonomis || '4');
+                                                                                        setEntryForm({ 
+                                                                                            ...entryForm, 
+                                                                                            assetCategory: val,
+                                                                                            umurEkonomis: catLife,
+                                                                                            economicLife: catLife
+                                                                                        });
+                                                                                    }}
                                                                                 >
                                                                                     <option value="">— Pilih Kategori Aset —</option>
                                                                                     {assetCategories.map(cat => (
@@ -6103,13 +6128,34 @@ function RABContent() {
                                                                                 </select>
                                                                             </div>
 
+                                                                            {/* Umur Ekonomis (Tahun) */}
+                                                                            <div className="space-y-1">
+                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">
+                                                                                    Umur Ekonomis (Thn)
+                                                                                </label>
+                                                                                <input 
+                                                                                    type="number"
+                                                                                    min="1"
+                                                                                    max="50"
+                                                                                    disabled={isReadOnlyComp}
+                                                                                    placeholder="Contoh: 4, 8, 20"
+                                                                                    className="w-full p-3 bg-white border-2 border-indigo-100 rounded-xl text-xs font-bold text-slate-800 outline-none focus:border-indigo-500 transition-all disabled:opacity-75"
+                                                                                    value={entryForm.umurEkonomis || entryForm.economicLife || ''}
+                                                                                    onChange={e => setEntryForm({ 
+                                                                                        ...entryForm, 
+                                                                                        umurEkonomis: e.target.value,
+                                                                                        economicLife: e.target.value 
+                                                                                    })}
+                                                                                />
+                                                                            </div>
+
                                                                             {/* Sifat Pengadaan */}
                                                                             <div className="space-y-1">
-                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">Sifat Pengadaan Aset</label>
+                                                                                <label className="text-[10px] font-black text-indigo-950 uppercase tracking-widest italic ml-1">Sifat Pengadaan</label>
                                                                                 <div className="grid grid-cols-2 gap-2 h-[46px]">
                                                                                     {[
-                                                                                        { id: 'BARU', label: 'Penambahan Baru' },
-                                                                                        { id: 'PENGGANTIAN', label: 'Penggantian Rusak' }
+                                                                                        { id: 'BARU', label: 'Baru' },
+                                                                                        { id: 'PENGGANTIAN', label: 'Penggantian' }
                                                                                     ].map(opt => (
                                                                                         <button
                                                                                             key={opt.id}
