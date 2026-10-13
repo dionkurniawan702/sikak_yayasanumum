@@ -1421,6 +1421,21 @@ export default function MonthlyRequest() {
                         updated.transferJournalId = prevJournal.id;
                         dispatch({ type: 'EDIT_JOURNAL', payload: updatedJournal });
                         await api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                    } else if (req.transferJournalId) {
+                        const updatedJournal = {
+                            id: req.transferJournalId,
+                            reference: `TRF-${req.id}`,
+                            date: trfJournal.date,
+                            name: trfJournal.name,
+                            description: trfJournal.description,
+                            entries: trfJournal.entries
+                        };
+                        dispatch({ type: 'EDIT_JOURNAL', payload: updatedJournal });
+                        await api.pushAction({ type: 'EDIT_JOURNAL', payload: updatedJournal }, state).catch(e => console.error('Transfer Journal sync error:', e));
+                    } else if (reviewRequest.isAlreadyApproved) {
+                        // Jika sudah approved sebelumnya, transfer journal sudah ada di server.
+                        // Jangan buat jurnal baru via ADD_JOURNAL; server akan mensinkronkan via syncBudgetRequestTransferJournal.
+                        dispatch({ type: 'EDIT_JOURNAL', payload: trfJournal });
                     } else {
                         updated.transferJournalId = trfJournal.id;
                         dispatch({ type: 'ADD_JOURNAL', payload: trfJournal });

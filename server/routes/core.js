@@ -267,7 +267,29 @@ router.get('/journals', async (req, res) => {
 router.post('/journals', async (req, res) => {
     try {
         const { id, date, name, description, entries, reference, programId, phoneNumber } = req.body;
-        const data = await getPrisma(req).journal.create({
+        const prisma = getPrisma(req);
+
+        // Idempotent safeguard: Jika jurnal transfer pencairan dana sudah ada, update jurnal tersebut dan jangan menduplikasi
+        if (reference && (reference.startsWith('TRF-REQ-') || reference.startsWith('TRF-'))) {
+            const existing = await prisma.journal.findFirst({
+                where: { reference, isDeleted: false }
+            });
+            if (existing) {
+                const updated = await prisma.journal.update({
+                    where: { id: existing.id },
+                    data: {
+                        date: date ? new Date(date) : existing.date,
+                        name: name || existing.name,
+                        description: description || existing.description,
+                        entries: typeof entries === 'string' ? JSON.parse(entries) : entries,
+                        programId: programId || existing.programId
+                    }
+                });
+                return res.json({ data: updated });
+            }
+        }
+
+        const data = await prisma.journal.create({
             data: {
                 id,
                 date: date ? new Date(date) : new Date(),
