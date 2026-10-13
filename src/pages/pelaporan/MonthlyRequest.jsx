@@ -858,13 +858,36 @@ export default function MonthlyRequest() {
 
         // 1. Akun Kas Operasional Unit (Sisi DEBIT Pencairan & Sisi KREDIT Belanja LPJ)
         const unitKasAccounts = cashBankAccounts.filter(isUnitKasAccount);
-        const matchedUnitKasAcc = unitKasAccounts.find(a => {
-            const accName = (a.name || '').toLowerCase();
-            const accCode = (a.code || '').toLowerCase();
-            if (unitNameLower && accName.includes(unitNameLower)) return true;
-            if (unitCodeLower && (accName.includes(unitCodeLower) || accCode.includes(unitCodeLower))) return true;
-            return false;
-        }) || unitKasAccounts.find(a => unitCodeLower && a.name.toLowerCase().includes(unitCodeLower)) || unitKasAccounts[0] || null;
+        const UNIT_KAS_CODE_MAP = {
+            'a8ada0ad-5b27-487c-9448-dfeb34f93761': '1-1142', // SDIT 1
+            'mny1yb4u91eun': '1-1143',                         // TKIT 1
+            'mo7xk4tfhzmqk': '1-1150',                         // SDIT 2
+            'mo7xyewb1btcu': '1-1151',                         // SDIT 3
+            'mo7z16fiq1hja': '1-1152',                         // TKIT 2
+            'mo7z1fed83f1k': '1-1153',                         // TKIT 3
+            'mo7z3mschpyed': '1-1144',                         // TAUD
+            'mo7zeqb1gtuh9': '1-1145',                         // MIT
+            'mo80p9qllp9ko': '1-1141',                         // SMPIT PDG
+            'mo80r64xxxcep': '1-1140',                         // SMAIT
+            'mo82mp1zwj0yr': '1-1146',                         // PONPES PUTRA
+            'mo84ljcz1maso': '1-1147',                         // PONPES PUTRI
+            'mo84m04izb4ls': '1-1148',                         // SMPIT 5O KOTA
+            'mqko4qc4kgiru': '1-1149',                         // SDIT 50 KOTA
+        };
+
+        const targetKasCode = req.unitId ? UNIT_KAS_CODE_MAP[req.unitId] : null;
+        let matchedUnitKasAcc = targetKasCode ? unitKasAccounts.find(a => a.code === targetKasCode) : null;
+
+        if (!matchedUnitKasAcc) {
+            const cleanUnitName = unitNameLower.replace(/\s+/g, ' ').trim();
+            matchedUnitKasAcc = unitKasAccounts.find(a => {
+                const accName = (a.name || '').toLowerCase().replace(/\s+/g, ' ').trim();
+                const accCode = (a.code || '').toLowerCase();
+                if (cleanUnitName && accName.includes(cleanUnitName)) return true;
+                if (unitCodeLower && (accName.includes(unitCodeLower) || accCode.includes(unitCodeLower))) return true;
+                return false;
+            }) || null;
+        }
 
         // 2. Akun Bank Induk Yayasan (Sisi KREDIT Pencairan)
         const yayasanBankAccounts = cashBankAccounts.filter(isYayasanBankAccount);
@@ -1477,12 +1500,12 @@ export default function MonthlyRequest() {
                         if (!matchedItem && accItems.length === 1) {
                             matchedItem = accItems[0];
                         }
-                        if (matchedItem && (matchedItem.debitAccountId || matchedItem.creditAccountId)) {
-                            const repDebitId = matchedItem.debitAccountId || '';
-                            const repCreditId = matchedItem.creditAccountId || targetUnitBankAccountId || req.creditAccountId || '';
-                            const dAcc = accounts.find(a => a.id === repDebitId);
-                            const cAcc = accounts.find(a => a.id === repCreditId);
+                        const repDebitId = matchedItem?.debitAccountId || '';
+                        const repCreditId = matchedItem?.creditAccountId || targetUnitBankAccountId || req.creditAccountId || '';
+                        const dAcc = accounts.find(a => a.id === repDebitId);
+                        const cAcc = accounts.find(a => a.id === repCreditId);
 
+                        if (repDebitId || repCreditId) {
                             const repJrn = (state.journals || []).find(j => 
                                 (rep.journalId && j.id === rep.journalId) || 
                                 (rep.nomorNota && j.reference === rep.nomorNota) ||
@@ -1495,13 +1518,13 @@ export default function MonthlyRequest() {
                                     ...repJrn,
                                     entries: [
                                         {
-                                            accountId: repDebitId,
+                                            accountId: repDebitId || repJrn.entries[0]?.accountId || '',
                                             accountName: dAcc ? `${dAcc.code} - ${dAcc.name}` : (repJrn.entries[0]?.accountName || 'Debit'),
                                             debit: amount,
                                             credit: 0
                                         },
                                         {
-                                            accountId: repCreditId,
+                                            accountId: repCreditId || repJrn.entries[1]?.accountId || '',
                                             accountName: cAcc ? `${cAcc.code} - ${cAcc.name}` : (repJrn.entries[1]?.accountName || 'Kas / Bank'),
                                             debit: 0,
                                             credit: amount

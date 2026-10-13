@@ -1022,38 +1022,36 @@ async function syncLinkedBudgetReportsJournals(prisma, request) {
                 creditId = creditAcc?.id || '';
                 if (!debitId && !creditId) continue;
             } else {
-                if (items.length === 0) continue;
-
                 let matchedItem = null;
-                if (report.planId) {
-                    matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.id && i.id === report.planId));
-                }
-                const repCat = (report.category || '').trim().toLowerCase();
-                const repDesc = (report.description || '').trim().toLowerCase();
-                if (!matchedItem && repCat) {
-                    matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === repCat);
-                }
-                if (!matchedItem && repDesc) {
-                    matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === repDesc);
-                }
-                if (!matchedItem && repCat) {
-                    matchedItem = items.find(i => i.name && (repCat.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repCat)));
-                }
-                if (!matchedItem && repDesc) {
-                    matchedItem = items.find(i => i.name && (repDesc.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repDesc)));
-                }
-                if (!matchedItem && report.expenseItemId) {
-                    const sameExp = items.filter(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
-                    if (sameExp.length > 0) matchedItem = sameExp[0];
-                }
-                if (!matchedItem && items.length === 1) {
-                    matchedItem = items[0];
+                if (items && items.length > 0) {
+                    if (report.planId) {
+                        matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.id && i.id === report.planId));
+                    }
+                    const repCat = (report.category || '').trim().toLowerCase();
+                    const repDesc = (report.description || '').trim().toLowerCase();
+                    if (!matchedItem && repCat) {
+                        matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === repCat);
+                    }
+                    if (!matchedItem && repDesc) {
+                        matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === repDesc);
+                    }
+                    if (!matchedItem && repCat) {
+                        matchedItem = items.find(i => i.name && (repCat.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repCat)));
+                    }
+                    if (!matchedItem && repDesc) {
+                        matchedItem = items.find(i => i.name && (repDesc.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repDesc)));
+                    }
+                    if (!matchedItem && report.expenseItemId) {
+                        const sameExp = items.filter(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
+                        if (sameExp.length > 0) matchedItem = sameExp[0];
+                    }
+                    if (!matchedItem && items.length === 1) {
+                        matchedItem = items[0];
+                    }
                 }
 
-                if (!matchedItem) continue;
-
-                debitId = matchedItem.debitAccountId || '';
-                creditId = matchedItem.creditAccountId || request.targetUnitBankAccountId || '';
+                debitId = matchedItem?.debitAccountId || '';
+                creditId = matchedItem?.creditAccountId || request.targetUnitBankAccountId || '';
                 if (!creditId && report.unitId && report.unitId !== 'FOUNDATION' && report.unitId !== 'YAYASAN') {
                     const uKas = await resolveUnitKasAccount(prisma, report.unitId);
                     if (uKas) creditId = uKas.id;
