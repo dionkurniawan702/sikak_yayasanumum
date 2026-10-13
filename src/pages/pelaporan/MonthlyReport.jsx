@@ -358,6 +358,10 @@ function ReportRow({ report, units, expenseItems, rabPlans, budgetRequests, isSu
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-rose-50 text-rose-600 border border-rose-200">
                             Ditolak
                         </span>
+                    ) : report.status === 'DELETED' ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-slate-100 text-slate-500 border border-slate-300">
+                            Dihapus
+                        </span>
                     ) : (
                         <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[9px] font-black uppercase bg-emerald-50 text-emerald-600 border border-emerald-200">
                             ✓ Terverifikasi
@@ -879,6 +883,9 @@ export default function MonthlyReport() {
                             const reportName = (r.category || r.description || '').trim().toLowerCase();
                             const itemName = (item.name || '').trim().toLowerCase();
                             if (reportName && itemName && reportName === itemName) {
+                                if (item.expenseItemId && r.expenseItemId && item.expenseItemId !== r.expenseItemId) {
+                                    return false;
+                                }
                                 const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
                                 if (resolved && resolved.id === req.id) return true;
                                 const rReqId = r.budgetRequestId || r.requestId;
@@ -1633,6 +1640,7 @@ export default function MonthlyReport() {
         return (budgetReports || []).filter(rel => {
             const isYear = rel.academicYearId === globalAcademicYearId;
             if (!isYear) return false;
+            if (rel.isDeleted || rel.status === 'DELETED') return false;
 
             // Filter by source
             const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');

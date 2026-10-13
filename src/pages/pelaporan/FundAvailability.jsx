@@ -470,10 +470,15 @@ export default function FundAvailability() {
             const itemsDetail = reqItems.map(item => {
                 const itemAmt = parseFloat(item.amount || 0);
                 const itemReports = matchingReports.filter(r => {
-                    if (item.componentId && r.componentId === item.componentId) return true;
+                    if (item.componentId && r.componentId && r.componentId === item.componentId) return true;
                     const rName = (r.category || r.description || '').trim().toLowerCase();
                     const iName = (item.name || '').trim().toLowerCase();
-                    return rName && iName && rName === iName;
+                    if (!rName || !iName || rName !== iName) return false;
+                    // Prevent cross-account contamination if expenseItemId is specified on both
+                    if (item.expenseItemId && r.expenseItemId && item.expenseItemId !== r.expenseItemId) {
+                        return false;
+                    }
+                    return true;
                 });
 
                 const usedAmt = itemReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
@@ -535,7 +540,18 @@ export default function FundAvailability() {
 
         relevantReturns.forEach(ret => {
             const retAmt = parseFloat(ret.amount || 0);
+            if (retAmt <= 0) return;
+
             const resolvedReq = resolveReportRequest(ret, budgetRequests, globalAcademicYearId);
+            const targetReqId = ret.budgetRequestId || ret.requestId || resolvedReq?.id;
+            
+            // If the return is explicitly linked or resolved to a known budget request,
+            // it belongs specifically to that request (e.g. July/August request) and must
+            // NEVER leak as surplus into other months when filtering.
+            if (targetReqId) {
+                return;
+            }
+
             const isDirectMatched = initialCards.some(c =>
                 (ret.budgetRequestId && c.req.id === ret.budgetRequestId) ||
                 (ret.requestId && c.req.id === ret.requestId) ||
