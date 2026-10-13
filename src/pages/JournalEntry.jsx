@@ -4,7 +4,7 @@ import { formatRupiah, formatTanggal, generateId } from '../utils/format';
 import {
     Plus, Trash2, Save, AlertTriangle, CheckCircle, Calendar, FileText,
     Hash, Receipt, Phone, Hourglass, List, PenLine, Download, Upload, History, Info, Pencil, X, Users, Search, FileSpreadsheet,
-    ChevronLeft, ChevronRight, Loader2, ArrowUpDown
+    ChevronLeft, ChevronRight, Loader2, ArrowUpDown, Building2
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -17,6 +17,7 @@ export default function JournalEntry() {
     const accounts = state.accounts.filter(a => !a.isDeleted);
     const journals = state.journals.filter(j => !j.isDeleted);
     const programs = state.programs.filter(p => !p.isDeleted);
+    const units = (state.units || []).filter(u => !u.isDeleted);
     const detailAccounts = accounts
         .filter(a => a.category === 'detail')
         .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
@@ -46,6 +47,7 @@ export default function JournalEntry() {
     const [confirmingDeleteId, setConfirmingDeleteId] = useState(null);
     const [historySearch, setHistorySearch] = useState('');
     const [historyStatusFilter, setHistoryStatusFilter] = useState('ALL');
+    const [historyUnitFilter, setHistoryUnitFilter] = useState('ALL');
     const [historyProgramFilter, setHistoryProgramFilter] = useState('ALL');
     const [historyAccountFilter, setHistoryAccountFilter] = useState('ALL');
     const [selectedPeriod, setSelectedPeriod] = useState('ALL'); // 'ALL' | 'CUSTOM' | 'YYYY-MM'
@@ -713,11 +715,45 @@ export default function JournalEntry() {
         return !entries.some(isEntryPending);
     };
 
+    const isJournalMatchingUnit = (j, unitFilter) => {
+        if (!unitFilter || unitFilter === 'ALL') return true;
+        if (unitFilter === 'YAYASAN') {
+            const jNameLower = (j.name || '').trim().toLowerCase();
+            return jNameLower === 'yayasan' || jNameLower === 'pusat' || !j.name;
+        }
+        const targetUnit = units.find(u => u.id === unitFilter);
+        if (!targetUnit) return true;
+
+        if (j.unitId && (j.unitId === targetUnit.id || j.unitId === targetUnit.code)) return true;
+        if (j.budgetReport?.unitId && (j.budgetReport.unitId === targetUnit.id || j.budgetReport.unitId === targetUnit.code)) return true;
+
+        const uNameLower = (targetUnit.name || '').trim().toLowerCase();
+        if (!uNameLower) return true;
+
+        const jNameLower = (j.name || '').trim().toLowerCase();
+        if (jNameLower === uNameLower || jNameLower.includes(uNameLower) || uNameLower.includes(jNameLower)) return true;
+
+        const jDescLower = (j.description || '').toLowerCase();
+        if (jDescLower.includes(`- ${uNameLower}`) || jDescLower.includes(`: ${uNameLower}`) || jDescLower.includes(` ${uNameLower} `)) return true;
+
+        const entries = Array.isArray(j.entries) ? j.entries : (typeof j.entries === 'string' ? JSON.parse(j.entries) : []);
+        return entries.some(e => {
+            const accNameLower = (e.accountName || '').toLowerCase();
+            return accNameLower.includes('kas unit') && accNameLower.includes(uNameLower);
+        });
+    };
+
     const activeJournals = monthJournals;
 
-    const countTotal = monthTotalCount ?? activeJournals.length;
-    const countDone = activeJournals.filter(j => isJournalComplete(j)).length;
-    const countPending = activeJournals.filter(j => isJournalPending(j)).length;
+    const unitFilteredJournals = historyUnitFilter !== 'ALL' 
+        ? activeJournals.filter(j => isJournalMatchingUnit(j, historyUnitFilter))
+        : activeJournals;
+
+    const countTotal = historyUnitFilter !== 'ALL' 
+        ? unitFilteredJournals.length 
+        : (monthTotalCount ?? activeJournals.length);
+    const countDone = unitFilteredJournals.filter(j => isJournalComplete(j)).length;
+    const countPending = unitFilteredJournals.filter(j => isJournalPending(j)).length;
 
     const filteredJournals = activeJournals
         .filter(j => !j.isDeleted)
@@ -727,6 +763,12 @@ export default function JournalEntry() {
             }
             if (historyStatusFilter === 'DONE') {
                 return isJournalComplete(j);
+            }
+            return true;
+        })
+        .filter(j => {
+            if (historyUnitFilter !== 'ALL') {
+                return isJournalMatchingUnit(j, historyUnitFilter);
             }
             return true;
         })
@@ -761,6 +803,7 @@ export default function JournalEntry() {
     const openExportModal = (format = 'DETAILED') => {
         setExportFormat(format);
         setExportError(null);
+        if (historyUnitFilter !== 'ALL') setExportUnitId(historyUnitFilter);
         if (historyProgramFilter !== 'ALL') setExportProgramId(historyProgramFilter);
         if (historyAccountFilter !== 'ALL') setExportAccountId(historyAccountFilter);
         setIsExportModalOpen(true);
@@ -1531,6 +1574,7 @@ export default function JournalEntry() {
                                         : selectedPeriod === 'ALL'
                                             ? 'Total keseluruhan transaksi jurnal'
                                             : `Transaksi bulan ${formatMonthLabel(selectedPeriod)}`}
+                                    {historyUnitFilter !== 'ALL' && ` • ${historyUnitFilter === 'YAYASAN' ? 'Yayasan / Pusat' : (units.find(u => u.id === historyUnitFilter)?.name || 'Unit')}`}
                                 </p>
                             </div>
                         </div>
@@ -1722,6 +1766,23 @@ export default function JournalEntry() {
                                                             <X size={14} />
                                                         </button>
                                                     )}
+                                                </div>
+
+                                                {/* Filter Unit */}
+                                                <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-sm shrink-0">
+                                                    <Building2 size={14} className="text-blue-600 shrink-0" />
+                                                    <select 
+                                                        className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2 max-w-[140px] truncate"
+                                                        value={historyUnitFilter}
+                                                        onChange={e => { setHistoryUnitFilter(e.target.value); setCurrentPage(1); }}
+                                                        title="Filter Berdasarkan Unit Sekolah / Lembaga"
+                                                    >
+                                                        <option value="ALL">Semua Unit</option>
+                                                        <option value="YAYASAN">Yayasan / Pusat</option>
+                                                        {units.map(u => (
+                                                            <option key={u.id} value={u.id}>{u.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
 
                                                 {/* Filter Program */}
