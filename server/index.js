@@ -285,17 +285,27 @@ const getPrisma = () => {
                                     const items = Array.isArray(parentReq.items)
                                         ? parentReq.items
                                         : (typeof parentReq.items === 'string' ? JSON.parse(parentReq.items) : []);
-
                                     let matchedItem = null;
                                     if (report.planId) {
-                                        matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.planId && i.planId === report.planId));
+                                        matchedItem = items.find(i => (i.componentId && i.componentId === report.planId) || (i.id && i.id === report.planId));
+                                    }
+                                    const repCat = (report.category || '').trim().toLowerCase();
+                                    const repDesc = (report.description || '').trim().toLowerCase();
+                                    if (!matchedItem && repCat) {
+                                        matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === repCat);
+                                    }
+                                    if (!matchedItem && repDesc) {
+                                        matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === repDesc);
+                                    }
+                                    if (!matchedItem && repCat) {
+                                        matchedItem = items.find(i => i.name && (repCat.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repCat)));
+                                    }
+                                    if (!matchedItem && repDesc) {
+                                        matchedItem = items.find(i => i.name && (repDesc.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repDesc)));
                                     }
                                     if (!matchedItem && report.expenseItemId) {
-                                        matchedItem = items.find(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
-                                    }
-                                    if (!matchedItem && report.description) {
-                                        const d = report.description.trim().toLowerCase();
-                                        matchedItem = items.find(i => i.name && i.name.trim().toLowerCase() === d);
+                                        const sameExp = items.filter(i => i.expenseItemId === report.expenseItemId || i.componentId === report.expenseItemId);
+                                        if (sameExp.length > 0) matchedItem = sameExp[0];
                                     }
                                     if (!matchedItem && items.length === 1) {
                                         matchedItem = items[0];

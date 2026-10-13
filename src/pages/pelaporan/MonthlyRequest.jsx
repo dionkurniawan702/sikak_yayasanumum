@@ -1452,14 +1452,25 @@ export default function MonthlyRequest() {
 
                         let matchedItem = null;
                         if (rep.planId) {
-                            matchedItem = accItems.find(i => (i.componentId && i.componentId === rep.planId) || (i.planId && i.planId === rep.planId));
+                            matchedItem = accItems.find(i => (i.componentId && i.componentId === rep.planId) || (i.id && i.id === rep.planId));
+                        }
+                        const repCat = (rep.category || '').trim().toLowerCase();
+                        const repDesc = (rep.description || '').trim().toLowerCase();
+                        if (!matchedItem && repCat) {
+                            matchedItem = accItems.find(i => i.name && i.name.trim().toLowerCase() === repCat);
+                        }
+                        if (!matchedItem && repDesc) {
+                            matchedItem = accItems.find(i => i.name && i.name.trim().toLowerCase() === repDesc);
+                        }
+                        if (!matchedItem && repCat) {
+                            matchedItem = accItems.find(i => i.name && (repCat.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repCat)));
+                        }
+                        if (!matchedItem && repDesc) {
+                            matchedItem = accItems.find(i => i.name && (repDesc.includes(i.name.trim().toLowerCase()) || i.name.trim().toLowerCase().includes(repDesc)));
                         }
                         if (!matchedItem && rep.expenseItemId) {
-                            matchedItem = accItems.find(i => i.expenseItemId === rep.expenseItemId || i.componentId === rep.expenseItemId);
-                        }
-                        if (!matchedItem && rep.description) {
-                            const d = rep.description.trim().toLowerCase();
-                            matchedItem = accItems.find(i => i.name && i.name.trim().toLowerCase() === d);
+                            const sameExp = accItems.filter(i => i.expenseItemId === rep.expenseItemId || i.componentId === rep.expenseItemId);
+                            if (sameExp.length > 0) matchedItem = sameExp[0];
                         }
                         if (!matchedItem && accItems.length === 1) {
                             matchedItem = accItems[0];
