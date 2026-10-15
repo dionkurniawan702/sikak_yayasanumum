@@ -41,8 +41,45 @@ const requireAuth = (req, res, next) => {
     } catch (err) {
         return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
     }
-};
-
+// Helper: Safe date parsing (handles Excel serial number e.g. 46301, DD-MM-YYYY, YYYY-MM-DD, etc.)
+function parseSafeDate(rawDate) {
+    if (!rawDate) return new Date();
+    if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+        return rawDate;
+    }
+    // Check if numeric or Excel serial number (e.g. 46301)
+    if (typeof rawDate === 'number' || (/^\d{4,6}(\.\d+)?$/.test(String(rawDate).trim()) && !String(rawDate).includes('-') && !String(rawDate).includes('/'))) {
+        const num = typeof rawDate === 'number' ? rawDate : parseFloat(String(rawDate).trim());
+        if (num > 1000 && num < 100000) {
+            const dateFromSerial = new Date(Math.round((num - 25569) * 86400 * 1000));
+            if (!isNaN(dateFromSerial.getTime())) {
+                return dateFromSerial;
+            }
+        }
+    }
+    const str = String(rawDate).trim();
+    // DD-MM-YYYY or DD/MM/YYYY
+    const ddmmyyyy = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (ddmmyyyy) {
+        const day = parseInt(ddmmyyyy[1], 10);
+        const month = parseInt(ddmmyyyy[2], 10) - 1;
+        const year = parseInt(ddmmyyyy[3], 10);
+        return new Date(Date.UTC(year, month, day));
+    }
+    // YYYY-MM-DD or YYYY/MM/DD
+    const yyyymmdd = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (yyyymmdd) {
+        const year = parseInt(yyyymmdd[1], 10);
+        const month = parseInt(yyyymmdd[2], 10) - 1;
+        const day = parseInt(yyyymmdd[3], 10);
+        return new Date(Date.UTC(year, month, day));
+    }
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime()) && parsed.getUTCFullYear() > 1990 && parsed.getUTCFullYear() < 2100) {
+        return parsed;
+    }
+    return new Date();
+}
 
 // --- FIELD & UNIT ---
 router.get('/fields', async (req, res) => {
@@ -1406,14 +1443,21 @@ router.post('/budget-reports', async (req, res) => {
                 }
             }
 
+            let calculatedHarga = (harga !== undefined && harga !== null && harga !== '') ? parseFloat(harga) : null;
+            const parsedVol = volume ? parseFloat(volume) : 1;
+            const parsedAmt = amount ? parseFloat(amount) : null;
+            if ((calculatedHarga === null || calculatedHarga <= 0) && parsedAmt && parsedVol > 0) {
+                calculatedHarga = Math.round(parsedAmt / parsedVol);
+            }
+
             // 1. Create Report with all fields
             const report = await tx.budgetReport.create({
                 data: {
                     id: id || undefined,
                     budgetRequestId: budgetRequestId || null,
-                    amount: amount ? parseFloat(amount) : null,
+                    amount: parsedAmt,
                     description: description || null,
-                    date: date ? new Date(date) : new Date(),
+                    date: parseSafeDate(date),
                     expenseItemId: actualExpenseItemId || null,
                     unitId: unitId || null,
                     fieldId: fieldId || null,
@@ -1426,7 +1470,7 @@ router.post('/budget-reports', async (req, res) => {
                     nomorNota: nomorNota || null,
                     volume: volume ? parseFloat(volume) : null,
                     satuan: satuan || null,
-                    harga: harga ? parseFloat(harga) : null,
+                    harga: calculatedHarga,
                     diskon: diskon ? parseFloat(diskon) : null,
                     kategoriAset: kategoriAset || 'NON_ASET',
                     umurEkonomis: umurEkonomis ? parseInt(umurEkonomis) : null,
@@ -1664,10 +1708,14 @@ router.put('/budget-reports/:id', async (req, res) => {
             if (req.body[f] !== undefined) data[f] = req.body[f];
         });
 
-        if (data.date) data.date = new Date(data.date);
+        if (data.date) data.date = parseSafeDate(data.date);
         if (data.amount !== undefined && data.amount !== null) data.amount = parseFloat(data.amount);
         if (data.volume !== undefined && data.volume !== null) data.volume = parseFloat(data.volume);
-        if (data.harga !== undefined && data.harga !== null) data.harga = parseFloat(data.harga);
+        if (data.harga !== undefined && data.harga !== null && data.harga !== '') {
+            data.harga = parseFloat(data.harga);
+        } else if (data.amount && data.volume && parseFloat(data.volume) > 0) {
+            data.harga = Math.round(parseFloat(data.amount) / parseFloat(data.volume));
+        }
         if (data.diskon !== undefined && data.diskon !== null) data.diskon = parseFloat(data.diskon);
         if (data.umurEkonomis !== undefined && data.umurEkonomis !== null) data.umurEkonomis = parseInt(data.umurEkonomis);
 

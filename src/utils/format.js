@@ -66,3 +66,70 @@ export function generateId(prefix = 'ID') {
     const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
     return `${prefix}-${timestamp}-${randomStr}`;
 }
+
+/**
+ * Parse input tanggal dari Excel (baik nomor seri Excel 46301, DD-MM-YYYY, DD/MM/YYYY, YYYY-MM-DD, dsb)
+ * Menghasilkan string berformat YYYY-MM-DD standar yang kompatibel dengan HTML5 date input dan database.
+ */
+export function parseExcelDate(rawDate) {
+    if (!rawDate) return new Date().toISOString().split('T')[0];
+
+    // Jika sudah berupa objek Date JS
+    if (rawDate instanceof Date && !isNaN(rawDate.getTime())) {
+        const year = rawDate.getFullYear();
+        const month = String(rawDate.getMonth() + 1).padStart(2, '0');
+        const day = String(rawDate.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // Jika berupa angka nomor seri tanggal Excel (misal 46301)
+    if (typeof rawDate === 'number' || (/^\d{4,6}(\.\d+)?$/.test(String(rawDate).trim()) && !String(rawDate).includes('-') && !String(rawDate).includes('/'))) {
+        const num = typeof rawDate === 'number' ? rawDate : parseFloat(String(rawDate).trim());
+        if (num > 1000 && num < 100000) {
+            const dateFromSerial = new Date(Math.round((num - 25569) * 86400 * 1000));
+            if (!isNaN(dateFromSerial.getTime())) {
+                const year = dateFromSerial.getUTCFullYear();
+                const month = String(dateFromSerial.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(dateFromSerial.getUTCDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+        }
+    }
+
+    const str = String(rawDate).trim();
+
+    // Jika sudah format YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+        return str.substring(0, 10);
+    }
+
+    // Jika format DD-MM-YYYY atau DD/MM/YYYY (misal: 06-10-2026 atau 06/10/2026)
+    const ddmmyyyy = str.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (ddmmyyyy) {
+        const day = ddmmyyyy[1].padStart(2, '0');
+        const month = ddmmyyyy[2].padStart(2, '0');
+        const year = ddmmyyyy[3];
+        return `${year}-${month}-${day}`;
+    }
+
+    // Jika format YYYY/MM/DD
+    const yyyymmdd = str.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (yyyymmdd) {
+        const year = yyyymmdd[1];
+        const month = yyyymmdd[2].padStart(2, '0');
+        const day = yyyymmdd[3].padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    // Fallback: coba native parse jika tahun masuk akal (1990 - 2100)
+    const parsed = new Date(str);
+    if (!isNaN(parsed.getTime()) && parsed.getFullYear() > 1990 && parsed.getFullYear() < 2100) {
+        const year = parsed.getFullYear();
+        const month = String(parsed.getMonth() + 1).padStart(2, '0');
+        const day = String(parsed.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    return new Date().toISOString().split('T')[0];
+}
+

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { FileCheck, Receipt, Save, AlertCircle, CheckCircle2, ArrowUpRight, History, Search, ChevronDown, ChevronRight, Download, Package, Layers, Filter, Calendar, Tag, Building2, Loader2, Edit2, Trash2, X, Landmark, Upload, FileSpreadsheet, RotateCcw } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { api } from '../../services/api';
-import { formatRupiah } from '../../utils/format';
+import { formatRupiah, parseExcelDate } from '../../utils/format';
 import { getComponentKeterangan } from '../../utils/budgetEngine';
 import { getAssetDefaultDetails } from '../../utils/depreciation';
 import * as XLSX from 'xlsx';
@@ -1026,6 +1026,7 @@ export default function BOSMonthlyReport() {
     const handleDownloadItemTemplate = (item) => {
         try {
             const itemKeterangan = getComponentKeterangan(item, rabPlans, expenseItems);
+            const unitPrice = parseFloat(item.sisa > 0 ? item.sisa : item.amount || 0);
             const wsData = [
                 ["TEMPLATE IMPORT REALISASI NOTA BELANJA BOS (EXCEL)"],
                 ["Nama Item Rincian:", item.name || "-"],
@@ -1036,8 +1037,8 @@ export default function BOSMonthlyReport() {
                 ["Pagu RAB (Rp):", parseFloat(item.amount || 0)],
                 ["Sisa Dana Saat Ini (Rp):", item.sisa || 0],
                 [],
-                ["PETUNJUK: Isi baris transaksi nota di bawah ini, lalu simpan & Import file ini kembali ke sistem."],
-                ["No", "Tanggal Realisasi (YYYY-MM-DD)", "Deskripsi / Keterangan Nota", "Nama Toko / Vendor", "Volume", "Satuan", "Nominal Belanja (Rp)", "Nomor Nota"],
+                ["PETUNJUK: Isi baris transaksi nota di bawah ini (Tanggal bisa format YYYY-MM-DD atau DD-MM-YYYY). Simpan & Import file ini kembali ke sistem."],
+                ["No", "Tanggal Realisasi (YYYY-MM-DD)", "Deskripsi / Keterangan Nota", "Nama Toko / Vendor", "Volume", "Satuan", "Harga Satuan (Rp)", "Nominal Belanja (Rp)", "Nomor Nota"],
                 [
                     1,
                     new Date().toISOString().split('T')[0],
@@ -1045,12 +1046,24 @@ export default function BOSMonthlyReport() {
                     "Toko A",
                     1,
                     "Pcs",
-                    parseFloat(item.sisa > 0 ? item.sisa : item.amount || 0),
+                    unitPrice,
+                    unitPrice,
                     "NOTA-001"
                 ]
             ];
 
             const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!cols'] = [
+                { wch: 6 },
+                { wch: 18 },
+                { wch: 35 },
+                { wch: 20 },
+                { wch: 10 },
+                { wch: 10 },
+                { wch: 18 },
+                { wch: 20 },
+                { wch: 15 }
+            ];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Template Realisasi BOS");
 
@@ -1082,23 +1095,30 @@ export default function BOSMonthlyReport() {
                 ["Sisa Dana Saat Ini (Rp):", item.sisa || 0],
                 [],
                 ["PETUNJUK: Tambahkan atau ubah baris transaksi di bawah ini untuk di-Import ke sistem."],
-                ["No", "Tanggal Realisasi (YYYY-MM-DD)", "Deskripsi / Keterangan Nota", "Nama Toko / Vendor", "Volume", "Satuan", "Nominal Belanja (Rp)", "Nomor Nota"]
+                ["No", "Tanggal Realisasi (YYYY-MM-DD)", "Deskripsi / Keterangan Nota", "Nama Toko / Vendor", "Volume", "Satuan", "Harga Satuan (Rp)", "Nominal Belanja (Rp)", "Nomor Nota"]
             ];
 
             if (itemReports.length > 0) {
                 itemReports.forEach((r, idx) => {
+                    const vol = r.volume ? parseFloat(r.volume) : 1;
+                    const amt = parseFloat(r.amount || 0);
+                    const hrg = (r.harga !== undefined && r.harga !== null && r.harga !== '')
+                        ? parseFloat(r.harga)
+                        : (vol > 0 ? Math.round(amt / vol) : 0);
                     wsData.push([
                         idx + 1,
-                        r.date || new Date().toISOString().split('T')[0],
+                        r.date ? parseExcelDate(r.date) : new Date().toISOString().split('T')[0],
                         r.description || item.name || '',
                         r.vendor || '-',
-                        r.volume || 1,
+                        vol,
                         r.satuan || 'Pcs',
-                        parseFloat(r.amount || 0),
+                        hrg,
+                        amt,
                         r.nomorNota || '-'
                     ]);
                 });
             } else {
+                const unitPrice = parseFloat(item.sisa > 0 ? item.sisa : item.amount || 0);
                 wsData.push([
                     1,
                     new Date().toISOString().split('T')[0],
@@ -1106,12 +1126,24 @@ export default function BOSMonthlyReport() {
                     "Toko A",
                     1,
                     "Pcs",
-                    parseFloat(item.sisa > 0 ? item.sisa : item.amount || 0),
+                    unitPrice,
+                    unitPrice,
                     "NOTA-001"
                 ]);
             }
 
             const ws = XLSX.utils.aoa_to_sheet(wsData);
+            ws['!cols'] = [
+                { wch: 6 },
+                { wch: 18 },
+                { wch: 35 },
+                { wch: 20 },
+                { wch: 10 },
+                { wch: 10 },
+                { wch: 18 },
+                { wch: 20 },
+                { wch: 15 }
+            ];
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Realisasi Item BOS");
 
@@ -1129,10 +1161,18 @@ export default function BOSMonthlyReport() {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (evt) => {
+        reader.onload = async (evt) => {
             try {
+                window.dispatchEvent(new CustomEvent('app-processing-start', { 
+                    detail: { 
+                        title: 'Mengimpor Nota BOS...', 
+                        message: `Sedang memproses dan menyimpan data nota realisasi BOS untuk "${item.name}"...`, 
+                        type: 'importing' 
+                    } 
+                }));
+
                 const bstr = evt.target.result;
-                const wb = XLSX.read(bstr, { type: 'binary' });
+                const wb = XLSX.read(bstr, { type: 'binary', cellDates: false });
                 const sheetName = wb.SheetNames[0];
                 const ws = wb.Sheets[sheetName];
                 
@@ -1140,25 +1180,85 @@ export default function BOSMonthlyReport() {
                 if (!rows || rows.length < 5) {
                     alert('Format file Excel tidak sesuai. Gunakan file Excel yang di-Export dari rincian ini.');
                     e.target.value = '';
+                    window.dispatchEvent(new CustomEvent('app-processing-end'));
                     return;
                 }
 
                 // Cari baris header secara dinamis
-                const headerRowIndex = rows.findIndex(row => Array.isArray(row) && row.some(cell => String(cell || '').toLowerCase().includes('tanggal realisasi') || String(cell || '').toLowerCase().includes('nominal belanja')));
+                const headerRowIndex = rows.findIndex(row => Array.isArray(row) && row.some(cell => {
+                    const c = String(cell || '').toLowerCase();
+                    return c.includes('tanggal realisasi') || c.includes('nominal belanja') || c.includes('deskripsi');
+                }));
                 const transactionRows = headerRowIndex !== -1 ? rows.slice(headerRowIndex + 1) : rows.slice(8);
                 let importedCount = 0;
                 let skippedCount = 0;
 
-                transactionRows.forEach((row) => {
-                    if (!row || row.length < 4) return;
+                // Dynamic column detection
+                let colMap = {
+                    date: 1,
+                    desc: 2,
+                    vendor: 3,
+                    volume: 4,
+                    satuan: 5,
+                    harga: -1,
+                    amount: 6,
+                    nota: 7
+                };
 
-                    const dateVal = row[1] ? String(row[1]).trim() : new Date().toISOString().split('T')[0];
-                    const descVal = row[2] ? String(row[2]).trim() : '';
-                    const vendorVal = row[3] ? String(row[3]).trim() : '';
-                    const volVal = row[4] ? parseFloat(row[4]) : 1;
-                    const satuanVal = row[5] ? String(row[5]).trim() : 'Pcs';
-                    const amountVal = row[6] ? parseFloat(row[6]) : 0;
-                    const notaVal = row[7] ? String(row[7]).trim() : '';
+                if (headerRowIndex !== -1 && rows[headerRowIndex]) {
+                    const hRow = rows[headerRowIndex];
+                    hRow.forEach((cell, idx) => {
+                        const title = String(cell || '').trim().toLowerCase();
+                        if (title.includes('tanggal')) colMap.date = idx;
+                        else if (title.includes('deskripsi') || title.includes('keterangan')) colMap.desc = idx;
+                        else if (title.includes('toko') || title.includes('vendor')) colMap.vendor = idx;
+                        else if (title.includes('volume') || title.includes('qty') || title.includes('kuantitas')) colMap.volume = idx;
+                        else if (title.includes('satuan') && !title.includes('harga')) colMap.satuan = idx;
+                        else if (title.includes('harga') || title.includes('tarif')) colMap.harga = idx;
+                        else if (title.includes('nominal') || title.includes('total') || title.includes('belanja')) colMap.amount = idx;
+                        else if (title.includes('nota') || title.includes('kwitansi') || title.includes('bukti')) colMap.nota = idx;
+                    });
+                }
+
+                if (colMap.harga === -1 && rows[headerRowIndex + 1] && rows[headerRowIndex + 1].length >= 9) {
+                    colMap.harga = 6;
+                    colMap.amount = 7;
+                    colMap.nota = 8;
+                }
+
+                const newReports = [];
+
+                transactionRows.forEach((row) => {
+                    if (!row || row.length < 3) return;
+
+                    const dateVal = parseExcelDate(row[colMap.date]);
+                    const descVal = colMap.desc !== -1 && row[colMap.desc] ? String(row[colMap.desc]).trim() : '';
+                    const vendorVal = colMap.vendor !== -1 && row[colMap.vendor] ? String(row[colMap.vendor]).trim() : '';
+                    const volVal = colMap.volume !== -1 && row[colMap.volume] ? parseFloat(String(row[colMap.volume]).replace(/[^0-9.-]+/g, '')) || 1 : 1;
+                    const satuanVal = colMap.satuan !== -1 && row[colMap.satuan] ? String(row[colMap.satuan]).trim() : 'Pcs';
+
+                    let rawHarga = colMap.harga !== -1 && row[colMap.harga] !== undefined ? parseFloat(String(row[colMap.harga]).replace(/[^0-9.-]+/g, '')) : null;
+                    let rawAmount = colMap.amount !== -1 && row[colMap.amount] !== undefined ? parseFloat(String(row[colMap.amount]).replace(/[^0-9.-]+/g, '')) : null;
+
+                    if (isNaN(rawHarga)) rawHarga = null;
+                    if (isNaN(rawAmount)) rawAmount = null;
+
+                    let hargaVal = 0;
+                    let amountVal = 0;
+
+                    if (rawAmount !== null && rawAmount > 0) {
+                        amountVal = rawAmount;
+                        if (rawHarga !== null && rawHarga > 0) {
+                            hargaVal = rawHarga;
+                        } else {
+                            hargaVal = volVal > 0 ? Math.round(amountVal / volVal) : amountVal;
+                        }
+                    } else if (rawHarga !== null && rawHarga > 0) {
+                        hargaVal = rawHarga;
+                        amountVal = Math.round(volVal * hargaVal);
+                    }
+
+                    const notaVal = colMap.nota !== -1 && row[colMap.nota] ? String(row[colMap.nota]).trim() : '';
 
                     if (!descVal || amountVal <= 0) return;
 
@@ -1191,6 +1291,7 @@ export default function BOSMonthlyReport() {
                         vendor: vendorVal,
                         volume: volVal,
                         satuan: satuanVal,
+                        harga: hargaVal,
                         amount: amountVal,
                         nomorNota: notaVal,
                         status: 'DRAFT',
@@ -1199,10 +1300,18 @@ export default function BOSMonthlyReport() {
                         source: 'BOS'
                     };
 
-                    dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReport });
-                    api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReport }, state);
+                    newReports.push(newReport);
                     importedCount++;
                 });
+
+                if (newReports.length > 0) {
+                    for (const nr of newReports) {
+                        dispatch({ type: 'ADD_BUDGET_REPORT', payload: nr });
+                        await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: nr }, state);
+                    }
+                    const updatedAllReports = [...(budgetReports || []), ...newReports];
+                    await api.syncWholeState({ ...state, budgetReports: updatedAllReports });
+                }
 
                 if (importedCount > 0) {
                     alert(`Berhasil mengimpor ${importedCount} nota realisasi BOS untuk "${item.name}"! Data telah tersimpan sebagai Draft Nota.${skippedCount > 0 ? `\n\n(${skippedCount} nota dilewati karena sudah ada di sistem agar tidak duplikat)` : ''}`);
@@ -1216,6 +1325,7 @@ export default function BOSMonthlyReport() {
                 alert('Gagal mengunggah file Excel: ' + err.message);
             } finally {
                 e.target.value = '';
+                window.dispatchEvent(new CustomEvent('app-processing-end'));
             }
         };
         reader.readAsBinaryString(file);
@@ -1696,15 +1806,21 @@ export default function BOSMonthlyReport() {
         const initialKategori = draft.kategoriAset || (defaultAsset.isAsset ? 'ASET' : 'NON_ASET');
         const initialUmur = draft.umurEkonomis || (initialKategori === 'ASET' ? (defaultAsset.umurEkonomis || '4') : '');
 
+        const currentVol = parseFloat(draft.volume || 1);
+        const currentAmt = parseFloat(draft.amount || 0);
+        const computedHarga = (draft.harga !== undefined && draft.harga !== null && draft.harga !== '' && parseFloat(draft.harga) > 0)
+            ? draft.harga
+            : (currentVol > 0 && currentAmt > 0 ? Math.round(currentAmt / currentVol) : '');
+
         setFormData({
-            date: draft.date ? draft.date.split('T')[0] : new Date().toISOString().split('T')[0],
-            amount: parseFloat(draft.amount || 0),
+            date: draft.date ? parseExcelDate(draft.date) : new Date().toISOString().split('T')[0],
+            amount: currentAmt,
             description: draft.description || '',
             buktiTeks: draft.buktiTeks || '',
             nomorNota: draft.nomorNota || '',
-            volume: draft.volume || '',
-            satuan: draft.satuan || '',
-            harga: draft.harga || '',
+            volume: draft.volume || 1,
+            satuan: draft.satuan || 'Pcs',
+            harga: computedHarga,
             diskon: draft.diskon || '',
             kategoriAset: initialKategori,
             umurEkonomis: initialUmur
