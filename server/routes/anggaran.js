@@ -41,6 +41,8 @@ const requireAuth = (req, res, next) => {
     } catch (err) {
         return res.status(401).json({ error: 'Token tidak valid atau sudah kedaluwarsa.' });
     }
+};
+
 // Helper: Safe date parsing (handles Excel serial number e.g. 46301, DD-MM-YYYY, YYYY-MM-DD, etc.)
 function parseSafeDate(rawDate) {
     if (!rawDate) return new Date();
