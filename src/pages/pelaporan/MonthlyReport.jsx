@@ -583,7 +583,10 @@ export default function MonthlyReport() {
     React.useEffect(() => {
         if (!isSuperAdmin && budgetReports?.length > 0) {
             const unnotified = budgetReports.filter(r => {
-                const isMine = (myUnitId && r.unitId === myUnitId) || (myFieldId && r.fieldId === myFieldId);
+                const resolvedReq = resolveReportRequest(r, budgetRequests, globalAcademicYearId) || (budgetRequests || []).find(br => br.id === (r.budgetRequestId || r.requestId));
+                const rUnitId = r.unitId || resolvedReq?.unitId;
+                const rFieldId = r.fieldId || resolvedReq?.fieldId;
+                const isMine = (myUnitId && rUnitId === myUnitId) || (myFieldId && rFieldId === myFieldId);
                 return isMine && (r.status === 'APPROVED' || r.status === 'REJECTED') && !r.notified;
             });
             if (unnotified.length > 0) {
@@ -593,7 +596,7 @@ export default function MonthlyReport() {
                 });
             }
         }
-    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, dispatch]);
+    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, dispatch]);
 
     const reportedAmounts = useMemo(() => {
         const map = {};
@@ -826,8 +829,13 @@ export default function MonthlyReport() {
             if (effectiveStatus !== 'DRAFT') return false;
             if (rel.academicYearId !== globalAcademicYearId) return false;
             if (isSuperAdmin) return false; 
-            if (myUnitId && rel.unitId !== myUnitId) return false;
-            if (myFieldId && rel.fieldId !== myFieldId) return false;
+            
+            const resolvedReq = resolveReportRequest(rel, budgetRequests, globalAcademicYearId) || (budgetRequests || []).find(r => r.id === (rel.budgetRequestId || rel.requestId));
+            const reportUnitId = rel.unitId || resolvedReq?.unitId;
+            const reportFieldId = rel.fieldId || resolvedReq?.fieldId;
+
+            if (myUnitId && reportUnitId !== myUnitId) return false;
+            if (myFieldId && reportFieldId !== myFieldId) return false;
             
             // Filter by source
             const isBosReport = rel.source === 'BOS' || rel.planId?.endsWith('-BOS');
@@ -836,7 +844,7 @@ export default function MonthlyReport() {
 
             return true;
         });
-    }, [budgetReports, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
+    }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode]);
 
     const pendingItems = useMemo(() => {
         const items = [];
@@ -907,6 +915,7 @@ export default function MonthlyReport() {
                         reqDate: req.date,
                         reqDescription: req.description,
                         reqUnitId: req.unitId,
+                        fieldId: req.fieldId,
                         expenseItemId: item.expenseItemId || req.expenseItemId,
                         sisa
                     });
@@ -930,6 +939,7 @@ export default function MonthlyReport() {
                     reqDate: req.date,
                     reqDescription: req.description,
                     reqUnitId: req.unitId,
+                    fieldId: req.fieldId,
                     expenseItemId: req.expenseItemId,
                     name: 'General (Legacy)',
                     amount: req.totalAmount,
@@ -1408,7 +1418,8 @@ export default function MonthlyReport() {
                         nomorNota: notaVal,
                         status: 'DRAFT',
                         createdAt: new Date().toISOString(),
-                        unitId: item.reqUnitId || item.unitId,
+                        unitId: item.reqUnitId || item.unitId || parentReq?.unitId || null,
+                        fieldId: item.fieldId || parentReq?.fieldId || null,
                         academicYearId: resolvedAcademicYearId,
                         planId: resolvedPlanId,
                         source: sourceMode
@@ -1739,14 +1750,18 @@ export default function MonthlyReport() {
             if (sourceMode === 'BOS' && !isBosReport) return false;
             if (sourceMode === 'YAYASAN' && isBosReport) return false;
 
+            const resolvedReq = resolveReportRequest(rel, budgetRequests, globalAcademicYearId) || (budgetRequests || []).find(r => r.id === (rel.budgetRequestId || rel.requestId));
+            const reportUnitId = rel.unitId || resolvedReq?.unitId;
+            const reportFieldId = rel.fieldId || resolvedReq?.fieldId;
+
             if (isSuperAdmin) {
                 if (selectedUnitFilter !== 'ALL') {
-                    return rel.unitId === selectedUnitFilter || rel.fieldId === selectedUnitFilter;
+                    return reportUnitId === selectedUnitFilter || reportFieldId === selectedUnitFilter;
                 }
                 return true;
             }
-            if (myUnitId) return rel.unitId === myUnitId;
-            if (myFieldId) return rel.fieldId === myFieldId;
+            if (myUnitId) return reportUnitId === myUnitId;
+            if (myFieldId) return reportFieldId === myFieldId;
             return false;
         });
     }, [budgetReports, budgetRequests, isSuperAdmin, myUnitId, myFieldId, globalAcademicYearId, sourceMode, selectedUnitFilter]);
@@ -2067,10 +2082,10 @@ export default function MonthlyReport() {
             requestId: selectedRequest.reqId,
             budgetRequestId: selectedRequest.reqId,
             componentId: selectedRequest.componentId,
-            unitId: selectedRequest.reqUnitId || selectedRequest.unitId,
-            fieldId: selectedRequest.fieldId,
+            unitId: selectedRequest.reqUnitId || selectedRequest.unitId || parentReq?.unitId || null,
+            fieldId: selectedRequest.fieldId || parentReq?.fieldId || null,
             academicYearId: globalAcademicYearId,
-            planId: selectedRequest.planId,
+            planId: selectedRequest.planId || parentReq?.planId,
             source: sourceMode, // Tag as YAYASAN or BOS
             amount: parseFloat(formData.amount),
             date: formData.date,

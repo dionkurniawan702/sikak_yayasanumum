@@ -1438,10 +1438,29 @@ router.post('/budget-reports', async (req, res) => {
 
         const result = await prisma.$transaction(async (tx) => {
             let actualExpenseItemId = expenseItemId;
-            if (!actualExpenseItemId && budgetRequestId) {
+            let effectiveFieldId = fieldId || null;
+            let effectiveUnitId = unitId || null;
+            let effectiveAcademicYearId = academicYearId || null;
+            let effectivePlanId = planId || null;
+
+            if (budgetRequestId) {
                 const breq = await tx.budgetRequest.findUnique({ where: { id: budgetRequestId } });
-                if (breq && breq.expenseItemId) {
-                    actualExpenseItemId = breq.expenseItemId;
+                if (breq) {
+                    if (!actualExpenseItemId && breq.expenseItemId) {
+                        actualExpenseItemId = breq.expenseItemId;
+                    }
+                    if (!effectiveFieldId && breq.fieldId) {
+                        effectiveFieldId = breq.fieldId;
+                    }
+                    if (!effectiveUnitId && breq.unitId) {
+                        effectiveUnitId = breq.unitId;
+                    }
+                    if (!effectiveAcademicYearId && breq.academicYearId) {
+                        effectiveAcademicYearId = breq.academicYearId;
+                    }
+                    if (!effectivePlanId && breq.planId) {
+                        effectivePlanId = breq.planId;
+                    }
                 }
             }
 
@@ -1461,9 +1480,9 @@ router.post('/budget-reports', async (req, res) => {
                     description: description || null,
                     date: parseSafeDate(date),
                     expenseItemId: actualExpenseItemId || null,
-                    unitId: unitId || null,
-                    fieldId: fieldId || null,
-                    academicYearId: academicYearId || null,
+                    unitId: effectiveUnitId,
+                    fieldId: effectiveFieldId,
+                    academicYearId: effectiveAcademicYearId,
                     category: category || null,
                     source: source || null,
                     // New fields
@@ -2105,8 +2124,26 @@ router.delete('/budget-reports/:id', requireAuth, async (req, res) => {
                 console.warn('[DELETE /budget-reports] DB user lookup failed, using JWT values:', dbErr.message);
             }
 
-            const isOwner = (userUnitId && report.unitId === userUnitId) ||
-                            (userFieldId && report.fieldId === userFieldId);
+            let reportUnitId = report.unitId;
+            let reportFieldId = report.fieldId;
+
+            // Jika fieldId / unitId pada laporan kosong atau tidak sesuai, periksa parent budget request
+            if (report.budgetRequestId) {
+                try {
+                    const breq = await prisma.budgetRequest.findUnique({
+                        where: { id: report.budgetRequestId }
+                    });
+                    if (breq) {
+                        reportFieldId = reportFieldId || breq.fieldId;
+                        reportUnitId = reportUnitId || breq.unitId;
+                    }
+                } catch (bErr) {
+                    console.warn('[DELETE /budget-reports] DB parent request lookup failed:', bErr.message);
+                }
+            }
+
+            const isOwner = (userUnitId && (report.unitId === userUnitId || reportUnitId === userUnitId)) ||
+                            (userFieldId && (report.fieldId === userFieldId || reportFieldId === userFieldId));
 
             if (!isOwner) {
                 return res.status(403).json({ error: 'Akses ditolak: Anda tidak memiliki wewenang untuk menghapus laporan ini.' });
