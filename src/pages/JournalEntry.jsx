@@ -18,6 +18,25 @@ export default function JournalEntry() {
     const journals = state.journals.filter(j => !j.isDeleted);
     const programs = state.programs.filter(p => !p.isDeleted);
     const units = (state.units || []).filter(u => !u.isDeleted);
+    const fields = (state.fields || []).filter(f => !f.isDeleted);
+
+    const reportMap = useMemo(() => {
+        const map = new Map();
+        (state.budgetReports || []).forEach(r => {
+            if (r.journalId) map.set(r.journalId, r);
+            map.set(r.id, r);
+        });
+        return map;
+    }, [state.budgetReports]);
+
+    const requestMap = useMemo(() => {
+        const map = new Map();
+        (state.budgetRequests || []).forEach(req => {
+            if (req.transferJournalId) map.set(req.transferJournalId, req);
+            map.set(req.id, req);
+        });
+        return map;
+    }, [state.budgetRequests]);
     const detailAccounts = accounts
         .filter(a => a.category === 'detail')
         .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
@@ -717,10 +736,70 @@ export default function JournalEntry() {
 
     const isJournalMatchingUnit = (j, unitFilter) => {
         if (!unitFilter || unitFilter === 'ALL') return true;
+
+        // Yayasan / Pusat (Semua Bidang)
         if (unitFilter === 'YAYASAN') {
             const jNameLower = (j.name || '').trim().toLowerCase();
-            return jNameLower === 'yayasan' || jNameLower === 'pusat' || !j.name;
+            if (jNameLower === 'yayasan' || jNameLower === 'pusat' || !j.name) return true;
+            if (jNameLower.includes('bidang')) return true;
+            if (j.fieldId) return true;
+            const rep = reportMap.get(j.id) || reportMap.get(j.reference);
+            if (rep && (rep.fieldId || rep.unitId === 'FOUNDATION' || rep.unitId === 'YAYASAN')) return true;
+            const entries = Array.isArray(j.entries) ? j.entries : (typeof j.entries === 'string' ? JSON.parse(j.entries) : []);
+            return entries.some(e => {
+                const accNameLower = (e.accountName || '').toLowerCase();
+                return accNameLower.includes('kas bidang') || accNameLower.includes('kas yayasan');
+            });
         }
+
+        // Cek apakah filter adalah Bidang Yayasan
+        const targetField = fields.find(f => f.id === unitFilter);
+        if (targetField) {
+            const fId = targetField.id;
+            const fNameLower = (targetField.name || '').trim().toLowerCase();
+
+            if (j.fieldId && j.fieldId === fId) return true;
+            if (j.budgetReport?.fieldId && j.budgetReport.fieldId === fId) return true;
+
+            const rep = reportMap.get(j.id) || reportMap.get(j.reference);
+            if (rep) {
+                if (rep.fieldId === fId) return true;
+                const req = requestMap.get(rep.budgetRequestId || rep.requestId);
+                if (req && req.fieldId === fId) return true;
+            }
+
+            const jNameLower = (j.name || '').trim().toLowerCase();
+            if (jNameLower === fNameLower || (jNameLower.includes(fNameLower) && jNameLower !== 'yayasan')) return true;
+
+            const jDescLower = (j.description || '').toLowerCase();
+            if (jDescLower.includes(fNameLower)) return true;
+
+            const entries = Array.isArray(j.entries) ? j.entries : (typeof j.entries === 'string' ? JSON.parse(j.entries) : []);
+            if (fNameLower.includes('pembangunan')) {
+                if (jDescLower.includes('bidang pembangunan') || jDescLower.includes('pembangunan')) return true;
+                return entries.some(e => (e.accountName || '').toLowerCase().includes('kas bidang prasarana'));
+            }
+            if (fNameLower.includes('sarana') || fNameLower.includes('sarpras')) {
+                if (jDescLower.includes('sarana prasarana') || jDescLower.includes('sarpras') || jDescLower.includes('bidang sarana')) return true;
+                return entries.some(e => (e.accountName || '').toLowerCase().includes('kas bidang sarana'));
+            }
+            if (fNameLower.includes('pendidikan')) {
+                return jDescLower.includes('bidang pendidikan') || entries.some(e => (e.accountName || '').toLowerCase().includes('kas bidang pendidikan'));
+            }
+            if (fNameLower.includes('sdm')) {
+                return jDescLower.includes('bidang sdm') || entries.some(e => (e.accountName || '').toLowerCase().includes('kas bidang sdm'));
+            }
+            if (fNameLower.includes('keuangan')) {
+                return jDescLower.includes('bidang keuangan') || entries.some(e => (e.accountName || '').toLowerCase().includes('kas bidang keuangan'));
+            }
+            if (fNameLower.includes('it')) {
+                return jDescLower.includes('bidang it') || entries.some(e => (e.accountName || '').toLowerCase().includes('kas bidang it'));
+            }
+
+            return false;
+        }
+
+        // Cek apakah filter adalah Unit Sekolah / Lembaga
         const targetUnit = units.find(u => u.id === unitFilter);
         if (!targetUnit) return true;
 
@@ -881,20 +960,9 @@ export default function JournalEntry() {
                 });
             }
 
-            // Filter by Unit if selected
+            // Filter by Unit / Field if selected
             if (exportUnitId !== 'ALL') {
-                const selectedUnitObj = (state.units || []).find(u => u.id === exportUnitId);
-                const selectedUnitName = selectedUnitObj?.name?.toLowerCase() || '';
-                processed = processed.filter(j => {
-                    const jName = (j.name || '').toLowerCase();
-                    const repUnitId = j.budgetReport?.unitId;
-                    const repUnitName = (j.budgetReport?.unitName || '').toLowerCase();
-                    return (
-                        repUnitId === exportUnitId ||
-                        (selectedUnitName && repUnitName.includes(selectedUnitName)) ||
-                        (selectedUnitName && jName.includes(selectedUnitName))
-                    );
-                });
+                processed = processed.filter(j => isJournalMatchingUnit(j, exportUnitId));
             }
 
             if (processed.length === 0) {
@@ -1574,7 +1642,7 @@ export default function JournalEntry() {
                                         : selectedPeriod === 'ALL'
                                             ? 'Total keseluruhan transaksi jurnal'
                                             : `Transaksi bulan ${formatMonthLabel(selectedPeriod)}`}
-                                    {historyUnitFilter !== 'ALL' && ` • ${historyUnitFilter === 'YAYASAN' ? 'Yayasan / Pusat' : (units.find(u => u.id === historyUnitFilter)?.name || 'Unit')}`}
+                                    {historyUnitFilter !== 'ALL' && ` • ${historyUnitFilter === 'YAYASAN' ? 'Yayasan / Pusat (Semua Bidang)' : (fields.find(f => f.id === historyUnitFilter)?.name || units.find(u => u.id === historyUnitFilter)?.name || 'Unit/Bidang')}`}
                                 </p>
                             </div>
                         </div>
@@ -1768,20 +1836,27 @@ export default function JournalEntry() {
                                                     )}
                                                 </div>
 
-                                                {/* Filter Unit */}
+                                                {/* Filter Unit & Bidang */}
                                                 <div className="flex items-center gap-1.5 bg-white border border-slate-200 rounded-2xl px-3 py-2 shadow-sm shrink-0">
                                                     <Building2 size={14} className="text-blue-600 shrink-0" />
                                                     <select 
-                                                        className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2 max-w-[140px] truncate"
+                                                        className="bg-transparent text-xs font-bold text-slate-700 border-none outline-none cursor-pointer pr-2 max-w-[170px] truncate"
                                                         value={historyUnitFilter}
                                                         onChange={e => { setHistoryUnitFilter(e.target.value); setCurrentPage(1); }}
-                                                        title="Filter Berdasarkan Unit Sekolah / Lembaga"
+                                                        title="Filter Berdasarkan Unit Sekolah / Bidang Yayasan"
                                                     >
-                                                        <option value="ALL">Semua Unit</option>
-                                                        <option value="YAYASAN">Yayasan / Pusat</option>
-                                                        {units.map(u => (
-                                                            <option key={u.id} value={u.id}>{u.name}</option>
-                                                        ))}
+                                                        <option value="ALL">Semua Unit & Bidang</option>
+                                                        <optgroup label="🏢 YAYASAN & BIDANG">
+                                                            <option value="YAYASAN">Yayasan / Pusat (Semua Bidang)</option>
+                                                            {fields.map(f => (
+                                                                <option key={f.id} value={f.id}>{f.name}</option>
+                                                            ))}
+                                                        </optgroup>
+                                                        <optgroup label="🏫 UNIT SEKOLAH / LEMBAGA">
+                                                            {units.map(u => (
+                                                                <option key={u.id} value={u.id}>{u.name}</option>
+                                                            ))}
+                                                        </optgroup>
                                                     </select>
                                                 </div>
 
@@ -2210,22 +2285,32 @@ export default function JournalEntry() {
                                         </select>
                                     </div>
 
-                                    {/* Dropdown 4: Unit / Satuan */}
+                                    {/* Dropdown 4: Unit / Bidang */}
                                     <div>
                                         <label className="text-[10px] font-bold text-slate-500 block mb-1">
-                                            Pilihan Unit / Satuan:
+                                            Pilihan Unit / Bidang:
                                         </label>
                                         <select
                                             value={exportUnitId}
                                             onChange={e => setExportUnitId(e.target.value)}
                                             className="form-select w-full rounded-xl text-xs py-2 border-slate-200 bg-white"
                                         >
-                                            <option value="ALL">Semua Unit / Lembaga</option>
-                                            {(state.units || []).filter(u => !u.isDeleted).map(u => (
-                                                <option key={u.id} value={u.id}>
-                                                    {u.name}
-                                                </option>
-                                            ))}
+                                            <option value="ALL">Semua Unit & Bidang</option>
+                                            <optgroup label="🏢 YAYASAN & BIDANG">
+                                                <option value="YAYASAN">Yayasan / Pusat (Semua Bidang)</option>
+                                                {fields.map(f => (
+                                                    <option key={f.id} value={f.id}>
+                                                        {f.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
+                                            <optgroup label="🏫 UNIT SEKOLAH / LEMBAGA">
+                                                {units.map(u => (
+                                                    <option key={u.id} value={u.id}>
+                                                        {u.name}
+                                                    </option>
+                                                ))}
+                                            </optgroup>
                                         </select>
                                     </div>
                                 </div>
