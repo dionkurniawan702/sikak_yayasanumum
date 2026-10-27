@@ -384,6 +384,7 @@ model BudgetReport {
   id              String        @id @default(uuid())
   budgetRequestId String?
   budgetRequest   BudgetRequest? @relation(fields: [budgetRequestId], references: [id])
+  componentId     String?       @db.VarChar(255)
   expenseItemId   String?
   expenseItem     ExpenseItem?   @relation(fields: [expenseItemId], references: [id])
   unitId          String?

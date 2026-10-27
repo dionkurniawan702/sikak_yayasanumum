@@ -2081,7 +2081,7 @@ export default function MonthlyReport() {
             id: editingDraftId || `REL-${Date.now()}`,
             requestId: selectedRequest.reqId,
             budgetRequestId: selectedRequest.reqId,
-            componentId: selectedRequest.componentId,
+            componentId: selectedRequest.componentId || selectedRequest.id || editingReport?.componentId || null,
             unitId: selectedRequest.reqUnitId || selectedRequest.unitId || parentReq?.unitId || null,
             fieldId: selectedRequest.fieldId || parentReq?.fieldId || null,
             academicYearId: globalAcademicYearId,

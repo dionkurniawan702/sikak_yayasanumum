@@ -1485,6 +1485,66 @@ const ensureBudgetOperationalColumns = async () => {
             console.log(`[Self-Healing] Adding status column to budget_reports...`);
             await client.$executeRawUnsafe("ALTER TABLE `budget_reports` ADD COLUMN status VARCHAR(191) DEFAULT 'PENDING'");
         }
+        if (!repFields.includes('componentId')) {
+            console.log(`[Self-Healing] Adding componentId column to budget_reports...`);
+            await client.$executeRawUnsafe('ALTER TABLE `budget_reports` ADD COLUMN componentId VARCHAR(255) NULL');
+        }
+
+        // Backfill componentId for existing reports where componentId IS NULL
+        try {
+            const nullCompReports = await client.budgetReport.findMany({
+                where: { componentId: null, isDeleted: false, budgetRequestId: { not: null } }
+            });
+            if (nullCompReports.length > 0) {
+                console.log(`[Self-Healing] Found ${nullCompReports.length} reports with null componentId, running auto-link...`);
+                const reqIds = [...new Set(nullCompReports.map(r => r.budgetRequestId).filter(Boolean))];
+                const reqs = await client.budgetRequest.findMany({
+                    where: { id: { in: reqIds } }
+                });
+                const reqMap = new Map();
+                reqs.forEach(r => reqMap.set(r.id, r));
+
+                let linkedCount = 0;
+                for (const report of nullCompReports) {
+                    const req = reqMap.get(report.budgetRequestId);
+                    if (req && Array.isArray(req.items) && req.items.length > 0) {
+                        const rCat = (report.category || '').trim().toLowerCase();
+                        const rDesc = (report.description || '').trim().toLowerCase();
+                        
+                        const exactCatMatches = req.items.filter(it => (it.name || '').trim().toLowerCase() === rCat);
+                        let matched = null;
+                        if (exactCatMatches.length === 1) {
+                            matched = exactCatMatches[0];
+                        } else if (exactCatMatches.length > 1) {
+                            // If multiple items have identical names, use description match if possible
+                            if (rDesc) {
+                                matched = exactCatMatches.find(it => {
+                                    const itDesc = (it.description || it.keterangan || '').trim().toLowerCase();
+                                    return itDesc && (rDesc.includes(itDesc) || itDesc.includes(rDesc));
+                                });
+                            }
+                            if (!matched) {
+                                matched = exactCatMatches[0];
+                            }
+                        } else if (rDesc) {
+                            matched = req.items.find(it => (it.name || '').trim().toLowerCase() === rDesc);
+                        }
+
+                        if (matched && (matched.componentId || matched.id)) {
+                            const compId = matched.componentId || matched.id;
+                            await client.budgetReport.update({
+                                where: { id: report.id },
+                                data: { componentId: compId }
+                            });
+                            linkedCount++;
+                        }
+                    }
+                }
+                console.log(`[Self-Healing] Successfully linked ${linkedCount} reports to componentId.`);
+            }
+        } catch (bfErr) {
+            console.error('[Self-Healing] Error auto-linking componentId:', bfErr.message);
+        }
 
         // 3. journals (proof column needs to be TEXT to avoid VarChar(191) overflow when buktiTeks is long)
         try {

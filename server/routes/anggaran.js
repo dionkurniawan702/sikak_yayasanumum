@@ -1430,7 +1430,7 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
 router.post('/budget-reports', async (req, res) => {
     try {
         const {
-            id, budgetRequestId, amount, description, date, expenseItemId,
+            id, budgetRequestId, componentId, amount, description, date, expenseItemId,
             unitId, fieldId, academicYearId, category,
             buktiTeks, buktiFoto, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, namaAset, assetName, status, planId, source
         } = req.body;
@@ -1476,6 +1476,7 @@ router.post('/budget-reports', async (req, res) => {
                 data: {
                     id: id || undefined,
                     budgetRequestId: budgetRequestId || null,
+                    componentId: componentId || null,
                     amount: parsedAmt,
                     description: description || null,
                     date: parseSafeDate(date),
@@ -1721,7 +1722,8 @@ router.put('/budget-reports/:id', async (req, res) => {
             'status', 'amount', 'description', 'date', 'expenseItemId',
             'unitId', 'fieldId', 'academicYearId', 'category', 'source',
             'buktiTeks', 'buktiFoto', 'nomorNota', 'volume', 'satuan', 'harga', 'diskon',
-            'kategoriAset', 'umurEkonomis', 'namaAset', 'isDeleted', 'planId', 'budgetRequestId'
+            'kategoriAset', 'umurEkonomis', 'namaAset', 'isDeleted', 'planId', 'budgetRequestId',
+            'componentId'
         ];
 
         const data = {};
