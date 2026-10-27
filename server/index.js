@@ -410,12 +410,37 @@ const getPrisma = () => {
                                 ? `${creditAccObj.code} - ${creditAccObj.name}` 
                                 : (finalCreditId ? 'Kas / Bank' : 'MENUNGGU COA (Kredit)');
 
+                            // Only create retroactive journal if at least one account is resolved (never create dummy incomplete journals)
+                            if (!finalDebitId && !finalCreditId) {
+                                continue;
+                            }
+
+                            // Check if a journal already exists for this transaction to prevent duplicates
+                            const targetRef = report.nomorNota || (report.planId ? report.planId : `REPORT-${report.id.substring(0, 8)}`);
+                            const existingJournal = await prisma.journal.findFirst({
+                                where: {
+                                    isDeleted: false,
+                                    OR: [
+                                        { reference: targetRef, name: targetName },
+                                        { description: journalDescription }
+                                    ]
+                                }
+                            });
+
+                            if (existingJournal) {
+                                await prisma.budgetReport.update({
+                                    where: { id: report.id },
+                                    data: { journalId: existingJournal.id }
+                                });
+                                continue;
+                            }
+
                             const journal = await prisma.journal.create({
                                 data: {
                                     date: report.date ? new Date(report.date) : new Date(),
                                     name: targetName,
                                     description: journalDescription,
-                                    reference: report.nomorNota || (report.planId ? report.planId : `REPORT-${report.id.substring(0, 8)}`),
+                                    reference: targetRef,
                                     proof: report.buktiTeks || null,
                                     programId: resolvedProgramId,
                                     entries: [
@@ -1544,6 +1569,46 @@ const ensureBudgetOperationalColumns = async () => {
             }
         } catch (bfErr) {
             console.error('[Self-Healing] Error auto-linking componentId:', bfErr.message);
+        }
+
+        // Auto-cleanup orphan journals with MENUNGGU COA on server boot to permanently prevent accumulation
+        try {
+            const linkedReportJournals = await client.budgetReport.findMany({
+                where: { journalId: { not: null } },
+                select: { journalId: true }
+            });
+            const linkedReqJournals = await client.budgetRequest.findMany({
+                where: { transferJournalId: { not: null } },
+                select: { transferJournalId: true }
+            });
+            const activeJournalIds = new Set([
+                ...linkedReportJournals.map(r => r.journalId),
+                ...linkedReqJournals.map(r => r.transferJournalId)
+            ].filter(Boolean));
+
+            const waitingJournals = await client.journal.findMany({
+                where: { isDeleted: false }
+            });
+
+            const orphansToDelete = waitingJournals.filter(j => {
+                if (activeJournalIds.has(j.id)) return false;
+                const rawEntries = typeof j.entries === 'string' ? JSON.parse(j.entries) : (j.entries || []);
+                return rawEntries.some(e => 
+                    !e.accountId || 
+                    e.accountId === 'PENDING' || 
+                    (e.accountName && e.accountName.toLowerCase().includes('menunggu coa'))
+                );
+            });
+
+            if (orphansToDelete.length > 0) {
+                console.log(`[Self-Healing] Purging ${orphansToDelete.length} orphan waiting journals...`);
+                await client.journal.deleteMany({
+                    where: { id: { in: orphansToDelete.map(j => j.id) } }
+                });
+                console.log(`[Self-Healing] Orphan waiting journals purged successfully.`);
+            }
+        } catch (cleanErr) {
+            console.error('[Self-Healing] Error cleaning orphan journals:', cleanErr.message);
         }
 
         // 3. journals (proof column needs to be TEXT to avoid VarChar(191) overflow when buktiTeks is long)
