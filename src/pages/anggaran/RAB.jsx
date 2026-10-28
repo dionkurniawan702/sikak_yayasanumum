@@ -258,6 +258,7 @@ function RABContent() {
     const [showCompModal, setShowCompModal] = useState(false);
     const [isReadOnlyComp, setIsReadOnlyComp] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
+    const [showSemesterHelperModal, setShowSemesterHelperModal] = useState(false);
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
     const [expandedDetailItems, setExpandedDetailItems] = useState({});
@@ -274,6 +275,152 @@ function RABContent() {
         });
         return map;
     }, [budgetReports]);
+
+    // Evaluasi Sisa Anggaran Semester 1 Khusus Unit/Bidang yang Sedang Dibuka
+    const unitSemester1Data = useMemo(() => {
+        if (!selectedUnitId && !selectedFieldId) return null;
+        const targetId = selectedUnitId || selectedFieldId;
+        const isField = !selectedUnitId && !!selectedFieldId;
+
+        const isSemester1MonthHelper = (mStr) => {
+            if (!mStr) return true;
+            let m = null;
+            if (typeof mStr === 'string' && mStr.includes('-')) {
+                const parts = mStr.split('-');
+                if (parts[0].length === 4) m = parseInt(parts[1], 10);
+            }
+            if (!m) {
+                const d = new Date(mStr);
+                if (!isNaN(d.getTime())) m = d.getMonth() + 1;
+            }
+            if (!m) return true;
+            return m >= 7 && m <= 12;
+        };
+
+        const planToUse = originalPlan || activePlan;
+        if (!planToUse || !planToUse.expense) return null;
+
+        const posMap = {};
+        Object.entries(planToUse.expense || {}).forEach(([exId, rawPlans]) => {
+            const arr = Array.isArray(rawPlans) ? rawPlans : [rawPlans];
+            let s1 = 0;
+            let s2 = 0;
+            arr.forEach(p => {
+                (p.components || []).forEach(comp => {
+                    const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
+                        comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED';
+                    if (isApproved) {
+                        const tot = parseFloat(comp.total) || 0;
+                        const useBos = comp.useBos || false;
+                        const bosAmount = parseFloat(comp.bosAmount) || 0;
+                        let eff = fundSourceFilter === 'BOS' ? (useBos ? (bosAmount > 0 ? bosAmount : tot) : 0) : (useBos ? tot - bosAmount : tot);
+                        if (eff > 0) {
+                            let cS1 = 0;
+                            let cS2 = 0;
+                            const monthsObj = comp.months || {};
+                            const mKeys = Object.keys(monthsObj);
+                            const activeM = mKeys.filter(k => monthsObj[k] && (monthsObj[k].m === true || parseFloat(monthsObj[k].jumlah) > 0));
+                            if (activeM.length > 0) {
+                                const hasAmounts = activeM.some(k => parseFloat(monthsObj[k]?.jumlah) > 0);
+                                if (hasAmounts) {
+                                    activeM.forEach(k => {
+                                        const j = parseFloat(monthsObj[k]?.jumlah) || 0;
+                                        if (isSemester1MonthHelper(k)) cS1 += j;
+                                        else cS2 += j;
+                                    });
+                                } else {
+                                    let c1 = 0, c2 = 0;
+                                    activeM.forEach(k => {
+                                        if (isSemester1MonthHelper(k)) c1++;
+                                        else c2++;
+                                    });
+                                    const t = c1 + c2;
+                                    cS1 = t > 0 ? (c1 / t) * eff : eff;
+                                    cS2 = t > 0 ? (c2 / t) * eff : 0;
+                                }
+                            } else {
+                                if (String(comp.semester) === '2') cS2 = eff;
+                                else cS1 = eff;
+                            }
+                            s1 += cS1;
+                            s2 += cS2;
+                        }
+                    }
+                });
+            });
+
+            if (s1 > 0 || s2 > 0) {
+                const ex = expenseItems.find(e => e.id === exId);
+                posMap[exId] = {
+                    id: exId,
+                    name: ex?.name || 'Pos Pengeluaran',
+                    budgetS1: s1,
+                    spentS1: 0,
+                    budgetS2: s2
+                };
+            }
+        });
+
+        // Add spending from budgetReports
+        (budgetReports || []).filter(r => 
+            r.status === 'APPROVED' && 
+            !r.isDeleted && 
+            r.academicYearId === selectedYearId &&
+            r.kategoriAset !== 'PENGEMBALIAN' &&
+            (fundSourceFilter === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS')) &&
+            (isField ? r.fieldId === targetId : r.unitId === targetId)
+        ).forEach(report => {
+            const isS1 = isSemester1MonthHelper(report.date || report.month);
+            if (!isS1) return;
+            const amt = parseFloat(report.amount) || 0;
+            let exId = report.expenseItemId;
+            if (!exId && report.componentId) {
+                for (const [k, rawPlans] of Object.entries(planToUse.expense || {})) {
+                    const arr = Array.isArray(rawPlans) ? rawPlans : [rawPlans];
+                    if (arr.some(p => p.components?.some(c => c.id === report.componentId))) {
+                        exId = k;
+                        break;
+                    }
+                }
+            }
+            if (exId && posMap[exId]) {
+                posMap[exId].spentS1 += amt;
+            } else if (exId) {
+                const ex = expenseItems.find(e => e.id === exId);
+                posMap[exId] = {
+                    id: exId,
+                    name: ex?.name || 'Pos Pengeluaran',
+                    budgetS1: 0,
+                    spentS1: amt,
+                    budgetS2: 0
+                };
+            }
+        });
+
+        const items = Object.values(posMap).map(it => ({
+            ...it,
+            remainingS1: it.budgetS1 - it.spentS1,
+            surplusS1: Math.max(0, it.budgetS1 - it.spentS1),
+            projectedS2: it.budgetS2 + Math.max(0, it.budgetS1 - it.spentS1)
+        })).sort((a, b) => b.budgetS1 - a.budgetS1);
+
+        const totalBudgetS1 = items.reduce((s, it) => s + it.budgetS1, 0);
+        const totalSpentS1 = items.reduce((s, it) => s + it.spentS1, 0);
+        const totalRemainingS1 = totalBudgetS1 - totalSpentS1;
+        const totalSurplusS1 = items.reduce((s, it) => s + it.surplusS1, 0);
+        const totalBudgetS2 = items.reduce((s, it) => s + it.budgetS2, 0);
+        const totalProjectedS2 = totalBudgetS2 + totalSurplusS1;
+
+        return {
+            items,
+            totalBudgetS1,
+            totalSpentS1,
+            totalRemainingS1,
+            totalSurplusS1,
+            totalBudgetS2,
+            totalProjectedS2
+        };
+    }, [selectedUnitId, selectedFieldId, selectedYearId, originalPlan, activePlan, fundSourceFilter, expenseItems, budgetReports, academicYears]);
 
     // Gather all asset items from all units/bidang for Sarpras verification
     const allSarprasAssets = useMemo(() => {
@@ -4476,6 +4623,18 @@ function RABContent() {
                         </button>
                     )}
 
+                    {/* Tombol Evaluasi Sisa Smt 1 (Disembunyikan secara default, diklik baru muncul modal) */}
+                    {unitSemester1Data && !isConsolidation && (
+                        <button
+                            onClick={() => setShowSemesterHelperModal(true)}
+                            className="p-3 bg-gradient-to-r from-amber-50 to-emerald-50 hover:from-amber-100 hover:to-emerald-100 text-slate-800 border border-emerald-300 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm shrink-0"
+                            title="Buka panel evaluasi sisa anggaran Semester 1 untuk realokasi Semester 2"
+                        >
+                            <Sparkles size={14} className="text-amber-500" />
+                            <span>Cek Sisa Smt 1</span>
+                        </button>
+                    )}
+
                     {/* Pilih Semua Button */}
                     {!isConsolidation && (
                         <button
@@ -6456,6 +6615,124 @@ function RABContent() {
                                 className="w-full py-4 text-slate-400 font-black text-xs uppercase tracking-widest hover:text-slate-600 transition-colors"
                             >
                                 Batal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Modal Evaluasi Sisa Semester 1 untuk Persiapan Perubahan Anggaran (Disembunyikan, diklik baru muncul) */}
+            {showSemesterHelperModal && unitSemester1Data && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+                        {/* Header */}
+                        <div className="p-6 md:p-8 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-indigo-500/20 text-indigo-300 rounded-2xl border border-indigo-400/30">
+                                    <Sparkles size={24} />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-3">
+                                        <h3 className="text-xl font-black italic tracking-tight">
+                                            Evaluasi Sisa Anggaran Semester 1
+                                        </h3>
+                                        <span className="px-3 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full font-black text-[9px] uppercase tracking-wider">
+                                            {units.find(u => u.id === selectedUnitId)?.name || fields.find(f => f.id === selectedFieldId)?.name || 'Unit'}
+                                        </span>
+                                    </div>
+                                    <p className="text-slate-400 text-xs mt-1">
+                                        Sumber Dana: <strong>{fundSourceFilter}</strong> | Pagu sisa S1 dapat dimanfaatkan untuk penambahan pagu belanja S2 pada draf revisi ini.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowSemesterHelperModal(false)}
+                                className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        {/* Summary KPI Cards */}
+                        <div className="p-6 md:p-8 overflow-y-auto space-y-6">
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pagu Smt 1</span>
+                                    <h4 className="text-lg font-black text-slate-900">{formatRupiah(unitSemester1Data.totalBudgetS1)}</h4>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Realisasi Smt 1</span>
+                                    <h4 className="text-lg font-black text-indigo-600">{formatRupiah(unitSemester1Data.totalSpentS1)}</h4>
+                                </div>
+                                <div className="p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-300">
+                                    <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest block mb-1">Sisa Pagu S1 (Surplus)</span>
+                                    <h4 className="text-lg font-black text-emerald-700">{formatRupiah(unitSemester1Data.totalSurplusS1)}</h4>
+                                </div>
+                                <div className="p-4 bg-indigo-50 rounded-2xl border-2 border-indigo-200">
+                                    <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest block mb-1">Proyeksi Pagu S2 Baru</span>
+                                    <h4 className="text-lg font-black text-indigo-700">{formatRupiah(unitSemester1Data.totalProjectedS2)}</h4>
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-3">
+                                <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
+                                <div>
+                                    <strong>Tips Perubahan Anggaran (Oktober):</strong> Untuk pos yang memiliki <strong>Sisa Pagu S1</strong> positif di bawah, Anda dapat mengurangi alokasi bulanannya (Juli–Desember) di draf revisi ini, lalu menambahkan anggarannya pada kegiatan Semester 2 (Januari–Juni).
+                                </div>
+                            </div>
+
+                            {/* Table of Pos */}
+                            <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        <tr className="bg-slate-900 text-white font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-3">Pos Pengeluaran</th>
+                                            <th className="px-4 py-3 text-right">Pagu Smt 1</th>
+                                            <th className="px-4 py-3 text-right">Realisasi Smt 1</th>
+                                            <th className="px-4 py-3 text-right text-emerald-300">Sisa Pagu Smt 1</th>
+                                            <th className="px-4 py-3 text-right">Pagu Awal S2</th>
+                                            <th className="px-4 py-3 text-right text-indigo-300">Proyeksi S2</th>
+                                            <th className="px-4 py-3 text-center">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-medium">
+                                        {unitSemester1Data.items.map(it => (
+                                            <tr key={it.id} className="hover:bg-slate-50">
+                                                <td className="px-4 py-3 font-semibold text-slate-800">{it.name}</td>
+                                                <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(it.budgetS1)}</td>
+                                                <td className="px-4 py-3 text-right text-slate-900 font-bold">{formatRupiah(it.spentS1)}</td>
+                                                <td className={`px-4 py-3 text-right font-black ${it.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/50' : it.remainingS1 < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                                                    {formatRupiah(it.remainingS1)}
+                                                </td>
+                                                <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(it.budgetS2)}</td>
+                                                <td className="px-4 py-3 text-right font-black text-indigo-700">{formatRupiah(it.projectedS2)}</td>
+                                                <td className="px-4 py-3 text-center">
+                                                    {it.remainingS1 > 0 ? (
+                                                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
+                                                            Hemat Rp {formatRupiah(it.surplusS1)}
+                                                        </span>
+                                                    ) : it.remainingS1 < 0 ? (
+                                                        <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[9px] font-black uppercase">
+                                                            Over Pagu
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400">-</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
+                            <button
+                                onClick={() => setShowSemesterHelperModal(false)}
+                                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all"
+                            >
+                                Tutup Panel
                             </button>
                         </div>
                     </div>
