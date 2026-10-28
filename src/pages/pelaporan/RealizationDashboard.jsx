@@ -22,7 +22,9 @@ import {
     Sparkles,
     Search,
     ExternalLink,
-    HelpCircle
+    HelpCircle,
+    ArrowUpDown,
+    Filter
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../../context/AppContext';
@@ -56,8 +58,24 @@ export default function RealizationDashboard() {
     const [showSemesterAnalysis, setShowSemesterAnalysis] = useState(false);
     const [semesterTab, setSemesterTab] = useState('ALL'); // 'ALL', 'UNIT', 'BIDANG'
     const [semesterSearch, setSemesterSearch] = useState('');
+    const [semesterViewMode, setSemesterViewMode] = useState('ITEMS'); // 'ITEMS' (Rincian per Pos Belanja) or 'ENTITIES' (Rekap per Unit/Bidang)
+    const [itemStatusFilter, setItemStatusFilter] = useState('ALL'); // 'ALL', 'SURPLUS', 'EXACT', 'OVER'
+    const [itemSortBy, setItemSortBy] = useState('REMAINING_DESC'); // 'REMAINING_DESC', 'BUDGET_DESC', 'SPENT_DESC', 'PERCENT_ASC', 'PERCENT_DESC', 'NAME_ASC'
     const [expandedSemesterRows, setExpandedSemesterRows] = useState({});
-    const toggleSemesterRow = (id) => setExpandedSemesterRows(prev => ({ ...prev, [id]: !prev[id] }));
+
+    const isRowExpanded = (id, totalRows) => {
+        if (expandedSemesterRows[id] !== undefined) return expandedSemesterRows[id];
+        // If single entity or admin_unit, default to expanded!
+        if (totalRows === 1 || currentUser?.role === 'admin_unit') return true;
+        return false;
+    };
+
+    const toggleSemesterRow = (id, totalRows) => {
+        setExpandedSemesterRows(prev => {
+            const current = prev[id] !== undefined ? prev[id] : (totalRows === 1 || currentUser?.role === 'admin_unit');
+            return { ...prev, [id]: !current };
+        });
+    };
 
     const [activePopover, setActivePopover] = useState(null); // { id, name, breakdown, x, y }
 
@@ -655,6 +673,110 @@ export default function RealizationDashboard() {
 
     const absorptionRate = dashboardData.totalBudget > 0 ? (dashboardData.totalSpent / dashboardData.totalBudget) * 100 : 0;
 
+    // Filtered lists for display in Semester Analysis
+    const displaySemesterRows = useMemo(() => {
+        let list = [];
+        if (semesterTab === 'BIDANG') {
+            list = dashboardData.semesterFieldsList || [];
+        } else if (semesterTab === 'UNIT') {
+            list = dashboardData.semesterUnitsList || [];
+        } else {
+            list = [
+                ...(dashboardData.semesterFieldsList || []),
+                ...(dashboardData.semesterUnitsList || [])
+            ];
+        }
+
+        if (!semesterSearch.trim()) return list;
+
+        const q = semesterSearch.toLowerCase();
+        return list.filter(row => {
+            const matchName = (row.name || '').toLowerCase().includes(q);
+            const matchItem = row.items?.some(it => (it.name || '').toLowerCase().includes(q));
+            return matchName || matchItem;
+        });
+    }, [dashboardData, semesterTab, semesterSearch]);
+
+    // Flat list of all items across visible entities for direct itemized view
+    const flatSemesterItems = useMemo(() => {
+        const list = [];
+        displaySemesterRows.forEach(row => {
+            (row.items || []).forEach(it => {
+                list.push({
+                    ...it,
+                    entityId: row.id,
+                    entityName: row.name,
+                    entityType: row.type
+                });
+            });
+        });
+
+        // Filter by item status
+        let filtered = list;
+        if (itemStatusFilter === 'SURPLUS') {
+            filtered = filtered.filter(it => it.remainingS1 > 0);
+        } else if (itemStatusFilter === 'OVER') {
+            filtered = filtered.filter(it => it.remainingS1 < 0);
+        } else if (itemStatusFilter === 'EXACT') {
+            filtered = filtered.filter(it => it.remainingS1 === 0 && it.budgetS1 > 0);
+        }
+
+        // Sort
+        return [...filtered].sort((a, b) => {
+            if (itemSortBy === 'REMAINING_DESC') return b.remainingS1 - a.remainingS1;
+            if (itemSortBy === 'REMAINING_ASC') return a.remainingS1 - b.remainingS1;
+            if (itemSortBy === 'BUDGET_DESC') return b.budgetS1 - a.budgetS1;
+            if (itemSortBy === 'SPENT_DESC') return b.spentS1 - a.spentS1;
+            if (itemSortBy === 'PERCENT_ASC') return a.percentS1 - b.percentS1;
+            if (itemSortBy === 'PERCENT_DESC') return b.percentS1 - a.percentS1;
+            if (itemSortBy === 'NAME_ASC') return (a.name || '').localeCompare(b.name || '');
+            return 0;
+        });
+    }, [displaySemesterRows, itemStatusFilter, itemSortBy]);
+
+    const flatCounts = useMemo(() => {
+        let total = 0;
+        let surplus = 0;
+        let over = 0;
+        let exact = 0;
+        displaySemesterRows.forEach(row => {
+            (row.items || []).forEach(it => {
+                total++;
+                if (it.remainingS1 > 0) surplus++;
+                else if (it.remainingS1 < 0) over++;
+                else if (it.remainingS1 === 0 && it.budgetS1 > 0) exact++;
+            });
+        });
+        return { total, surplus, over, exact };
+    }, [displaySemesterRows]);
+
+    const flatTotals = useMemo(() => {
+        const totalBudgetS1 = flatSemesterItems.reduce((s, it) => s + it.budgetS1, 0);
+        const totalSpentS1 = flatSemesterItems.reduce((s, it) => s + it.spentS1, 0);
+        const totalRemainingS1 = flatSemesterItems.reduce((s, it) => s + it.remainingS1, 0);
+        const totalSurplusS1 = flatSemesterItems.reduce((s, it) => s + it.surplusS1, 0);
+        const totalBudgetS2 = flatSemesterItems.reduce((s, it) => s + it.budgetS2, 0);
+        const totalProjectedS2 = flatSemesterItems.reduce((s, it) => s + it.projectedS2, 0);
+        return {
+            totalBudgetS1,
+            totalSpentS1,
+            totalRemainingS1,
+            totalSurplusS1,
+            totalBudgetS2,
+            totalProjectedS2,
+            rateS1: totalBudgetS1 > 0 ? (totalSpentS1 / totalBudgetS1) * 100 : 0
+        };
+    }, [flatSemesterItems]);
+
+    const toggleAllSemesterRows = () => {
+        const areAllExpanded = displaySemesterRows.every(r => isRowExpanded(r.id, displaySemesterRows.length));
+        const next = {};
+        displaySemesterRows.forEach(r => {
+            next[r.id] = !areAllExpanded;
+        });
+        setExpandedSemesterRows(next);
+    };
+
     // Excel Export for Semester 1 vs 2 Analysis
     const handleExportSemesterExcel = () => {
         const rows = [
@@ -733,32 +855,50 @@ export default function RealizationDashboard() {
         const ws = XLSX.utils.aoa_to_sheet(rows);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Evaluasi_Semester');
+
+        // Second sheet: Flat Items List (Rincian Semua Pos Belanja Langsung)
+        const itemRows = [
+            ['RINCIAN PER POS BELANJA EVALUASI REALISASI SEMESTER 1 & REALOKASI SEMESTER 2'],
+            [`Tahun Ajaran: ${dashboardData.activeAcademicYear?.name || '-'} | Sumber Dana: ${sourceMode} | Dicetak: ${new Date().toLocaleString('id-ID')}`],
+            [],
+            [
+                'No', 'Entitas', 'Nama Pos Belanja', 
+                'Pagu Smt 1 (Rp)', 'Realisasi Smt 1 (Rp)', 'Sisa Pagu Smt 1 (Rp)', 'Serapan S1 (%)',
+                'Pagu Awal Smt 2 (Rp)', 'Proyeksi Pagu Smt 2 Baru (Rp)', 'Status Efisiensi'
+            ]
+        ];
+        flatSemesterItems.forEach((it, i) => {
+            itemRows.push([
+                i + 1,
+                it.entityName,
+                it.name,
+                it.budgetS1,
+                it.spentS1,
+                it.remainingS1,
+                `${it.percentS1.toFixed(1)}%`,
+                it.budgetS2,
+                it.projectedS2,
+                it.remainingS1 > 0 ? `Hemat Rp ${it.surplusS1.toLocaleString('id-ID')} (Siap Ditransfer)` : (it.remainingS1 < 0 ? 'Over Pagu' : 'Terserap Pas (100%)')
+            ]);
+        });
+        itemRows.push([]);
+        itemRows.push([
+            'TOTAL',
+            '',
+            'TOTAL ITEM TERFILTER',
+            flatTotals.totalBudgetS1,
+            flatTotals.totalSpentS1,
+            flatTotals.totalRemainingS1,
+            `${flatTotals.rateS1.toFixed(1)}%`,
+            flatTotals.totalBudgetS2,
+            flatTotals.totalProjectedS2,
+            `Total Surplus: Rp ${flatTotals.totalSurplusS1.toLocaleString('id-ID')}`
+        ]);
+        const wsItems = XLSX.utils.aoa_to_sheet(itemRows);
+        XLSX.utils.book_append_sheet(wb, wsItems, 'Rincian_Per_Item');
+
         XLSX.writeFile(wb, `Evaluasi_Perubahan_Anggaran_${sourceMode}_${selectedAcademicYearId}.xlsx`);
     };
-
-    // Filtered lists for display in Semester Analysis
-    const displaySemesterRows = useMemo(() => {
-        let list = [];
-        if (semesterTab === 'BIDANG') {
-            list = dashboardData.semesterFieldsList || [];
-        } else if (semesterTab === 'UNIT') {
-            list = dashboardData.semesterUnitsList || [];
-        } else {
-            list = [
-                ...(dashboardData.semesterFieldsList || []),
-                ...(dashboardData.semesterUnitsList || [])
-            ];
-        }
-
-        if (!semesterSearch.trim()) return list;
-
-        const q = semesterSearch.toLowerCase();
-        return list.filter(row => {
-            const matchName = (row.name || '').toLowerCase().includes(q);
-            const matchItem = row.items?.some(it => (it.name || '').toLowerCase().includes(q));
-            return matchName || matchItem;
-        });
-    }, [dashboardData, semesterTab, semesterSearch]);
 
     return (
         <div className="p-8 pb-24 animate-in">
@@ -974,262 +1114,491 @@ export default function RealizationDashboard() {
                             </div>
                         </div>
 
-                        {/* CONTROLS BAR: TABS, SEARCH, EXCEL & NAVIGATION */}
-                        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 mb-6">
-                            <div className="flex items-center gap-2 flex-wrap">
-                                <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                        {/* CONTROLS BAR: VIEW MODE SWITCH, TABS, SEARCH, EXCEL & NAVIGATION */}
+                        <div className="flex flex-col gap-4 mb-6">
+                            {/* Top row of controls */}
+                            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    {/* Dual Mode Switch: Items vs Entities */}
+                                    <div className="flex bg-indigo-50/80 p-1 rounded-2xl border border-indigo-200 shadow-xs">
+                                        <button
+                                            onClick={() => setSemesterViewMode('ITEMS')}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterViewMode === 'ITEMS' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-900 hover:bg-white/60'}`}
+                                            title="Lihat rincian anggaran, realisasi, dan sisa per pos pengeluaran secara langsung"
+                                        >
+                                            <Layers size={14} />
+                                            <span>Rincian Item Belanja ({flatCounts.total})</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setSemesterViewMode('ENTITIES')}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterViewMode === 'ENTITIES' ? 'bg-indigo-600 text-white shadow-md' : 'text-indigo-900 hover:bg-white/60'}`}
+                                            title="Lihat ringkasan per Unit atau Bidang dengan dropdown rincian"
+                                        >
+                                            <Building2 size={14} />
+                                            <span>Rekap Unit / Bidang ({displaySemesterRows.length})</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Entity Filter Tabs */}
+                                    <div className="flex bg-slate-100 p-1 rounded-2xl border border-slate-200">
+                                        <button
+                                            onClick={() => setSemesterTab('ALL')}
+                                            className={`px-3.5 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterTab === 'ALL' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                        >
+                                            Semua
+                                        </button>
+                                        {currentUser?.role !== 'admin_bidang' && (
+                                            <button
+                                                onClick={() => setSemesterTab('UNIT')}
+                                                className={`px-3.5 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterTab === 'UNIT' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Unit Sekolah ({(dashboardData.semesterUnitsList || []).length})
+                                            </button>
+                                        )}
+                                        {currentUser?.role !== 'admin_unit' && (
+                                            <button
+                                                onClick={() => setSemesterTab('BIDANG')}
+                                                className={`px-3.5 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterTab === 'BIDANG' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                            >
+                                                Bidang ({(dashboardData.semesterFieldsList || []).length})
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="relative">
+                                        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        <input
+                                            type="text"
+                                            placeholder="Cari item pengeluaran..."
+                                            value={semesterSearch}
+                                            onChange={(e) => setSemesterSearch(e.target.value)}
+                                            className="pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-4 focus:ring-indigo-100 outline-none transition-all w-60"
+                                        />
+                                    </div>
+
                                     <button
-                                        onClick={() => setSemesterTab('ALL')}
-                                        className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterTab === 'ALL' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
+                                        onClick={handleExportSemesterExcel}
+                                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
+                                        title="Unduh rekapitulasi dan rincian pos belanja ke file Excel"
                                     >
-                                        Semua ({displaySemesterRows.length})
+                                        <Download size={15} />
+                                        <span>Unduh Excel</span>
                                     </button>
-                                    {currentUser?.role !== 'admin_bidang' && (
-                                        <button
-                                            onClick={() => setSemesterTab('UNIT')}
-                                            className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterTab === 'UNIT' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                        >
-                                            Unit Sekolah ({(dashboardData.semesterUnitsList || []).length})
-                                        </button>
-                                    )}
-                                    {currentUser?.role !== 'admin_unit' && (
-                                        <button
-                                            onClick={() => setSemesterTab('BIDANG')}
-                                            className={`px-4 py-2 rounded-xl font-black text-xs uppercase tracking-wider transition-all ${semesterTab === 'BIDANG' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'}`}
-                                        >
-                                            Bidang Yayasan ({(dashboardData.semesterFieldsList || []).length})
-                                        </button>
-                                    )}
+
+                                    <button
+                                        onClick={() => navigate('/anggaran/pergeseran-anggaran')}
+                                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-indigo-950 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
+                                        title="Buka menu resmi Pergeseran Anggaran untuk memindahkan sisa pagu"
+                                    >
+                                        <ExternalLink size={15} />
+                                        <span>Pergeseran</span>
+                                    </button>
                                 </div>
                             </div>
 
-                            <div className="flex items-center gap-3 flex-wrap">
-                                <div className="relative">
-                                    <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                                    <input
-                                        type="text"
-                                        placeholder="Cari entitas atau pos belanja..."
-                                        value={semesterSearch}
-                                        onChange={(e) => setSemesterSearch(e.target.value)}
-                                        className="pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs font-semibold text-slate-800 placeholder-slate-400 focus:bg-white focus:ring-4 focus:ring-indigo-100 outline-none transition-all w-64"
-                                    />
+                            {/* Second row: Sub-filters and sort controls */}
+                            {semesterViewMode === 'ITEMS' ? (
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-slate-50/80 rounded-2xl border border-slate-200 text-xs">
+                                    <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1 mr-1">
+                                            <Filter size={12} />
+                                            Status:
+                                        </span>
+                                        <button
+                                            onClick={() => setItemStatusFilter('ALL')}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all ${itemStatusFilter === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                                        >
+                                            Semua Pos ({flatCounts.total})
+                                        </button>
+                                        <button
+                                            onClick={() => setItemStatusFilter('SURPLUS')}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 ${itemStatusFilter === 'SURPLUS' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'}`}
+                                        >
+                                            <Sparkles size={12} />
+                                            <span>Ada Sisa / Hemat ({flatCounts.surplus})</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setItemStatusFilter('OVER')}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 ${itemStatusFilter === 'OVER' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'}`}
+                                        >
+                                            <AlertCircle size={12} />
+                                            <span>Over Pagu ({flatCounts.over})</span>
+                                        </button>
+                                        <button
+                                            onClick={() => setItemStatusFilter('EXACT')}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all ${itemStatusFilter === 'EXACT' ? 'bg-slate-700 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                                        >
+                                            Terserap Pas ({flatCounts.exact})
+                                        </button>
+                                    </div>
+
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                            <ArrowUpDown size={12} />
+                                            Urutkan:
+                                        </span>
+                                        <select
+                                            value={itemSortBy}
+                                            onChange={(e) => setItemSortBy(e.target.value)}
+                                            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-[11px] text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+                                        >
+                                            <option value="REMAINING_DESC">Sisa Smt 1 Terbanyak (Surplus)</option>
+                                            <option value="REMAINING_ASC">Sisa Smt 1 Terkecil / Over</option>
+                                            <option value="BUDGET_DESC">Pagu Anggaran S1 Terbesar</option>
+                                            <option value="SPENT_DESC">Realisasi S1 Terbesar</option>
+                                            <option value="PERCENT_ASC">% Serapan Terendah (Paling Hemat)</option>
+                                            <option value="PERCENT_DESC">% Serapan Tertinggi</option>
+                                            <option value="NAME_ASC">Nama Pos (A–Z)</option>
+                                        </select>
+                                    </div>
                                 </div>
-
-                                <button
-                                    onClick={handleExportSemesterExcel}
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
-                                    title="Unduh seluruh rekapitulasi evaluasi Semester 1 vs 2 ke file Excel"
-                                >
-                                    <Download size={15} />
-                                    <span>Unduh Excel</span>
-                                </button>
-
-                                <button
-                                    onClick={() => navigate('/anggaran/pergeseran-anggaran')}
-                                    className="flex items-center gap-2 px-5 py-2.5 bg-slate-900 hover:bg-indigo-950 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
-                                    title="Buka menu resmi Pergeseran Anggaran untuk memindahkan sisa pagu"
-                                >
-                                    <ExternalLink size={15} />
-                                    <span>Pergeseran Anggaran</span>
-                                </button>
-                            </div>
+                            ) : (
+                                <div className="flex items-center justify-between p-3 bg-slate-50/80 rounded-2xl border border-slate-200 text-xs">
+                                    <span className="text-[11px] font-bold text-slate-500">
+                                        Menampilkan {displaySemesterRows.length} entitas. Klik baris atau tombol pos untuk melihat rincian item pengeluaran.
+                                    </span>
+                                    <button
+                                        onClick={toggleAllSemesterRows}
+                                        className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 shadow-xs"
+                                    >
+                                        <Layers size={13} />
+                                        <span>Buka / Tutup Semua Rincian</span>
+                                    </button>
+                                </div>
+                            )}
                         </div>
 
-                        {/* SEMESTER 1 VS 2 COMPARATIVE TABLE */}
-                        <div className="overflow-x-auto rounded-3xl border border-slate-200 shadow-sm">
-                            <table className="w-full text-left text-xs">
-                                <thead>
-                                    {/* Multi-tier group header */}
-                                    <tr className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider">
-                                        <th rowSpan={2} className="px-5 py-4 w-12 text-center border-r border-slate-800">No</th>
-                                        <th rowSpan={2} className="px-6 py-4 min-w-[200px] border-r border-slate-800">Nama Unit / Bidang</th>
-                                        <th colSpan={4} className="px-6 py-3 text-center bg-indigo-900/90 border-r border-indigo-800">
-                                            SEMESTER 1 (JULI – DESEMBER)
-                                        </th>
-                                        <th colSpan={2} className="px-6 py-3 text-center bg-emerald-900/90 border-r border-emerald-800">
-                                            SEMESTER 2 (JANUARI – JUNI)
-                                        </th>
-                                        <th rowSpan={2} className="px-4 py-4 w-28 text-center">Rincian Pos</th>
-                                    </tr>
-                                    <tr className="bg-slate-800 text-white font-bold text-[9px] uppercase tracking-wider">
-                                        <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Pagu Smt 1</th>
-                                        <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Realisasi Smt 1</th>
-                                        <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700 text-emerald-300 font-black">Sisa Smt 1 (Surplus)</th>
-                                        <th className="px-3 py-2.5 text-center bg-indigo-950/70 border-r border-slate-700">% Serap</th>
-                                        <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700">Pagu Awal S2</th>
-                                        <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700 text-indigo-300 font-black">Proyeksi S2 Baru</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                                    {displaySemesterRows.length > 0 ? (
-                                        displaySemesterRows.map((row, idx) => {
-                                            const isExpanded = !!expandedSemesterRows[row.id];
-                                            return (
-                                                <React.Fragment key={row.id}>
-                                                    <tr 
-                                                        onClick={() => toggleSemesterRow(row.id)}
-                                                        className={`hover:bg-indigo-50/40 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-50/30' : ''}`}
-                                                    >
-                                                        <td className="px-5 py-4 text-center font-bold text-slate-400 border-r border-slate-100">
-                                                            {idx + 1}
-                                                        </td>
-                                                        <td className="px-6 py-4 font-black text-slate-900 border-r border-slate-100">
-                                                            <div className="flex items-center gap-2">
-                                                                <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${row.type === 'BIDANG' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}`}>
-                                                                    {row.type === 'BIDANG' ? 'Bidang' : 'Unit'}
+                        {/* MODE 1: DIRECT PER-ITEM EXPENSE VIEW (RINCIAN PER POS PENGELUARAN) */}
+                        {semesterViewMode === 'ITEMS' ? (
+                            <div className="overflow-x-auto rounded-3xl border border-slate-200 shadow-sm">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        {/* Multi-tier group header */}
+                                        <tr className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider">
+                                            <th rowSpan={2} className="px-4 py-4 w-12 text-center border-r border-slate-800">No</th>
+                                            <th rowSpan={2} className="px-5 py-4 min-w-[240px] border-r border-slate-800">Pos Pengeluaran</th>
+                                            {currentUser?.role !== 'admin_unit' && (
+                                                <th rowSpan={2} className="px-4 py-4 min-w-[140px] border-r border-slate-800">Unit / Bidang</th>
+                                            )}
+                                            <th colSpan={4} className="px-6 py-3 text-center bg-indigo-900/90 border-r border-indigo-800">
+                                                SEMESTER 1 (JULI – DESEMBER)
+                                            </th>
+                                            <th colSpan={2} className="px-6 py-3 text-center bg-emerald-900/90 border-r border-emerald-800">
+                                                SEMESTER 2 (JANUARI – JUNI)
+                                            </th>
+                                            <th rowSpan={2} className="px-4 py-4 min-w-[170px] text-center">Status Efisiensi</th>
+                                        </tr>
+                                        <tr className="bg-slate-800 text-white font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Pagu Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Realisasi Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700 text-emerald-300 font-black">Sisa Smt 1 (Surplus)</th>
+                                            <th className="px-3 py-2.5 text-center bg-indigo-950/70 border-r border-slate-700">% Serap</th>
+                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700">Pagu Awal S2</th>
+                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700 text-indigo-300 font-black">Proyeksi S2 Baru</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                                        {flatSemesterItems.length > 0 ? (
+                                            flatSemesterItems.map((it, idx) => (
+                                                <tr key={`${it.entityId}-${it.id}`} className="hover:bg-indigo-50/30 transition-colors">
+                                                    <td className="px-4 py-3.5 text-center font-bold text-slate-400 border-r border-slate-100">
+                                                        {idx + 1}
+                                                    </td>
+                                                    <td className="px-5 py-3.5 font-bold text-slate-900 border-r border-slate-100">
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{it.name}</span>
+                                                            {it.sourceOfFunds && (
+                                                                <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase bg-slate-100 text-slate-600">
+                                                                    {it.sourceOfFunds}
                                                                 </span>
-                                                                <span>{row.name}</span>
-                                                            </div>
-                                                        </td>
-                                                        <td className="px-4 py-4 text-right font-bold text-slate-700 border-r border-slate-100">
-                                                            {formatRupiah(row.budgetS1)}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-right font-bold text-slate-900 border-r border-slate-100">
-                                                            {formatRupiah(row.spentS1)}
-                                                        </td>
-                                                        <td className={`px-4 py-4 text-right font-black border-r border-slate-100 ${row.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/50' : row.remainingS1 < 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}`}>
-                                                            {formatRupiah(row.remainingS1)}
-                                                        </td>
-                                                        <td className="px-3 py-4 text-center font-bold text-slate-700 border-r border-slate-100">
-                                                            <span className={`px-2 py-1 rounded-full text-[10px] font-black ${row.rateS1 > 90 ? 'bg-emerald-100 text-emerald-800' : row.rateS1 > 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
-                                                                {row.rateS1.toFixed(1)}%
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    {currentUser?.role !== 'admin_unit' && (
+                                                        <td className="px-4 py-3.5 border-r border-slate-100">
+                                                            <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${it.entityType === 'BIDANG' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-blue-50 text-blue-700 border border-blue-200'}`}>
+                                                                {it.entityName}
                                                             </span>
                                                         </td>
-                                                        <td className="px-4 py-4 text-right font-bold text-slate-700 border-r border-slate-100">
-                                                            {formatRupiah(row.budgetS2)}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-right font-black text-indigo-700 bg-indigo-50/30 border-r border-slate-100">
-                                                            {formatRupiah(row.projectedS2)}
-                                                        </td>
-                                                        <td className="px-4 py-4 text-center">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    toggleSemesterRow(row.id);
-                                                                }}
-                                                                className="px-3 py-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 rounded-xl font-black text-[10px] uppercase tracking-wider transition-colors inline-flex items-center gap-1.5"
-                                                            >
-                                                                <span>{row.items?.length || 0} Pos</span>
-                                                                {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-
-                                                    {/* Expanded Items Breakdown */}
-                                                    {isExpanded && (
-                                                        <tr className="bg-slate-50/80">
-                                                            <td colSpan={9} className="p-6">
-                                                                <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
-                                                                    <div className="p-4 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between">
-                                                                        <span className="font-black text-xs text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                                                                            <Layers size={15} className="text-indigo-600" />
-                                                                            Rincian Pos Belanja: {row.name}
-                                                                        </span>
-                                                                        <span className="text-[10px] text-slate-500 font-semibold italic">
-                                                                            *Sisa efisiensi pos di S1 dapat dipindahkan ke pos S2
-                                                                        </span>
-                                                                    </div>
-                                                                    <table className="w-full text-left text-xs">
-                                                                        <thead>
-                                                                            <tr className="bg-slate-50 text-slate-500 font-bold text-[9px] uppercase tracking-wider border-b border-slate-200">
-                                                                                <th className="px-4 py-2">Pos Pengeluaran</th>
-                                                                                <th className="px-4 py-2 text-right">Pagu Smt 1</th>
-                                                                                <th className="px-4 py-2 text-right">Realisasi Smt 1</th>
-                                                                                <th className="px-4 py-2 text-right text-emerald-700">Sisa Pagu S1</th>
-                                                                                <th className="px-3 py-2 text-center">% Serap</th>
-                                                                                <th className="px-4 py-2 text-right">Pagu Smt 2 Awal</th>
-                                                                                <th className="px-4 py-2 text-right text-indigo-700">Proyeksi Smt 2</th>
-                                                                                <th className="px-4 py-2 text-center">Status</th>
-                                                                            </tr>
-                                                                        </thead>
-                                                                        <tbody className="divide-y divide-slate-100">
-                                                                            {row.items.map(it => (
-                                                                                <tr key={it.id} className="hover:bg-slate-50/50">
-                                                                                    <td className="px-4 py-3 font-semibold text-slate-800">
-                                                                                        {it.name}
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-right text-slate-600">
-                                                                                        {formatRupiah(it.budgetS1)}
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-right text-slate-900 font-bold">
-                                                                                        {formatRupiah(it.spentS1)}
-                                                                                    </td>
-                                                                                    <td className={`px-4 py-3 text-right font-black ${it.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/40' : it.remainingS1 < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                                                                                        {formatRupiah(it.remainingS1)}
-                                                                                    </td>
-                                                                                    <td className="px-3 py-3 text-center text-slate-600 font-semibold text-[10px]">
-                                                                                        {it.percentS1.toFixed(1)}%
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-right text-slate-600">
-                                                                                        {formatRupiah(it.budgetS2)}
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-right font-black text-indigo-700">
-                                                                                        {formatRupiah(it.projectedS2)}
-                                                                                    </td>
-                                                                                    <td className="px-4 py-3 text-center">
-                                                                                        {it.remainingS1 > 0 ? (
-                                                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
-                                                                                                Hemat Rp {formatRupiah(it.surplusS1)}
-                                                                                            </span>
-                                                                                        ) : it.remainingS1 < 0 ? (
-                                                                                            <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[9px] font-black uppercase">
-                                                                                                Over Pagu
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="text-slate-400 text-[10px]">-</span>
-                                                                                        )}
-                                                                                    </td>
-                                                                                </tr>
-                                                                            ))}
-                                                                        </tbody>
-                                                                    </table>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
                                                     )}
-                                                </React.Fragment>
-                                            );
-                                        })
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={9} className="text-center py-12 text-slate-400 font-bold uppercase tracking-wider text-xs">
-                                                Tidak ditemukan data anggaran semester untuk filter ini.
+                                                    <td className="px-4 py-3.5 text-right font-bold text-slate-700 border-r border-slate-100">
+                                                        {formatRupiah(it.budgetS1)}
+                                                    </td>
+                                                    <td className="px-4 py-3.5 text-right font-black text-slate-900 border-r border-slate-100">
+                                                        {formatRupiah(it.spentS1)}
+                                                    </td>
+                                                    <td className={`px-4 py-3.5 text-right font-black border-r border-slate-100 ${it.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/70 font-extrabold' : it.remainingS1 < 0 ? 'text-rose-600 bg-rose-50/70' : 'text-slate-400'}`}>
+                                                        {formatRupiah(it.remainingS1)}
+                                                    </td>
+                                                    <td className="px-3 py-3.5 text-center font-bold border-r border-slate-100">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${it.percentS1 > 100 ? 'bg-rose-100 text-rose-800' : it.percentS1 > 90 ? 'bg-emerald-100 text-emerald-800' : it.percentS1 > 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                                            {it.percentS1.toFixed(1)}%
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3.5 text-right font-bold text-slate-700 border-r border-slate-100">
+                                                        {formatRupiah(it.budgetS2)}
+                                                    </td>
+                                                    <td className="px-4 py-3.5 text-right font-black text-indigo-700 bg-indigo-50/30 border-r border-slate-100">
+                                                        {formatRupiah(it.projectedS2)}
+                                                    </td>
+                                                    <td className="px-4 py-3.5 text-center">
+                                                        {it.remainingS1 > 0 ? (
+                                                            <span className="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-black uppercase inline-flex items-center gap-1 shadow-xs">
+                                                                <Sparkles size={11} />
+                                                                <span>Hemat {formatRupiah(it.surplusS1)}</span>
+                                                            </span>
+                                                        ) : it.remainingS1 < 0 ? (
+                                                            <span className="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black uppercase inline-flex items-center gap-1">
+                                                                <AlertCircle size={11} />
+                                                                <span>Over Pagu</span>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 text-[10px] font-bold">
+                                                                Terserap Pas (100%)
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={currentUser?.role !== 'admin_unit' ? 10 : 9} className="text-center py-12 text-slate-400 font-bold uppercase tracking-wider text-xs">
+                                                    Tidak ditemukan item pengeluaran untuk kriteria filter ini.
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {/* TOTAL ROW FOR ITEMS */}
+                                        <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-slate-700">
+                                            <td colSpan={currentUser?.role !== 'admin_unit' ? 3 : 2} className="px-6 py-4 text-center uppercase tracking-widest text-indigo-300">
+                                                TOTAL ({flatSemesterItems.length} POS BELANJA TERFILTER)
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                                {formatRupiah(flatTotals.totalBudgetS1)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                                {formatRupiah(flatTotals.totalSpentS1)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-emerald-400 bg-emerald-950/40">
+                                                {formatRupiah(flatTotals.totalRemainingS1)}
+                                            </td>
+                                            <td className="px-3 py-4 text-center border-l border-slate-800 font-black text-[10px]">
+                                                {flatTotals.rateS1.toFixed(1)}%
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                                {formatRupiah(flatTotals.totalBudgetS2)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-indigo-300 bg-indigo-950/40">
+                                                {formatRupiah(flatTotals.totalProjectedS2)}
+                                            </td>
+                                            <td className="px-4 py-4 text-center border-l border-slate-800">
+                                                <span className="text-[10px] text-emerald-300 uppercase font-black block">
+                                                    +{formatRupiah(flatTotals.totalSurplusS1)}
+                                                </span>
                                             </td>
                                         </tr>
-                                    )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            /* MODE 2: GROUPED ENTITIES VIEW (REKAP PER UNIT / BIDANG) */
+                            <div className="overflow-x-auto rounded-3xl border border-slate-200 shadow-sm">
+                                <table className="w-full text-left text-xs">
+                                    <thead>
+                                        {/* Multi-tier group header */}
+                                        <tr className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider">
+                                            <th rowSpan={2} className="px-5 py-4 w-12 text-center border-r border-slate-800">No</th>
+                                            <th rowSpan={2} className="px-6 py-4 min-w-[200px] border-r border-slate-800">Nama Unit / Bidang</th>
+                                            <th colSpan={4} className="px-6 py-3 text-center bg-indigo-900/90 border-r border-indigo-800">
+                                                SEMESTER 1 (JULI – DESEMBER)
+                                            </th>
+                                            <th colSpan={2} className="px-6 py-3 text-center bg-emerald-900/90 border-r border-emerald-800">
+                                                SEMESTER 2 (JANUARI – JUNI)
+                                            </th>
+                                            <th rowSpan={2} className="px-4 py-4 w-28 text-center">Rincian Pos</th>
+                                        </tr>
+                                        <tr className="bg-slate-800 text-white font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Pagu Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Realisasi Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700 text-emerald-300 font-black">Sisa Smt 1 (Surplus)</th>
+                                            <th className="px-3 py-2.5 text-center bg-indigo-950/70 border-r border-slate-700">% Serap</th>
+                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700">Pagu Awal S2</th>
+                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700 text-indigo-300 font-black">Proyeksi S2 Baru</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
+                                        {displaySemesterRows.length > 0 ? (
+                                            displaySemesterRows.map((row, idx) => {
+                                                const isExpanded = isRowExpanded(row.id, displaySemesterRows.length);
+                                                return (
+                                                    <React.Fragment key={row.id}>
+                                                        <tr 
+                                                            onClick={() => toggleSemesterRow(row.id, displaySemesterRows.length)}
+                                                            className={`hover:bg-indigo-50/40 cursor-pointer transition-colors ${isExpanded ? 'bg-indigo-50/30' : ''}`}
+                                                        >
+                                                            <td className="px-5 py-4 text-center font-bold text-slate-400 border-r border-slate-100">
+                                                                {idx + 1}
+                                                            </td>
+                                                            <td className="px-6 py-4 font-black text-slate-900 border-r border-slate-100">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`px-2 py-0.5 rounded text-[9px] font-black uppercase ${row.type === 'BIDANG' ? 'bg-indigo-100 text-indigo-700' : 'bg-blue-100 text-blue-700'}`}>
+                                                                        {row.type === 'BIDANG' ? 'Bidang' : 'Unit'}
+                                                                    </span>
+                                                                    <span>{row.name}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right font-bold text-slate-700 border-r border-slate-100">
+                                                                {formatRupiah(row.budgetS1)}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right font-bold text-slate-900 border-r border-slate-100">
+                                                                {formatRupiah(row.spentS1)}
+                                                            </td>
+                                                            <td className={`px-4 py-4 text-right font-black border-r border-slate-100 ${row.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/50' : row.remainingS1 < 0 ? 'text-rose-600 bg-rose-50/50' : 'text-slate-400'}`}>
+                                                                {formatRupiah(row.remainingS1)}
+                                                            </td>
+                                                            <td className="px-3 py-4 text-center font-bold text-slate-700 border-r border-slate-100">
+                                                                <span className={`px-2 py-1 rounded-full text-[10px] font-black ${row.rateS1 > 90 ? 'bg-emerald-100 text-emerald-800' : row.rateS1 > 50 ? 'bg-blue-100 text-blue-800' : 'bg-amber-100 text-amber-800'}`}>
+                                                                    {row.rateS1.toFixed(1)}%
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right font-bold text-slate-700 border-r border-slate-100">
+                                                                {formatRupiah(row.budgetS2)}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-right font-black text-indigo-700 bg-indigo-50/30 border-r border-slate-100">
+                                                                {formatRupiah(row.projectedS2)}
+                                                            </td>
+                                                            <td className="px-4 py-4 text-center">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        toggleSemesterRow(row.id, displaySemesterRows.length);
+                                                                    }}
+                                                                    className="px-3 py-1.5 bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 rounded-xl font-black text-[10px] uppercase tracking-wider transition-colors inline-flex items-center gap-1.5"
+                                                                >
+                                                                    <span>{row.items?.length || 0} Pos</span>
+                                                                    {isExpanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                                                                </button>
+                                                            </td>
+                                                        </tr>
 
-                                    {/* GRAND TOTAL SEMESTER ROW */}
-                                    <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-slate-700">
-                                        <td colSpan={2} className="px-6 py-4 text-center uppercase tracking-widest text-indigo-300">
-                                            TOTAL KESELURUHAN (EVALUASI SEMESTER)
-                                        </td>
-                                        <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
-                                            {formatRupiah(dashboardData.semTotalS1Budget)}
-                                        </td>
-                                        <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
-                                            {formatRupiah(dashboardData.semTotalS1Spent)}
-                                        </td>
-                                        <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-emerald-400 bg-emerald-950/40">
-                                            {formatRupiah(dashboardData.semTotalS1Remaining)}
-                                        </td>
-                                        <td className="px-3 py-4 text-center border-l border-slate-800 font-black text-[10px]">
-                                            {dashboardData.semTotalS1Budget > 0 ? ((dashboardData.semTotalS1Spent / dashboardData.semTotalS1Budget) * 100).toFixed(1) : 0}%
-                                        </td>
-                                        <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
-                                            {formatRupiah(dashboardData.semTotalS2Budget)}
-                                        </td>
-                                        <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-indigo-300 bg-indigo-950/40">
-                                            {formatRupiah(dashboardData.semTotalS2Projected)}
-                                        </td>
-                                        <td className="px-4 py-4 text-center border-l border-slate-800">
-                                            <span className="text-[9px] text-emerald-300 uppercase font-black block">
-                                                +{formatRupiah(dashboardData.semTotalS1Surplus)}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                                                        {/* Expanded Items Breakdown */}
+                                                        {isExpanded && (
+                                                            <tr className="bg-slate-50/80">
+                                                                <td colSpan={9} className="p-6">
+                                                                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-inner">
+                                                                        <div className="p-4 bg-slate-100/70 border-b border-slate-200 flex items-center justify-between">
+                                                                            <span className="font-black text-xs text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                                                                                <Layers size={15} className="text-indigo-600" />
+                                                                                Rincian Pos Belanja: {row.name}
+                                                                            </span>
+                                                                            <span className="text-[10px] text-slate-500 font-semibold italic">
+                                                                                *Sisa efisiensi pos di S1 dapat dipindahkan ke pos S2
+                                                                            </span>
+                                                                        </div>
+                                                                        <table className="w-full text-left text-xs">
+                                                                            <thead>
+                                                                                <tr className="bg-slate-50 text-slate-500 font-bold text-[9px] uppercase tracking-wider border-b border-slate-200">
+                                                                                    <th className="px-4 py-2">Pos Pengeluaran</th>
+                                                                                    <th className="px-4 py-2 text-right">Pagu Smt 1</th>
+                                                                                    <th className="px-4 py-2 text-right">Realisasi Smt 1</th>
+                                                                                    <th className="px-4 py-2 text-right text-emerald-700">Sisa Pagu S1</th>
+                                                                                    <th className="px-3 py-2 text-center">% Serap</th>
+                                                                                    <th className="px-4 py-2 text-right">Pagu Smt 2 Awal</th>
+                                                                                    <th className="px-4 py-2 text-right text-indigo-700">Proyeksi Smt 2</th>
+                                                                                    <th className="px-4 py-2 text-center">Status</th>
+                                                                                </tr>
+                                                                            </thead>
+                                                                            <tbody className="divide-y divide-slate-100">
+                                                                                {row.items.map(it => (
+                                                                                    <tr key={it.id} className="hover:bg-slate-50/50">
+                                                                                        <td className="px-4 py-3 font-semibold text-slate-800">
+                                                                                            {it.name}
+                                                                                        </td>
+                                                                                        <td className="px-4 py-3 text-right text-slate-600">
+                                                                                            {formatRupiah(it.budgetS1)}
+                                                                                        </td>
+                                                                                        <td className="px-4 py-3 text-right text-slate-900 font-bold">
+                                                                                            {formatRupiah(it.spentS1)}
+                                                                                        </td>
+                                                                                        <td className={`px-4 py-3 text-right font-black ${it.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/40' : it.remainingS1 < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
+                                                                                            {formatRupiah(it.remainingS1)}
+                                                                                        </td>
+                                                                                        <td className="px-3 py-3 text-center text-slate-600 font-semibold text-[10px]">
+                                                                                            {it.percentS1.toFixed(1)}%
+                                                                                        </td>
+                                                                                        <td className="px-4 py-3 text-right text-slate-600">
+                                                                                            {formatRupiah(it.budgetS2)}
+                                                                                        </td>
+                                                                                        <td className="px-4 py-3 text-right font-black text-indigo-700">
+                                                                                            {formatRupiah(it.projectedS2)}
+                                                                                        </td>
+                                                                                        <td className="px-4 py-3 text-center">
+                                                                                            {it.remainingS1 > 0 ? (
+                                                                                                <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
+                                                                                                    Hemat Rp {formatRupiah(it.surplusS1)}
+                                                                                                </span>
+                                                                                            ) : it.remainingS1 < 0 ? (
+                                                                                                <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[9px] font-black uppercase">
+                                                                                                    Over Pagu
+                                                                                                </span>
+                                                                                            ) : (
+                                                                                                <span className="text-slate-400 text-[10px]">-</span>
+                                                                                            )}
+                                                                                        </td>
+                                                                                    </tr>
+                                                                                ))}
+                                                                            </tbody>
+                                                                        </table>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </React.Fragment>
+                                                );
+                                            })
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={9} className="text-center py-12 text-slate-400 font-bold uppercase tracking-wider text-xs">
+                                                    Tidak ditemukan data anggaran semester untuk filter ini.
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {/* GRAND TOTAL SEMESTER ROW */}
+                                        <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-slate-700">
+                                            <td colSpan={2} className="px-6 py-4 text-center uppercase tracking-widest text-indigo-300">
+                                                TOTAL KESELURUHAN (EVALUASI SEMESTER)
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                                {formatRupiah(dashboardData.semTotalS1Budget)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                                {formatRupiah(dashboardData.semTotalS1Spent)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-emerald-400 bg-emerald-950/40">
+                                                {formatRupiah(dashboardData.semTotalS1Remaining)}
+                                            </td>
+                                            <td className="px-3 py-4 text-center border-l border-slate-800 font-black text-[10px]">
+                                                {dashboardData.semTotalS1Budget > 0 ? ((dashboardData.semTotalS1Spent / dashboardData.semTotalS1Budget) * 100).toFixed(1) : 0}%
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                                {formatRupiah(dashboardData.semTotalS2Budget)}
+                                            </td>
+                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-indigo-300 bg-indigo-950/40">
+                                                {formatRupiah(dashboardData.semTotalS2Projected)}
+                                            </td>
+                                            <td className="px-4 py-4 text-center border-l border-slate-800">
+                                                <span className="text-[9px] text-emerald-300 uppercase font-black block">
+                                                    +{formatRupiah(dashboardData.semTotalS1Surplus)}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
                         {/* Bottom Collapse Button */}
                         <div className="mt-6 flex justify-end">
