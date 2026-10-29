@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import Sidebar from './Sidebar';
+import ErrorBoundary from './ErrorBoundary';
 
 export default function Layout() {
     const { state } = useApp();
@@ -42,7 +43,9 @@ export default function Layout() {
                     </button>
                 </div>
 
-                <Outlet />
+                <ErrorBoundary>
+                    <Outlet />
+                </ErrorBoundary>
             </main>
         </div>
     );

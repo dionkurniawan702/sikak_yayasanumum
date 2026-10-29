@@ -7,7 +7,7 @@ import {
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
     Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, CheckSquare, Search,
-    ExternalLink, CheckCheck
+    ExternalLink, CheckCheck, Sparkles
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -276,151 +276,7 @@ function RABContent() {
         return map;
     }, [budgetReports]);
 
-    // Evaluasi Sisa Anggaran Semester 1 Khusus Unit/Bidang yang Sedang Dibuka
-    const unitSemester1Data = useMemo(() => {
-        if (!selectedUnitId && !selectedFieldId) return null;
-        const targetId = selectedUnitId || selectedFieldId;
-        const isField = !selectedUnitId && !!selectedFieldId;
 
-        const isSemester1MonthHelper = (mStr) => {
-            if (!mStr) return true;
-            let m = null;
-            if (typeof mStr === 'string' && mStr.includes('-')) {
-                const parts = mStr.split('-');
-                if (parts[0].length === 4) m = parseInt(parts[1], 10);
-            }
-            if (!m) {
-                const d = new Date(mStr);
-                if (!isNaN(d.getTime())) m = d.getMonth() + 1;
-            }
-            if (!m) return true;
-            return m >= 7 && m <= 12;
-        };
-
-        const planToUse = originalPlan || activePlan;
-        if (!planToUse || !planToUse.expense) return null;
-
-        const posMap = {};
-        Object.entries(planToUse.expense || {}).forEach(([exId, rawPlans]) => {
-            const arr = Array.isArray(rawPlans) ? rawPlans : [rawPlans];
-            let s1 = 0;
-            let s2 = 0;
-            arr.forEach(p => {
-                (p.components || []).forEach(comp => {
-                    const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
-                        comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED';
-                    if (isApproved) {
-                        const tot = parseFloat(comp.total) || 0;
-                        const useBos = comp.useBos || false;
-                        const bosAmount = parseFloat(comp.bosAmount) || 0;
-                        let eff = fundSourceFilter === 'BOS' ? (useBos ? (bosAmount > 0 ? bosAmount : tot) : 0) : (useBos ? tot - bosAmount : tot);
-                        if (eff > 0) {
-                            let cS1 = 0;
-                            let cS2 = 0;
-                            const monthsObj = comp.months || {};
-                            const mKeys = Object.keys(monthsObj);
-                            const activeM = mKeys.filter(k => monthsObj[k] && (monthsObj[k].m === true || parseFloat(monthsObj[k].jumlah) > 0));
-                            if (activeM.length > 0) {
-                                const hasAmounts = activeM.some(k => parseFloat(monthsObj[k]?.jumlah) > 0);
-                                if (hasAmounts) {
-                                    activeM.forEach(k => {
-                                        const j = parseFloat(monthsObj[k]?.jumlah) || 0;
-                                        if (isSemester1MonthHelper(k)) cS1 += j;
-                                        else cS2 += j;
-                                    });
-                                } else {
-                                    let c1 = 0, c2 = 0;
-                                    activeM.forEach(k => {
-                                        if (isSemester1MonthHelper(k)) c1++;
-                                        else c2++;
-                                    });
-                                    const t = c1 + c2;
-                                    cS1 = t > 0 ? (c1 / t) * eff : eff;
-                                    cS2 = t > 0 ? (c2 / t) * eff : 0;
-                                }
-                            } else {
-                                if (String(comp.semester) === '2') cS2 = eff;
-                                else cS1 = eff;
-                            }
-                            s1 += cS1;
-                            s2 += cS2;
-                        }
-                    }
-                });
-            });
-
-            if (s1 > 0 || s2 > 0) {
-                const ex = expenseItems.find(e => e.id === exId);
-                posMap[exId] = {
-                    id: exId,
-                    name: ex?.name || 'Pos Pengeluaran',
-                    budgetS1: s1,
-                    spentS1: 0,
-                    budgetS2: s2
-                };
-            }
-        });
-
-        // Add spending from budgetReports
-        (budgetReports || []).filter(r => 
-            r.status === 'APPROVED' && 
-            !r.isDeleted && 
-            r.academicYearId === selectedYearId &&
-            r.kategoriAset !== 'PENGEMBALIAN' &&
-            (fundSourceFilter === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS')) &&
-            (isField ? r.fieldId === targetId : r.unitId === targetId)
-        ).forEach(report => {
-            const isS1 = isSemester1MonthHelper(report.date || report.month);
-            if (!isS1) return;
-            const amt = parseFloat(report.amount) || 0;
-            let exId = report.expenseItemId;
-            if (!exId && report.componentId) {
-                for (const [k, rawPlans] of Object.entries(planToUse.expense || {})) {
-                    const arr = Array.isArray(rawPlans) ? rawPlans : [rawPlans];
-                    if (arr.some(p => p.components?.some(c => c.id === report.componentId))) {
-                        exId = k;
-                        break;
-                    }
-                }
-            }
-            if (exId && posMap[exId]) {
-                posMap[exId].spentS1 += amt;
-            } else if (exId) {
-                const ex = expenseItems.find(e => e.id === exId);
-                posMap[exId] = {
-                    id: exId,
-                    name: ex?.name || 'Pos Pengeluaran',
-                    budgetS1: 0,
-                    spentS1: amt,
-                    budgetS2: 0
-                };
-            }
-        });
-
-        const items = Object.values(posMap).map(it => ({
-            ...it,
-            remainingS1: it.budgetS1 - it.spentS1,
-            surplusS1: Math.max(0, it.budgetS1 - it.spentS1),
-            projectedS2: it.budgetS2 + Math.max(0, it.budgetS1 - it.spentS1)
-        })).sort((a, b) => b.budgetS1 - a.budgetS1);
-
-        const totalBudgetS1 = items.reduce((s, it) => s + it.budgetS1, 0);
-        const totalSpentS1 = items.reduce((s, it) => s + it.spentS1, 0);
-        const totalRemainingS1 = totalBudgetS1 - totalSpentS1;
-        const totalSurplusS1 = items.reduce((s, it) => s + it.surplusS1, 0);
-        const totalBudgetS2 = items.reduce((s, it) => s + it.budgetS2, 0);
-        const totalProjectedS2 = totalBudgetS2 + totalSurplusS1;
-
-        return {
-            items,
-            totalBudgetS1,
-            totalSpentS1,
-            totalRemainingS1,
-            totalSurplusS1,
-            totalBudgetS2,
-            totalProjectedS2
-        };
-    }, [selectedUnitId, selectedFieldId, selectedYearId, originalPlan, activePlan, fundSourceFilter, expenseItems, budgetReports, academicYears]);
 
     // Gather all asset items from all units/bidang for Sarpras verification
     const allSarprasAssets = useMemo(() => {
@@ -1126,6 +982,152 @@ function RABContent() {
     const isField = selectedUnitId.startsWith('FIELD-');
     const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
     const isLocked = ((activePlan?.status === 'APPROVED' && !isAddendumMode) || activePlan?.status === 'PENDING' || isConsolidation) && !isSuperAdmin;
+
+    // Evaluasi Sisa Anggaran Semester 1 Khusus Unit/Bidang yang Sedang Dibuka
+    const unitSemester1Data = useMemo(() => {
+        if (!selectedUnitId || isConsolidation) return null;
+        const targetId = isField ? fieldId : selectedUnitId;
+
+        const isSemester1MonthHelper = (mStr) => {
+            if (!mStr) return true;
+            let m = null;
+            if (typeof mStr === 'string' && mStr.includes('-')) {
+                const parts = mStr.split('-');
+                if (parts[0].length === 4) m = parseInt(parts[1], 10);
+            }
+            if (!m) {
+                const d = new Date(mStr);
+                if (!isNaN(d.getTime())) m = d.getMonth() + 1;
+            }
+            if (!m) return true;
+            return m >= 7 && m <= 12;
+        };
+
+        const planToUse = originalPlan || activePlan;
+        if (!planToUse || !planToUse.expense) return null;
+
+        const posMap = {};
+        Object.entries(planToUse.expense || {}).forEach(([exId, rawPlans]) => {
+            const arr = Array.isArray(rawPlans) ? rawPlans : [rawPlans];
+            let s1 = 0;
+            let s2 = 0;
+            arr.forEach(p => {
+                (p.components || []).forEach(comp => {
+                    const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
+                        comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED';
+                    if (isApproved) {
+                        const tot = parseFloat(comp.total) || 0;
+                        const useBos = comp.useBos || false;
+                        const bosAmount = parseFloat(comp.bosAmount) || 0;
+                        let eff = fundSourceFilter === 'BOS' ? (useBos ? (bosAmount > 0 ? bosAmount : tot) : 0) : (useBos ? tot - bosAmount : tot);
+                        if (eff > 0) {
+                            let cS1 = 0;
+                            let cS2 = 0;
+                            const monthsObj = comp.months || {};
+                            const mKeys = Object.keys(monthsObj);
+                            const activeM = mKeys.filter(k => monthsObj[k] && (monthsObj[k].m === true || parseFloat(monthsObj[k].jumlah) > 0));
+                            if (activeM.length > 0) {
+                                const hasAmounts = activeM.some(k => parseFloat(monthsObj[k]?.jumlah) > 0);
+                                if (hasAmounts) {
+                                    activeM.forEach(k => {
+                                        const j = parseFloat(monthsObj[k]?.jumlah) || 0;
+                                        if (isSemester1MonthHelper(k)) cS1 += j;
+                                        else cS2 += j;
+                                    });
+                                } else {
+                                    let c1 = 0, c2 = 0;
+                                    activeM.forEach(k => {
+                                        if (isSemester1MonthHelper(k)) c1++;
+                                        else c2++;
+                                    });
+                                    const t = c1 + c2;
+                                    cS1 = t > 0 ? (c1 / t) * eff : eff;
+                                    cS2 = t > 0 ? (c2 / t) * eff : 0;
+                                }
+                            } else {
+                                if (String(comp.semester) === '2') cS2 = eff;
+                                else cS1 = eff;
+                            }
+                            s1 += cS1;
+                            s2 += cS2;
+                        }
+                    }
+                });
+            });
+
+            if (s1 > 0 || s2 > 0) {
+                const ex = expenseItems.find(e => e.id === exId);
+                posMap[exId] = {
+                    id: exId,
+                    name: ex?.name || 'Pos Pengeluaran',
+                    budgetS1: s1,
+                    spentS1: 0,
+                    budgetS2: s2
+                };
+            }
+        });
+
+        // Add spending from budgetReports
+        (budgetReports || []).filter(r => 
+            r.status === 'APPROVED' && 
+            !r.isDeleted && 
+            r.academicYearId === selectedYearId &&
+            r.kategoriAset !== 'PENGEMBALIAN' &&
+            (fundSourceFilter === 'BOS' ? r.planId?.endsWith('-BOS') : !r.planId?.endsWith('-BOS')) &&
+            (isField ? r.fieldId === targetId : r.unitId === targetId)
+        ).forEach(report => {
+            const isS1 = isSemester1MonthHelper(report.date || report.month);
+            if (!isS1) return;
+            const amt = parseFloat(report.amount) || 0;
+            let exId = report.expenseItemId;
+            if (!exId && report.componentId) {
+                for (const [k, rawPlans] of Object.entries(planToUse.expense || {})) {
+                    const arr = Array.isArray(rawPlans) ? rawPlans : [rawPlans];
+                    if (arr.some(p => p.components?.some(c => c.id === report.componentId))) {
+                        exId = k;
+                        break;
+                    }
+                }
+            }
+            if (exId && posMap[exId]) {
+                posMap[exId].spentS1 += amt;
+            } else if (exId) {
+                const ex = expenseItems.find(e => e.id === exId);
+                posMap[exId] = {
+                    id: exId,
+                    name: ex?.name || 'Pos Pengeluaran',
+                    budgetS1: 0,
+                    spentS1: amt,
+                    budgetS2: 0
+                };
+            }
+        });
+
+        const items = Object.values(posMap).map(it => ({
+            ...it,
+            remainingS1: it.budgetS1 - it.spentS1,
+            surplusS1: Math.max(0, it.budgetS1 - it.spentS1),
+            projectedS2: it.budgetS2 + Math.max(0, it.budgetS1 - it.spentS1)
+        })).sort((a, b) => b.budgetS1 - a.budgetS1);
+
+        const totalBudgetS1 = items.reduce((s, it) => s + it.budgetS1, 0);
+        const totalSpentS1 = items.reduce((s, it) => s + it.spentS1, 0);
+        const totalRemainingS1 = totalBudgetS1 - totalSpentS1;
+        const totalSurplusS1 = items.reduce((s, it) => s + it.surplusS1, 0);
+        const totalBudgetS2 = items.reduce((s, it) => s + it.budgetS2, 0);
+        const totalProjectedS2 = totalBudgetS2 + totalSurplusS1;
+
+        return {
+            items,
+            totalBudgetS1,
+            totalSpentS1,
+            totalRemainingS1,
+            totalSurplusS1,
+            totalBudgetS2,
+            totalProjectedS2
+        };
+    }, [selectedUnitId, isConsolidation, isField, fieldId, selectedYearId, originalPlan, activePlan, fundSourceFilter, expenseItems, budgetReports, academicYears]);
+
 
     const bosItemMap = useMemo(() => {
         const map = {};
@@ -2122,7 +2124,6 @@ function RABContent() {
             }, state);
 
             setMessage({ type: 'success', text: `Item "${newItemData.name}" berhasil ditambahkan ke RAB.` });
-            setIsAddingItem(false);
             setNewItemData({ name: '', incomeItemId: '' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal menambah item: ' + error.message });
@@ -6637,7 +6638,7 @@ function RABContent() {
                                             Evaluasi Sisa Anggaran Semester 1
                                         </h3>
                                         <span className="px-3 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full font-black text-[9px] uppercase tracking-wider">
-                                            {units.find(u => u.id === selectedUnitId)?.name || fields.find(f => f.id === selectedFieldId)?.name || 'Unit'}
+                                            {units.find(u => u.id === selectedUnitId)?.name || fields.find(f => f.id === fieldId)?.name || 'Unit'}
                                         </span>
                                     </div>
                                     <p className="text-slate-400 text-xs mt-1">
