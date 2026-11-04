@@ -694,6 +694,19 @@ export default function BOSSaldo() {
         });
     }, [budgetRequests, returnForm.unitId, selectedYearId]);
 
+    // Helper: hitung sisa riil permintaan BOS (kurangi semua nota non-REJECTED + pengembalian PENDING/APPROVED)
+    const getBosRequestRefundable = (req) => {
+        if (!req) return 0;
+        const reqTotal = parseFloat(req.totalAmount) || 0;
+        const spent = (budgetReports || []).filter(r =>
+            r.budgetRequestId === req.id && !r.isDeleted && r.status !== 'REJECTED' && r.kategoriAset !== 'PENGEMBALIAN'
+        ).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        const ret = (budgetReports || []).filter(r =>
+            r.budgetRequestId === req.id && !r.isDeleted && (r.status === 'APPROVED' || r.status === 'PENDING') && r.kategoriAset === 'PENGEMBALIAN'
+        ).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+        return Math.max(0, reqTotal - spent - ret);
+    };
+
     // Buka Modal Pengembalian
     const handleOpenReturnModal = (targetUnit = null, defaultAmount = 0) => {
         const uId = targetUnit ? targetUnit.id : (currentUser?.unitId || (bosUnits[0]?.id || ''));
@@ -711,13 +724,7 @@ export default function BOSSaldo() {
         if (unitReqs.length > 0) {
             chosenReqId = unitReqs[0].id;
             if (!initialAmt) {
-                // Hitung sisa permintaan ini
-                const spent = (budgetReports || []).filter(r => r.budgetRequestId === chosenReqId && r.status === 'APPROVED' && r.kategoriAset !== 'PENGEMBALIAN')
-                    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                const ret = (budgetReports || []).filter(r => r.budgetRequestId === chosenReqId && r.status === 'APPROVED' && r.kategoriAset === 'PENGEMBALIAN')
-                    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                const reqTotal = parseFloat(unitReqs[0].totalAmount) || 0;
-                const sisa = Math.max(0, reqTotal - spent - ret);
+                const sisa = getBosRequestRefundable(unitReqs[0]);
                 if (sisa > 0) initialAmt = sisa;
             }
         }
@@ -745,14 +752,9 @@ export default function BOSSaldo() {
         if (returnForm.budgetRequestId) {
             const chosenReq = returnModalRequests.find(r => r.id === returnForm.budgetRequestId);
             if (chosenReq) {
-                const spent = (budgetReports || []).filter(r => r.budgetRequestId === chosenReq.id && r.status === 'APPROVED' && r.kategoriAset !== 'PENGEMBALIAN')
-                    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                const ret = (budgetReports || []).filter(r => r.budgetRequestId === chosenReq.id && r.status === 'APPROVED' && r.kategoriAset === 'PENGEMBALIAN')
-                    .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                const reqTotal = parseFloat(chosenReq.totalAmount) || 0;
-                const sisa = Math.max(0, reqTotal - spent - ret);
+                const sisa = getBosRequestRefundable(chosenReq);
                 if (amt > sisa) {
-                    alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa pagu riil (${formatRupiah(sisa)})!`);
+                    alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa dana riil (${formatRupiah(sisa)})!`);
                     return;
                 }
             }
@@ -791,7 +793,12 @@ export default function BOSSaldo() {
             };
 
             dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
-            await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+            try {
+                await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+            } catch (pushErr) {
+                dispatch({ type: 'DELETE_BUDGET_REPORT', payload: newReturn.id });
+                throw pushErr;
+            }
 
             setShowReturnModal(false);
             setReturnForm({
@@ -828,7 +835,12 @@ export default function BOSSaldo() {
         try {
             const updated = { ...returnReport, status: 'APPROVED' };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            try {
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            } catch (pushErr) {
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: returnReport });
+                throw pushErr;
+            }
             alert('Pengembalian dana BOS berhasil di-ACC! Jurnal otomatis telah disinkronkan.');
         } catch (err) {
             console.error('Error approving return:', err);
@@ -1098,13 +1110,7 @@ export default function BOSSaldo() {
                                         const reqId = e.target.value;
                                         const chosenReq = returnModalRequests.find(r => r.id === reqId);
                                         if (chosenReq) {
-                                            // Hitung sisa permintaan ini
-                                            const spent = (budgetReports || []).filter(r => r.budgetRequestId === reqId && r.status === 'APPROVED' && r.kategoriAset !== 'PENGEMBALIAN')
-                                                .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                                            const ret = (budgetReports || []).filter(r => r.budgetRequestId === reqId && r.status === 'APPROVED' && r.kategoriAset === 'PENGEMBALIAN')
-                                                .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                                            const reqTotal = parseFloat(chosenReq.totalAmount) || 0;
-                                            const sisa = Math.max(0, reqTotal - spent - ret);
+                                            const sisa = getBosRequestRefundable(chosenReq);
 
                                             setReturnForm(prev => ({
                                                 ...prev,
@@ -1120,12 +1126,8 @@ export default function BOSSaldo() {
                                 >
                                     <option value="">-- Tanpa Referensi Khusus / Saldo Kas Global --</option>
                                     {returnModalRequests.map(req => {
-                                        const spent = (budgetReports || []).filter(r => r.budgetRequestId === req.id && r.status === 'APPROVED' && r.kategoriAset !== 'PENGEMBALIAN')
-                                            .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
-                                        const ret = (budgetReports || []).filter(r => r.budgetRequestId === req.id && r.status === 'APPROVED' && r.kategoriAset === 'PENGEMBALIAN')
-                                            .reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
                                         const reqTotal = parseFloat(req.totalAmount) || 0;
-                                        const sisa = Math.max(0, reqTotal - spent - ret);
+                                        const sisa = getBosRequestRefundable(req);
 
                                         return (
                                             <option key={req.id} value={req.id}>

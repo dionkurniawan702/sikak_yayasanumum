@@ -499,13 +499,36 @@ export default function FundAvailability() {
             const reqUsed = matchingReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
             const initialSisa = Math.max(0, reqApproved - reqUsed);
 
+            // Batas maksimal pengembalian: hitung SEMUA nota yang belum ditolak (DRAFT/PENDING/APPROVED)
+            // agar nota yang belum diverifikasi tidak ikut "dikembalikan" (mencegah lebih setor).
+            const isLinkedToReq = (r) => {
+                const resolved = resolveReportRequest(r, budgetRequests, globalAcademicYearId);
+                if (resolved) return resolved.id === req.id;
+                return r.date ? r.date.startsWith(req.month) : false;
+            };
+            const allNonRejectedNotes = (baseReports || []).filter(r =>
+                r.kategoriAset !== 'PENGEMBALIAN' && r.status !== 'REJECTED' && !r.isDeleted && isLinkedToReq(r)
+            );
+            const reqUsedAll = allNonRejectedNotes.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            const unverifiedNotes = allNonRejectedNotes.filter(r => r.status !== 'APPROVED');
+            const reqUnverifiedCount = unverifiedNotes.length;
+            const reqUnverifiedAmt = unverifiedNotes.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            const reqReturnedAll = (baseReports || []).filter(r =>
+                r.kategoriAset === 'PENGEMBALIAN' && (r.status === 'APPROVED' || r.status === 'PENDING') && !r.isDeleted &&
+                ((r.budgetRequestId || r.requestId) === req.id)
+            ).reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+            const reqRefundable = Math.max(0, reqApproved - reqUsedAll - reqReturnedAll);
+
             return {
                 req,
                 itemsDetail,
                 reqApproved,
                 reqUsed,
                 initialSisa,
-                reqReturned: 0
+                reqReturned: 0,
+                reqRefundable,
+                reqUnverifiedCount,
+                reqUnverifiedAmt
             };
         });
 
@@ -579,7 +602,7 @@ export default function FundAvailability() {
         }
 
         return initialCards.map(c => {
-            const { req, reqApproved, reqUsed, reqReturned, itemsDetail } = c;
+            const { req, reqApproved, reqUsed, reqReturned, itemsDetail, reqRefundable, reqUnverifiedCount, reqUnverifiedAmt } = c;
             const reqSisa = Math.max(0, reqApproved - reqUsed - reqReturned);
             const reqPct = reqApproved > 0 ? (reqUsed / reqApproved) * 100 : 0;
             const uName = units?.find(u => u.id === req.unitId)?.name || fields?.find(f => f.id === req.fieldId)?.name || 'Yayasan';
@@ -594,6 +617,9 @@ export default function FundAvailability() {
                 reqUsed,
                 reqReturned,
                 reqSisa,
+                reqRefundable: Math.min(reqSisa, reqRefundable),
+                reqUnverifiedCount,
+                reqUnverifiedAmt,
                 reqPct,
                 itemsDetail
             };
@@ -656,8 +682,8 @@ export default function FundAvailability() {
         if (!returnForm.budgetRequestId) return alert('Mohon pilih Bulan Permintaan Dana (Surat REQ) yang akan dikembalikan!');
         
         const chosenCard = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
-        if (chosenCard && amt > chosenCard.reqSisa) {
-            return alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa pagu riil yang belum dilaporkan (${formatRupiah(chosenCard.reqSisa)})!\n\nJika ada nota belanja yang belum diinput, silakan laporkan nota tersebut terlebih dahulu agar perhitungan sisa klop.`);
+        if (chosenCard && amt > chosenCard.reqRefundable) {
+            return alert(`Nominal pengembalian (${formatRupiah(amt)}) TIDAK BOLEH melebihi sisa dana riil (${formatRupiah(chosenCard.reqRefundable)})!\n\nSisa riil = Dana cair − seluruh nota yang sudah diinput (termasuk yang belum diverifikasi) − pengembalian sebelumnya.${chosenCard.reqUnverifiedCount > 0 ? `\n\nCatatan: ada ${chosenCard.reqUnverifiedCount} nota (${formatRupiah(chosenCard.reqUnverifiedAmt)}) yang masih menunggu verifikasi dan sudah diperhitungkan.` : ''}`);
         }
         if (amt > (statBalance - myPendingReturns)) return alert('Nominal melebihi sisa saldo Anda (termasuk yang sedang diproses)!');
         if (!returnForm.buktiTeks && !returnForm.buktiFoto) return alert('Bukti transfer (foto struk / dokumen PDF atau nomor referensi) wajib dilampirkan!');
@@ -699,7 +725,13 @@ export default function FundAvailability() {
             }
 
             dispatch({ type: 'ADD_BUDGET_REPORT', payload: newReturn });
-            await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+            try {
+                await api.pushAction({ type: 'ADD_BUDGET_REPORT', payload: newReturn }, state);
+            } catch (pushErr) {
+                // Rollback optimistic insert jika server menolak (mis. nominal melebihi sisa riil)
+                dispatch({ type: 'DELETE_BUDGET_REPORT', payload: newReturn.id });
+                throw pushErr;
+            }
             
             setShowReturnModal(false);
             setReturnForm({ amount: '', buktiTeks: '', description: '', budgetRequestId: '', buktiFoto: null, fileName: '', fileType: '' });
@@ -729,7 +761,13 @@ export default function FundAvailability() {
         try {
             const updated = { ...ret, status: 'APPROVED', notified: false };
             dispatch({ type: 'EDIT_BUDGET_REPORT', payload: updated });
-            await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            try {
+                await api.pushAction({ type: 'EDIT_BUDGET_REPORT', payload: updated }, state);
+            } catch (pushErr) {
+                // Rollback status jika server menolak ACC (mis. nominal melebihi sisa riil)
+                dispatch({ type: 'EDIT_BUDGET_REPORT', payload: ret });
+                throw pushErr;
+            }
             alert('Pengembalian dana berhasil di-ACC!');
         } catch (error) {
             console.error(error);
@@ -787,11 +825,11 @@ export default function FundAvailability() {
                     {!isSuperAdmin && statBalance > 0 && (
                         <button 
                             onClick={() => {
-                                const availableCard = monthBreakdownCards.find(c => c.reqSisa > 0);
+                                const availableCard = monthBreakdownCards.find(c => c.reqRefundable > 0);
                                 setReturnForm(prev => ({
                                     ...prev,
                                     budgetRequestId: availableCard ? availableCard.reqId : '',
-                                    amount: availableCard ? availableCard.reqSisa : (statBalance > 0 ? statBalance : ''),
+                                    amount: availableCard ? availableCard.reqRefundable : '',
                                     description: availableCard ? `Pengembalian Sisa Dana Request ${formatMonthLabel(availableCard.reqMonth)}` : ''
                                 }));
                                 setIsReturnAmountLocked(true);
@@ -1361,7 +1399,7 @@ export default function FundAvailability() {
                                             setReturnForm({
                                                 ...returnForm,
                                                 budgetRequestId: reqId,
-                                                amount: chosenCard.reqSisa > 0 ? chosenCard.reqSisa : '',
+                                                amount: chosenCard.reqRefundable > 0 ? chosenCard.reqRefundable : '',
                                                 description: `Pengembalian Sisa Dana Request ${formatMonthLabel(chosenCard.reqMonth)}`
                                             });
                                         } else {
@@ -1379,7 +1417,7 @@ export default function FundAvailability() {
                                     <option value="">-- Pilih Bulan Permintaan --</option>
                                     {monthBreakdownCards.map(c => (
                                         <option key={c.reqId} value={c.reqId}>
-                                            {formatMonthLabel(c.reqMonth)} - REQ [{c.reqId.slice(-8)}] (Sisa: {formatRupiah(c.reqSisa)})
+                                            {formatMonthLabel(c.reqMonth)} - REQ [{c.reqId.slice(-8)}] (Sisa: {formatRupiah(c.reqRefundable)})
                                         </option>
                                     ))}
                                 </select>
@@ -1387,9 +1425,16 @@ export default function FundAvailability() {
                                     const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
                                     if (chosen) {
                                         return (
-                                            <span className="text-[11px] font-black text-emerald-600 mt-1.5 block bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
-                                                💡 Sisa Pagu Belum Dilaporkan ({formatMonthLabel(chosen.reqMonth)}): {formatRupiah(chosen.reqSisa)}
-                                            </span>
+                                            <>
+                                                <span className="text-[11px] font-black text-emerald-600 mt-1.5 block bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+                                                    💡 Sisa Dana Riil yang Dapat Dikembalikan ({formatMonthLabel(chosen.reqMonth)}): {formatRupiah(chosen.reqRefundable)}
+                                                </span>
+                                                {chosen.reqUnverifiedCount > 0 && (
+                                                    <span className="text-[11px] font-bold text-amber-700 mt-1.5 block bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
+                                                        ⏳ {chosen.reqUnverifiedCount} nota ({formatRupiah(chosen.reqUnverifiedAmt)}) masih menunggu verifikasi Yayasan dan sudah dikurangkan dari sisa di atas.
+                                                    </span>
+                                                )}
+                                            </>
                                         );
                                     }
                                     return null;
@@ -1399,7 +1444,7 @@ export default function FundAvailability() {
                                 {(() => {
                                     const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
                                     const currentAmt = parseFloat(returnForm.amount || 0);
-                                    const isOver = chosen && currentAmt > chosen.reqSisa;
+                                    const isOver = chosen && currentAmt > chosen.reqRefundable;
 
                                     return (
                                         <>
@@ -1407,12 +1452,12 @@ export default function FundAvailability() {
                                                 <label className="block text-xs font-bold text-slate-500 uppercase">
                                                     Nominal Pengembalian (Rp) <span className="text-rose-500">*</span>
                                                 </label>
-                                                {chosen && chosen.reqSisa > 0 && (
+                                                {chosen && chosen.reqRefundable > 0 && (
                                                     <button
                                                         type="button"
                                                         onClick={() => {
                                                             if (!isReturnAmountLocked) {
-                                                                setReturnForm(prev => ({ ...prev, amount: chosen.reqSisa }));
+                                                                setReturnForm(prev => ({ ...prev, amount: chosen.reqRefundable }));
                                                             }
                                                             setIsReturnAmountLocked(!isReturnAmountLocked);
                                                         }}
@@ -1437,9 +1482,9 @@ export default function FundAvailability() {
                                                     type="number"
                                                     value={returnForm.amount}
                                                     readOnly={isReturnAmountLocked}
-                                                    max={chosen ? chosen.reqSisa : undefined}
+                                                    max={chosen ? chosen.reqRefundable : undefined}
                                                     onChange={e => setReturnForm({ ...returnForm, amount: e.target.value })}
-                                                    placeholder={chosen ? `Maksimal: ${formatRupiah(chosen.reqSisa)}` : 'Pilih Bulan Permintaan terlebih dahulu'}
+                                                    placeholder={chosen ? `Maksimal: ${formatRupiah(chosen.reqRefundable)}` : 'Pilih Bulan Permintaan terlebih dahulu'}
                                                     className={`w-full px-4 py-3 border rounded-xl font-black text-sm focus:outline-none transition-all ${
                                                         isReturnAmountLocked 
                                                             ? 'bg-slate-100 border-slate-200 text-slate-700 cursor-not-allowed' 
@@ -1461,17 +1506,17 @@ export default function FundAvailability() {
                                                 <div className="mt-2 space-y-1">
                                                     {isOver && (
                                                         <span className="text-[11px] font-black text-rose-600 block bg-rose-50 border border-rose-200 rounded-lg px-3 py-1.5">
-                                                            ⛔ Nominal pengembalian ({formatRupiah(currentAmt)}) MELEBIHI sisa pagu riil ({formatRupiah(chosen.reqSisa)})! Kelebihan {formatRupiah(currentAmt - chosen.reqSisa)}. Harap laporkan nota belanja terlebih dahulu jika ada nota yang belum diinput.
+                                                            ⛔ Nominal pengembalian ({formatRupiah(currentAmt)}) MELEBIHI sisa pagu riil ({formatRupiah(chosen.reqRefundable)})! Kelebihan {formatRupiah(currentAmt - chosen.reqRefundable)}. Harap laporkan nota belanja terlebih dahulu jika ada nota yang belum diinput.
                                                         </span>
                                                     )}
-                                                    {!isOver && currentAmt > 0 && currentAmt === chosen.reqSisa && (
+                                                    {!isOver && currentAmt > 0 && currentAmt === chosen.reqRefundable && (
                                                         <span className="text-[11px] font-black text-emerald-700 block bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
-                                                            ✅ Nominal pas 100% sesuai sisa pagu riil yang belum dilaporkan ({formatRupiah(chosen.reqSisa)}).
+                                                            ✅ Nominal pas 100% sesuai sisa pagu riil yang belum dilaporkan ({formatRupiah(chosen.reqRefundable)}).
                                                         </span>
                                                     )}
-                                                    {!isOver && currentAmt > 0 && currentAmt < chosen.reqSisa && (
+                                                    {!isOver && currentAmt > 0 && currentAmt < chosen.reqRefundable && (
                                                         <span className="text-[11px] font-bold text-amber-700 block bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">
-                                                            ⚠️ Pengembalian sebagian ({formatRupiah(currentAmt)}). Sisa {formatRupiah(chosen.reqSisa - currentAmt)} akan tetap tercatat sebagai sisa pagu yang harus dilaporkan/disetor.
+                                                            ⚠️ Pengembalian sebagian ({formatRupiah(currentAmt)}). Sisa {formatRupiah(chosen.reqRefundable - currentAmt)} akan tetap tercatat sebagai sisa pagu yang harus dilaporkan/disetor.
                                                         </span>
                                                     )}
                                                 </div>
@@ -1624,7 +1669,7 @@ export default function FundAvailability() {
                                 </button>
                                 {(() => {
                                     const chosen = monthBreakdownCards.find(c => c.reqId === returnForm.budgetRequestId);
-                                    const isOver = chosen && parseFloat(returnForm.amount || 0) > chosen.reqSisa;
+                                    const isOver = chosen && parseFloat(returnForm.amount || 0) > chosen.reqRefundable;
                                     return (
                                         <button
                                             type="submit"
@@ -1650,16 +1695,21 @@ export default function FundAvailability() {
                 const uName = units?.find(u => u.id === reviewReturn.unitId)?.name || fields?.find(f => f.id === reviewReturn.fieldId)?.name || 'Unit/Bidang';
                 const reqOrigin = budgetRequests?.find(r => r.id === reviewReturn.budgetRequestId || r.id === reviewReturn.requestId);
                 
-                // Realization reports
-                const relatedReports = (budgetReports || []).filter(r => 
+                // Realization reports: hitung nota APPROVED dan nota PENDING/DRAFT
+                const allNotes = (budgetReports || []).filter(r => 
                     (r.budgetRequestId === reqOrigin?.id || r.requestId === reqOrigin?.id) && 
-                    r.status === 'APPROVED' && 
+                    r.status !== 'REJECTED' && !r.isDeleted &&
                     r.kategoriAset !== 'PENGEMBALIAN'
                 );
+                const relatedReports = allNotes.filter(r => r.status === 'APPROVED');
+                const pendingNotes = allNotes.filter(r => r.status !== 'APPROVED');
                 const totalBelanjaNota = relatedReports.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+                const totalBelanjaPending = pendingNotes.reduce((s, r) => s + (parseFloat(r.amount) || 0), 0);
+                const totalBelanjaAll = totalBelanjaNota + totalBelanjaPending;
                 const totalPaguDicairkan = reqOrigin ? (parseFloat(reqOrigin.totalAmount) || parseFloat(reqOrigin.amount) || 0) : 0;
-                const sisaPaguRiil = Math.max(0, totalPaguDicairkan - totalBelanjaNota);
+                const sisaPaguRiil = Math.max(0, totalPaguDicairkan - totalBelanjaAll);
                 const returnAmount = parseFloat(reviewReturn.amount || 0);
+                const isOverReturn = returnAmount > sisaPaguRiil + 1;
 
                 const proofData = getProofData(reviewReturn);
                 const isPdf = proofData && (proofData.startsWith('data:application/pdf') || proofData.endsWith('.pdf'));
@@ -1726,6 +1776,11 @@ export default function FundAvailability() {
                                         <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-100">
                                             <span className="text-[10px] font-bold text-slate-500 uppercase block">2. Belanja (Nota ACC)</span>
                                             <span className="text-sm font-black text-rose-600 block mt-1">{formatRupiah(totalBelanjaNota)}</span>
+                                            {totalBelanjaPending > 0 && (
+                                                <span className="text-[9px] font-bold text-amber-700 block mt-0.5">
+                                                    + Pending: {formatRupiah(totalBelanjaPending)} ({pendingNotes.length} nota)
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="p-4 rounded-2xl bg-amber-50/60 border border-amber-100">
                                             <span className="text-[10px] font-bold text-slate-500 uppercase block">3. Sisa Pagu Riil</span>
@@ -1751,10 +1806,10 @@ export default function FundAvailability() {
                                                 <span>Pengembalian sebagian ({formatRupiah(returnAmount)}). Sisa {formatRupiah(sisaPaguRiil - returnAmount)} tetap tercatat sebagai sisa pagu yang masih harus dilaporkan unit.</span>
                                             </div>
                                         )}
-                                        {returnAmount > sisaPaguRiil && (
+                                        {isOverReturn && (
                                             <div className="p-3 bg-rose-50 rounded-xl border border-rose-200 flex items-center gap-2 text-rose-800 text-xs font-bold">
                                                 <AlertCircle size={16} className="text-rose-600 shrink-0" />
-                                                <span>Nominal pengembalian MELEBIHI sisa pagu riil ({formatRupiah(sisaPaguRiil)})! Kelebihan {formatRupiah(returnAmount - sisaPaguRiil)}.</span>
+                                                <span>⛔ Nominal pengembalian MELEBIHI sisa dana riil ({formatRupiah(sisaPaguRiil)})! Kelebihan {formatRupiah(returnAmount - sisaPaguRiil)}. Harap tolak pengembalian atau minta unit memperbarui nominal agar tidak terjadi lebih setor.</span>
                                             </div>
                                         )}
                                     </div>
@@ -1944,11 +1999,15 @@ export default function FundAvailability() {
                                     <button
                                         type="button"
                                         onClick={() => handleApproveReturn(reviewReturn)}
-                                        disabled={processingId === reviewReturn.id}
-                                        className="flex-1 sm:flex-initial px-7 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-xs transition-all shadow-lg shadow-emerald-500/30 flex items-center justify-center gap-2"
+                                        disabled={processingId === reviewReturn.id || isOverReturn}
+                                        className={`flex-1 sm:flex-initial px-7 py-3 text-white rounded-xl font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 ${
+                                            isOverReturn
+                                                ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none'
+                                                : 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/30'
+                                        }`}
                                     >
                                         <CheckCircle size={16} />
-                                        <span>Setujui (ACC Pengembalian)</span>
+                                        <span>{isOverReturn ? 'Melebihi Sisa (Tolak/Perbaiki)' : 'Setujui (ACC Pengembalian)'}</span>
                                     </button>
                                 </div>
                             </div>

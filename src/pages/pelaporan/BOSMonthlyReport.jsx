@@ -1626,10 +1626,13 @@ export default function BOSMonthlyReport() {
         });
     }, [baseReports, search, filterKategori, filterRequestMonth, filterDateFrom, filterDateTo, budgetRequests, globalAcademicYearId]);
 
-    // Summary stats for history
-    const totalNilai = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    // Summary stats for history (exclude PENGEMBALIAN from spending total & Non-Aset count unless explicitly filtered)
+    const totalNilai = (filterKategori === 'PENGEMBALIAN'
+        ? filteredReports
+        : filteredReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN')
+    ).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
     const totalAset = filteredReports.filter(r => r.kategoriAset === 'ASET').length;
-    const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET').length;
+    const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET' && r.kategoriAset !== 'PENGEMBALIAN').length;
 
     const approvedReqsInFilter = useMemo(() => {
         return requestsForYear

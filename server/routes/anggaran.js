@@ -1427,6 +1427,51 @@ router.delete('/budget-requests/:id', requireAuth, async (req, res) => {
     }
 });
 
+/**
+ * Validasi nominal Pengembalian Dana (PENGEMBALIAN) terhadap sisa dana riil suatu Permintaan Dana.
+ * Sisa riil = totalAmount request − seluruh nota non-ditolak (DRAFT/PENDING/APPROVED) − pengembalian lain (PENDING/APPROVED).
+ * Mengembalikan pesan error (string) jika melebihi, atau null jika valid / tidak dapat divalidasi.
+ */
+async function validateRefundAmount(prisma, { budgetRequestId, amount, excludeReportId = null }) {
+    if (!budgetRequestId) return null;
+    const amt = parseFloat(amount) || 0;
+    if (amt <= 0) return null;
+
+    const breq = await prisma.budgetRequest.findUnique({ where: { id: budgetRequestId } });
+    if (!breq || breq.isDeleted) return null;
+    const totalCair = parseFloat(breq.totalAmount) || 0;
+
+    const linkedReports = await prisma.budgetReport.findMany({
+        where: {
+            budgetRequestId,
+            isDeleted: false,
+            status: { not: 'REJECTED' },
+            ...(excludeReportId ? { id: { not: excludeReportId } } : {})
+        },
+        select: { amount: true, kategoriAset: true, status: true }
+    });
+
+    let used = 0;
+    let returned = 0;
+    linkedReports.forEach(r => {
+        const a = parseFloat(r.amount) || 0;
+        if (r.kategoriAset === 'PENGEMBALIAN') {
+            if (r.status === 'APPROVED' || r.status === 'PENDING') returned += a;
+        } else {
+            used += a;
+        }
+    });
+
+    const refundable = Math.max(0, totalCair - used - returned);
+    if (amt > refundable + 1) {
+        const fmt = (n) => Math.round(n).toLocaleString('id-ID');
+        return `Nominal pengembalian Rp ${fmt(amt)} melebihi sisa dana riil Rp ${fmt(refundable)} ` +
+            `(Dana cair Rp ${fmt(totalCair)} − nota terinput Rp ${fmt(used)} − pengembalian lain Rp ${fmt(returned)}). ` +
+            `Periksa kembali nominal pengembalian.`;
+    }
+    return null;
+}
+
 router.post('/budget-reports', async (req, res) => {
     try {
         const {
@@ -1435,6 +1480,14 @@ router.post('/budget-reports', async (req, res) => {
             buktiTeks, buktiFoto, nomorNota, volume, satuan, harga, diskon, kategoriAset, umurEkonomis, namaAset, assetName, status, planId, source
         } = req.body;
         const prisma = getPrisma(req);
+
+        // Guard: nominal pengembalian tidak boleh melebihi sisa dana riil request
+        if (kategoriAset === 'PENGEMBALIAN' && status !== 'REJECTED') {
+            const refundError = await validateRefundAmount(prisma, { budgetRequestId, amount });
+            if (refundError) {
+                return res.status(400).json({ error: refundError });
+            }
+        }
 
         const result = await prisma.$transaction(async (tx) => {
             let actualExpenseItemId = expenseItemId;
@@ -1745,6 +1798,29 @@ router.put('/budget-reports/:id', async (req, res) => {
         console.log(`[API] Updating BudgetReport ${req.params.id} → status: ${data.status}`);
 
         const prisma = getPrisma(req);
+
+        // Guard: validasi nominal pengembalian saat di-ACC atau saat nominalnya diubah
+        const existingReport = await prisma.budgetReport.findUnique({ where: { id: req.params.id } });
+        if (existingReport) {
+            const nextKategori = data.kategoriAset !== undefined ? data.kategoriAset : existingReport.kategoriAset;
+            const nextStatus = data.status !== undefined ? data.status : existingReport.status;
+            const nextDeleted = data.isDeleted !== undefined ? data.isDeleted : existingReport.isDeleted;
+            const nextAmount = data.amount !== undefined && data.amount !== null ? data.amount : parseFloat(existingReport.amount);
+            const amountChanged = Math.abs((parseFloat(existingReport.amount) || 0) - (parseFloat(nextAmount) || 0)) > 0.5;
+            const becomingApproved = nextStatus === 'APPROVED' && existingReport.status !== 'APPROVED';
+
+            if (nextKategori === 'PENGEMBALIAN' && nextStatus !== 'REJECTED' && !nextDeleted && (amountChanged || becomingApproved)) {
+                const refundError = await validateRefundAmount(prisma, {
+                    budgetRequestId: data.budgetRequestId !== undefined ? data.budgetRequestId : existingReport.budgetRequestId,
+                    amount: nextAmount,
+                    excludeReportId: req.params.id
+                });
+                if (refundError) {
+                    return res.status(400).json({ error: refundError });
+                }
+            }
+        }
+
         const report = await prisma.$transaction(async (tx) => {
             const updated = await tx.budgetReport.update({
                 where: { id: req.params.id },

@@ -1786,10 +1786,13 @@ export default function MonthlyReport() {
         });
     }, [baseReports, search, filterKategori, filterRequestMonth, filterDateFrom, filterDateTo, budgetRequests, globalAcademicYearId]);
 
-    // Summary stats for history
-    const totalNilai = filteredReports.reduce((s, r) => s + parseFloat(r.amount || 0), 0);
+    // Summary stats for history (exclude PENGEMBALIAN from spending total & Non-Aset count unless explicitly filtered)
+    const totalNilai = (filterKategori === 'PENGEMBALIAN'
+        ? filteredReports
+        : filteredReports.filter(r => r.kategoriAset !== 'PENGEMBALIAN')
+    ).reduce((s, r) => s + parseFloat(r.amount || 0), 0);
     const totalAset = filteredReports.filter(r => r.kategoriAset === 'ASET').length;
-    const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET').length;
+    const totalNonAset = filteredReports.filter(r => r.kategoriAset !== 'ASET' && r.kategoriAset !== 'PENGEMBALIAN').length;
 
     const approvedReqsInFilter = useMemo(() => {
         return requestsForYear
@@ -3739,7 +3742,7 @@ export default function MonthlyReport() {
                                 <td className="px-1 py-0.5 border border-slate-800 text-center whitespace-nowrap">{(report.volume && report.satuan) ? `${parseFloat(report.volume)} ${report.satuan}` : '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 text-right whitespace-nowrap">{report.harga ? formatRupiah(parseFloat(report.harga)) : '—'}</td>
                                 <td className="px-1 py-0.5 border border-slate-800 text-right font-bold whitespace-nowrap">{formatRupiah(parseFloat(report.amount || 0))}</td>
-                                <td className="px-1 py-0.5 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : 'NON ASET'}</td>
+                                <td className="px-1 py-0.5 border border-slate-800 text-center">{report.kategoriAset === 'ASET' ? 'ASET' : report.kategoriAset === 'PENGEMBALIAN' ? 'PENGEMBALIAN' : 'NON ASET'}</td>
                             </tr>
                         )})}
                         {filteredReports.length === 0 && (
