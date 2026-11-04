@@ -6,7 +6,7 @@ import {
     TrendingUp, Wallet, ShieldCheck, Download, Filter,
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
-    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, CheckSquare, Search,
+    Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, Unlock, CheckSquare, Search,
     ExternalLink, CheckCheck, Sparkles
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -258,7 +258,7 @@ function RABContent() {
     const [showCompModal, setShowCompModal] = useState(false);
     const [isReadOnlyComp, setIsReadOnlyComp] = useState(false);
     const [showImportModal, setShowImportModal] = useState(false);
-    const [showSemesterHelperModal, setShowSemesterHelperModal] = useState(false);
+    // const [showSemesterHelperModal, setShowSemesterHelperModal] = useState(false); // Removed: integrated into main table
     const [expandedReviewPlans, setExpandedReviewPlans] = useState({});
     const [expandedDashboardPlans, setExpandedDashboardPlans] = useState({});
     const [expandedDetailItems, setExpandedDetailItems] = useState({});
@@ -1013,9 +1013,8 @@ function RABContent() {
             let s2 = 0;
             arr.forEach(p => {
                 (p.components || []).forEach(comp => {
-                    const isApproved = (comp.status === 'APPROVED' || (!comp.status && comp.isApproved === true)) &&
-                        comp.status !== 'PENDING' && comp.status !== 'DRAFT' && comp.status !== 'REJECTED';
-                    if (isApproved) {
+                    if (comp.status === 'REJECTED') return;
+                    if (true) {
                         const tot = parseFloat(comp.total) || 0;
                         const useBos = comp.useBos || false;
                         const bosAmount = parseFloat(comp.bosAmount) || 0;
@@ -1119,6 +1118,7 @@ function RABContent() {
 
         return {
             items,
+            posMap,
             totalBudgetS1,
             totalSpentS1,
             totalRemainingS1,
@@ -2315,6 +2315,169 @@ function RABContent() {
             }
         }
     };
+    // Helper to toggle lock per expense item by Superadmin
+    const handleToggleItemLock = async (targetItemId, shouldUnlock) => {
+        if (!isSuperAdmin) return;
+        setIsSaving(true);
+        try {
+            const type = activeTab === 'INCOME' ? 'income' : 'expense';
+            const sameNamed = items.filter(i => {
+                const master = items.find(m => m.id === targetItemId);
+                return master && i.name === master.name;
+            });
+            const targetIds = sameNamed.length > 0 ? sameNamed.map(i => i.id) : [targetItemId];
+
+            const currentExpense = { ...(currentPlan[type] || activePlan[type] || {}) };
+
+            targetIds.forEach(id => {
+                const existingPlans = currentExpense[id] || [];
+                if (existingPlans.length === 0) {
+                    if (shouldUnlock) {
+                        currentExpense[id] = [{
+                            id: `P-${id}-${Date.now()}`,
+                            itemId: id,
+                            total: 0,
+                            components: [],
+                            months: {},
+                            isUnlocked: true
+                        }];
+                    }
+                } else {
+                    currentExpense[id] = existingPlans.map(p => ({
+                        ...p,
+                        isUnlocked: shouldUnlock
+                    }));
+                }
+            });
+
+            const nextPlan = {
+                ...(currentPlan || activePlan),
+                [type]: currentExpense,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUser?.username
+            };
+
+            setCurrentPlan(nextPlan);
+
+            const planId = currentPlanId;
+            const dbPlan = {
+                id: planId,
+                academicYearId: selectedYearId,
+                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                income: nextPlan.income,
+                expense: nextPlan.expense,
+                status: nextPlan.status,
+                rejectionReason: nextPlan.rejectionReason,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUser?.username
+            };
+
+            await persistPlanToServer(dbPlan);
+            setMessage({
+                type: 'success',
+                text: shouldUnlock 
+                    ? 'Kunci mata anggaran berhasil DIBUKA. Unit sekarang dapat melakukan perubahan/pergeseran.'
+                    : 'Mata anggaran berhasil DIKUNCI KEMBALI.'
+            });
+        } catch (err) {
+            console.error('Error toggling lock:', err);
+            alert('Gagal mengubah status kunci: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    // Helper to toggle locks for ALL expense items by Superadmin
+    const handleToggleAllLocks = async (shouldUnlock) => {
+        if (!isSuperAdmin) return;
+        const actionText = shouldUnlock ? 'MEMBUKA KUNCI SEMUA' : 'MENGUNCI SEMUA';
+        if (!window.confirm(`Apakah Anda yakin ingin ${actionText} mata anggaran untuk unit ini?`)) return;
+
+        setIsSaving(true);
+        try {
+            const type = activeTab === 'INCOME' ? 'income' : 'expense';
+            const currentExpense = { ...(currentPlan[type] || activePlan[type] || {}) };
+
+            items.forEach(itemMaster => {
+                const existingPlans = currentExpense[itemMaster.id] || [];
+                if (existingPlans.length === 0) {
+                    if (shouldUnlock) {
+                        currentExpense[itemMaster.id] = [{
+                            id: `P-${itemMaster.id}-${Date.now()}`,
+                            itemId: itemMaster.id,
+                            total: 0,
+                            components: [],
+                            months: {},
+                            isUnlocked: true
+                        }];
+                    }
+                } else {
+                    currentExpense[itemMaster.id] = existingPlans.map(p => ({
+                        ...p,
+                        isUnlocked: shouldUnlock
+                    }));
+                }
+            });
+
+            const nextPlan = {
+                ...(currentPlan || activePlan),
+                [type]: currentExpense,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUser?.username
+            };
+
+            setCurrentPlan(nextPlan);
+
+            const planId = currentPlanId;
+            const dbPlan = {
+                id: planId,
+                academicYearId: selectedYearId,
+                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                income: nextPlan.income,
+                expense: nextPlan.expense,
+                status: nextPlan.status,
+                rejectionReason: nextPlan.rejectionReason,
+                updatedAt: new Date().toISOString(),
+                updatedBy: currentUser?.username
+            };
+
+            await persistPlanToServer(dbPlan);
+            setMessage({
+                type: 'success',
+                text: shouldUnlock 
+                    ? 'SEMUA mata anggaran berhasil DIBUKA KUNCINYA. Unit dapat melakukan penyesuaian/pergeseran.'
+                    : 'SEMUA mata anggaran berhasil DIKUNCI KEMBALI.'
+            });
+        } catch (err) {
+            console.error('Error toggling all locks:', err);
+            alert('Gagal mengubah status kunci semua: ' + err.message);
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const areAllItemsUnlocked = useMemo(() => {
+        if (!items || items.length === 0) return false;
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
+        const planExp = activePlan[type] || {};
+        return items.every(i => {
+            const plans = planExp[i.id] || [];
+            return plans.length > 0 && plans.every(p => p.isUnlocked === true);
+        });
+    }, [items, activePlan, activeTab]);
+
+    const unlockedCount = useMemo(() => {
+        if (!items || items.length === 0) return 0;
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
+        const planExp = activePlan[type] || {};
+        return items.filter(i => {
+            const plans = planExp[i.id] || [];
+            return plans.length > 0 && plans.some(p => p.isUnlocked === true);
+        }).length;
+    }, [items, activePlan, activeTab]);
+
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
@@ -4624,16 +4787,33 @@ function RABContent() {
                         </button>
                     )}
 
-                    {/* Tombol Evaluasi Sisa Smt 1 (Disembunyikan secara default, diklik baru muncul modal) */}
-                    {unitSemester1Data && !isConsolidation && (
+                    {/* Kontrol Buka/Kunci Anggaran Superadmin */}
+                    {isSuperAdmin && !isConsolidation && (
                         <button
-                            onClick={() => setShowSemesterHelperModal(true)}
-                            className="p-3 bg-gradient-to-r from-amber-50 to-emerald-50 hover:from-amber-100 hover:to-emerald-100 text-slate-800 border border-emerald-300 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm shrink-0"
-                            title="Buka panel evaluasi sisa anggaran Semester 1 untuk realokasi Semester 2"
+                            onClick={() => handleToggleAllLocks(!areAllItemsUnlocked)}
+                            className={`p-3 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm shrink-0 ${
+                                areAllItemsUnlocked 
+                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300' 
+                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            }`}
+                            title={areAllItemsUnlocked ? "Klik untuk mengunci kembali semua mata anggaran" : "Klik untuk membuka kunci semua mata anggaran agar unit dapat melakukan penyesuaian/pergeseran"}
                         >
-                            <Sparkles size={14} className="text-amber-500" />
-                            <span>Cek Sisa Smt 1</span>
+                            {areAllItemsUnlocked ? <Lock size={15} className="text-rose-600" /> : <Unlock size={15} className="text-emerald-600" />}
+                            <span>{areAllItemsUnlocked ? 'KUNCI SEMUA MATA ANGGARAN' : 'BUKA KUNCI SEMUA MATA ANGGARAN'}</span>
+                            {unlockedCount > 0 && !areAllItemsUnlocked && (
+                                <span className="px-1.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[9px] font-black">
+                                    {unlockedCount} Terbuka
+                                </span>
+                            )}
                         </button>
+                    )}
+
+                    {/* Status Indikator Pembukaan Kunci bagi Unit / Bidang */}
+                    {!isSuperAdmin && !isConsolidation && unlockedCount > 0 && (
+                        <div className="px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-emerald-800 text-[10px] font-black uppercase tracking-wider shrink-0">
+                            <Unlock size={14} className="text-emerald-600 animate-pulse" />
+                            <span>{unlockedCount} MATA ANGGARAN DIBUKA SUPERADMIN UNTUK REVISI</span>
+                        </div>
                     )}
 
                     {/* Pilih Semua Button */}
@@ -4652,12 +4832,27 @@ function RABContent() {
                     <table className="w-full border-separate border-spacing-y-4">
                         <thead>
                             <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic relative">
-                                <th className="px-6 py-1 text-left w-12 sticky left-0 z-20 bg-slate-50">#</th>
-                                <th className="px-6 py-1 text-left sticky left-[48px] z-20 bg-slate-50" style={{ minWidth: '250px' }}>{labelText}</th>
-                                <th className="px-6 py-1 text-center sticky left-[298px] z-20 bg-slate-50">Semester</th>
-                                <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
-                                <th className="px-6 py-1 text-right">Draft RAB</th>
-                                <th className="px-6 py-1 text-right">Aksi</th>
+                                <th className="px-6 py-1 text-center w-12 sticky left-0 z-20 bg-slate-50">#</th>
+                                <th className="px-6 py-1 text-left sticky left-[48px] z-20 bg-slate-50" style={{ minWidth: '220px' }}>{labelText}</th>
+                                {(!isConsolidation && !isIncome) ? (
+                                    <>
+                                        <th className="px-4 py-1 text-right">Limit (RAP)</th>
+                                        <th className="px-4 py-1 text-right">Pagu Smt 1</th>
+                                        <th className="px-4 py-1 text-right">Realisasi Smt 1</th>
+                                        <th className="px-4 py-1 text-right">Sisa Hemat S1</th>
+                                        <th className="px-4 py-1 text-right">Pagu Smt 2</th>
+                                        <th className="px-4 py-1 text-right">Total RAB</th>
+                                        <th className="px-4 py-1 text-right">Sisa Pagu Akhir</th>
+                                        <th className="px-6 py-1 text-right">Aksi</th>
+                                    </>
+                                ) : (
+                                    <>
+                                        <th className="px-6 py-1 text-center sticky left-[298px] z-20 bg-slate-50">Semester</th>
+                                        <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
+                                        <th className="px-6 py-1 text-right">Draft RAB</th>
+                                        <th className="px-6 py-1 text-right">Aksi</th>
+                                    </>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
@@ -4715,6 +4910,16 @@ function RABContent() {
                                 }
                                 
                                 let plans = allPlans;
+                                const itemS1 = sameNamed.reduce((s, i) => s + (unitSemester1Data?.posMap?.[i.id]?.budgetS1 || 0), 0);
+                                const itemSpentS1 = sameNamed.reduce((s, i) => s + (unitSemester1Data?.posMap?.[i.id]?.spentS1 || 0), 0);
+                                const itemSurplusS1 = itemS1 - itemSpentS1;
+                                const itemS2 = sameNamed.reduce((s, i) => s + (unitSemester1Data?.posMap?.[i.id]?.budgetS2 || 0), 0);
+
+                                const isItemUnlocked = Boolean(
+                                    (plans && plans.some(p => p.isUnlocked === true)) ||
+                                    sameNamed.some(i => (activePlan[type]?.[i.id] || []).some(p => p.isUnlocked === true))
+                                );
+                                const canEditItem = isSuperAdmin || (!isLocked || isItemUnlocked);
 
                                 if (plans.length > 0) {
                                     return plans.map((plan, pIdx) => {
@@ -4725,7 +4930,11 @@ function RABContent() {
                                             rap: plan.limit || allocated,
                                             rab: plan.total || 0,
                                             sisa: (plan.limit || allocated) - (plan.total || 0),
-                                            // Fix: Disable expansion to prevent redundant rows for consolidated items
+                                            budgetS1: itemS1,
+                                            spentS1: itemSpentS1,
+                                            surplusS1: itemSurplusS1,
+                                            budgetS2: itemS2,
+                                            isUnlocked: isItemUnlocked,
                                             breakdown: [{ 
                                                 id: `COMP-${plan.id}`, 
                                                 name: 'RINCIAN BELANJA', 
@@ -4749,6 +4958,120 @@ function RABContent() {
                                             }],
                                         };
 
+                                        const actions = (
+                                            (isSuperAdmin || 
+                                             (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
+                                             (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
+                                                <div className="flex items-center gap-1.5">
+                                                    {/* Lock / Unlock Toggle for Superadmin */}
+                                                    {isSuperAdmin && !isConsolidation && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleToggleItemLock(itemMaster.id, !isItemUnlocked);
+                                                            }}
+                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${
+                                                                isItemUnlocked 
+                                                                    ? 'bg-emerald-100 hover:bg-rose-100 text-emerald-700 hover:text-rose-700' 
+                                                                    : 'bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700'
+                                                            }`}
+                                                            title={isItemUnlocked ? "Mata anggaran TERBUKA! Klik untuk mengunci kembali" : "Mata anggaran TERKUNCI. Klik untuk membuka kunci revisi unit"}
+                                                        >
+                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
+                                                        </button>
+                                                    )}
+
+                                                    {/* Lock indicator for unit */}
+                                                    {!isSuperAdmin && !isConsolidation && (
+                                                        <div
+                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl ${
+                                                                isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
+                                                            }`}
+                                                            title={isItemUnlocked ? "Mata anggaran DIBUKA Superadmin untuk revisi/pergeseran" : "TERKUNCI oleh Superadmin. Hubungi Superadmin untuk membuka kunci"}
+                                                        >
+                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
+                                                        </div>
+                                                    )}
+
+                                                    {/* Review & Edit Eye Button */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            setEditingItem({
+                                                                ...itemMaster,
+                                                                isNewPlan: false,
+                                                                planId: plan.id,
+                                                                canEdit: canEditItem,
+                                                                isUnlocked: isItemUnlocked
+                                                            });
+                                                        }}
+                                                        className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
+                                                        title={canEditItem ? "REVIEW & EDIT RENCANA" : "LIHAT RINCIAN (TERKUNCI)"}
+                                                    >
+                                                        <Eye size={18} />
+                                                    </button>
+
+                                                    {/* Add New Plan/Component Button */}
+                                                    {canEditItem && (
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setEditingItem({
+                                                                    ...itemMaster,
+                                                                    isNewPlan: true,
+                                                                    canEdit: true,
+                                                                    isUnlocked: isItemUnlocked
+                                                                });
+                                                            }}
+                                                            className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
+                                                            title="TAMBAH RENCANA BARU"
+                                                        >
+                                                            <Plus size={18} />
+                                                        </button>
+                                                    )}
+
+                                                    {/* Delete Plan Button */}
+                                                    {canEditItem && (
+                                                        <button
+                                                            onClick={async (e) => {
+                                                                e.stopPropagation();
+                                                                if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                    const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
+                                                                    const nextPlan = {
+                                                                        ...activePlan,
+                                                                        [type]: {
+                                                                            ...activePlan[type],
+                                                                            [itemMaster.id]: updatedPlans
+                                                                        }
+                                                                    };
+                                                                    setCurrentPlan(nextPlan);
+                                                                    const planId = currentPlanId;
+                                                                    const dbPlan = {
+                                                                        id: planId,
+                                                                        academicYearId: selectedYearId,
+                                                                        unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                                                                        fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                                        income: nextPlan.income,
+                                                                        expense: nextPlan.expense,
+                                                                        status: nextPlan.status,
+                                                                        rejectionReason: nextPlan.rejectionReason,
+                                                                        updatedAt: new Date().toISOString(),
+                                                                        updatedBy: currentUser?.username
+                                                                    };
+                                                                    await persistPlanToServer(dbPlan); 
+                                                                    setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
+                                                                }
+                                                            }}
+                                                            className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
+                                                            title="HAPUS RENCANA"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            ) : null
+                                        );
+
                                         return (
                                             <BudgetRow
                                                 key={plan.id}
@@ -4763,85 +5086,96 @@ function RABContent() {
                                                 isSuperAdmin={isSuperAdmin}
                                                 selectedComponents={selectedComponents}
                                                 onComponentToggle={toggleComponentSelection}
-                                                nameColSpan={3}
-                                                actions={
-                                                    (isSuperAdmin || 
-                                                     (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
-                                                     (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
-                                                        <div className="flex items-center gap-2">
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setEditingItem({
-                                                                        ...itemMaster,
-                                                                        isNewPlan: false,
-                                                                        planId: plan.id
-                                                                    });
-                                                                }}
-                                                                className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                                title="REVIEW & EDIT RENCANA"
-                                                            >
-                                                                <Eye size={18} />
-                                                            </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setEditingItem({
-                                                                        ...itemMaster,
-                                                                        isNewPlan: true
-                                                                    });
-                                                                }}
-                                                                className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                                                                title="TAMBAH RENCANA BARU"
-                                                            >
-                                                                <Plus size={18} />
-                                                            </button>
-                                                            {!isLocked && (
-                                                                <button
-                                                                    onClick={async (e) => {
-                                                                        e.stopPropagation();
-                                                                        if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                            const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
-                                                                            const nextPlan = {
-                                                                                ...activePlan,
-                                                                                [type]: {
-                                                                                    ...activePlan[type],
-                                                                                    [itemMaster.id]: updatedPlans
-                                                                                }
-                                                                            };
-                                                                            setCurrentPlan(nextPlan);
-                                                                            const planId = currentPlanId;
-                                                                            const dbPlan = {
-                                                                                id: planId,
-                                                                                academicYearId: selectedYearId,
-                                                                                unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-                                                                                fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                                                                                income: nextPlan.income,
-                                                                                expense: nextPlan.expense,
-                                                                                status: nextPlan.status,
-                                                                                rejectionReason: nextPlan.rejectionReason,
-                                                                                updatedAt: new Date().toISOString(),
-                                                                                updatedBy: currentUser?.username
-                                                                            };
-                                                                            await persistPlanToServer(dbPlan); 
-                                                                            setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
-                                                                        }
-                                                                    }}
-                                                                    className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                                                                    title="HAPUS RENCANA"
-                                                                >
-                                                                    <Trash2 size={18} />
-                                                                </button>
-                                                            )}
-                                                        </div>
-                                                    ) : null
-                                                }
+                                                nameColSpan={1}
+                                                showSemesterColumns={!isConsolidation && !isIncome}
+                                                actions={actions}
                                             />
                                         );
                                     });
                                 }
 
                                 if (filterMonth || filterProgram) return [];
+
+                                if (!isConsolidation && !isIncome) {
+                                    return (
+                                        <tr key={`TEMP-${itemMaster.id}`} className="group bg-white hover:bg-slate-50 transition-all duration-300">
+                                            <td className="px-6 py-4 border-y border-l border-slate-100 font-black text-slate-300 text-xs italic sticky left-0 z-10 bg-inherit text-center">--</td>
+                                            <td className="px-6 py-4 border-y border-slate-100 sticky left-[48px] z-10 bg-inherit" style={{ minWidth: '220px' }}>
+                                                <div className="flex items-center gap-3 opacity-60">
+                                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400">
+                                                        <TrendingUp size={16} />
+                                                    </div>
+                                                    <div className="flex flex-col">
+                                                        <span className="font-black text-slate-800 text-sm tracking-tight">{itemMaster.name}</span>
+                                                        <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Belum Ada Rincian</span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-black text-slate-900 text-xs italic">{formatRupiah(allocated)}</td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-bold text-slate-400 text-xs italic">{formatRupiah(0)}</td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-bold text-slate-400 text-xs italic">{formatRupiah(itemSpentS1)}</td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right">
+                                                <span className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black italic ${itemSpentS1 > 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400'}`}>
+                                                    {itemSpentS1 > 0 ? `-${formatRupiah(itemSpentS1)}` : formatRupiah(0)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-bold text-slate-400 text-xs italic">{formatRupiah(0)}</td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-black text-slate-400 text-xs italic">{formatRupiah(0)}</td>
+                                            <td className="px-4 py-4 border-y border-slate-100 text-right">
+                                                <span className="font-black px-2.5 py-1 rounded-full text-[11px] bg-blue-50 text-blue-600">
+                                                    {formatRupiah(allocated)}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 border-y border-r border-slate-100 text-right">
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    {isSuperAdmin && (
+                                                        <button
+                                                            onClick={() => handleToggleItemLock(itemMaster.id, !isItemUnlocked)}
+                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${
+                                                                isItemUnlocked 
+                                                                    ? 'bg-emerald-100 hover:bg-rose-100 text-emerald-700 hover:text-rose-700' 
+                                                                    : 'bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700'
+                                                            }`}
+                                                            title={isItemUnlocked ? "Mata anggaran TERBUKA! Klik untuk mengunci kembali" : "Mata anggaran TERKUNCI. Klik untuk membuka kunci"}
+                                                        >
+                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
+                                                        </button>
+                                                    )}
+                                                    {!isSuperAdmin && (
+                                                        <div
+                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl ${
+                                                                isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
+                                                            }`}
+                                                            title={isItemUnlocked ? "Mata anggaran terbuka untuk revisi" : "Terkunci oleh Superadmin"}
+                                                        >
+                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
+                                                        </div>
+                                                    )}
+                                                    {canEditItem && (
+                                                        <button
+                                                            onClick={() => {
+                                                                const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                                setEditingItem({
+                                                                    id: newPlanId,
+                                                                    itemId: itemMaster.id,
+                                                                    name: itemMaster.name,
+                                                                    isNewPlan: true,
+                                                                    semester: '2',
+                                                                    canEdit: true,
+                                                                    isUnlocked: isItemUnlocked
+                                                                });
+                                                            }}
+                                                            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
+                                                            title="TAMBAH RENCANA BARU"
+                                                        >
+                                                            <Plus size={18} strokeWidth={3} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                }
 
                                 return (
                                     <tr key={`TEMP-${itemMaster.id}`} className="group bg-white hover:bg-slate-50 transition-all duration-300">
@@ -4869,7 +5203,8 @@ function RABContent() {
                                                             itemId: itemMaster.id,
                                                             name: itemMaster.name,
                                                             isNewPlan: true,
-                                                            semester: '1'
+                                                            semester: '1',
+                                                            canEdit: true
                                                         });
                                                     }}
                                                     className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
@@ -4879,8 +5214,8 @@ function RABContent() {
                                             )}
                                         </td>
                                     </tr>
-                                );
-                            })}
+                                    );
+                                })}
                         </tbody>
                     </table>
                 </div>
@@ -5623,6 +5958,45 @@ function RABContent() {
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
+                                        {/* Semester 1 & 2 Evaluation Card in Modal */}
+                                        {(() => {
+                                            const mId = editingItem.itemId || editingItem.id;
+                                            const posData = unitSemester1Data?.posMap?.[mId] || { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
+                                            const isLockedItem = editingItem.canEdit === false;
+
+                                            return (
+                                                <div className="space-y-4">
+                                                    {isLockedItem && (
+                                                        <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-amber-900 text-xs font-bold">
+                                                            <div className="flex items-center gap-2">
+                                                                <Lock size={16} className="text-amber-600 shrink-0" />
+                                                                <span>Mata anggaran ini sedang <strong>TERKUNCI</strong> oleh Superadmin (Mode Hanya Lihat). Untuk merubah/menggeser anggaran, minta Superadmin membuka kunci mata anggaran ini.</span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagu Smt 1</span>
+                                                            <span className="text-sm font-black text-slate-700">{formatRupiah(posData.budgetS1)}</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Realisasi Smt 1</span>
+                                                            <span className="text-sm font-black text-slate-600">{formatRupiah(posData.spentS1)}</span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sisa Hemat Smt 1</span>
+                                                            <span className={`text-sm font-black ${posData.surplusS1 > 0 ? 'text-emerald-600' : (posData.surplusS1 < 0 ? 'text-rose-600' : 'text-slate-400')}`}>
+                                                                {posData.surplusS1 > 0 ? `+${formatRupiah(posData.surplusS1)}` : formatRupiah(posData.surplusS1)}
+                                                            </span>
+                                                        </div>
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Pagu Smt 2</span>
+                                                            <span className="text-sm font-black text-indigo-700">{formatRupiah(posData.budgetS2)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
                                         {message && (
                                             <div className={`p-6 rounded-[2rem] flex items-start gap-4 animate-in slide-in-from-top-4 duration-300 ${
                                                 message.type === 'success' ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-rose-50 text-rose-800 border border-rose-200'
@@ -6002,7 +6376,7 @@ function RABContent() {
                                     <div className="p-10 border-t border-slate-100 bg-white flex items-center justify-between">
                                         <button onClick={() => setEditingItem(null)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase hover:bg-slate-200 transition-all">TUTUP</button>
                                         {(() => {
-                                            const canSave = item.total > 0;
+                                            const canSave = item.total > 0 && (editingItem.canEdit !== false || isSuperAdmin);
                                             return (
                                                 <button
                                                     disabled={!canSave}
@@ -6010,7 +6384,10 @@ function RABContent() {
                                                         const mId = editingItem.itemId || editingItem.id;
 
                                                         // Always collapse multiple plans into exactly ONE plan during save
-                                                        const updatedPlans = [item];
+                                                        const updatedPlans = [{
+                                                            ...item,
+                                                            isUnlocked: item.isUnlocked ?? (editingItem.isUnlocked ?? false)
+                                                        }];
 
                                                         const nextPlan = { ...currentPlan, expense: { ...currentPlan.expense, [mId]: updatedPlans } };
 
@@ -6622,124 +6999,8 @@ function RABContent() {
                 </div>
             )}
 
-            {/* Modal Evaluasi Sisa Semester 1 untuk Persiapan Perubahan Anggaran (Disembunyikan, diklik baru muncul) */}
-            {showSemesterHelperModal && unitSemester1Data && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-                    <div className="bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-                        {/* Header */}
-                        <div className="p-6 md:p-8 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white flex items-center justify-between shrink-0">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-indigo-500/20 text-indigo-300 rounded-2xl border border-indigo-400/30">
-                                    <Sparkles size={24} />
-                                </div>
-                                <div>
-                                    <div className="flex items-center gap-3">
-                                        <h3 className="text-xl font-black italic tracking-tight">
-                                            Evaluasi Sisa Anggaran Semester 1
-                                        </h3>
-                                        <span className="px-3 py-0.5 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full font-black text-[9px] uppercase tracking-wider">
-                                            {units.find(u => u.id === selectedUnitId)?.name || fields.find(f => f.id === fieldId)?.name || 'Unit'}
-                                        </span>
-                                    </div>
-                                    <p className="text-slate-400 text-xs mt-1">
-                                        Sumber Dana: <strong>{fundSourceFilter}</strong> | Pagu sisa S1 dapat dimanfaatkan untuk penambahan pagu belanja S2 pada draf revisi ini.
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => setShowSemesterHelperModal(false)}
-                                className="p-2.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        </div>
-
-                        {/* Summary KPI Cards */}
-                        <div className="p-6 md:p-8 overflow-y-auto space-y-6">
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Pagu Smt 1</span>
-                                    <h4 className="text-lg font-black text-slate-900">{formatRupiah(unitSemester1Data.totalBudgetS1)}</h4>
-                                </div>
-                                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
-                                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">Realisasi Smt 1</span>
-                                    <h4 className="text-lg font-black text-indigo-600">{formatRupiah(unitSemester1Data.totalSpentS1)}</h4>
-                                </div>
-                                <div className="p-4 bg-emerald-50 rounded-2xl border-2 border-emerald-300">
-                                    <span className="text-[10px] font-black text-emerald-800 uppercase tracking-widest block mb-1">Sisa Pagu S1 (Surplus)</span>
-                                    <h4 className="text-lg font-black text-emerald-700">{formatRupiah(unitSemester1Data.totalSurplusS1)}</h4>
-                                </div>
-                                <div className="p-4 bg-indigo-50 rounded-2xl border-2 border-indigo-200">
-                                    <span className="text-[10px] font-black text-indigo-900 uppercase tracking-widest block mb-1">Proyeksi Pagu S2 Baru</span>
-                                    <h4 className="text-lg font-black text-indigo-700">{formatRupiah(unitSemester1Data.totalProjectedS2)}</h4>
-                                </div>
-                            </div>
-
-                            <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 flex items-start gap-3">
-                                <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
-                                <div>
-                                    <strong>Tips Perubahan Anggaran (Oktober):</strong> Untuk pos yang memiliki <strong>Sisa Pagu S1</strong> positif di bawah, Anda dapat mengurangi alokasi bulanannya (Juli–Desember) di draf revisi ini, lalu menambahkan anggarannya pada kegiatan Semester 2 (Januari–Juni).
-                                </div>
-                            </div>
-
-                            {/* Table of Pos */}
-                            <div className="rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                                <table className="w-full text-left text-xs">
-                                    <thead>
-                                        <tr className="bg-slate-900 text-white font-bold text-[9px] uppercase tracking-wider">
-                                            <th className="px-4 py-3">Pos Pengeluaran</th>
-                                            <th className="px-4 py-3 text-right">Pagu Smt 1</th>
-                                            <th className="px-4 py-3 text-right">Realisasi Smt 1</th>
-                                            <th className="px-4 py-3 text-right text-emerald-300">Sisa Pagu Smt 1</th>
-                                            <th className="px-4 py-3 text-right">Pagu Awal S2</th>
-                                            <th className="px-4 py-3 text-right text-indigo-300">Proyeksi S2</th>
-                                            <th className="px-4 py-3 text-center">Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100 font-medium">
-                                        {unitSemester1Data.items.map(it => (
-                                            <tr key={it.id} className="hover:bg-slate-50">
-                                                <td className="px-4 py-3 font-semibold text-slate-800">{it.name}</td>
-                                                <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(it.budgetS1)}</td>
-                                                <td className="px-4 py-3 text-right text-slate-900 font-bold">{formatRupiah(it.spentS1)}</td>
-                                                <td className={`px-4 py-3 text-right font-black ${it.remainingS1 > 0 ? 'text-emerald-700 bg-emerald-50/50' : it.remainingS1 < 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                                                    {formatRupiah(it.remainingS1)}
-                                                </td>
-                                                <td className="px-4 py-3 text-right text-slate-600">{formatRupiah(it.budgetS2)}</td>
-                                                <td className="px-4 py-3 text-right font-black text-indigo-700">{formatRupiah(it.projectedS2)}</td>
-                                                <td className="px-4 py-3 text-center">
-                                                    {it.remainingS1 > 0 ? (
-                                                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase">
-                                                            Hemat Rp {formatRupiah(it.surplusS1)}
-                                                        </span>
-                                                    ) : it.remainingS1 < 0 ? (
-                                                        <span className="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[9px] font-black uppercase">
-                                                            Over Pagu
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-slate-400">-</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Footer */}
-                        <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end shrink-0">
-                            <button
-                                onClick={() => setShowSemesterHelperModal(false)}
-                                className="px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-black text-xs uppercase tracking-wider transition-all"
-                            >
-                                Tutup Panel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
+            /* Semester modal removed - integrated directly into main table */
+            </div>
     );
 }
 

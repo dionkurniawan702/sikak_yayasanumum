@@ -10,7 +10,7 @@ const monthMap = {
  * Shared BudgetRow component for premium budget tables.
  * 
  * @param {Object} props
- * @param {Object} props.data - The data object containing name, rap, rab, sisa, and breakdown.
+ * @param {Object} props.data - The data object containing name, rap, rab, sisa, breakdown, etc.
  * @param {boolean} props.isExpanded - Whether the row is currently expanded.
  * @param {Function} props.onToggle - Callback when the row is clicked/toggled.
  * @param {Function} props.formatCurrency - Function to format currency values.
@@ -20,6 +20,7 @@ const monthMap = {
  * @param {boolean} props.isBos - Whether this is a BOS-themed row (green theme).
  * @param {boolean} props.isField - Whether this is a Field-themed row (indigo theme).
  * @param {React.ReactNode} props.actions - Optional extra actions to render on the main row.
+ * @param {boolean} props.showSemesterColumns - Whether to display detailed semester 1 & 2 columns (Option B).
  */
 export default function BudgetRow({
     data,
@@ -38,7 +39,8 @@ export default function BudgetRow({
     isSuperAdmin = false,
     selectedComponents = new Set(),
     onComponentToggle,
-    nameColSpan = 1
+    nameColSpan = 1,
+    showSemesterColumns = false
 }) {
     // Theme selection
     const activeClass = isBos
@@ -66,44 +68,105 @@ export default function BudgetRow({
                 className="budget-row cursor-pointer bg-white hover:bg-slate-50 transition-colors group"
                 onClick={onToggle}
             >
-                <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" colSpan={nameColSpan}>
-                    <div className="flex items-center gap-3">
-                        <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
-                            {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-                        </span>
-                        <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                                <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
-                                {hasUnbalancedComponents && (
-                                    <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
-                                        <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
+                {showSemesterColumns ? (
+                    <>
+                        <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit w-12 text-center" onClick={onToggle}>
+                            <span className={`w-7 h-7 mx-auto rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
+                                {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                            </span>
+                        </td>
+                        <td className="budget-cell budget-cell-name sticky left-[48px] z-10 bg-inherit" style={{ minWidth: '220px' }}>
+                            <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                    <span className="font-black text-slate-800 tracking-tight text-sm">{data.name}</span>
+                                    {hasUnbalancedComponents && (
+                                        <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                            <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
+                                        </span>
+                                    )}
+                                </div>
+                                {data.status && (
+                                    <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                                        (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
+                                        }`}>
+                                        {data.status === 'APPROVED' ? 'Disetujui' : (data.status === 'PENDING' ? 'Menunggu Review' : 'Draft')}
                                     </span>
                                 )}
                             </div>
-                            {data.status && (
-                                <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-                                    (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
-                                    }`}>
-                                    {data.status === 'APPROVED' ? 'Disetujui' : (data.status === 'PENDING' ? 'Menunggu Review' : 'Draft')}
+                        </td>
+                        <td className="budget-cell budget-cell-number font-black text-slate-900 text-xs italic text-right">
+                            {formatCurrency(data.rap)}
+                        </td>
+                        <td className="budget-cell budget-cell-number font-bold text-slate-600 text-xs italic text-right">
+                            {formatCurrency(data.budgetS1 || 0)}
+                        </td>
+                        <td className="budget-cell budget-cell-number font-bold text-slate-500 text-xs italic text-right">
+                            {formatCurrency(data.spentS1 || 0)}
+                        </td>
+                        <td className="budget-cell budget-cell-number text-right">
+                            <span className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black italic ${(data.surplusS1 || 0) > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ((data.surplusS1 || 0) < 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400')}`}>
+                                {(data.surplusS1 || 0) > 0 ? `+${formatCurrency(data.surplusS1)}` : formatCurrency(data.surplusS1 || 0)}
+                            </span>
+                        </td>
+                        <td className="budget-cell budget-cell-number font-bold text-indigo-600 text-xs italic text-right">
+                            {formatCurrency(data.budgetS2 || 0)}
+                        </td>
+                        <td className="budget-cell budget-cell-number font-black text-slate-900 text-xs italic text-right">
+                            {formatCurrency(data.rab || 0)}
+                        </td>
+                        <td className="budget-cell budget-cell-number text-right">
+                            <span className={`font-black px-2.5 py-1 rounded-full text-[11px] ${sisaColor}`}>
+                                {formatCurrency(data.sisa)}
+                            </span>
+                        </td>
+                        <td className="budget-cell budget-cell-number text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                                {actions}
+                            </div>
+                        </td>
+                    </>
+                ) : (
+                    <>
+                        <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" colSpan={nameColSpan}>
+                            <div className="flex items-center gap-3">
+                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
+                                    {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </span>
-                            )}
-                        </div>
-                    </div>
-                </td>
-                <td className="budget-cell budget-cell-number font-black text-slate-900 text-xs italic">
-                    {formatCurrency(data.rap)}
-                </td>
-                <td className="budget-cell budget-cell-number font-bold text-slate-500 text-xs italic">
-                    {formatCurrency(data.rab)}
-                </td>
-                <td className="budget-cell budget-cell-number budget-cell-sisa">
-                    <div className="flex items-center justify-end gap-3">
-                        <span className={`font-black px-3 py-1 rounded-full text-[11px] ${sisaColor}`}>
-                            {formatCurrency(data.sisa)}
-                        </span>
-                        {actions}
-                    </div>
-                </td>
+                                <div className="flex flex-col">
+                                    <div className="flex items-center gap-2">
+                                        <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
+                                        {hasUnbalancedComponents && (
+                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                                <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
+                                            </span>
+                                        )}
+                                    </div>
+                                    {data.status && (
+                                        <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
+                                            (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
+                                            }`}>
+                                            {data.status === 'APPROVED' ? 'Disetujui' : (data.status === 'PENDING' ? 'Menunggu Review' : 'Draft')}
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+                        </td>
+                        <td className="budget-cell budget-cell-number font-black text-slate-900 text-xs italic">
+                            {formatCurrency(data.rap)}
+                        </td>
+                        <td className="budget-cell budget-cell-number font-bold text-slate-500 text-xs italic">
+                            {formatCurrency(data.rab)}
+                        </td>
+                        <td className="budget-cell budget-cell-number budget-cell-sisa">
+                            <div className="flex items-center justify-end gap-3">
+                                <span className={`font-black px-3 py-1 rounded-full text-[11px] ${sisaColor}`}>
+                                    {formatCurrency(data.sisa)}
+                                </span>
+                                {actions}
+                            </div>
+                        </td>
+                    </>
+                )}
             </tr>
             {isExpanded && data.breakdown && data.breakdown.map((item, idx) => {
                 const hasSubLevel = (item.sources && Object.keys(item.sources).length > 0) || (item.components && item.components.length > 0);
@@ -119,7 +182,7 @@ export default function BudgetRow({
                             className={`budget-row-detail group bg-white ${hasSubLevel ? 'cursor-pointer hover:bg-slate-50' : ''}`}
                             onClick={() => hasSubLevel && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
                         >
-                            <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '44px' }} colSpan={nameColSpan}>
+                            <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '44px' }} colSpan={showSemesterColumns ? 2 : nameColSpan}>
                                 <div className="flex items-center gap-2">
                                     <span className="text-slate-300">└</span>
                                     {hasSubLevel && (
@@ -137,19 +200,38 @@ export default function BudgetRow({
                                     )}
                                 </div>
                             </td>
-                            <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic">
+                            <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic text-right">
                                 {formatCurrency(item.rap)}
                             </td>
-                            <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic">
-                                {formatCurrency(item.rab)}
-                            </td>
-                            <td className="budget-cell budget-cell-number budget-cell-sisa">
+                            {showSemesterColumns ? (
+                                <>
+                                    <td colSpan={4} className="budget-cell text-slate-300 text-[10px] italic text-center font-bold">
+                                        (Rincian Semester per Komponen)
+                                    </td>
+                                    <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic text-right">
+                                        {formatCurrency(item.rab)}
+                                    </td>
+                                    <td className="budget-cell budget-cell-number text-right">
+                                        <span className={`text-[10px] font-black italic ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
+                                            {formatRupiahShort(item.sisa, formatCurrency)}
+                                        </span>
+                                    </td>
+                                    <td className="budget-cell" />
+                                </>
+                            ) : (
+                                <>
+                                    <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic">
+                                        {formatCurrency(item.rab)}
+                                    </td>
+                                    <td className="budget-cell budget-cell-number budget-cell-sisa">
                                         <div className="flex items-center justify-end pr-[148px]">
-                                    <span className={`text-[10px] font-black italic ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
-                                        {formatRupiahShort(item.sisa, formatCurrency)}
-                                    </span>
-                                </div>
-                            </td>
+                                            <span className={`text-[10px] font-black italic ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-400'}`}>
+                                                {formatRupiahShort(item.sisa, formatCurrency)}
+                                            </span>
+                                        </div>
+                                    </td>
+                                </>
+                            )}
                         </tr>
 
                         {/* Level 3: Components (Granular Review) */}
@@ -164,7 +246,7 @@ export default function BudgetRow({
 
                             return (
                                 <tr key={compId} className={`budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white ${isSelected ? '!bg-blue-50/50' : 'hover:bg-slate-50/70'}`}>
-                                    <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '80px' }} colSpan={nameColSpan}>
+                                    <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '80px' }} colSpan={showSemesterColumns ? 6 : nameColSpan}>
                                         <div className="flex items-center gap-3 py-1.5">
                                             {selectable && (
                                                 isReviewMode 
@@ -242,7 +324,7 @@ export default function BudgetRow({
                                                             </span>
                                                         )
                                                     )}
-                                                    {/* Status Pengajuan & Persetujuan Yayasan (Tampil jika non-aset, ATAU jika aset sudah lolos ACC Sarpras) */}
+                                                    {/* Status Pengajuan & Persetujuan Yayasan */}
                                                     {(!comp.isAsset || comp.sarprasStatus === 'APPROVED') && (
                                                         comp.status === 'APPROVED' ? (
                                                             <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap" title="Anggaran disetujui oleh Yayasan (RAB Sah)">
@@ -292,27 +374,51 @@ export default function BudgetRow({
                                             </div>
                                         </div>
                                     </td>
-                                    {/* Alignment Fix: Shift numbers to the right to align with Sisa (blue) column */}
-                                    <td className="budget-cell" /> 
-                                    <td className="budget-cell budget-cell-number">
-                                        <span className="text-[10px] font-black text-slate-400 italic">
-                                            @{formatCurrency(comp.harga)}
-                                        </span>
-                                    </td>
-                                    <td className="budget-cell budget-cell-number">
-                                        <div className="flex items-center justify-end pr-[148px]">
-                                            <div className="flex flex-col items-end">
-                                                <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
-                                                    {formatCurrency(comp.total)}
+                                    {showSemesterColumns ? (
+                                        <>
+                                            <td className="budget-cell budget-cell-number text-right">
+                                                <span className="text-[10px] font-black text-slate-400 italic">
+                                                    @{formatCurrency(comp.harga)}
                                                 </span>
-                                                {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
-                                                    <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
-                                                        Lama: {formatCurrency(comp.oldTotal)}
+                                            </td>
+                                            <td className="budget-cell budget-cell-number text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                                        {formatCurrency(comp.total)}
                                                     </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </td>
+                                                    {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
+                                                        <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
+                                                            Lama: {formatCurrency(comp.oldTotal)}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td colSpan={2} className="budget-cell" />
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="budget-cell" /> 
+                                            <td className="budget-cell budget-cell-number">
+                                                <span className="text-[10px] font-black text-slate-400 italic">
+                                                    @{formatCurrency(comp.harga)}
+                                                </span>
+                                            </td>
+                                            <td className="budget-cell budget-cell-number">
+                                                <div className="flex items-center justify-end pr-[148px]">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                                            {formatCurrency(comp.total)}
+                                                        </span>
+                                                        {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
+                                                            <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
+                                                                Lama: {formatCurrency(comp.oldTotal)}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </>
+                                    )}
                                 </tr>
                             );
                         })}
@@ -322,7 +428,7 @@ export default function BudgetRow({
                             <>
                                 {/* Header Row */}
                                 <tr className="animate-in slide-in-from-left-2 duration-200">
-                                    <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-indigo-50/40" style={{ paddingLeft: '80px' }} colSpan={4}>
+                                    <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-indigo-50/40" style={{ paddingLeft: '80px' }} colSpan={showSemesterColumns ? 10 : 4}>
                                         <span className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em]">
                                             📌 Kontribusi Per Unit
                                         </span>
@@ -333,7 +439,7 @@ export default function BudgetRow({
                                     .sort(([, a], [, b]) => b - a)
                                     .map(([unitId, amount]) => (
                                     <tr key={unitId} className="budget-row-source animate-in slide-in-from-left-2 duration-300 bg-white hover:bg-indigo-50/30 transition-colors">
-                                        <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '92px' }}>
+                                        <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '92px' }} colSpan={showSemesterColumns ? 2 : 1}>
                                             <div className="flex items-center gap-2 py-1">
                                                 <div className="w-1 h-4 rounded-full bg-indigo-200 flex-shrink-0" />
                                                 <span className="text-[10px] font-bold text-slate-600 tracking-tight">
@@ -341,12 +447,12 @@ export default function BudgetRow({
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="budget-cell budget-cell-number">
+                                        <td className="budget-cell budget-cell-number text-right">
                                             <span className="text-[10px] font-black text-indigo-500 italic">
                                                 {formatCurrency(amount)}
                                             </span>
                                         </td>
-                                        <td colSpan="2" className="budget-cell bg-indigo-50/20" />
+                                        <td colSpan={showSemesterColumns ? 7 : 2} className="budget-cell bg-indigo-50/20" />
                                     </tr>
                                 ))}
                             </>
