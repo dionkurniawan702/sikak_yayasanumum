@@ -2321,8 +2321,9 @@ function RABContent() {
         setIsSaving(true);
         try {
             const type = activeTab === 'INCOME' ? 'income' : 'expense';
-            const sameNamed = items.filter(i => {
-                const master = items.find(m => m.id === targetItemId);
+            const currentItems = activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems;
+            const sameNamed = (currentItems || []).filter(i => {
+                const master = (currentItems || []).find(m => m.id === targetItemId) || (expenseItems || []).find(m => m.id === targetItemId);
                 return master && i.name === master.name;
             });
             const targetIds = sameNamed.length > 0 ? sameNamed.map(i => i.id) : [targetItemId];
@@ -2397,9 +2398,10 @@ function RABContent() {
         setIsSaving(true);
         try {
             const type = activeTab === 'INCOME' ? 'income' : 'expense';
+            const currentItems = activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems;
             const currentExpense = { ...(currentPlan[type] || activePlan[type] || {}) };
 
-            items.forEach(itemMaster => {
+            (currentItems || []).forEach(itemMaster => {
                 const existingPlans = currentExpense[itemMaster.id] || [];
                 if (existingPlans.length === 0) {
                     if (shouldUnlock) {
@@ -2459,24 +2461,26 @@ function RABContent() {
     };
 
     const areAllItemsUnlocked = useMemo(() => {
-        if (!items || items.length === 0) return false;
+        const targetItems = activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems;
+        if (!targetItems || targetItems.length === 0) return false;
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const planExp = activePlan[type] || {};
-        return items.every(i => {
+        return targetItems.every(i => {
             const plans = planExp[i.id] || [];
             return plans.length > 0 && plans.every(p => p.isUnlocked === true);
         });
-    }, [items, activePlan, activeTab]);
+    }, [filteredIncomeItems, filteredExpenseItems, activePlan, activeTab]);
 
     const unlockedCount = useMemo(() => {
-        if (!items || items.length === 0) return 0;
+        const targetItems = activeTab === 'INCOME' ? filteredIncomeItems : filteredExpenseItems;
+        if (!targetItems || targetItems.length === 0) return 0;
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
         const planExp = activePlan[type] || {};
-        return items.filter(i => {
+        return targetItems.filter(i => {
             const plans = planExp[i.id] || [];
             return plans.length > 0 && plans.some(p => p.isUnlocked === true);
         }).length;
-    }, [items, activePlan, activeTab]);
+    }, [filteredIncomeItems, filteredExpenseItems, activePlan, activeTab]);
 
     const handleSave = async () => {
         setIsSaving(true);
