@@ -150,12 +150,19 @@ export default function ArchiveRAB() {
                                 const searchStr = `${itemMasterName} ${comp.name || comp.label} ${compStatus} ${unitName} ${fieldName} ${programName}`.toLowerCase();
                                 if (searchTerm && !searchStr.includes(searchTerm.toLowerCase())) return;
 
+                                const origTotal = comp.originalTotal ? parseFloat(comp.originalTotal) : null;
+                                const curTotal = parseFloat(comp.total) || 1;
+                                const isAdjusted = Boolean(comp.isAdjustedToRealization || (origTotal && origTotal !== curTotal));
+                                const originalAmount = isAdjusted && origTotal ? Math.round(amount * (origTotal / curTotal)) : null;
+
                                 data.push({
                                     id: `${comp.id || `${plan.id}-${itemId}-${pIdx}-${cIdx}`}-${mId}`,
                                     planId: plan.id,
                                     itemId: itemId,
                                     itemMasterName,
                                     componentName: comp.name || comp.label,
+                                    originalAmount,
+                                    isAdjusted,
                                     programName,
                                     status: compStatus,
                                     unitName,
@@ -396,9 +403,21 @@ export default function ArchiveRAB() {
                                         </td>
                                         
                                         <td className="px-6 py-4 text-right">
-                                            <span className="text-sm font-black text-slate-900 italic bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm whitespace-nowrap">
-                                                {formatRupiah(item.amount)}
-                                            </span>
+                                            <div className="flex flex-col items-end">
+                                                {item.isAdjusted && item.originalAmount && item.originalAmount !== item.amount && (
+                                                    <span className="text-[9px] font-black text-slate-400 line-through tracking-wider mb-0.5" title="Alokasi rencana awal sebelum disesuaikan ke realisasi">
+                                                        Awal: {formatRupiah(item.originalAmount)}
+                                                    </span>
+                                                )}
+                                                <span className="text-sm font-black text-slate-900 italic bg-white px-3 py-1.5 rounded-lg border border-slate-200 shadow-sm whitespace-nowrap">
+                                                    {formatRupiah(item.amount)}
+                                                </span>
+                                                {item.isAdjusted && (
+                                                    <span className="text-[8px] font-black text-teal-700 uppercase tracking-wider mt-0.5 bg-teal-50 border border-teal-200 px-1.5 py-0.5 rounded">
+                                                        Disesuaikan Realisasi
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
                                     </tr>
                                 ))

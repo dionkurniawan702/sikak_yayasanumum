@@ -1640,6 +1640,115 @@ function RABContent() {
         });
     };
 
+    const handleAdjustComponentToRealization = (itemId, planId, compIdx) => {
+        const type = activeTab === 'INCOME' ? 'income' : 'expense';
+        const plans = currentPlan[type][itemId] || [];
+        const plan = plans.find(p => p.id === planId) || plans[0];
+        if (!plan) return;
+
+        const comp = (plan.components || [])[compIdx];
+        if (!comp) return;
+
+        const spent = componentSpending[comp.id] || 0;
+        const total = parseFloat(comp.total) || 0;
+        const surplus = total - spent;
+
+        if (spent <= 0 || surplus <= 0) {
+            alert("Komponen ini belum memiliki sisa penghematan dari realisasi transaksi.");
+            return;
+        }
+
+        const confirmMsg = `Sesuaikan anggaran "${comp.label}" ke realisasi transaksi?\n\n` +
+            `• Anggaran Rencana Awal : ${formatRupiah(comp.originalTotal || total)}\n` +
+            `• Realisasi Nyata Terpakai : ${formatRupiah(spent)}\n` +
+            `• Sisa Penghematan : ${formatRupiah(surplus)}\n\n` +
+            `Anggaran belanja "${comp.label}" akan disesuaikan menjadi ${formatRupiah(spent)}.\n` +
+            `Sisa ${formatRupiah(surplus)} otomatis kembali ke Pagu Yayasan agar bisa digunakan untuk belanja Semester 2.\n\n` +
+            `Riwayat Rencana Awal akan tetap disimpan untuk arsip & audit Yayasan. Lanjutkan?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        setCurrentPlan(prev => {
+            const currentPlans = prev[type][itemId] || [];
+            const updatedPlans = currentPlans.map(p => {
+                if (p.id !== plan.id) return p;
+
+                const components = [...(p.components || [])];
+                const targetComp = { ...components[compIdx] };
+
+                // Preserve historical baseline if not already saved
+                targetComp.originalTotal = targetComp.originalTotal || targetComp.total;
+                targetComp.originalHarga = targetComp.originalHarga || targetComp.harga;
+                targetComp.originalVolume = targetComp.originalVolume || targetComp.volume;
+                targetComp.isAdjustedToRealization = true;
+                targetComp.adjustedAt = new Date().toISOString();
+
+                targetComp.total = spent;
+                const kali = parseFloat(targetComp.kali) || 1;
+                const vol = parseFloat(targetComp.volume) || 1;
+                if (kali === 1 && vol === 1) {
+                    targetComp.harga = spent;
+                } else if (kali === 1 && vol > 0) {
+                    targetComp.harga = spent / vol;
+                } else {
+                    targetComp.harga = spent / (vol * kali);
+                }
+
+                // Adjust months proportionally to equal spent
+                const oldMonthTotal = Object.values(targetComp.months || {}).reduce((s, m) => s + (parseFloat(m.jumlah) || 0), 0);
+                if (oldMonthTotal > 0 && targetComp.months) {
+                    const newMonths = {};
+                    let runningAllocated = 0;
+                    const monthEntries = Object.entries(targetComp.months);
+                    monthEntries.forEach(([mId, mData], mIdx) => {
+                        if (!mData.m || !mData.jumlah) return;
+                        if (mIdx === monthEntries.length - 1) {
+                            const remainder = spent - runningAllocated;
+                            newMonths[mId] = { m: true, jumlah: remainder > 0 ? remainder : 0 };
+                        } else {
+                            const prop = (parseFloat(mData.jumlah) || 0) / oldMonthTotal;
+                            const scaled = Math.round(prop * spent);
+                            runningAllocated += scaled;
+                            newMonths[mId] = { m: true, jumlah: scaled };
+                        }
+                    });
+                    targetComp.months = newMonths;
+                }
+
+                components[compIdx] = targetComp;
+
+                const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+                const newBosAmount = components.reduce((sum, c) => sum + (c.useBos ? (parseFloat(c.total) || 0) : 0), 0);
+
+                // Re-aggregate months
+                const aggregatedMonths = {};
+                components.forEach(c => {
+                    Object.entries(c.months || {}).forEach(([mId, mData]) => {
+                        if (!mData.m) return;
+                        if (!aggregatedMonths[mId]) aggregatedMonths[mId] = { m: true, jumlah: 0 };
+                        aggregatedMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
+                    });
+                });
+
+                return {
+                    ...p,
+                    components,
+                    total: newTotal,
+                    bosAmount: newBosAmount,
+                    useBos: newBosAmount > 0,
+                    months: aggregatedMonths
+                };
+            });
+
+            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
+        });
+
+        setMessage({
+            type: 'success',
+            text: `Anggaran "${comp.label}" berhasil disesuaikan menjadi ${formatRupiah(spent)}. Sisa hemat ${formatRupiah(surplus)} kini tersedia kembali untuk rincian Semester 2! Klik 'SIMPAN RENCANA BELANJA' untuk menyimpan permanen.`
+        });
+    };
+
     const handleAjukanDraftsInModal = async (draftIndexes) => {
         if (!editingItem || draftIndexes.length === 0) return;
         
@@ -5965,19 +6074,30 @@ function RABContent() {
                                         {/* Semester 1 & 2 Evaluation Card in Modal */}
                                         {(() => {
                                             const mId = editingItem.itemId || editingItem.id;
-                                            const posData = unitSemester1Data?.posMap?.[mId] || { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
-                                            const isLockedItem = editingItem.canEdit === false;
+                                            const posData = unitSemester1Data?.posMap?.[editingItem.itemId] || 
+                                                            unitSemester1Data?.posMap?.[editingItem.id] || 
+                                                            unitSemester1Data?.posMap?.[mId] ||
+                                                            (editingItem.name ? Object.values(unitSemester1Data?.posMap || {}).find(p => p.name === editingItem.name) : null) || 
+                                                            { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
+                                            const isLockedItem = editingItem.canEdit === false && !editingItem.isUnlocked;
 
                                             return (
                                                 <div className="space-y-4">
-                                                    {isLockedItem && (
+                                                    {isLockedItem ? (
                                                         <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-amber-900 text-xs font-bold">
                                                             <div className="flex items-center gap-2">
                                                                 <Lock size={16} className="text-amber-600 shrink-0" />
                                                                 <span>Mata anggaran ini sedang <strong>TERKUNCI</strong> oleh Superadmin (Mode Hanya Lihat). Untuk merubah/menggeser anggaran, minta Superadmin membuka kunci mata anggaran ini.</span>
                                                             </div>
                                                         </div>
-                                                    )}
+                                                    ) : editingItem.isUnlocked ? (
+                                                        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-900 text-xs font-bold">
+                                                            <div className="flex items-center gap-2">
+                                                                <Unlock size={16} className="text-emerald-600 shrink-0" />
+                                                                <span>Mata anggaran ini sedang <strong>DIBUKA</strong> oleh Superadmin. Anda dapat menyesuaikan rincian belanja ke realisasi nota dan mengalihkan sisa hemat ke Semester 2.</span>
+                                                            </div>
+                                                        </div>
+                                                    ) : null}
                                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
                                                         <div className="flex flex-col">
                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagu Smt 1</span>
@@ -6190,6 +6310,16 @@ function RABContent() {
                                                                             const isPending = comp.status === 'PENDING';
                                                                             const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
                                                                             const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
+
+                                                                            const compSpent = componentSpending[comp.id] || 0;
+                                                                            const compTotal = parseFloat(comp.total) || 0;
+                                                                            const compRemaining = compTotal - compSpent;
+                                                                            const compOriginalTotal = comp.originalTotal ? parseFloat(comp.originalTotal) : null;
+                                                                            const hasSurplus = compSpent > 0 && compRemaining > 0;
+                                                                            const isOverspent = compRemaining < 0;
+                                                                            const isFullySpent = compSpent > 0 && compRemaining === 0;
+                                                                            const canAdjustToRealization = hasSurplus && (isSuperAdmin || editingItem.isUnlocked || editingItem.canEdit !== false);
+
                                                                             return (
                                                                                 <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                                                                                     <div className="flex-1">
@@ -6262,6 +6392,23 @@ function RABContent() {
                                                                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Vol: {comp.volume} {comp.satuan} &times; {comp.kali}</span>
                                                                                             <span className="w-1 h-1 rounded-full bg-slate-200" />
                                                                                             <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Harga: {formatRupiah(comp.harga)}</span>
+
+                                                                                            {/* Realization Status Badges */}
+                                                                                            {compSpent > 0 && (
+                                                                                                hasSurplus ? (
+                                                                                                    <span className="text-[9px] font-black text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs" title={`Hemat ${formatRupiah(compRemaining)} dari realisasi transaksi`}>
+                                                                                                        <Sparkles size={11} className="text-teal-600" /> Sisa Hemat: {formatRupiah(compRemaining)}
+                                                                                                    </span>
+                                                                                                ) : isFullySpent ? (
+                                                                                                    <span className="text-[9px] font-black text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                        <CheckCircle2 size={11} className="text-slate-500" /> Terpakai Penuh
+                                                                                                    </span>
+                                                                                                ) : isOverspent ? (
+                                                                                                    <span className="text-[9px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                                                                                                        <AlertCircle size={11} className="text-rose-600" /> Overbudget ({formatRupiah(Math.abs(compRemaining))})
+                                                                                                    </span>
+                                                                                                ) : null
+                                                                                            )}
                                                                                         </div>
                                                                                         {isUnbalanced && (
                                                                                             <div className="mt-3 flex items-center gap-2 bg-rose-50 border border-rose-100 text-rose-700 px-4 py-2.5 rounded-2xl w-fit">
@@ -6290,12 +6437,50 @@ function RABContent() {
                                                                                         })()}
                                                                                     </div>
                                                                                     <div className="flex items-center gap-6 mt-6 md:mt-0 pt-4 md:pt-0 border-t md:border-t-0 border-slate-100">
-                                                                                        <div className="text-right">
-                                                                                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic mb-1">Subtotal</p>
-                                                                                            <span className="font-black text-slate-900 text-lg">{formatRupiah(comp.total)}</span>
+                                                                                        <div className="text-right flex flex-col items-end min-w-[140px]">
+                                                                                            {compOriginalTotal && compOriginalTotal !== compTotal && (
+                                                                                                <span className="text-[10px] font-bold text-slate-400 line-through tracking-wider mb-0.5" title="Nilai perencanaan awal sebelum disesuaikan ke realisasi">
+                                                                                                    Rencana Awal: {formatRupiah(compOriginalTotal)}
+                                                                                                </span>
+                                                                                            )}
+                                                                                            <div className="flex items-center gap-1.5 justify-end">
+                                                                                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest italic">Anggaran:</span>
+                                                                                                <span className="font-black text-slate-900 text-base">{formatRupiah(comp.total)}</span>
+                                                                                            </div>
+                                                                                            <div className="flex flex-wrap items-center gap-2 mt-1.5 justify-end">
+                                                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs ${
+                                                                                                    compSpent > 0 
+                                                                                                        ? 'bg-amber-50 text-amber-800 border border-amber-200' 
+                                                                                                        : 'bg-slate-50 text-slate-500 border border-slate-200'
+                                                                                                }`} title="Dana riil yang sudah dicairkan/terpakai dari nota transaksi">
+                                                                                                    Terpakai: {formatRupiah(compSpent)}
+                                                                                                </span>
+                                                                                                <span className={`text-[10px] font-black px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs ${
+                                                                                                    hasSurplus 
+                                                                                                        ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' 
+                                                                                                        : isOverspent 
+                                                                                                        ? 'bg-rose-50 text-rose-800 border border-rose-200' 
+                                                                                                        : 'bg-slate-100 text-slate-600 border border-slate-200'
+                                                                                                }`} title="Sisa anggaran yang belum terpakai">
+                                                                                                    Sisa: {formatRupiah(compRemaining)}
+                                                                                                </span>
+                                                                                            </div>
                                                                                         </div>
                                                                                         <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
-                                                                                            {(isPending || isApproved) && !isSuperAdmin ? (
+                                                                                            {/* Action: Sesuaikan Realisasi (Hemat) */}
+                                                                                            {canAdjustToRealization && (
+                                                                                                <button
+                                                                                                    type="button"
+                                                                                                    onClick={() => handleAdjustComponentToRealization(itemId, item.id, idx)}
+                                                                                                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0"
+                                                                                                    title={`Sesuaikan anggaran "${comp.label}" dari ${formatRupiah(compTotal)} menjadi ${formatRupiah(compSpent)}. Sisa ${formatRupiah(compRemaining)} otomatis kembali ke Pagu Yayasan agar bisa digunakan untuk belanja Semester 2.`}
+                                                                                                >
+                                                                                                    <Sparkles size={12} className="animate-pulse" />
+                                                                                                    <span>Sesuaikan Realisasi</span>
+                                                                                                </button>
+                                                                                            )}
+
+                                                                                            {((isPending || isApproved) && !isSuperAdmin && !editingItem.isUnlocked) ? (
                                                                                                 <div className="flex items-center gap-2">
                                                                                                     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
                                                                                                         <Lock size={14} /> {isApproved ? 'Disetujui Yayasan' : 'Menunggu Yayasan'}
@@ -6325,7 +6510,19 @@ function RABContent() {
                                                                                             ) : (
                                                                                                 <>
                                                                                                     <button onClick={() => { setEntryForm({ programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', sarprasStatus: null, sarprasNotes: '', ...comp, assetName: comp.assetName || comp.namaAset || comp.label || '' }); setEditingCompIdx(idx); setIsReadOnlyComp(false); setShowCompModal(true); }} className="p-2 text-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Edit"><Pencil size={18} /></button>
-                                                                                                    <button onClick={() => handleRemoveComponent(itemId, item.id, idx)} className="p-2 text-rose-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors" title="Hapus"><Trash2 size={18} /></button>
+                                                                                                    <button 
+                                                                                                        onClick={() => {
+                                                                                                            if (compSpent > 0) {
+                                                                                                                alert(`DILARANG: Rincian "${comp.label}" tidak dapat dihapus karena sudah memiliki transaksi realisasi sebesar ${formatRupiah(compSpent)}.`);
+                                                                                                                return;
+                                                                                                            }
+                                                                                                            handleRemoveComponent(itemId, item.id, idx);
+                                                                                                        }} 
+                                                                                                        className={`p-2 rounded-xl transition-colors ${compSpent > 0 ? 'text-slate-300 hover:bg-transparent cursor-not-allowed' : 'text-rose-400 hover:text-rose-600 hover:bg-rose-50'}`} 
+                                                                                                        title={compSpent > 0 ? "Tidak dapat menghapus rincian dengan transaksi realisasi" : "Hapus"}
+                                                                                                    >
+                                                                                                        <Trash2 size={18} />
+                                                                                                    </button>
                                                                                                     {isDraft && (
                                                                                                         <button 
                                                                                                             onClick={() => handleAjukanDraftsInModal([idx])} 
@@ -6353,20 +6550,44 @@ function RABContent() {
                                                                         })
                                                                     )}
                                                                     
-                                                                    <div className="flex flex-col md:flex-row md:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6 md:gap-0">
-                                                                        <div className="flex items-center gap-5">
-                                                                            <button
-                                                                                onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '1', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', umurEkonomis: '', economicLife: '', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
-                                                                                className="w-14 h-14 flex items-center justify-center bg-blue-600 text-white rounded-[1.25rem] shadow-lg shadow-blue-200 hover:scale-105 transition-all"
-                                                                            >
-                                                                                <Plus size={24} strokeWidth={3} />
-                                                                            </button>
-                                                                            <div>
-                                                                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Akumulasi Rincian</p>
-                                                                                <p className="font-black text-2xl text-slate-900 tracking-tight">{formatRupiah(item.total)}</p>
+                                                                    {(() => {
+                                                                        const totalCompsSpent = (item.components || []).reduce((s, c) => s + (componentSpending[c.id] || 0), 0);
+                                                                        const totalCompsSurplus = Math.max(0, (item.total || 0) - totalCompsSpent);
+                                                                        return (
+                                                                            <div className="flex flex-col lg:flex-row lg:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6">
+                                                                                <div className="flex items-center gap-5">
+                                                                                    <button
+                                                                                        disabled={editingItem.canEdit === false && !isSuperAdmin && !editingItem.isUnlocked}
+                                                                                        onClick={() => { setEntryForm({ label: '', volume: 0, satuan: '', kali: 1, harga: 0, programId: '', semester: '2', months: {}, useBos: fundSourceFilter === 'BOS', isAsset: false, assetName: '', assetCategory: '', assetRoom: '', assetProcurementType: 'BARU', umurEkonomis: '', economicLife: '', sarprasStatus: null, sarprasNotes: '' }); setEditingCompIdx(null); setIsReadOnlyComp(false); setShowCompModal(true); }}
+                                                                                        className={`w-14 h-14 flex items-center justify-center rounded-[1.25rem] shadow-lg transition-all ${
+                                                                                            (editingItem.canEdit === false && !isSuperAdmin && !editingItem.isUnlocked)
+                                                                                                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                                                                                                : 'bg-blue-600 text-white shadow-blue-200 hover:scale-105 active:scale-95'
+                                                                                        }`}
+                                                                                        title={(editingItem.canEdit === false && !isSuperAdmin && !editingItem.isUnlocked) ? "Mata anggaran terkunci oleh Superadmin" : "Tambah Rincian Belanja Baru (Semester 1 / 2)"}
+                                                                                    >
+                                                                                        <Plus size={24} strokeWidth={3} />
+                                                                                    </button>
+                                                                                    <div>
+                                                                                        <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Akumulasi Rincian</p>
+                                                                                        <p className="font-black text-2xl text-slate-900 tracking-tight">{formatRupiah(item.total)}</p>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <div className="flex flex-wrap items-center gap-4 border-t lg:border-t-0 lg:border-l border-slate-200 pt-4 lg:pt-0 lg:pl-6">
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total Terpakai (Realisasi)</span>
+                                                                                        <span className="font-black text-lg text-amber-700">{formatRupiah(totalCompsSpent)}</span>
+                                                                                    </div>
+                                                                                    <div className="w-px h-8 bg-slate-200 hidden sm:block" />
+                                                                                    <div className="flex flex-col">
+                                                                                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Belum Terpakai</span>
+                                                                                        <span className="font-black text-lg text-emerald-700">{formatRupiah(totalCompsSurplus)}</span>
+                                                                                    </div>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    </div>
+                                                                        );
+                                                                    })()}
                                                                 </div>
                                                             )}
                                                         </>
