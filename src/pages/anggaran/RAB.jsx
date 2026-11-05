@@ -5962,7 +5962,8 @@ function RABContent() {
                                         <div className="flex items-center gap-4">
                                             {(() => {
                                                 const detail = item;
-                                                const sameNamed = items.filter(i => i.name === editingItem.name);
+                                                const itemCatalog = activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []);
+                                                const sameNamed = itemCatalog.filter(i => i.name === editingItem.name);
                                                 const allocated = sameNamed.length > 0 
                                                     ? sameNamed.reduce((sum, i) => sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0)), 0)
                                                     : (rapData.itemAllocations[itemId] || editingItem.limit || 0);
@@ -6023,7 +6024,8 @@ function RABContent() {
                                         {/* Semester 1 & 2 Evaluation Card in Modal */}
                                         {(() => {
                                             const mId = editingItem.itemId || editingItem.id;
-                                            const sameNamed = items.filter(i => i.name === editingItem.name);
+                                            const itemCatalog = activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []);
+                                            const sameNamed = itemCatalog.filter(i => i.name === editingItem.name);
                                             const allocated = sameNamed.length > 0 
                                                 ? sameNamed.reduce((sum, i) => sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0)), 0)
                                                 : (rapData.itemAllocations[itemId] || editingItem.limit || 0);
