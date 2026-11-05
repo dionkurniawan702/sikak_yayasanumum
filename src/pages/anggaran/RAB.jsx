@@ -2553,7 +2553,9 @@ function RABContent() {
         const overBosItem = Object.keys(newPlan.expense).find(itemId => {
             const detail = newPlan.expense[itemId];
             const limit = bosItemMap[itemId] || 0;
-            const spent = parseFloat(detail.bosAmount) || 0;
+            const spent = fundSourceFilter === 'BOS' 
+                ? (parseFloat(detail.total) || parseFloat(detail.bosAmount) || 0)
+                : (parseFloat(detail.bosAmount) || 0);
             return spent > (limit + 100);
         });
 
@@ -2698,7 +2700,9 @@ function RABContent() {
             const detail = submittedPlan.expense[itemId];
             const limit = bosItemMap[itemId] || 0;
             
-            const spent = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.bosAmount) || 0), 0) : (parseFloat(detail.bosAmount) || 0);
+            const spent = fundSourceFilter === 'BOS'
+                ? (Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.total) || 0), 0) : (parseFloat(detail.total) || parseFloat(detail.bosAmount) || 0))
+                : (Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.bosAmount) || 0), 0) : (parseFloat(detail.bosAmount) || 0));
             return spent > (limit + 100);
         });
 
@@ -5985,16 +5989,19 @@ function RABContent() {
                                                                 (editingItem.name ? Object.values(unitSemester1Data?.posMap || {}).find(p => p.name === editingItem.name) : null) || 
                                                                 { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
                                                 const surplusS1 = (posData.budgetS1 || 0) - (posData.spentS1 || 0);
+                                                const isBOSMode = fundSourceFilter === 'BOS';
                                                 const bosAmt = detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0;
-                                                const yayasanRAB = (detail.total || 0) - bosAmt;
-                                                const remainingLimit = allocated - yayasanRAB;
+                                                const plannedCost = isBOSMode ? (detail.total || 0) : Math.max(0, (detail.total || 0) - bosAmt);
+                                                const remainingLimit = allocated - plannedCost;
                                                 const isOver = remainingLimit < 0;
+                                                const limitLabel = isBOSMode ? 'Total Limit (BOS)' : 'Total Limit (RAP)';
+                                                const sisaLabel = isBOSMode ? 'Sisa Limit (BOS)' : 'Sisa Limit (RAP)';
 
                                                 if (isOver) {
                                                     return (
                                                         <div className="flex items-center gap-3">
                                                             <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
-                                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Limit (RAP)</span>
+                                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{limitLabel}</span>
                                                                 <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
                                                             </div>
                                                             <div className="px-6 py-2.5 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
@@ -6007,11 +6014,11 @@ function RABContent() {
                                                 return (
                                                     <div className="flex items-center gap-3">
                                                         <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Limit (RAP)</span>
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{limitLabel}</span>
                                                             <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
                                                         </div>
                                                         <div className="px-6 py-2.5 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Limit (RAP)</span>
+                                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{sisaLabel}</span>
                                                             <span className="text-sm font-black text-blue-700">{formatRupiah(remainingLimit)}</span>
                                                         </div>
                                                     </div>
@@ -6062,7 +6069,7 @@ function RABContent() {
                                                     ) : null}
                                                     <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
                                                         <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Limit (RAP)</span>
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{fundSourceFilter === 'BOS' ? 'Total Limit (BOS)' : 'Total Limit (RAP)'}</span>
                                                             <span className="text-sm font-black text-slate-900">{formatRupiah(allocated)}</span>
                                                         </div>
                                                         <div className="flex flex-col">
