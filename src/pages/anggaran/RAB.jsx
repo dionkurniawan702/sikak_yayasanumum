@@ -7,7 +7,7 @@ import {
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
     Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, Unlock, CheckSquare, Search,
-    ExternalLink, CheckCheck, Sparkles, Clock
+    ExternalLink, CheckCheck, Sparkles, Clock, ChevronDown
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -172,6 +172,7 @@ function RABContent() {
     const [fundSourceFilter, setFundSourceFilter] = useState('Yayasan');
     const [newItemData, setNewItemData] = useState({ name: '', incomeItemId: '', sourceOfFunds: 'Yayasan' });
     const [editingItem, setEditingItem] = useState(null);
+    const [openActionMenuId, setOpenActionMenuId] = useState(null);
     const [compSearchQuery, setCompSearchQuery] = useState('');
     const [compStatusFilter, setCompStatusFilter] = useState('ALL');
 
@@ -4840,7 +4841,7 @@ function RABContent() {
                     )}
                 </div>
 
-                <div className="overflow-x-auto scroll-top">
+                <div className="overflow-x-auto scroll-top pb-36">
                     <table className="w-full border-separate border-spacing-y-4">
                         <thead>
                             <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic relative">
@@ -4851,7 +4852,7 @@ function RABContent() {
                                         <th className="px-4 py-2 text-right">Semester 1 (Evaluasi)</th>
                                         <th className="px-4 py-2 text-right">Smt 2 (Rencana)</th>
                                         <th className="px-4 py-2 text-right">Total & Saldo Akhir</th>
-                                        <th className="px-5 py-2 text-right">Aksi</th>
+                                        <th className="px-5 py-2 text-right sticky right-0 z-20 bg-white/95 backdrop-blur shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">Aksi</th>
                                     </>
                                 ) : (
                                     <>
@@ -4971,115 +4972,158 @@ function RABContent() {
                                             }],
                                         };
 
+                                        const isMenuOpen = openActionMenuId === plan.id;
                                         const actions = (
                                             (isSuperAdmin || 
                                              (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
                                              (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
-                                                <div className="flex items-center gap-1.5">
-                                                    {/* Lock / Unlock Toggle for Superadmin */}
-                                                    {isSuperAdmin && !isConsolidation && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleToggleItemLock(itemMaster.id, !isItemUnlocked);
-                                                            }}
-                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${
-                                                                isItemUnlocked 
-                                                                    ? 'bg-emerald-100 hover:bg-rose-100 text-emerald-700 hover:text-rose-700' 
-                                                                    : 'bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700'
-                                                            }`}
-                                                            title={isItemUnlocked ? "Mata anggaran TERBUKA! Klik untuk mengunci kembali" : "Mata anggaran TERKUNCI. Klik untuk membuka kunci revisi unit"}
-                                                        >
-                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
-                                                        </button>
-                                                    )}
-
-                                                    {/* Lock indicator for unit */}
-                                                    {!isSuperAdmin && !isConsolidation && (
-                                                        <div
-                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl ${
-                                                                isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
-                                                            }`}
-                                                            title={isItemUnlocked ? "Mata anggaran DIBUKA Superadmin untuk revisi/pergeseran" : "TERKUNCI oleh Superadmin. Hubungi Superadmin untuk membuka kunci"}
-                                                        >
-                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
-                                                        </div>
-                                                    )}
-
-                                                    {/* Review & Edit Eye Button */}
+                                                <div className="relative inline-block text-left">
                                                     <button
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setEditingItem({
-                                                                ...itemMaster,
-                                                                isNewPlan: false,
-                                                                planId: plan.id,
-                                                                canEdit: canEditItem,
-                                                                isUnlocked: isItemUnlocked
-                                                            });
+                                                            setOpenActionMenuId(isMenuOpen ? null : plan.id);
                                                         }}
-                                                        className="w-10 h-10 flex items-center justify-center bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                        title={canEditItem ? "REVIEW & EDIT RENCANA" : "LIHAT RINCIAN (TERKUNCI)"}
+                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-xs ${
+                                                            isMenuOpen 
+                                                                ? 'bg-slate-900 text-white shadow-md' 
+                                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95'
+                                                        }`}
+                                                        title="Pilihan Aksi"
                                                     >
-                                                        <Eye size={18} />
+                                                        <span>Aksi</span>
+                                                        <ChevronDown size={14} className={`transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
                                                     </button>
 
-                                                    {/* Add New Plan/Component Button */}
-                                                    {canEditItem && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setEditingItem({
-                                                                    ...itemMaster,
-                                                                    isNewPlan: true,
-                                                                    canEdit: true,
-                                                                    isUnlocked: isItemUnlocked
-                                                                });
-                                                            }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-600 hover:text-white transition-all shadow-sm"
-                                                            title="TAMBAH RENCANA BARU"
-                                                        >
-                                                            <Plus size={18} />
-                                                        </button>
-                                                    )}
+                                                    {isMenuOpen && (
+                                                        <>
+                                                            <div 
+                                                                className="fixed inset-0 z-40" 
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    setOpenActionMenuId(null);
+                                                                }} 
+                                                            />
+                                                            <div 
+                                                                className="absolute right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-1.5 min-w-[210px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left"
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                {/* 1. Review & Edit */}
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setOpenActionMenuId(null);
+                                                                        setEditingItem({
+                                                                            ...itemMaster,
+                                                                            isNewPlan: false,
+                                                                            planId: plan.id,
+                                                                            canEdit: canEditItem,
+                                                                            isUnlocked: isItemUnlocked
+                                                                        });
+                                                                    }}
+                                                                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all group"
+                                                                >
+                                                                    <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                        <Eye size={16} />
+                                                                    </div>
+                                                                    <span>{canEditItem ? "Review & Edit Rencana" : "Lihat Rincian"}</span>
+                                                                </button>
 
-                                                    {/* Delete Plan Button */}
-                                                    {canEditItem && (
-                                                        <button
-                                                            onClick={async (e) => {
-                                                                e.stopPropagation();
-                                                                if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
-                                                                    const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
-                                                                    const nextPlan = {
-                                                                        ...activePlan,
-                                                                        [type]: {
-                                                                            ...activePlan[type],
-                                                                            [itemMaster.id]: updatedPlans
-                                                                        }
-                                                                    };
-                                                                    setCurrentPlan(nextPlan);
-                                                                    const planId = currentPlanId;
-                                                                    const dbPlan = {
-                                                                        id: planId,
-                                                                        academicYearId: selectedYearId,
-                                                                        unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
-                                                                        fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
-                                                                        income: nextPlan.income,
-                                                                        expense: nextPlan.expense,
-                                                                        status: nextPlan.status,
-                                                                        rejectionReason: nextPlan.rejectionReason,
-                                                                        updatedAt: new Date().toISOString(),
-                                                                        updatedBy: currentUser?.username
-                                                                    };
-                                                                    await persistPlanToServer(dbPlan); 
-                                                                    setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
-                                                                }
-                                                            }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all shadow-sm"
-                                                            title="HAPUS RENCANA"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
+                                                                {/* 2. Tambah Rencana Baru */}
+                                                                {canEditItem && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            setEditingItem({
+                                                                                ...itemMaster,
+                                                                                isNewPlan: true,
+                                                                                canEdit: true,
+                                                                                isUnlocked: isItemUnlocked
+                                                                            });
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                            <Plus size={16} />
+                                                                        </div>
+                                                                        <span>Tambah Rencana Baru</span>
+                                                                    </button>
+                                                                )}
+
+                                                                {/* 3. Kunci / Buka Kunci */}
+                                                                {isSuperAdmin && !isConsolidation && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            handleToggleItemLock(itemMaster.id, !isItemUnlocked);
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-slate-100 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-xs ${
+                                                                            isItemUnlocked 
+                                                                                ? 'bg-emerald-100 text-emerald-700 group-hover:bg-rose-100 group-hover:text-rose-700' 
+                                                                                : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700'
+                                                                        }`}>
+                                                                            {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                                                                        </div>
+                                                                        <span>{isItemUnlocked ? "Kunci Mata Anggaran" : "Buka Kunci Revisi"}</span>
+                                                                    </button>
+                                                                )}
+
+                                                                {!isSuperAdmin && !isConsolidation && (
+                                                                    <div className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-500 rounded-xl bg-slate-50/80">
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
+                                                                            isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
+                                                                        }`}>
+                                                                            {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                                                                        </div>
+                                                                        <span className="text-[11px]">{isItemUnlocked ? "Status: Terbuka" : "Status: Terkunci"}</span>
+                                                                    </div>
+                                                                )}
+
+                                                                {/* 4. Hapus Rencana Belanja */}
+                                                                {canEditItem && (
+                                                                    <>
+                                                                        <div className="h-px bg-slate-100 my-0.5" />
+                                                                        <button
+                                                                            onClick={async () => {
+                                                                                setOpenActionMenuId(null);
+                                                                                if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                                    const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
+                                                                                    const nextPlan = {
+                                                                                        ...activePlan,
+                                                                                        [type]: {
+                                                                                            ...activePlan[type],
+                                                                                            [itemMaster.id]: updatedPlans
+                                                                                        }
+                                                                                    };
+                                                                                    setCurrentPlan(nextPlan);
+                                                                                    const planId = currentPlanId;
+                                                                                    const dbPlan = {
+                                                                                        id: planId,
+                                                                                        academicYearId: selectedYearId,
+                                                                                        unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                                                                                        fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                                                                                        income: nextPlan.income,
+                                                                                        expense: nextPlan.expense,
+                                                                                        status: nextPlan.status,
+                                                                                        rejectionReason: nextPlan.rejectionReason,
+                                                                                        updatedAt: new Date().toISOString(),
+                                                                                        updatedBy: currentUser?.username
+                                                                                    };
+                                                                                    await persistPlanToServer(dbPlan); 
+                                                                                    setMessage({ type: 'success', text: 'Item rincian berhasil dihapus secara permanen.' });
+                                                                                }
+                                                                            }}
+                                                                            className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-rose-600 hover:bg-rose-50 rounded-xl transition-all group"
+                                                                        >
+                                                                            <div className="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                                <Trash2 size={16} />
+                                                                            </div>
+                                                                            <span>Hapus Rencana</span>
+                                                                        </button>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        </>
                                                     )}
                                                 </div>
                                             ) : null
@@ -5160,51 +5204,100 @@ function RABContent() {
                                                 </div>
                                             </td>
                                             {/* 6. Aksi */}
-                                            <td className="px-5 py-3.5 border-y border-r border-slate-100 text-right">
-                                                <div className="flex items-center justify-end gap-1.5">
-                                                    {isSuperAdmin && (
-                                                        <button
-                                                            onClick={() => handleToggleItemLock(itemMaster.id, !isItemUnlocked)}
-                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl transition-all shadow-sm ${
-                                                                isItemUnlocked 
-                                                                    ? 'bg-emerald-100 hover:bg-rose-100 text-emerald-700 hover:text-rose-700' 
-                                                                    : 'bg-slate-100 hover:bg-emerald-100 text-slate-500 hover:text-emerald-700'
-                                                            }`}
-                                                            title={isItemUnlocked ? "Mata anggaran TERBUKA! Klik untuk mengunci kembali" : "Mata anggaran TERKUNCI. Klik untuk membuka kunci"}
-                                                        >
-                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
-                                                        </button>
-                                                    )}
-                                                    {!isSuperAdmin && (
-                                                        <div
-                                                            className={`w-10 h-10 flex items-center justify-center rounded-xl ${
-                                                                isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
-                                                            }`}
-                                                            title={isItemUnlocked ? "Mata anggaran terbuka untuk revisi" : "Terkunci oleh Superadmin"}
-                                                        >
-                                                            {isItemUnlocked ? <Unlock size={17} /> : <Lock size={17} />}
-                                                        </div>
-                                                    )}
-                                                    {canEditItem && (
-                                                        <button
-                                                            onClick={() => {
-                                                                const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
-                                                                setEditingItem({
-                                                                    id: newPlanId,
-                                                                    itemId: itemMaster.id,
-                                                                    name: itemMaster.name,
-                                                                    isNewPlan: true,
-                                                                    semester: '2',
-                                                                    canEdit: true,
-                                                                    isUnlocked: isItemUnlocked
-                                                                });
-                                                            }}
-                                                            className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
-                                                            title="TAMBAH RENCANA BARU"
-                                                        >
-                                                            <Plus size={18} strokeWidth={3} />
-                                                        </button>
-                                                    )}
+                                            <td className="px-5 py-3.5 border-y border-r border-slate-100 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">
+                                                <div className="flex items-center justify-end">
+                                                    {(() => {
+                                                        const isTempMenuOpen = openActionMenuId === `TEMP-${itemMaster.id}`;
+                                                        return (
+                                                            <div className="relative inline-block text-left">
+                                                                <button
+                                                                    onClick={(e) => {
+                                                                        e.stopPropagation();
+                                                                        setOpenActionMenuId(isTempMenuOpen ? null : `TEMP-${itemMaster.id}`);
+                                                                    }}
+                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-xs ${
+                                                                        isTempMenuOpen 
+                                                                            ? 'bg-slate-900 text-white shadow-md' 
+                                                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95'
+                                                                    }`}
+                                                                    title="Pilihan Aksi"
+                                                                >
+                                                                    <span>Aksi</span>
+                                                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
+                                                                </button>
+
+                                                                {isTempMenuOpen && (
+                                                                    <>
+                                                                        <div 
+                                                                            className="fixed inset-0 z-40" 
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                setOpenActionMenuId(null);
+                                                                            }} 
+                                                                        />
+                                                                        <div 
+                                                                            className="absolute right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-1.5 min-w-[210px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left"
+                                                                            onClick={(e) => e.stopPropagation()}
+                                                                        >
+                                                                            {canEditItem && (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setOpenActionMenuId(null);
+                                                                                        const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                                                        setEditingItem({
+                                                                                            id: newPlanId,
+                                                                                            itemId: itemMaster.id,
+                                                                                            name: itemMaster.name,
+                                                                                            isNewPlan: true,
+                                                                                            semester: '2',
+                                                                                            canEdit: true,
+                                                                                            isUnlocked: isItemUnlocked
+                                                                                        });
+                                                                                    }}
+                                                                                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-all group"
+                                                                                >
+                                                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                                        <Plus size={16} />
+                                                                                    </div>
+                                                                                    <span>Tambah Rencana Baru</span>
+                                                                                </button>
+                                                                            )}
+
+                                                                            {isSuperAdmin && (
+                                                                                <button
+                                                                                    onClick={() => {
+                                                                                        setOpenActionMenuId(null);
+                                                                                        handleToggleItemLock(itemMaster.id, !isItemUnlocked);
+                                                                                    }}
+                                                                                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-slate-100 rounded-xl transition-all group"
+                                                                                >
+                                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-xs ${
+                                                                                        isItemUnlocked 
+                                                                                            ? 'bg-emerald-100 text-emerald-700 group-hover:bg-rose-100 group-hover:text-rose-700' 
+                                                                                            : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700'
+                                                                                    }`}>
+                                                                                        {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                                                                                    </div>
+                                                                                    <span>{isItemUnlocked ? "Kunci Mata Anggaran" : "Buka Kunci Revisi"}</span>
+                                                                                </button>
+                                                                            )}
+
+                                                                            {!isSuperAdmin && (
+                                                                                <div className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-500 rounded-xl bg-slate-50/80">
+                                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
+                                                                                        isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
+                                                                                    }`}>
+                                                                                        {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                                                                                    </div>
+                                                                                    <span className="text-[11px]">{isItemUnlocked ? "Status: Terbuka" : "Status: Terkunci"}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             </td>
                                         </tr>
