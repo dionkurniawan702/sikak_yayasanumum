@@ -4958,13 +4958,16 @@ function RABContent() {
                                                         if (c.isApproved === true) compStatus = 'APPROVED';
                                                         else compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
                                                     }
+                                                    const compId = c.id || `COMP-${plan.id}-${itemMaster.id}-${pIdx}-${cIdx}`;
+                                                    const spentVal = componentSpending[compId] || componentSpending[c.id] || 0;
                                                     return {
                                                         ...c,
+                                                        id: compId,
                                                         _pIdx: pIdx,
                                                         _cIdx: cIdx,
                                                         status: compStatus,
-                                                        spent: componentSpending[c.id] || 0,
-                                                        remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || 0)
+                                                        spent: spentVal,
+                                                        remaining: (parseFloat(c.total) || 0) - spentVal
                                                     };
                                                 })
                                             }],
@@ -5921,7 +5924,10 @@ function RABContent() {
                             if (plans.length > 1) {
                                 // Merge multiple plans into one virtual plan
                                 const first = plans[0];
-                                const allComponents = plans.flatMap(p => p.components || []);
+                                const allComponents = plans.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => ({
+                                    ...c,
+                                    id: c.id || `COMP-${p.id}-${itemId}-${pIdx}-${cIdx}`
+                                })));
                                 const aggrMonths = {};
                                 plans.forEach(p => {
                                     Object.entries(p.months || {}).forEach(([mId, mData]) => {
@@ -5942,9 +5948,20 @@ function RABContent() {
                                     description: allComponents.length > 0 ? allComponents[0].label : ''
                                 };
                             } else {
-                                item = plans.find(p => p.id === editingItem.planId) || plans.find(p => p.id === editingItem.id) || plans[0] || {
-                                    id: editingItem.planId || editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1'
-                                };
+                                const found = plans.find(p => p.id === editingItem.planId) || plans.find(p => p.id === editingItem.id) || plans[0];
+                                if (found) {
+                                    item = {
+                                        ...found,
+                                        components: (found.components || []).map((c, cIdx) => ({
+                                            ...c,
+                                            id: c.id || `COMP-${found.id}-${itemId}-0-${cIdx}`
+                                        }))
+                                    };
+                                } else {
+                                    item = {
+                                        id: editingItem.planId || editingItem.id, total: 0, bosAmount: 0, useBos: false, components: [], months: {}, semester: editingItem.semester || '1'
+                                    };
+                                }
                             }
 
                             return (
