@@ -119,7 +119,7 @@ export default function BudgetRow({
                                     </span>
                                     <span className="text-slate-300">•</span>
                                     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black italic ${(data.surplusS1 || 0) > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ((data.surplusS1 || 0) < 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400 bg-slate-50')}`}>
-                                        {(data.surplusS1 || 0) > 0 ? `+Hemat: ${formatCurrency(data.surplusS1)}` : ((data.surplusS1 || 0) < 0 ? `Defisit: ${formatCurrency(Math.abs(data.surplusS1))}` : 'Hemat: Rp 0')}
+                                        {(data.surplusS1 || 0) > 0 ? `Belum Terpakai: ${formatCurrency(data.surplusS1)}` : ((data.surplusS1 || 0) < 0 ? `Lebih Terpakai: ${formatCurrency(Math.abs(data.surplusS1))}` : 'Belum Terpakai: Rp 0')}
                                     </span>
                                 </div>
                             </div>

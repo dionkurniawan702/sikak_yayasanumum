@@ -7,7 +7,7 @@ import {
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
     Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, Unlock, CheckSquare, Search,
-    ExternalLink, CheckCheck, Sparkles
+    ExternalLink, CheckCheck, Sparkles, Clock
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -5139,7 +5139,7 @@ function RABContent() {
                                                         <span className="text-[10px] font-bold text-slate-400">Pagu: {formatRupiah(0)}</span>
                                                         <span className="text-slate-300">•</span>
                                                         <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black italic ${itemSpentS1 > 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400 bg-slate-50'}`}>
-                                                            {itemSpentS1 > 0 ? `Defisit: ${formatRupiah(itemSpentS1)}` : 'Hemat: Rp 0'}
+                                                            {itemSpentS1 > 0 ? `Lebih Terpakai: ${formatRupiah(itemSpentS1)}` : 'Belum Terpakai: Rp 0'}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -6063,7 +6063,7 @@ function RABContent() {
                                                         <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center justify-between text-emerald-900 text-xs font-bold">
                                                             <div className="flex items-center gap-2">
                                                                 <Unlock size={16} className="text-emerald-600 shrink-0" />
-                                                                <span>Mata anggaran ini sedang <strong>DIBUKA</strong> oleh Superadmin. Anda dapat menyesuaikan rincian belanja ke realisasi nota dan mengalihkan sisa hemat ke Semester 2.</span>
+                                                                <span>Mata anggaran ini sedang <strong>DIBUKA</strong> oleh Superadmin. Anda dapat menyesuaikan rincian belanja ke realisasi nota dan mengalihkan sisa belum terpakai ke Semester 2.</span>
                                                             </div>
                                                         </div>
                                                     ) : null}
@@ -6081,7 +6081,7 @@ function RABContent() {
                                                             <span className="text-sm font-black text-slate-600">{formatRupiah(posData.spentS1)}</span>
                                                         </div>
                                                         <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sisa Hemat Smt 1</span>
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Belum Terpakai Smt 1</span>
                                                             <span className={`text-sm font-black ${surplusS1 > 0 ? 'text-emerald-600' : (surplusS1 < 0 ? 'text-rose-600' : 'text-slate-400')}`}>
                                                                 {surplusS1 > 0 ? `+${formatRupiah(surplusS1)}` : formatRupiah(surplusS1)}
                                                             </span>
@@ -6368,8 +6368,8 @@ function RABContent() {
                                                                                             {/* Realization Status Badges */}
                                                                                             {compSpent > 0 && (
                                                                                                 hasSurplus ? (
-                                                                                                    <span className="text-[9px] font-black text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs" title={`Hemat ${formatRupiah(compRemaining)} dari realisasi transaksi`}>
-                                                                                                        <Sparkles size={11} className="text-teal-600" /> Sisa Hemat: {formatRupiah(compRemaining)}
+                                                                                                    <span className="text-[9px] font-black text-teal-700 bg-teal-50 border border-teal-200 px-2 py-0.5 rounded-md flex items-center gap-1 shadow-xs" title={`Belum terpakai ${formatRupiah(compRemaining)} dari realisasi transaksi`}>
+                                                                                                        <Clock size={11} className="text-teal-600" /> Belum Terpakai: {formatRupiah(compRemaining)}
                                                                                                     </span>
                                                                                                 ) : isFullySpent ? (
                                                                                                     <span className="text-[9px] font-black text-slate-600 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md flex items-center gap-1">
