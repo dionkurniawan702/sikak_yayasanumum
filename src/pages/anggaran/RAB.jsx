@@ -4941,7 +4941,7 @@ function RABContent() {
                                             status: plan.status,
                                             rap: plan.limit || allocated,
                                             rab: plan.total || 0,
-                                            sisa: (plan.limit || allocated) - ((plan.total || 0) - itemSurplusS1),
+                                            sisa: (plan.limit || allocated) - (plan.total || 0),
                                             budgetS1: itemS1,
                                             spentS1: itemSpentS1,
                                             surplusS1: itemSurplusS1,
@@ -5992,9 +5992,9 @@ function RABContent() {
                                                                 { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
                                                 const surplusS1 = (posData.budgetS1 || 0) - (posData.spentS1 || 0);
                                                 const bosAmt = detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0;
-                                                const effectiveYayasanSpent = Math.max(0, (detail.total || 0) - bosAmt - surplusS1);
-                                                const isOver = effectiveYayasanSpent > (allocated + 100);
-                                                const remainingBudget = allocated - effectiveYayasanSpent;
+                                                const yayasanRAB = (detail.total || 0) - bosAmt;
+                                                const remainingLimit = allocated - yayasanRAB;
+                                                const isOver = remainingLimit < 0;
 
                                                 if (isOver) {
                                                     return (
@@ -6005,7 +6005,7 @@ function RABContent() {
                                                             </div>
                                                             <div className="px-6 py-2.5 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
                                                                 <AlertCircle size={18} />
-                                                                MELEBIHI LIMIT! (Kurang: {formatRupiah(effectiveYayasanSpent - allocated)})
+                                                                MELEBIHI LIMIT! (Kurang: {formatRupiah(Math.abs(remainingLimit))})
                                                             </div>
                                                         </div>
                                                     );
@@ -6017,13 +6017,8 @@ function RABContent() {
                                                             <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
                                                         </div>
                                                         <div className="px-6 py-2.5 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Tersedia</span>
-                                                            <span className="text-sm font-black text-blue-700">{formatRupiah(remainingBudget)}</span>
-                                                            {surplusS1 !== 0 && (
-                                                                <span className={`text-[8px] font-bold ${surplusS1 > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                                    {surplusS1 > 0 ? `(Termasuk Sisa Hemat S1: +${formatRupiah(surplusS1)})` : `(Defisit Smt 1: -${formatRupiah(Math.abs(surplusS1))})`}
-                                                                </span>
-                                                            )}
+                                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Limit (RAP)</span>
+                                                            <span className="text-sm font-black text-blue-700">{formatRupiah(remainingLimit)}</span>
                                                         </div>
                                                     </div>
                                                 );
