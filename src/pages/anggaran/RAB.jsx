@@ -4852,7 +4852,7 @@ function RABContent() {
                                         <th className="px-4 py-2 text-right">Semester 1 (Evaluasi)</th>
                                         <th className="px-4 py-2 text-right">Smt 2 (Rencana)</th>
                                         <th className="px-4 py-2 text-right">Total & Saldo Akhir</th>
-                                        <th className="px-5 py-2 text-right sticky right-0 z-20 bg-white/95 backdrop-blur shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">Aksi</th>
+                                        <th className="px-5 py-2 text-right sticky right-0 z-20 bg-white/95 backdrop-blur shadow-[-4px_0_10px_rgba(0,0,0,0.03)]" style={{ minWidth: '110px', width: '120px' }}>Aksi</th>
                                     </>
                                 ) : (
                                     <>
@@ -4979,19 +4979,21 @@ function RABContent() {
                                              (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
                                                 <div className="relative inline-block text-left">
                                                     <button
+                                                        type="button"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            setOpenActionMenuId(isMenuOpen ? null : plan.id);
+                                                            e.preventDefault();
+                                                            setOpenActionMenuId(prev => (prev === plan.id ? null : plan.id));
                                                         }}
-                                                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-xs ${
+                                                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
                                                             isMenuOpen 
-                                                                ? 'bg-slate-900 text-white shadow-md' 
-                                                                : 'bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95'
+                                                                ? 'bg-blue-800 text-white shadow-md ring-2 ring-blue-300' 
+                                                                : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
                                                         }`}
                                                         title="Pilihan Aksi"
                                                     >
                                                         <span>Aksi</span>
-                                                        <ChevronDown size={14} className={`transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                                                        <ChevronDown size={14} className={`text-blue-100 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
                                                     </button>
 
                                                     {isMenuOpen && (
@@ -5204,26 +5206,32 @@ function RABContent() {
                                                 </div>
                                             </td>
                                             {/* 6. Aksi */}
-                                            <td className="px-5 py-3.5 border-y border-r border-slate-100 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">
-                                                <div className="flex items-center justify-end">
+                                            <td 
+                                                className="px-5 py-3.5 border-y border-r border-slate-100 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]"
+                                                style={{ minWidth: '110px', width: '120px' }}
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
                                                     {(() => {
                                                         const isTempMenuOpen = openActionMenuId === `TEMP-${itemMaster.id}`;
                                                         return (
                                                             <div className="relative inline-block text-left">
                                                                 <button
+                                                                    type="button"
                                                                     onClick={(e) => {
                                                                         e.stopPropagation();
-                                                                        setOpenActionMenuId(isTempMenuOpen ? null : `TEMP-${itemMaster.id}`);
+                                                                        e.preventDefault();
+                                                                        setOpenActionMenuId(prev => (prev === `TEMP-${itemMaster.id}` ? null : `TEMP-${itemMaster.id}`));
                                                                     }}
-                                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black transition-all shadow-xs ${
+                                                                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
                                                                         isTempMenuOpen 
-                                                                            ? 'bg-slate-900 text-white shadow-md' 
-                                                                            : 'bg-slate-100 hover:bg-slate-200 text-slate-700 active:scale-95'
+                                                                            ? 'bg-blue-800 text-white shadow-md ring-2 ring-blue-300' 
+                                                                            : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
                                                                     }`}
                                                                     title="Pilihan Aksi"
                                                                 >
                                                                     <span>Aksi</span>
-                                                                    <ChevronDown size={14} className={`transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
+                                                                    <ChevronDown size={14} className={`text-blue-100 transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
                                                                 </button>
 
                                                                 {isTempMenuOpen && (

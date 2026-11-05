@@ -147,8 +147,12 @@ export default function BudgetRow({
                         </td>
 
                         {/* 6. Aksi */}
-                        <td className="budget-cell budget-cell-number py-3.5 px-5 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]">
-                            <div className="flex items-center justify-end">
+                        <td 
+                            className="budget-cell py-3.5 px-5 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]"
+                            style={{ minWidth: '110px', width: '120px' }}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
                                 {actions}
                             </div>
                         </td>
