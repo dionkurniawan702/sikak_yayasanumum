@@ -1102,6 +1102,10 @@ function RABContent() {
             }
         });
 
+        Object.values(posMap).forEach(p => {
+            p.surplusS1 = (p.budgetS1 || 0) - (p.spentS1 || 0);
+        });
+
         const items = Object.values(posMap).map(it => ({
             ...it,
             remainingS1: it.budgetS1 - it.spentS1,
@@ -5958,7 +5962,10 @@ function RABContent() {
                                         <div className="flex items-center gap-4">
                                             {(() => {
                                                 const detail = item;
-                                                const allocated = rapData.itemAllocations[itemId] || 0;
+                                                const sameNamed = items.filter(i => i.name === editingItem.name);
+                                                const allocated = sameNamed.length > 0 
+                                                    ? sameNamed.reduce((sum, i) => sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0)), 0)
+                                                    : (rapData.itemAllocations[itemId] || editingItem.limit || 0);
                                                 const mId = editingItem.itemId || editingItem.id;
                                                 const posData = unitSemester1Data?.posMap?.[editingItem.itemId] || 
                                                                 unitSemester1Data?.posMap?.[editingItem.id] || 
@@ -5973,21 +5980,33 @@ function RABContent() {
 
                                                 if (isOver) {
                                                     return (
-                                                        <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
-                                                            <AlertCircle size={18} />
-                                                            MELEBIHI LIMIT! (Kurang: {formatRupiah(effectiveYayasanSpent - allocated)})
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
+                                                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Limit (RAP)</span>
+                                                                <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
+                                                            </div>
+                                                            <div className="px-6 py-2.5 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
+                                                                <AlertCircle size={18} />
+                                                                MELEBIHI LIMIT! (Kurang: {formatRupiah(effectiveYayasanSpent - allocated)})
+                                                            </div>
                                                         </div>
                                                     );
                                                 }
                                                 return (
-                                                    <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Tersedia</span>
-                                                        <span className="text-sm font-black text-blue-700">{formatRupiah(remainingBudget)}</span>
-                                                        {surplusS1 !== 0 && (
-                                                            <span className={`text-[8px] font-bold ${surplusS1 > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
-                                                                {surplusS1 > 0 ? `(Termasuk Sisa Hemat S1: +${formatRupiah(surplusS1)})` : `(Defisit Smt 1: -${formatRupiah(Math.abs(surplusS1))})`}
-                                                            </span>
-                                                        )}
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Limit (RAP)</span>
+                                                            <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
+                                                        </div>
+                                                        <div className="px-6 py-2.5 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
+                                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Tersedia</span>
+                                                            <span className="text-sm font-black text-blue-700">{formatRupiah(remainingBudget)}</span>
+                                                            {surplusS1 !== 0 && (
+                                                                <span className={`text-[8px] font-bold ${surplusS1 > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                                    {surplusS1 > 0 ? `(Termasuk Sisa Hemat S1: +${formatRupiah(surplusS1)})` : `(Defisit Smt 1: -${formatRupiah(Math.abs(surplusS1))})`}
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </div>
                                                 );
                                             })()}
@@ -6004,11 +6023,16 @@ function RABContent() {
                                         {/* Semester 1 & 2 Evaluation Card in Modal */}
                                         {(() => {
                                             const mId = editingItem.itemId || editingItem.id;
+                                            const sameNamed = items.filter(i => i.name === editingItem.name);
+                                            const allocated = sameNamed.length > 0 
+                                                ? sameNamed.reduce((sum, i) => sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0)), 0)
+                                                : (rapData.itemAllocations[itemId] || editingItem.limit || 0);
                                             const posData = unitSemester1Data?.posMap?.[editingItem.itemId] || 
                                                             unitSemester1Data?.posMap?.[editingItem.id] || 
                                                             unitSemester1Data?.posMap?.[mId] ||
                                                             (editingItem.name ? Object.values(unitSemester1Data?.posMap || {}).find(p => p.name === editingItem.name) : null) || 
                                                             { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
+                                            const surplusS1 = (posData.budgetS1 || 0) - (posData.spentS1 || 0);
                                             const isLockedItem = editingItem.canEdit === false && !editingItem.isUnlocked;
 
                                             return (
@@ -6028,7 +6052,11 @@ function RABContent() {
                                                             </div>
                                                         </div>
                                                     ) : null}
-                                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Limit (RAP)</span>
+                                                            <span className="text-sm font-black text-slate-900">{formatRupiah(allocated)}</span>
+                                                        </div>
                                                         <div className="flex flex-col">
                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagu Smt 1</span>
                                                             <span className="text-sm font-black text-slate-700">{formatRupiah(posData.budgetS1)}</span>
@@ -6039,8 +6067,8 @@ function RABContent() {
                                                         </div>
                                                         <div className="flex flex-col">
                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Sisa Hemat Smt 1</span>
-                                                            <span className={`text-sm font-black ${posData.surplusS1 > 0 ? 'text-emerald-600' : (posData.surplusS1 < 0 ? 'text-rose-600' : 'text-slate-400')}`}>
-                                                                {posData.surplusS1 > 0 ? `+${formatRupiah(posData.surplusS1)}` : formatRupiah(posData.surplusS1)}
+                                                            <span className={`text-sm font-black ${surplusS1 > 0 ? 'text-emerald-600' : (surplusS1 < 0 ? 'text-rose-600' : 'text-slate-400')}`}>
+                                                                {surplusS1 > 0 ? `+${formatRupiah(surplusS1)}` : formatRupiah(surplusS1)}
                                                             </span>
                                                         </div>
                                                         <div className="flex flex-col">
