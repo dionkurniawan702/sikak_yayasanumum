@@ -6135,21 +6135,10 @@ function RABContent() {
                                     </div>
 
                                     <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
-                                        {/* Semester 1 & 2 Evaluation Card in Modal */}
+                                        {/* Status Lock/Unlock Banner */}
                                         {(() => {
-                                            const mId = editingItem.itemId || editingItem.id;
-                                            const itemCatalog = activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []);
-                                            const sameNamed = itemCatalog.filter(i => i.name === editingItem.name);
-                                            const allocated = sameNamed.length > 0 
-                                                ? sameNamed.reduce((sum, i) => sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0)), 0)
-                                                : (rapData.itemAllocations[itemId] || editingItem.limit || 0);
-                                            const posData = unitSemester1Data?.posMap?.[editingItem.itemId] || 
-                                                            unitSemester1Data?.posMap?.[editingItem.id] || 
-                                                            unitSemester1Data?.posMap?.[mId] ||
-                                                            (editingItem.name ? Object.values(unitSemester1Data?.posMap || {}).find(p => p.name === editingItem.name) : null) || 
-                                                            { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
-                                            const surplusS1 = (posData.budgetS1 || 0) - (posData.spentS1 || 0);
                                             const isLockedItem = editingItem.canEdit === false && !editingItem.isUnlocked;
+                                            if (!isLockedItem && !editingItem.isUnlocked) return null;
 
                                             return (
                                                 <div className="space-y-4">
@@ -6168,30 +6157,6 @@ function RABContent() {
                                                             </div>
                                                         </div>
                                                     ) : null}
-                                                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{fundSourceFilter === 'BOS' ? 'Total Limit (BOS)' : 'Total Limit (RAP)'}</span>
-                                                            <span className="text-sm font-black text-slate-900">{formatRupiah(allocated)}</span>
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pagu Smt 1</span>
-                                                            <span className="text-sm font-black text-slate-700">{formatRupiah(posData.budgetS1)}</span>
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Realisasi Smt 1</span>
-                                                            <span className="text-sm font-black text-slate-600">{formatRupiah(posData.spentS1)}</span>
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Belum Terpakai Smt 1</span>
-                                                            <span className={`text-sm font-black ${surplusS1 > 0 ? 'text-emerald-600' : (surplusS1 < 0 ? 'text-rose-600' : 'text-slate-400')}`}>
-                                                                {surplusS1 > 0 ? `+${formatRupiah(surplusS1)}` : formatRupiah(surplusS1)}
-                                                            </span>
-                                                        </div>
-                                                        <div className="flex flex-col">
-                                                            <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest">Pagu Smt 2</span>
-                                                            <span className="text-sm font-black text-indigo-700">{formatRupiah(posData.budgetS2)}</span>
-                                                        </div>
-                                                    </div>
                                                 </div>
                                             );
                                         })()}
