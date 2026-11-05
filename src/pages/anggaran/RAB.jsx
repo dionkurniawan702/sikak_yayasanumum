@@ -4842,21 +4842,19 @@ function RABContent() {
                     <table className="w-full border-separate border-spacing-y-4">
                         <thead>
                             <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic relative">
-                                <th className="px-6 py-1 text-center w-12 sticky left-0 z-20 bg-slate-50">#</th>
-                                <th className="px-6 py-1 text-left sticky left-[48px] z-20 bg-slate-50" style={{ minWidth: '220px' }}>{labelText}</th>
                                 {(!isConsolidation && !isIncome) ? (
                                     <>
-                                        <th className="px-4 py-1 text-right">Limit (RAP)</th>
-                                        <th className="px-4 py-1 text-right">Pagu Smt 1</th>
-                                        <th className="px-4 py-1 text-right">Realisasi Smt 1</th>
-                                        <th className="px-4 py-1 text-right">Sisa Hemat S1</th>
-                                        <th className="px-4 py-1 text-right">Pagu Smt 2</th>
-                                        <th className="px-4 py-1 text-right">Total RAB</th>
-                                        <th className="px-4 py-1 text-right">Sisa Pagu Akhir</th>
-                                        <th className="px-6 py-1 text-right">Aksi</th>
+                                        <th className="px-5 py-2 text-left">Mata Anggaran</th>
+                                        <th className="px-4 py-2 text-right">Limit (RAP)</th>
+                                        <th className="px-4 py-2 text-right">Semester 1 (Evaluasi)</th>
+                                        <th className="px-4 py-2 text-right">Smt 2 (Rencana)</th>
+                                        <th className="px-4 py-2 text-right">Total & Saldo Akhir</th>
+                                        <th className="px-5 py-2 text-right">Aksi</th>
                                     </>
                                 ) : (
                                     <>
+                                        <th className="px-6 py-1 text-center w-12 sticky left-0 z-20 bg-slate-50">#</th>
+                                        <th className="px-6 py-1 text-left sticky left-[48px] z-20 bg-slate-50" style={{ minWidth: '220px' }}>{labelText}</th>
                                         <th className="px-6 py-1 text-center sticky left-[298px] z-20 bg-slate-50">Semester</th>
                                         <th className="px-6 py-1 text-right">{isIncome ? 'Target (RAP)' : 'Limit (RAP)'}</th>
                                         <th className="px-6 py-1 text-right">Draft RAB</th>
@@ -5109,11 +5107,11 @@ function RABContent() {
                                 if (!isConsolidation && !isIncome) {
                                     return (
                                         <tr key={`TEMP-${itemMaster.id}`} className="group bg-white hover:bg-slate-50 transition-all duration-300">
-                                            <td className="px-6 py-4 border-y border-l border-slate-100 font-black text-slate-300 text-xs italic sticky left-0 z-10 bg-inherit text-center">--</td>
-                                            <td className="px-6 py-4 border-y border-slate-100 sticky left-[48px] z-10 bg-inherit" style={{ minWidth: '220px' }}>
-                                                <div className="flex items-center gap-3 opacity-60">
-                                                    <div className="p-2.5 rounded-xl bg-slate-50 text-slate-400">
-                                                        <TrendingUp size={16} />
+                                            {/* 1. Mata Anggaran */}
+                                            <td className="px-5 py-3.5 border-y border-l border-slate-100">
+                                                <div className="flex items-center gap-3 opacity-70">
+                                                    <div className="p-2 rounded-lg bg-slate-100 text-slate-400">
+                                                        <TrendingUp size={15} />
                                                     </div>
                                                     <div className="flex flex-col">
                                                         <span className="font-black text-slate-800 text-sm tracking-tight">{itemMaster.name}</span>
@@ -5121,22 +5119,43 @@ function RABContent() {
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-black text-slate-900 text-xs italic">{formatRupiah(allocated)}</td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-bold text-slate-400 text-xs italic">{formatRupiah(0)}</td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-bold text-slate-400 text-xs italic">{formatRupiah(itemSpentS1)}</td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right">
-                                                <span className={`inline-block px-2.5 py-1 rounded-lg text-[10px] font-black italic ${itemSpentS1 > 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400'}`}>
-                                                    {itemSpentS1 > 0 ? `-${formatRupiah(itemSpentS1)}` : formatRupiah(0)}
-                                                </span>
+                                            {/* 2. Limit (RAP) */}
+                                            <td className="px-4 py-3.5 border-y border-slate-100 text-right font-black text-slate-900 text-xs italic">
+                                                {formatRupiah(allocated)}
                                             </td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-bold text-slate-400 text-xs italic">{formatRupiah(0)}</td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right font-black text-slate-400 text-xs italic">{formatRupiah(0)}</td>
-                                            <td className="px-4 py-4 border-y border-slate-100 text-right">
-                                                <span className="font-black px-2.5 py-1 rounded-full text-[11px] bg-blue-50 text-blue-600">
-                                                    {formatRupiah(allocated)}
-                                                </span>
+                                            {/* 3. Semester 1 (Evaluasi) */}
+                                            <td className="px-4 py-3.5 border-y border-slate-100 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <div className="flex items-center gap-1.5 justify-end">
+                                                        <span className="text-[10px] font-bold text-slate-400">Realisasi:</span>
+                                                        <span className="font-black text-slate-800 text-xs italic">{formatRupiah(itemSpentS1)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5 mt-1 justify-end flex-wrap">
+                                                        <span className="text-[10px] font-bold text-slate-400">Pagu: {formatRupiah(0)}</span>
+                                                        <span className="text-slate-300">•</span>
+                                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black italic ${itemSpentS1 > 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400 bg-slate-50'}`}>
+                                                            {itemSpentS1 > 0 ? `Defisit: ${formatRupiah(itemSpentS1)}` : 'Hemat: Rp 0'}
+                                                        </span>
+                                                    </div>
+                                                </div>
                                             </td>
-                                            <td className="px-6 py-4 border-y border-r border-slate-100 text-right">
+                                            {/* 4. Smt 2 (Rencana) */}
+                                            <td className="px-4 py-3.5 border-y border-slate-100 text-right font-black text-indigo-400 text-xs italic">
+                                                {formatRupiah(0)}
+                                            </td>
+                                            {/* 5. Total & Saldo Akhir */}
+                                            <td className="px-4 py-3.5 border-y border-slate-100 text-right">
+                                                <div className="flex flex-col items-end">
+                                                    <span className="font-black text-slate-400 text-xs italic">{formatRupiah(0)}</span>
+                                                    <div className="mt-1">
+                                                        <span className="inline-block font-black px-2.5 py-0.5 rounded-full text-[10px] bg-blue-50 text-blue-600">
+                                                            Sisa: {formatRupiah(allocated - itemSpentS1)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            {/* 6. Aksi */}
+                                            <td className="px-5 py-3.5 border-y border-r border-slate-100 text-right">
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {isSuperAdmin && (
                                                         <button
