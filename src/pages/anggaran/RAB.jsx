@@ -2529,16 +2529,13 @@ function RABContent() {
             return;
         }
 
-        // 2. Strict Validation: Yayasan Item Limits (after BOS savings & after S1 surplus)
+        // 2. Strict Validation: Yayasan Item Limits (after BOS portion)
         const overBudgetItem = activeTab === 'EXPENSE' ? filteredExpenseItems.find(item => {
             const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
             if (detail.total <= 0 || allocated === 0) return false;
 
-            const pos = unitSemester1Data?.posMap?.[item.id] || { budgetS1: 0, spentS1: 0 };
-            const surplusS1 = (pos.budgetS1 || 0) - (pos.spentS1 || 0);
-
-            const yayasanSpent = Math.max(0, detail.total - (parseFloat(detail.bosAmount) || 0) - surplusS1);
+            const yayasanSpent = Math.max(0, detail.total - (parseFloat(detail.bosAmount) || 0));
             return yayasanSpent > (allocated + 100);
         }) : null;
 
@@ -2682,10 +2679,7 @@ function RABContent() {
 
             if (detailTotal <= 0 || allocated === 0) return false;
 
-            const pos = unitSemester1Data?.posMap?.[item.id] || { budgetS1: 0, spentS1: 0 };
-            const surplusS1 = (pos.budgetS1 || 0) - (pos.spentS1 || 0);
-
-            const yayasanSpent = Math.max(0, detailTotal - detailBos - surplusS1);
+            const yayasanSpent = Math.max(0, detailTotal - detailBos);
             return yayasanSpent > (allocated + 100);
         });
 
@@ -5156,7 +5150,7 @@ function RABContent() {
                                                     <span className="font-black text-slate-400 text-xs italic">{formatRupiah(0)}</span>
                                                     <div className="mt-1">
                                                         <span className="inline-block font-black px-2.5 py-0.5 rounded-full text-[10px] bg-blue-50 text-blue-600">
-                                                            Sisa: {formatRupiah(allocated - itemSpentS1)}
+                                                            Sisa: {formatRupiah(allocated)}
                                                         </span>
                                                     </div>
                                                 </div>
