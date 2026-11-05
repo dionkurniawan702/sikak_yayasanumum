@@ -1640,115 +1640,6 @@ function RABContent() {
         });
     };
 
-    const handleAdjustComponentToRealization = (itemId, planId, compIdx) => {
-        const type = activeTab === 'INCOME' ? 'income' : 'expense';
-        const plans = currentPlan[type][itemId] || [];
-        const plan = plans.find(p => p.id === planId) || plans[0];
-        if (!plan) return;
-
-        const comp = (plan.components || [])[compIdx];
-        if (!comp) return;
-
-        const spent = componentSpending[comp.id] || 0;
-        const total = parseFloat(comp.total) || 0;
-        const surplus = total - spent;
-
-        if (spent <= 0 || surplus <= 0) {
-            alert("Komponen ini belum memiliki sisa penghematan dari realisasi transaksi.");
-            return;
-        }
-
-        const confirmMsg = `Sesuaikan anggaran "${comp.label}" ke realisasi transaksi?\n\n` +
-            `• Anggaran Rencana Awal : ${formatRupiah(comp.originalTotal || total)}\n` +
-            `• Realisasi Nyata Terpakai : ${formatRupiah(spent)}\n` +
-            `• Sisa Penghematan : ${formatRupiah(surplus)}\n\n` +
-            `Anggaran belanja "${comp.label}" akan disesuaikan menjadi ${formatRupiah(spent)}.\n` +
-            `Sisa ${formatRupiah(surplus)} otomatis kembali ke Pagu Yayasan agar bisa digunakan untuk belanja Semester 2.\n\n` +
-            `Riwayat Rencana Awal akan tetap disimpan untuk arsip & audit Yayasan. Lanjutkan?`;
-
-        if (!window.confirm(confirmMsg)) return;
-
-        setCurrentPlan(prev => {
-            const currentPlans = prev[type][itemId] || [];
-            const updatedPlans = currentPlans.map(p => {
-                if (p.id !== plan.id) return p;
-
-                const components = [...(p.components || [])];
-                const targetComp = { ...components[compIdx] };
-
-                // Preserve historical baseline if not already saved
-                targetComp.originalTotal = targetComp.originalTotal || targetComp.total;
-                targetComp.originalHarga = targetComp.originalHarga || targetComp.harga;
-                targetComp.originalVolume = targetComp.originalVolume || targetComp.volume;
-                targetComp.isAdjustedToRealization = true;
-                targetComp.adjustedAt = new Date().toISOString();
-
-                targetComp.total = spent;
-                const kali = parseFloat(targetComp.kali) || 1;
-                const vol = parseFloat(targetComp.volume) || 1;
-                if (kali === 1 && vol === 1) {
-                    targetComp.harga = spent;
-                } else if (kali === 1 && vol > 0) {
-                    targetComp.harga = spent / vol;
-                } else {
-                    targetComp.harga = spent / (vol * kali);
-                }
-
-                // Adjust months proportionally to equal spent
-                const oldMonthTotal = Object.values(targetComp.months || {}).reduce((s, m) => s + (parseFloat(m.jumlah) || 0), 0);
-                if (oldMonthTotal > 0 && targetComp.months) {
-                    const newMonths = {};
-                    let runningAllocated = 0;
-                    const monthEntries = Object.entries(targetComp.months);
-                    monthEntries.forEach(([mId, mData], mIdx) => {
-                        if (!mData.m || !mData.jumlah) return;
-                        if (mIdx === monthEntries.length - 1) {
-                            const remainder = spent - runningAllocated;
-                            newMonths[mId] = { m: true, jumlah: remainder > 0 ? remainder : 0 };
-                        } else {
-                            const prop = (parseFloat(mData.jumlah) || 0) / oldMonthTotal;
-                            const scaled = Math.round(prop * spent);
-                            runningAllocated += scaled;
-                            newMonths[mId] = { m: true, jumlah: scaled };
-                        }
-                    });
-                    targetComp.months = newMonths;
-                }
-
-                components[compIdx] = targetComp;
-
-                const newTotal = components.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
-                const newBosAmount = components.reduce((sum, c) => sum + (c.useBos ? (parseFloat(c.total) || 0) : 0), 0);
-
-                // Re-aggregate months
-                const aggregatedMonths = {};
-                components.forEach(c => {
-                    Object.entries(c.months || {}).forEach(([mId, mData]) => {
-                        if (!mData.m) return;
-                        if (!aggregatedMonths[mId]) aggregatedMonths[mId] = { m: true, jumlah: 0 };
-                        aggregatedMonths[mId].jumlah += (parseFloat(mData.jumlah) || 0);
-                    });
-                });
-
-                return {
-                    ...p,
-                    components,
-                    total: newTotal,
-                    bosAmount: newBosAmount,
-                    useBos: newBosAmount > 0,
-                    months: aggregatedMonths
-                };
-            });
-
-            return { ...prev, [type]: { ...prev[type], [itemId]: updatedPlans } };
-        });
-
-        setMessage({
-            type: 'success',
-            text: `Anggaran "${comp.label}" berhasil disesuaikan menjadi ${formatRupiah(spent)}. Sisa hemat ${formatRupiah(surplus)} kini tersedia kembali untuk rincian Semester 2! Klik 'SIMPAN RENCANA BELANJA' untuk menyimpan permanen.`
-        });
-    };
-
     const handleAjukanDraftsInModal = async (draftIndexes) => {
         if (!editingItem || draftIndexes.length === 0) return;
         
@@ -2634,13 +2525,16 @@ function RABContent() {
             return;
         }
 
-        // 2. Strict Validation: Yayasan Item Limits (after BOS savings)
+        // 2. Strict Validation: Yayasan Item Limits (after BOS savings & after S1 surplus)
         const overBudgetItem = activeTab === 'EXPENSE' ? filteredExpenseItems.find(item => {
             const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
             if (detail.total <= 0 || allocated === 0) return false;
 
-            const yayasanSpent = detail.total - (parseFloat(detail.bosAmount) || 0);
+            const pos = unitSemester1Data?.posMap?.[item.id] || { budgetS1: 0, spentS1: 0 };
+            const surplusS1 = (pos.budgetS1 || 0) - (pos.spentS1 || 0);
+
+            const yayasanSpent = Math.max(0, detail.total - (parseFloat(detail.bosAmount) || 0) - surplusS1);
             return yayasanSpent > (allocated + 100);
         }) : null;
 
@@ -2774,7 +2668,7 @@ function RABContent() {
             return;
         }
 
-        // 2. Strict Validation: Yayasan Item Limits for Submission
+        // 2. Strict Validation: Yayasan Item Limits for Submission (after BOS savings & after S1 surplus)
         const overBudgetItemSubmit = filteredExpenseItems.find(item => {
             const detail = submittedPlan.expense[item.id] || [];
             const allocated = rapData.itemAllocations[item.id] || 0;
@@ -2784,7 +2678,10 @@ function RABContent() {
 
             if (detailTotal <= 0 || allocated === 0) return false;
 
-            const yayasanSpent = detailTotal - detailBos;
+            const pos = unitSemester1Data?.posMap?.[item.id] || { budgetS1: 0, spentS1: 0 };
+            const surplusS1 = (pos.budgetS1 || 0) - (pos.spentS1 || 0);
+
+            const yayasanSpent = Math.max(0, detailTotal - detailBos - surplusS1);
             return yayasanSpent > (allocated + 100);
         });
 
@@ -5042,7 +4939,7 @@ function RABContent() {
                                             status: plan.status,
                                             rap: plan.limit || allocated,
                                             rab: plan.total || 0,
-                                            sisa: (plan.limit || allocated) - (plan.total || 0),
+                                            sisa: (plan.limit || allocated) - ((plan.total || 0) - itemSurplusS1),
                                             budgetS1: itemS1,
                                             spentS1: itemSpentS1,
                                             surplusS1: itemSurplusS1,
@@ -6043,21 +5940,35 @@ function RABContent() {
                                             {(() => {
                                                 const detail = item;
                                                 const allocated = rapData.itemAllocations[itemId] || 0;
-                                                const yayasanSpent = Math.max(0, detail.total - (detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0));
-                                                const isOver = yayasanSpent > (allocated + 100);
+                                                const mId = editingItem.itemId || editingItem.id;
+                                                const posData = unitSemester1Data?.posMap?.[editingItem.itemId] || 
+                                                                unitSemester1Data?.posMap?.[editingItem.id] || 
+                                                                unitSemester1Data?.posMap?.[mId] ||
+                                                                (editingItem.name ? Object.values(unitSemester1Data?.posMap || {}).find(p => p.name === editingItem.name) : null) || 
+                                                                { budgetS1: 0, spentS1: 0, surplusS1: 0, budgetS2: 0 };
+                                                const surplusS1 = (posData.budgetS1 || 0) - (posData.spentS1 || 0);
+                                                const bosAmt = detail.useBos ? (parseFloat(detail.bosAmount) || 0) : 0;
+                                                const effectiveYayasanSpent = Math.max(0, (detail.total || 0) - bosAmt - surplusS1);
+                                                const isOver = effectiveYayasanSpent > (allocated + 100);
+                                                const remainingBudget = allocated - effectiveYayasanSpent;
 
                                                 if (isOver) {
                                                     return (
                                                         <div className="px-6 py-3 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
                                                             <AlertCircle size={18} />
-                                                            MELEBIHI LIMIT!
+                                                            MELEBIHI LIMIT! (Kurang: {formatRupiah(effectiveYayasanSpent - allocated)})
                                                         </div>
                                                     );
                                                 }
                                                 return (
                                                     <div className="px-6 py-3 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Yayasan</span>
-                                                        <span className="text-sm font-black text-blue-700">{formatRupiah(allocated - yayasanSpent)}</span>
+                                                        <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Sisa Budget Tersedia</span>
+                                                        <span className="text-sm font-black text-blue-700">{formatRupiah(remainingBudget)}</span>
+                                                        {surplusS1 !== 0 && (
+                                                            <span className={`text-[8px] font-bold ${surplusS1 > 0 ? 'text-emerald-600' : 'text-rose-500'}`}>
+                                                                {surplusS1 > 0 ? `(Termasuk Sisa Hemat S1: +${formatRupiah(surplusS1)})` : `(Defisit Smt 1: -${formatRupiah(Math.abs(surplusS1))})`}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 );
                                             })()}
@@ -6318,7 +6229,6 @@ function RABContent() {
                                                                             const hasSurplus = compSpent > 0 && compRemaining > 0;
                                                                             const isOverspent = compRemaining < 0;
                                                                             const isFullySpent = compSpent > 0 && compRemaining === 0;
-                                                                            const canAdjustToRealization = hasSurplus && (isSuperAdmin || editingItem.isUnlocked || editingItem.canEdit !== false);
 
                                                                             return (
                                                                                 <div key={idx} className="flex flex-col md:flex-row md:items-center justify-between bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
@@ -6467,19 +6377,6 @@ function RABContent() {
                                                                                             </div>
                                                                                         </div>
                                                                                         <div className="flex items-center gap-2 border-l border-slate-100 pl-6 h-full min-h-[40px]">
-                                                                                            {/* Action: Sesuaikan Realisasi (Hemat) */}
-                                                                                            {canAdjustToRealization && (
-                                                                                                <button
-                                                                                                    type="button"
-                                                                                                    onClick={() => handleAdjustComponentToRealization(itemId, item.id, idx)}
-                                                                                                    className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1.5 shadow-md active:scale-95 transition-all shrink-0"
-                                                                                                    title={`Sesuaikan anggaran "${comp.label}" dari ${formatRupiah(compTotal)} menjadi ${formatRupiah(compSpent)}. Sisa ${formatRupiah(compRemaining)} otomatis kembali ke Pagu Yayasan agar bisa digunakan untuk belanja Semester 2.`}
-                                                                                                >
-                                                                                                    <Sparkles size={12} className="animate-pulse" />
-                                                                                                    <span>Sesuaikan Realisasi</span>
-                                                                                                </button>
-                                                                                            )}
-
                                                                                             {((isPending || isApproved) && !isSuperAdmin && !editingItem.isUnlocked) ? (
                                                                                                 <div className="flex items-center gap-2">
                                                                                                     <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest ${isApproved ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}`}>
