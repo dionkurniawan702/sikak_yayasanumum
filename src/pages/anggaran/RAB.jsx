@@ -4841,8 +4841,8 @@ function RABContent() {
                     )}
                 </div>
 
-                <div className="overflow-x-auto scroll-top pb-36">
-                    <table className="w-full border-separate border-spacing-y-4">
+                <div className="overflow-x-auto scroll-top mt-2 pt-28">
+                    <table className="w-full border-separate border-spacing-y-3">
                         <thead>
                             <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic relative">
                                 {(!isConsolidation && !isIncome) ? (

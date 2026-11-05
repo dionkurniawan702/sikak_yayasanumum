@@ -122,6 +122,8 @@ body {
 .scroll-top {
   transform: rotateX(180deg);
   overflow-x: auto;
+  scrollbar-color: #2563eb #eff6ff;
+  scrollbar-width: thin;
 }
 
 .scroll-top > * {
@@ -130,19 +132,20 @@ body {
 
 /* Premium styled horizontal scrollbar for .scroll-top */
 .scroll-top::-webkit-scrollbar {
-  height: 8px;
+  height: 9px;
 }
 .scroll-top::-webkit-scrollbar-track {
-  background: #f8fafc;
+  background: #eff6ff;
   border-radius: 9999px;
+  border: 1px solid #dbeafe;
 }
 .scroll-top::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #2563eb;
   border-radius: 9999px;
-  border: 2px solid #f8fafc;
+  border: 1.5px solid #eff6ff;
 }
 .scroll-top::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #1d4ed8;
 }
 
 /* ========================================
