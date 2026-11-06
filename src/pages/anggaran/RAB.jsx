@@ -3976,8 +3976,8 @@ function RABContent() {
                                                         diffStatus,
                                                         oldTotal,
                                                         oldHarga,
-                                                        spent: componentSpending[c.id] || 0,
-                                                        remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || 0)
+                                                        spent: componentSpending[c.id] || componentSpending[`COMP-${currentPlanId}-${itemMaster.id}-${pIdx}-${cIdx}`] || 0,
+                                                        remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || componentSpending[`COMP-${currentPlanId}-${itemMaster.id}-${pIdx}-${cIdx}`] || 0)
                                                     };
                                                 }));
 
@@ -5242,8 +5242,10 @@ function RABContent() {
                                                 else compStatus = activePlan.status === 'APPROVED' ? 'APPROVED' : (activePlan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
                                             }
 
-                                            const compId = c.id || `COMP-${plan.id}-${itemMaster.id}-${pIdx}-${cIdx}`;
-                                            const spentVal = componentSpending[compId] || componentSpending[c.id] || 0;
+                                            const standardCompId = c.id || `COMP-${currentPlanId}-${itemMaster.id}-${pIdx}-${cIdx}`;
+                                            const legacyCompId = `COMP-${plan.id}-${itemMaster.id}-${pIdx}-${cIdx}`;
+                                            const compId = c.id || standardCompId;
+                                            const spentVal = componentSpending[standardCompId] || componentSpending[c.id] || componentSpending[legacyCompId] || 0;
                                             return {
                                                 ...c,
                                                 id: compId,
@@ -6404,16 +6406,21 @@ function RABContent() {
                         {(() => {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
                             const itemId = editingItem.itemId || editingItem.id;
+                            const expDef = (activeTab === 'INCOME' ? incomeItems : expenseItems)?.find(ei => ei.id === itemId || ei.id === editingItem.id || ei.name === editingItem.name);
+                            const catalogItemId = expDef?.id || itemId;
+                            const planDocId = currentPlanId;
                             const plans = activePlan[type][itemId] || [];
 
                             // If multiple plans exist for one item, merge them into one "workspace" item
                             let item;
+                            let found = null;
                             if (plans.length > 1) {
                                 // Merge multiple plans into one virtual plan
                                 const first = plans[0];
+                                found = first;
                                 const allComponents = plans.flatMap((p, pIdx) => (p.components || []).map((c, cIdx) => ({
                                     ...c,
-                                    id: c.id || `COMP-${p.id}-${itemId}-${pIdx}-${cIdx}`
+                                    id: c.id || `COMP-${planDocId}-${catalogItemId}-${pIdx}-${cIdx}`
                                 })));
                                 const aggrMonths = {};
                                 plans.forEach(p => {
@@ -6435,13 +6442,13 @@ function RABContent() {
                                     description: allComponents.length > 0 ? allComponents[0].label : ''
                                 };
                             } else {
-                                const found = plans.find(p => p.id === editingItem.planId) || plans.find(p => p.id === editingItem.id) || plans[0];
+                                found = plans.find(p => p.id === editingItem.planId) || plans.find(p => p.id === editingItem.id) || plans[0];
                                 if (found) {
                                     item = {
                                         ...found,
                                         components: (found.components || []).map((c, cIdx) => ({
                                             ...c,
-                                            id: c.id || `COMP-${found.id}-${itemId}-0-${cIdx}`
+                                            id: c.id || `COMP-${planDocId}-${catalogItemId}-0-${cIdx}`
                                         }))
                                     };
                                 } else {
@@ -6760,7 +6767,9 @@ function RABContent() {
                                                                             const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
                                                                             const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
 
-                                                                            const compSpent = componentSpending[comp.id] || 0;
+                                                                            const stdCompId = `COMP-${planDocId}-${catalogItemId}-0-${comp.originalIdx ?? idx}`;
+                                                                            const legacyCompId = `COMP-${found?.id || ''}-${itemId}-0-${comp.originalIdx ?? idx}`;
+                                                                            const compSpent = componentSpending[comp.id] || componentSpending[stdCompId] || componentSpending[legacyCompId] || 0;
                                                                             const compTotal = parseFloat(comp.total) || 0;
                                                                             const compRemaining = compTotal - compSpent;
                                                                             const compOriginalTotal = comp.originalTotal ? parseFloat(comp.originalTotal) : null;
@@ -7000,7 +7009,11 @@ function RABContent() {
                                                                     )}
                                                                     
                                                                     {(() => {
-                                                                        const totalCompsSpent = (item.components || []).reduce((s, c) => s + (componentSpending[c.id] || 0), 0);
+                                                                        const totalCompsSpent = (item.components || []).reduce((s, c, cIdx) => {
+                                                                            const stdId = `COMP-${planDocId}-${catalogItemId}-0-${cIdx}`;
+                                                                            const legId = `COMP-${found?.id || ''}-${itemId}-0-${cIdx}`;
+                                                                            return s + (componentSpending[c.id] || componentSpending[stdId] || componentSpending[legId] || 0);
+                                                                        }, 0);
                                                                         const totalCompsSurplus = Math.max(0, (item.total || 0) - totalCompsSpent);
                                                                         return (
                                                                             <div className="flex flex-col lg:flex-row lg:items-center justify-between p-6 bg-slate-50/80 rounded-[2rem] border border-slate-200 border-dashed mt-6 gap-6">
@@ -7057,9 +7070,15 @@ function RABContent() {
                                                     onClick={async () => {
                                                         const mId = editingItem.itemId || editingItem.id;
 
-                                                        // Always collapse multiple plans into exactly ONE plan during save
+                                                        // Always collapse multiple plans into exactly ONE plan during save, ensuring components have permanent unique IDs
+                                                        const updatedComponents = (item.components || []).map((c, cIdx) => ({
+                                                            ...c,
+                                                            id: c.id || `COMP-${planDocId}-${catalogItemId}-0-${cIdx}`
+                                                        }));
+
                                                         const updatedPlans = [{
                                                             ...item,
+                                                            components: updatedComponents,
                                                             isUnlocked: item.isUnlocked ?? (editingItem.isUnlocked ?? false)
                                                         }];
 
