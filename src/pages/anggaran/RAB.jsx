@@ -181,6 +181,18 @@ function RABContent() {
         setCompStatusFilter('ALL');
     }, [editingItem]);
 
+    // Close action menu when clicking outside anywhere on the page
+    useEffect(() => {
+        if (!openActionMenuId) return;
+        const handleGlobalClick = (e) => {
+            if (!e.target.closest('.action-menu-container')) {
+                setOpenActionMenuId(null);
+            }
+        };
+        window.addEventListener('click', handleGlobalClick);
+        return () => window.removeEventListener('click', handleGlobalClick);
+    }, [openActionMenuId]);
+
     const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
     const [filterProgram, setFilterProgram] = useState(null); // programId
     const [isAddendumMode, setIsAddendumMode] = useState(false);
@@ -4891,7 +4903,8 @@ function RABContent() {
                                 const aggregatedPlans = sameNamed.flatMap(i => activePlan[type][i.id] || []);
 
                                 return (aggregatedAllocated > 0 || aggregatedPlans.length > 0);
-                            }).flatMap((itemMaster, mIdx) => {
+                            }).flatMap((itemMaster, mIdx, filteredArr) => {
+                                const openUpwards = filteredArr && filteredArr.length > 3 && mIdx >= filteredArr.length - 2;
                                 const sameNamed = items.filter(i => i.name === itemMaster.name);
                                 const allocated = sameNamed.reduce((sum, i) => {
                                     return sum + (fundSourceFilter === 'BOS' ? (bosItemMap[i.id] || 0) : (rapData.itemAllocations[i.id] || 0));
@@ -4977,7 +4990,7 @@ function RABContent() {
                                             (isSuperAdmin || 
                                              (currentUser?.role === 'admin_unit' && selectedUnitId === currentUser.unitId) ||
                                              (currentUser?.role === 'admin_bidang' && selectedUnitId === `FIELD-${currentUser.fieldId}`)) ? (
-                                                <div className="relative inline-block text-left">
+                                                <div className="relative inline-block text-left action-menu-container">
                                                     <button
                                                         type="button"
                                                         onClick={(e) => {
@@ -4997,18 +5010,10 @@ function RABContent() {
                                                     </button>
 
                                                     {isMenuOpen && (
-                                                        <>
-                                                            <div 
-                                                                className="fixed inset-0 z-40" 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setOpenActionMenuId(null);
-                                                                }} 
-                                                            />
-                                                            <div 
-                                                                className="absolute right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-1.5 min-w-[210px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left"
-                                                                onClick={(e) => e.stopPropagation()}
-                                                            >
+                                                        <div 
+                                                            className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-[110] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 min-w-[220px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        >
                                                                 {/* 1. Review & Edit */}
                                                                 <button
                                                                     onClick={() => {
@@ -5125,7 +5130,6 @@ function RABContent() {
                                                                     </>
                                                                 )}
                                                             </div>
-                                                        </>
                                                     )}
                                                 </div>
                                             ) : null
@@ -5147,6 +5151,7 @@ function RABContent() {
                                                 onComponentToggle={toggleComponentSelection}
                                                 nameColSpan={1}
                                                 showSemesterColumns={!isConsolidation && !isIncome}
+                                                isActionOpen={isMenuOpen}
                                                 actions={actions}
                                             />
                                         );
@@ -5156,8 +5161,9 @@ function RABContent() {
                                 if (filterMonth || filterProgram) return [];
 
                                 if (!isConsolidation && !isIncome) {
+                                    const isTempMenuOpen = openActionMenuId === `TEMP-${itemMaster.id}`;
                                     return (
-                                        <tr key={`TEMP-${itemMaster.id}`} className="group bg-white hover:bg-slate-50 transition-all duration-300">
+                                        <tr key={`TEMP-${itemMaster.id}`} className={`group bg-white hover:bg-slate-50 transition-all duration-300 ${isTempMenuOpen ? 'relative z-[100]' : ''}`}>
                                             {/* 1. Mata Anggaran */}
                                             <td className="px-5 py-3.5 border-y border-l border-slate-100">
                                                 <div className="flex items-center gap-3 opacity-70">
@@ -5207,105 +5213,91 @@ function RABContent() {
                                             </td>
                                             {/* 6. Aksi */}
                                             <td 
-                                                className="px-5 py-3.5 border-y border-r border-slate-100 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]"
+                                                className={`px-5 py-3.5 border-y border-r border-slate-100 text-right sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)] ${isTempMenuOpen ? 'z-[100]' : 'z-20'}`}
                                                 style={{ minWidth: '110px', width: '120px' }}
                                                 onClick={(e) => e.stopPropagation()}
                                             >
                                                 <div className="flex items-center justify-end" onClick={(e) => e.stopPropagation()}>
-                                                    {(() => {
-                                                        const isTempMenuOpen = openActionMenuId === `TEMP-${itemMaster.id}`;
-                                                        return (
-                                                            <div className="relative inline-block text-left">
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={(e) => {
-                                                                        e.stopPropagation();
-                                                                        e.preventDefault();
-                                                                        setOpenActionMenuId(prev => (prev === `TEMP-${itemMaster.id}` ? null : `TEMP-${itemMaster.id}`));
-                                                                    }}
-                                                                    className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
-                                                                        isTempMenuOpen 
-                                                                            ? 'bg-blue-800 text-white shadow-md ring-2 ring-blue-300' 
-                                                                            : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
-                                                                    }`}
-                                                                    title="Pilihan Aksi"
-                                                                >
-                                                                    <span>Aksi</span>
-                                                                    <ChevronDown size={14} className={`text-blue-100 transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
-                                                                </button>
+                                                    <div className="relative inline-block text-left action-menu-container">
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                e.preventDefault();
+                                                                setOpenActionMenuId(prev => (prev === `TEMP-${itemMaster.id}` ? null : `TEMP-${itemMaster.id}`));
+                                                            }}
+                                                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
+                                                                isTempMenuOpen 
+                                                                    ? 'bg-blue-800 text-white shadow-md ring-2 ring-blue-300' 
+                                                                    : 'bg-blue-600 hover:bg-blue-700 text-white active:scale-95'
+                                                            }`}
+                                                            title="Pilihan Aksi"
+                                                        >
+                                                            <span>Aksi</span>
+                                                            <ChevronDown size={14} className={`text-blue-100 transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
+                                                        </button>
 
-                                                                {isTempMenuOpen && (
-                                                                    <>
-                                                                        <div 
-                                                                            className="fixed inset-0 z-40" 
-                                                                            onClick={(e) => {
-                                                                                e.stopPropagation();
-                                                                                setOpenActionMenuId(null);
-                                                                            }} 
-                                                                        />
-                                                                        <div 
-                                                                            className="absolute right-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-100 p-1.5 min-w-[210px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left"
-                                                                            onClick={(e) => e.stopPropagation()}
-                                                                        >
-                                                                            {canEditItem && (
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setOpenActionMenuId(null);
-                                                                                        const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
-                                                                                        setEditingItem({
-                                                                                            id: newPlanId,
-                                                                                            itemId: itemMaster.id,
-                                                                                            name: itemMaster.name,
-                                                                                            isNewPlan: true,
-                                                                                            semester: '2',
-                                                                                            canEdit: true,
-                                                                                            isUnlocked: isItemUnlocked
-                                                                                        });
-                                                                                    }}
-                                                                                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-all group"
-                                                                                >
-                                                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
-                                                                                        <Plus size={16} />
-                                                                                    </div>
-                                                                                    <span>Tambah Rencana Baru</span>
-                                                                                </button>
-                                                                            )}
-
-                                                                            {isSuperAdmin && (
-                                                                                <button
-                                                                                    onClick={() => {
-                                                                                        setOpenActionMenuId(null);
-                                                                                        handleToggleItemLock(itemMaster.id, !isItemUnlocked);
-                                                                                    }}
-                                                                                    className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-slate-100 rounded-xl transition-all group"
-                                                                                >
-                                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-xs ${
-                                                                                        isItemUnlocked 
-                                                                                            ? 'bg-emerald-100 text-emerald-700 group-hover:bg-rose-100 group-hover:text-rose-700' 
-                                                                                            : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700'
-                                                                                    }`}>
-                                                                                        {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
-                                                                                    </div>
-                                                                                    <span>{isItemUnlocked ? "Kunci Mata Anggaran" : "Buka Kunci Revisi"}</span>
-                                                                                </button>
-                                                                            )}
-
-                                                                            {!isSuperAdmin && (
-                                                                                <div className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-500 rounded-xl bg-slate-50/80">
-                                                                                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
-                                                                                        isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
-                                                                                    }`}>
-                                                                                        {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
-                                                                                    </div>
-                                                                                    <span className="text-[11px]">{isItemUnlocked ? "Status: Terbuka" : "Status: Terkunci"}</span>
-                                                                                </div>
-                                                                            )}
+                                                        {isTempMenuOpen && (
+                                                            <div 
+                                                                className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-[110] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 min-w-[220px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container`}
+                                                                onClick={(e) => e.stopPropagation()}
+                                                            >
+                                                                {canEditItem && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            const newPlanId = `P-${itemMaster.id}-${Date.now()}`;
+                                                                            setEditingItem({
+                                                                                id: newPlanId,
+                                                                                itemId: itemMaster.id,
+                                                                                name: itemMaster.name,
+                                                                                isNewPlan: true,
+                                                                                semester: '2',
+                                                                                canEdit: true,
+                                                                                isUnlocked: isItemUnlocked
+                                                                            });
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                            <Plus size={16} />
                                                                         </div>
-                                                                    </>
+                                                                        <span>Tambah Rencana Baru</span>
+                                                                    </button>
+                                                                )}
+
+                                                                {isSuperAdmin && (
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            handleToggleItemLock(itemMaster.id, !isItemUnlocked);
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-slate-100 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors shadow-xs ${
+                                                                            isItemUnlocked 
+                                                                                ? 'bg-emerald-100 text-emerald-700 group-hover:bg-rose-100 group-hover:text-rose-700' 
+                                                                                : 'bg-slate-100 text-slate-500 group-hover:bg-emerald-100 group-hover:text-emerald-700'
+                                                                        }`}>
+                                                                            {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                                                                        </div>
+                                                                        <span>{isItemUnlocked ? "Kunci Mata Anggaran" : "Buka Kunci Revisi"}</span>
+                                                                    </button>
+                                                                )}
+
+                                                                {!isSuperAdmin && (
+                                                                    <div className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-500 rounded-xl bg-slate-50/80">
+                                                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 shadow-xs ${
+                                                                            isItemUnlocked ? 'bg-emerald-50 text-emerald-600 border border-emerald-200' : 'bg-slate-100 text-slate-400'
+                                                                        }`}>
+                                                                            {isItemUnlocked ? <Unlock size={16} /> : <Lock size={16} />}
+                                                                        </div>
+                                                                        <span className="text-[11px]">{isItemUnlocked ? "Status: Terbuka" : "Status: Terkunci"}</span>
+                                                                    </div>
                                                                 )}
                                                             </div>
-                                                        );
-                                                    })()}
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </td>
                                         </tr>

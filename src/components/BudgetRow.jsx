@@ -33,6 +33,7 @@ export default function BudgetRow({
     isBos = false,
     isField = false,
     actions = null,
+    isActionOpen = false,
     // Granular selection props
     selectable = false,
     isReviewMode = false,
@@ -65,7 +66,7 @@ export default function BudgetRow({
     return (
         <>
             <tr
-                className="budget-row cursor-pointer bg-white hover:bg-slate-50 transition-colors group"
+                className={`budget-row cursor-pointer bg-white hover:bg-slate-50 transition-colors group ${isActionOpen ? 'relative z-[100]' : ''}`}
                 onClick={onToggle}
             >
                 {showSemesterColumns ? (
@@ -148,7 +149,7 @@ export default function BudgetRow({
 
                         {/* 6. Aksi */}
                         <td 
-                            className="budget-cell py-3.5 px-5 text-right sticky right-0 z-20 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)]"
+                            className={`budget-cell py-3.5 px-5 text-right sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)] ${isActionOpen ? 'z-[100]' : 'z-20'}`}
                             style={{ minWidth: '110px', width: '120px' }}
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -189,7 +190,7 @@ export default function BudgetRow({
                         <td className="budget-cell budget-cell-number font-bold text-slate-500 text-xs italic">
                             {formatCurrency(data.rab)}
                         </td>
-                        <td className="budget-cell budget-cell-number budget-cell-sisa">
+                        <td className={`budget-cell budget-cell-number budget-cell-sisa ${isActionOpen ? 'relative z-[100]' : ''}`}>
                             <div className="flex items-center justify-end gap-3">
                                 <span className={`font-black px-3 py-1 rounded-full text-[11px] ${sisaColor}`}>
                                     {formatCurrency(data.sisa)}
