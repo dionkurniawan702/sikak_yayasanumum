@@ -2516,6 +2516,40 @@ function RABContent() {
         }).length;
     }, [filteredIncomeItems, filteredExpenseItems, activePlan, activeTab]);
 
+    const totalUnlockedCount = useMemo(() => {
+        let count = 0;
+        const planExp = activePlan?.expense || {};
+        const planInc = activePlan?.income || {};
+        Object.values(planExp).forEach(plans => {
+            const arr = Array.isArray(plans) ? plans : [plans];
+            if (arr.some(p => p && p.isUnlocked === true)) count++;
+        });
+        Object.values(planInc).forEach(plans => {
+            const arr = Array.isArray(plans) ? plans : [plans];
+            if (arr.some(p => p && p.isUnlocked === true)) count++;
+        });
+        return count;
+    }, [activePlan]);
+
+    const draftCount = useMemo(() => {
+        let count = 0;
+        const countFromType = (obj) => {
+            Object.values(obj || {}).forEach(plans => {
+                const arr = Array.isArray(plans) ? plans : [plans];
+                arr.forEach(p => {
+                    (p?.components || []).forEach(c => {
+                        if (c && (c.status === 'DRAFT' || c.status === 'REJECTED' || (!c.status && !c.isApproved))) {
+                            count++;
+                        }
+                    });
+                });
+            });
+        };
+        countFromType(activePlan?.expense);
+        countFromType(activePlan?.income);
+        return count;
+    }, [activePlan]);
+
     const handleSave = async () => {
         setIsSaving(true);
         setMessage(null);
@@ -5567,7 +5601,10 @@ function RABContent() {
                         </div>
                     </div>
                     <div className="relative z-10 flex items-center gap-4">
-                        {!isLocked && !isConsolidation && (
+                        {/* 1. Tombol Simpan: Aktif jika tidak terkunci penuh, ada pos dibuka Superadmin, atau ada revisi */}
+                        {(!isConsolidation && (
+                            !isLocked || totalUnlockedCount > 0 || hasRevision || draftCount > 0
+                        ) && activePlan?.status !== 'PENDING') && (
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
@@ -5577,16 +5614,27 @@ function RABContent() {
                                 {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
                             </button>
                         )}
-                        {((!isLocked && activePlan?.status === 'DRAFT') || (hasRevision && activePlan?.status === 'DRAFT')) && !isConsolidation && (
+
+                        {/* 2. Tombol Kirim Usulan ke Yayasan: Tampil jika kunci dibuka oleh Superadmin, ada draft baru, atau ada revisi */}
+                        {(!isConsolidation && activePlan?.status !== 'PENDING' && (
+                            totalUnlockedCount > 0 || draftCount > 0 || hasRevision || (!isLocked && activePlan?.status === 'DRAFT')
+                        )) && (
                             <button
                                 onClick={handleSubmitReview}
                                 disabled={isSaving}
                                 className="group flex items-center gap-4 bg-blue-600 hover:bg-slate-900 text-white px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
                             >
                                 <Send size={20} className="group-hover:translate-x-1 transition-transform" />
-                                {hasRevision ? 'KIRIM USULAN REVISI KE YAYASAN' : 'AJUKAN RAB KE YAYASAN'}
+                                <span>{hasRevision || totalUnlockedCount > 0 ? 'KIRIM USULAN REVISI KE YAYASAN' : 'AJUKAN RAB KE YAYASAN'}</span>
+                                {draftCount > 0 && (
+                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-black tracking-normal">
+                                        {draftCount} Draf Baru
+                                    </span>
+                                )}
                             </button>
                         )}
+
+                        {/* 3. Tombol Tarik Pengajuan jika status PENDING */}
                         {activePlan?.status === 'PENDING' && !isConsolidation && !isSuperAdmin && (
                             <button
                                 onClick={handleCancelSubmission}
@@ -5597,15 +5645,15 @@ function RABContent() {
                                 BATALKAN PENGAJUAN (KEMBALI KE DRAFT)
                             </button>
                         )}
-                        {activePlan?.status === 'APPROVED' && !hasRevision && !isConsolidation && (
-                            <button
-                                onClick={handleCreateRevision}
-                                className="group flex items-center gap-4 bg-amber-600 hover:bg-slate-900 text-white px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
-                            >
-                                <Plus size={20} className="group-hover:rotate-180 transition-transform" />
-                                AJUKAN REVISI / PERGESERAN ANGGARAN
-                            </button>
+
+                        {/* 4. Jika status APPROVED dan seluruh pos terkunci (tidak ada yang dibuka Superadmin), tampilkan badge info terkunci */}
+                        {activePlan?.status === 'APPROVED' && totalUnlockedCount === 0 && draftCount === 0 && !hasRevision && !isConsolidation && (
+                            <div className="flex items-center gap-2.5 px-6 py-4 bg-slate-800/90 text-slate-300 rounded-[2rem] font-bold text-xs tracking-tight border border-slate-700/80 shadow-md">
+                                <Lock size={16} className="text-emerald-400" />
+                                <span>ANGGARAN DISAHKAN & TERKUNCI</span>
+                            </div>
                         )}
+
                         {isAddendumMode && (
                             <button
                                 onClick={() => setIsAddendumMode(false)}
@@ -5772,20 +5820,28 @@ function RABContent() {
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
                         <div className="flex items-center justify-between">
                             <p className={`font-black uppercase tracking-tight text-[11px] ${
-                                hasRevision
-                                    ? (activePlan.status === 'PENDING' ? 'text-amber-600' : 'text-blue-600')
-                                    : ((activePlan.status === 'APPROVED' || activePlan.status === 'PENDING') ? 'text-indigo-600' : 'text-rose-600')
+                                activePlan.status === 'PENDING'
+                                    ? 'text-amber-600'
+                                    : (totalUnlockedCount > 0 || hasRevision)
+                                        ? 'text-blue-600'
+                                        : (activePlan.status === 'APPROVED' ? 'text-indigo-600' : 'text-rose-600')
                             }`}>
                                 {(() => {
-                                    if (hasRevision) {
-                                        if (activePlan.status === 'PENDING') return 'USULAN REVISI MENUNGGU ACC YAYASAN';
-                                        return 'DRAF USULAN REVISI (BELUM DIKIRIM)';
+                                    if (activePlan.status === 'PENDING') {
+                                        return (hasRevision || totalUnlockedCount > 0)
+                                            ? 'USULAN REVISI MENUNGGU ACC YAYASAN'
+                                            : 'MENUNGGU REVIEW YAYASAN';
+                                    }
+                                    if (totalUnlockedCount > 0 || hasRevision) {
+                                        return draftCount > 0
+                                            ? `DRAF REVISI (${draftCount} BELUM DIKIRIM)`
+                                            : 'KUNCI DIBUKA UNTUK REVISI';
                                     }
                                     if (!activePlan || !activePlan.expense) return activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim');
                                     
                                     let approvedCount = 0;
                                     let pendingCount = 0;
-                                    let draftCount = 0;
+                                    let rawDraftCount = 0;
                                     let totalComps = 0;
 
                                     Object.values(activePlan.expense).forEach(plans => {
@@ -5795,7 +5851,7 @@ function RABContent() {
                                                 totalComps++;
                                                 if (c.status === 'APPROVED' || c.isApproved) approvedCount++;
                                                 else if (c.status === 'PENDING') pendingCount++;
-                                                else draftCount++;
+                                                else rawDraftCount++;
                                             });
                                         });
                                     });
@@ -5807,7 +5863,7 @@ function RABContent() {
                                     const texts = [];
                                     if (approvedCount > 0) texts.push(`${approvedCount} DI-ACC`);
                                     if (pendingCount > 0) texts.push(`${pendingCount} MENUNGGU`);
-                                    if (draftCount > 0) texts.push(`${draftCount} DRAFT`);
+                                    if (rawDraftCount > 0) texts.push(`${rawDraftCount} DRAFT`);
 
                                     return texts.length > 0 ? texts.join(' • ') : 'Belum Ada Rincian';
                                 })()}
