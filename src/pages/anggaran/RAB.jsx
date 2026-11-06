@@ -5601,21 +5601,7 @@ function RABContent() {
                         </div>
                     </div>
                     <div className="relative z-10 flex items-center gap-4">
-                        {/* 1. Tombol Simpan: Aktif jika tidak terkunci penuh, ada pos dibuka Superadmin, atau ada revisi */}
-                        {(!isConsolidation && (
-                            !isLocked || totalUnlockedCount > 0 || hasRevision || draftCount > 0
-                        ) && activePlan?.status !== 'PENDING') && (
-                            <button
-                                onClick={handleSave}
-                                disabled={isSaving}
-                                className="group flex items-center gap-4 bg-white text-slate-900 px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
-                            >
-                                <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
-                                {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
-                            </button>
-                        )}
-
-                        {/* 2. Tombol Kirim Usulan ke Yayasan: Tampil jika kunci dibuka oleh Superadmin, ada draft baru, atau ada revisi */}
+                        {/* 1. Tombol Kirim Usulan ke Yayasan: Tampil jika kunci dibuka oleh Superadmin, ada draft baru, atau ada revisi */}
                         {(!isConsolidation && activePlan?.status !== 'PENDING' && (
                             totalUnlockedCount > 0 || draftCount > 0 || hasRevision || (!isLocked && activePlan?.status === 'DRAFT')
                         )) && (
