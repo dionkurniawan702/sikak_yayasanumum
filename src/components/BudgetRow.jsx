@@ -48,8 +48,9 @@ export default function BudgetRow({
         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
         : (isField ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-blue-600 text-white shadow-lg shadow-blue-100');
 
+    const isPergeseran = data.sisa < 0 && (data.isUnlocked || data.isShift);
     const sisaColor = data.sisa < 0
-        ? 'bg-rose-50 text-rose-600'
+        ? (isPergeseran ? 'bg-amber-50 text-amber-700 border border-amber-300' : 'bg-rose-50 text-rose-600')
         : (isBos ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600');
 
     const hasUnbalancedComponents = React.useMemo(() => {
@@ -156,7 +157,7 @@ export default function BudgetRow({
                                 )}
                                 <div className="mt-1">
                                     <span className={`inline-block font-black px-2.5 py-0.5 rounded-full text-[10px] shadow-sm ${sisaColor}`}>
-                                        Sisa: {formatCurrency(data.sisa)}
+                                        {isPergeseran ? `🔄 Pergeseran: +${formatCurrency(Math.abs(data.sisa))}` : `Sisa: ${formatCurrency(data.sisa)}`}
                                     </span>
                                 </div>
                             </div>
@@ -236,8 +237,8 @@ export default function BudgetRow({
                         </td>
                         <td className={`budget-cell budget-cell-number budget-cell-sisa ${isActionOpen ? 'relative z-[100]' : ''}`}>
                             <div className="flex items-center justify-end gap-3">
-                                <span className={`font-black px-3 py-1 rounded-full text-[11px] ${sisaColor}`}>
-                                    {formatCurrency(data.sisa)}
+                                <span className={`font-black px-3 py-1 rounded-full text-[11px] ${sisaColor}`} title={isPergeseran ? "Pergeseran anggaran antar-pos" : undefined}>
+                                    {isPergeseran ? `🔄 Pergeseran: +${formatCurrency(Math.abs(data.sisa))}` : formatCurrency(data.sisa)}
                                 </span>
                                 {actions}
                             </div>

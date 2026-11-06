@@ -2491,13 +2491,39 @@ function RABContent() {
             return;
         }
 
-        // 2. Strict Validation: Yayasan Item Limits (after BOS portion)
-        const overBudgetItem = activeTab === 'EXPENSE' ? filteredExpenseItems.find(item => {
+        // 2. Strict Validation: Total Yayasan Limit for Unit
+        const totalYayasanExpense = Object.keys(newPlan.expense || {}).reduce((sum, itemId) => {
+            const detail = newPlan.expense[itemId] || [];
+            const arr = Array.isArray(detail) ? detail : [detail];
+            return sum + arr.reduce((s, d) => {
+                const tot = parseFloat(d.total) || 0;
+                const bosAmt = d.useBos ? (parseFloat(d.bosAmount) || 0) : 0;
+                return s + (tot - bosAmt);
+            }, 0);
+        }, 0);
+
+        if (fundSourceFilter === 'Yayasan' && totalYayasanExpense > (rapData.totalTarget + 100)) {
+            setMessage({
+                type: 'error',
+                text: `DILARANG: Total rencana belanja Yayasan (${formatRupiah(totalYayasanExpense)}) melebihi Target RAP Unit (${formatRupiah(rapData.totalTarget)}). Sisa limit unit tidak mencukupi.`
+            });
+            setIsSaving(false);
+            setTimeout(() => setMessage(null), 7000);
+            return;
+        }
+
+        // Under Option B, individual item limit is relaxed as long as total unit budget is within target
+        const hasAnyUnlocked = Object.values(newPlan.expense || {}).some(plans => 
+            (Array.isArray(plans) ? plans : [plans]).some(p => p && p.isUnlocked)
+        );
+        const isRevisionOrUnlocked = hasAnyUnlocked || hasRevision || planId.includes('-REVISION-');
+
+        const overBudgetItem = (!isRevisionOrUnlocked && totalYayasanExpense > (rapData.totalTarget + 100) && activeTab === 'EXPENSE') ? filteredExpenseItems.find(item => {
             const detail = newPlan.expense[item.id] || { total: 0 };
             const allocated = rapData.itemAllocations[item.id] || 0;
             if (detail.total <= 0 || allocated === 0) return false;
 
-            const yayasanSpent = Math.max(0, detail.total - (parseFloat(detail.bosAmount) || 0));
+            const yayasanSpent = Math.max(0, (parseFloat(detail.total) || 0) - (parseFloat(detail.bosAmount) || 0));
             return yayasanSpent > (allocated + 100);
         }) : null;
 
@@ -2625,39 +2651,67 @@ function RABContent() {
             updatedBy: currentUser?.username
         };
 
-        // 1. Strict Validation: BOS Limit for Submission
+        // 1. Strict Validation: Total BOS Limit for Unit
         if (isBosRecipient && totalExpenseBos > (totalBosAllocated + 100)) {
             setMessage({
                 type: 'error',
-                text: `PENGAJUAN DITOLAK: Total rencana belanja BOS melebihi alokasi tersedia (${formatRupiah(totalBosAllocated)}).`
+                text: `PENGAJUAN DITOLAK: Total rencana belanja BOS (${formatRupiah(totalExpenseBos)}) melebihi alokasi tersedia (${formatRupiah(totalBosAllocated)}).`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
             return;
         }
 
-        // 2. Strict Validation: Yayasan Item Limits for Submission (after BOS savings & after S1 surplus)
-        const overBudgetItemSubmit = filteredExpenseItems.find(item => {
-            const detail = submittedPlan.expense[item.id] || [];
-            const allocated = rapData.itemAllocations[item.id] || 0;
-            
-            const detailTotal = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.total) || 0), 0) : (detail.total || 0);
-            const detailBos = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.bosAmount) || 0), 0) : (detail.bosAmount || 0);
+        // 2. Strict Validation: Total Yayasan Limit for Unit
+        const totalYayasanExpense = Object.keys(submittedPlan.expense || {}).reduce((sum, itemId) => {
+            const detail = submittedPlan.expense[itemId] || [];
+            const arr = Array.isArray(detail) ? detail : [detail];
+            return sum + arr.reduce((s, d) => {
+                const tot = parseFloat(d.total) || 0;
+                const bosAmt = d.useBos ? (parseFloat(d.bosAmount) || 0) : 0;
+                return s + (tot - bosAmt);
+            }, 0);
+        }, 0);
 
-            if (detailTotal <= 0 || allocated === 0) return false;
-
-            const yayasanSpent = Math.max(0, detailTotal - detailBos);
-            return yayasanSpent > (allocated + 100);
-        });
-
-        if (overBudgetItemSubmit) {
+        if (fundSourceFilter === 'Yayasan' && totalYayasanExpense > (rapData.totalTarget + 100)) {
             setMessage({
                 type: 'error',
-                text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit Yayasan.`
+                text: `PENGAJUAN DITOLAK: Total belanja Yayasan (${formatRupiah(totalYayasanExpense)}) melebihi Target RAP Unit (${formatRupiah(rapData.totalTarget)}). Sisa limit unit tidak mencukupi.`
             });
             setIsSaving(false);
             setTimeout(() => setMessage(null), 7000);
             return;
+        }
+
+        // 3. Per-Item Check (Under Option B: pos shifts are allowed as long as total unit budget is within target or revision/unlocked)
+        const hasAnyUnlocked = Object.values(submittedPlan.expense || {}).some(plans => 
+            (Array.isArray(plans) ? plans : [plans]).some(p => p && p.isUnlocked)
+        );
+        const isRevisionOrUnlocked = hasAnyUnlocked || hasRevision || planId.includes('-REVISION-');
+
+        if (!isRevisionOrUnlocked && totalYayasanExpense > (rapData.totalTarget + 100)) {
+            const overBudgetItemSubmit = filteredExpenseItems.find(item => {
+                const detail = submittedPlan.expense[item.id] || [];
+                const allocated = rapData.itemAllocations[item.id] || 0;
+                
+                const detailTotal = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.total) || 0), 0) : (detail.total || 0);
+                const detailBos = Array.isArray(detail) ? detail.reduce((s, d) => s + (parseFloat(d.bosAmount) || 0), 0) : (detail.bosAmount || 0);
+
+                if (detailTotal <= 0 || allocated === 0) return false;
+
+                const yayasanSpent = Math.max(0, detailTotal - detailBos);
+                return yayasanSpent > (allocated + 100);
+            });
+
+            if (overBudgetItemSubmit) {
+                setMessage({
+                    type: 'error',
+                    text: `PENGAJUAN DITOLAK: Item "${overBudgetItemSubmit.name}" melebihi limit Yayasan.`
+                });
+                setIsSaving(false);
+                setTimeout(() => setMessage(null), 7000);
+                return;
+            }
         }
 
         // 3. Strict Validation: Per-Item BOS Limits
@@ -5227,6 +5281,7 @@ function RABContent() {
                                             netChange: itemNetChange,
                                             totalNetChange: itemNetChange,
                                             sisa: (plan.limit || allocated) - (plan.total || 0),
+                                            isShift: ((plan.limit || allocated) - (plan.total || 0)) < 0 && (isItemUnlocked || hasRevision || balance >= 0),
                                             budgetS1: itemS1,
                                             spentS1: itemSpentS1,
                                             surplusS1: itemSurplusS1,
@@ -6432,6 +6487,28 @@ function RABContent() {
                                                 const sisaLabel = isBOSMode ? 'Sisa Limit (BOS)' : 'Sisa Limit (RAP)';
 
                                                 if (isOver) {
+                                                    // Opsi B: Jika sisa total anggaran unit masih mencukupi (balance >= 0),
+                                                    // tampilkan sebagai Pergeseran Anggaran (bukan bouncing merah error).
+                                                    if (balance >= -100) {
+                                                        return (
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
+                                                                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{limitLabel}</span>
+                                                                    <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
+                                                                </div>
+                                                                <div className="px-5 py-2.5 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col items-end shadow-xs">
+                                                                    <span className="text-[9px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                                                                        <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+                                                                        🔄 Pergeseran: +{formatRupiah(Math.abs(remainingLimit))}
+                                                                    </span>
+                                                                    <span className="text-xs font-black text-emerald-700">
+                                                                        Sisa Total Unit: {formatRupiah(balance)}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    }
+
                                                     return (
                                                         <div className="flex items-center gap-3">
                                                             <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
@@ -6440,7 +6517,7 @@ function RABContent() {
                                                             </div>
                                                             <div className="px-6 py-2.5 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
                                                                 <AlertCircle size={18} />
-                                                                MELEBIHI LIMIT! (Kurang: {formatRupiah(Math.abs(remainingLimit))})
+                                                                TOTAL UNIT MELEBIHI LIMIT! (Defisit: {formatRupiah(Math.abs(balance))})
                                                             </div>
                                                         </div>
                                                     );
