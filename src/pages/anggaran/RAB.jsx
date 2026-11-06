@@ -4764,7 +4764,7 @@ function RABContent() {
                     </div>
                 )}
                 {/* Advanced Filter Bar */}
-                <div className="p-4 px-6 bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-100/50 flex flex-wrap items-center justify-between gap-4">
+                <div className={`relative ${isProgramDropdownOpen || isMonthDropdownOpen ? 'z-50' : 'z-30'} p-4 px-6 bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-100/50 flex flex-wrap items-center justify-between gap-4`}>
                     {/* Left: Filter Controls Group */}
                     <div className="flex flex-wrap items-center gap-3 min-w-0">
                         <div className="flex items-center gap-3 shrink-0">
@@ -4781,6 +4781,7 @@ function RABContent() {
                             <button
                                 type="button"
                                 onClick={() => {
+                                    setOpenActionMenuId(null);
                                     setIsMonthDropdownOpen(prev => !prev);
                                     setIsProgramDropdownOpen(false);
                                 }}
@@ -4850,6 +4851,7 @@ function RABContent() {
                             <button
                                 type="button"
                                 onClick={() => {
+                                    setOpenActionMenuId(null);
                                     setIsProgramDropdownOpen(prev => !prev);
                                     setIsMonthDropdownOpen(false);
                                     setProgramSearch('');
@@ -5149,6 +5151,8 @@ function RABContent() {
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             e.preventDefault();
+                                                            setIsMonthDropdownOpen(false);
+                                                            setIsProgramDropdownOpen(false);
                                                             setOpenActionMenuId(prev => (prev === plan.id ? null : plan.id));
                                                         }}
                                                         className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
@@ -5377,6 +5381,8 @@ function RABContent() {
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 e.preventDefault();
+                                                                setIsMonthDropdownOpen(false);
+                                                                setIsProgramDropdownOpen(false);
                                                                 setOpenActionMenuId(prev => (prev === `TEMP-${itemMaster.id}` ? null : `TEMP-${itemMaster.id}`));
                                                             }}
                                                             className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
