@@ -2156,8 +2156,14 @@ function RABContent() {
     };
     const persistPlanToServer = async (planData) => {
         try {
-            dispatch({ type: 'SET_RAB_PLAN', payload: planData });
-            await api.pushAction({ type: 'SET_RAB_PLAN', payload: planData }, state);
+            const cleanData = {
+                ...planData,
+                academicYearId: planData.academicYearId || selectedYearId,
+                unitId: planData.unitId !== undefined ? planData.unitId : (selectedUnitId?.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId)),
+                fieldId: planData.fieldId !== undefined ? planData.fieldId : (selectedUnitId?.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null)
+            };
+            dispatch({ type: 'SET_RAB_PLAN', payload: cleanData });
+            await api.pushAction({ type: 'SET_RAB_PLAN', payload: cleanData }, state);
             return true;
         } catch (error) {
             console.error('Failed to persist RAB plan:', error);
@@ -2303,10 +2309,16 @@ function RABContent() {
             setIsSaving(true);
             try {
                 const newRevisionPlan = {
-                    ...activePlan,
+                    ...(originalPlan || {}),
                     id: revisionPlanId,
+                    academicYearId: selectedYearId,
+                    unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+                    fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
+                    income: activePlan.income || originalPlan?.income || {},
+                    expense: activePlan.expense || originalPlan?.expense || {},
                     status: 'DRAFT',
                     rejectionReason: null,
+                    notified: false,
                     updatedAt: new Date().toISOString(),
                     updatedBy: currentUser?.username
                 };
