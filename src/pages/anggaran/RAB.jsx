@@ -4759,98 +4759,110 @@ function RABContent() {
                     </div>
                 )}
                 {/* Advanced Filter Bar */}
-                <div className="p-5 bg-white/60 backdrop-blur-xl rounded-[2.5rem] border border-white shadow-2xl shadow-slate-200/50 flex flex-wrap items-center gap-6">
-                    <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                            <Filter size={18} />
+                <div className="p-4 px-6 bg-white/80 backdrop-blur-xl rounded-3xl border border-slate-200/80 shadow-lg shadow-slate-100/50 flex flex-wrap items-center justify-between gap-4">
+                    {/* Left: Filter Controls Group */}
+                    <div className="flex flex-wrap items-center gap-3 min-w-0">
+                        <div className="flex items-center gap-3 shrink-0">
+                            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center shadow-2xs">
+                                <Filter size={16} />
+                            </div>
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic whitespace-nowrap">Filter Tampilan</h4>
                         </div>
-                        <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] italic">Filter Tampilan</h4>
+
+                        <div className="h-6 w-px bg-slate-200 shrink-0 mx-1" />
+
+                        {/* Month Filter Pill */}
+                        <div className="relative flex items-center bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shrink-0">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Bulan:</span>
+                            <select
+                                value={filterMonth || ''}
+                                onChange={(e) => setFilterMonth(e.target.value || null)}
+                                className="bg-transparent border-0 p-0 pr-6 text-[10px] font-black uppercase tracking-wider text-slate-700 outline-none cursor-pointer appearance-none"
+                            >
+                                <option value="">SELURUH TAHUN (TOTAL)</option>
+                                {monthsOptions.map(m => (
+                                    <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={13} className="text-slate-400 absolute right-2.5 pointer-events-none shrink-0" />
+                        </div>
+
+                        {/* Program Filter Pill */}
+                        <div className="relative flex items-center bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shrink-0 max-w-[280px]">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Program:</span>
+                            <select
+                                value={filterProgram || ''}
+                                onChange={(e) => setFilterProgram(e.target.value || null)}
+                                className="bg-transparent border-0 p-0 pr-6 text-[10px] font-black uppercase tracking-wider text-slate-700 outline-none cursor-pointer appearance-none truncate"
+                            >
+                                <option value="">SEMUA PROGRAM</option>
+                                {allPrograms.map(p => (
+                                    <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
+                                ))}
+                            </select>
+                            <ChevronDown size={13} className="text-slate-400 absolute right-2.5 pointer-events-none shrink-0" />
+                        </div>
+
+                        {/* Clear Filter Button */}
+                        {(filterMonth || filterProgram) && (
+                            <button
+                                onClick={() => { setFilterMonth(null); setFilterProgram(null); }}
+                                className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-600 text-rose-600 hover:text-white border border-rose-200 rounded-xl transition-all font-black text-[9px] uppercase tracking-wider flex items-center gap-1.5 shrink-0 shadow-2xs active:scale-95"
+                                title="Reset Filter"
+                            >
+                                <RotateCcw size={12} />
+                                <span>Reset</span>
+                            </button>
+                        )}
                     </div>
 
-                    <div className="h-8 w-px bg-slate-200/50" />
+                    {/* Right: Actions & Status Indicators */}
+                    <div className="flex flex-wrap items-center gap-3 ml-auto">
+                        {/* Kontrol Buka/Kunci Anggaran Superadmin */}
+                        {isSuperAdmin && !isConsolidation && (
+                            <button
+                                onClick={() => handleToggleAllLocks(!areAllItemsUnlocked)}
+                                className={`px-3.5 py-2 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm shrink-0 active:scale-95 ${
+                                    areAllItemsUnlocked 
+                                        ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300' 
+                                        : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                                }`}
+                                title={areAllItemsUnlocked ? "Klik untuk mengunci kembali semua mata anggaran" : "Klik untuk membuka kunci semua mata anggaran agar unit dapat melakukan penyesuaian/pergeseran"}
+                            >
+                                {areAllItemsUnlocked ? <Lock size={14} className="text-rose-600 shrink-0" /> : <Unlock size={14} className="text-emerald-600 shrink-0" />}
+                                <span>{areAllItemsUnlocked ? 'KUNCI SEMUA MATA ANGGARAN' : 'BUKA KUNCI SEMUA MATA ANGGARAN'}</span>
+                                {unlockedCount > 0 && !areAllItemsUnlocked && (
+                                    <span className="px-1.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[9px] font-black">
+                                        {unlockedCount} Terbuka
+                                    </span>
+                                )}
+                            </button>
+                        )}
 
-                    {/* Month Filter */}
-                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Bulan:</span>
-                        <select
-                            value={filterMonth || ''}
-                            onChange={(e) => setFilterMonth(e.target.value || null)}
-                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer flex-1"
-                        >
-                            <option value="">SELURUH TAHUN (TOTAL)</option>
-                            {monthsOptions.map(m => (
-                                <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <div className="h-8 w-px bg-slate-200/50" />
-
-                    {/* Program Filter */}
-                    <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2">Program:</span>
-                        <select
-                            value={filterProgram || ''}
-                            onChange={(e) => setFilterProgram(e.target.value || null)}
-                            className="bg-slate-50 border-0 rounded-xl px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 focus:ring-2 focus:ring-indigo-100 transition-all cursor-pointer flex-1"
-                        >
-                            <option value="">SEMUA PROGRAM</option>
-                            {allPrograms.map(p => (
-                                <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Clear Button */}
-                    {(filterMonth || filterProgram) && (
-                        <button
-                            onClick={() => { setFilterMonth(null); setFilterProgram(null); }}
-                            className="p-3 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all group"
-                            title="RESET FILTER"
-                        >
-                            <RotateCcw size={16} className="group-active:rotate-180 transition-transform duration-500" />
-                        </button>
-                    )}
-
-                    {/* Kontrol Buka/Kunci Anggaran Superadmin */}
-                    {isSuperAdmin && !isConsolidation && (
-                        <button
-                            onClick={() => handleToggleAllLocks(!areAllItemsUnlocked)}
-                            className={`p-3 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all flex items-center gap-2 shadow-sm shrink-0 ${
-                                areAllItemsUnlocked 
-                                    ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300' 
-                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
-                            }`}
-                            title={areAllItemsUnlocked ? "Klik untuk mengunci kembali semua mata anggaran" : "Klik untuk membuka kunci semua mata anggaran agar unit dapat melakukan penyesuaian/pergeseran"}
-                        >
-                            {areAllItemsUnlocked ? <Lock size={15} className="text-rose-600" /> : <Unlock size={15} className="text-emerald-600" />}
-                            <span>{areAllItemsUnlocked ? 'KUNCI SEMUA MATA ANGGARAN' : 'BUKA KUNCI SEMUA MATA ANGGARAN'}</span>
-                            {unlockedCount > 0 && !areAllItemsUnlocked && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-emerald-200 text-emerald-900 text-[9px] font-black">
-                                    {unlockedCount} Terbuka
+                        {/* Status Indikator Pembukaan Kunci bagi Unit / Bidang */}
+                        {!isSuperAdmin && !isConsolidation && unlockedCount > 0 && (
+                            <div className="px-3 py-1.5 bg-emerald-50 border border-emerald-300/80 rounded-xl flex items-center gap-2 text-emerald-800 text-[10px] font-black uppercase tracking-wider shrink-0 shadow-2xs">
+                                <span className="flex h-2 w-2 relative shrink-0">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                                 </span>
-                            )}
-                        </button>
-                    )}
+                                <Unlock size={13} className="text-emerald-600 shrink-0" />
+                                <span>{unlockedCount} MATA ANGGARAN DIBUKA SUPERADMIN UNTUK REVISI</span>
+                            </div>
+                        )}
 
-                    {/* Status Indikator Pembukaan Kunci bagi Unit / Bidang */}
-                    {!isSuperAdmin && !isConsolidation && unlockedCount > 0 && (
-                        <div className="px-3.5 py-2.5 bg-emerald-50 border border-emerald-300 rounded-xl flex items-center gap-2 text-emerald-800 text-[10px] font-black uppercase tracking-wider shrink-0">
-                            <Unlock size={14} className="text-emerald-600 animate-pulse" />
-                            <span>{unlockedCount} MATA ANGGARAN DIBUKA SUPERADMIN UNTUK REVISI</span>
-                        </div>
-                    )}
-
-                    {/* Pilih Semua Button */}
-                    {!isConsolidation && (
-                        <button
-                            onClick={handleSelectAll}
-                            className="p-3 ml-auto bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-600 hover:text-white transition-all group font-black text-[10px] uppercase tracking-widest flex items-center gap-2"
-                            title="Pilih Semua Rincian"
-                        >
-                            <CheckSquare size={16} /> PILIH SEMUA
-                        </button>
-                    )}
+                        {/* Pilih Semua Button */}
+                        {!isConsolidation && (
+                            <button
+                                onClick={handleSelectAll}
+                                className="px-3.5 py-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white border border-blue-200/80 hover:border-blue-600 rounded-xl transition-all font-black text-[10px] uppercase tracking-widest flex items-center gap-2 shrink-0 shadow-2xs active:scale-95"
+                                title="Pilih Semua Rincian"
+                            >
+                                <CheckSquare size={15} className="shrink-0" />
+                                <span>PILIH SEMUA</span>
+                            </button>
+                        )}
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto scroll-top mt-2 pt-28">
