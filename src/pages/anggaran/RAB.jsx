@@ -176,6 +176,13 @@ function RABContent() {
     const [compSearchQuery, setCompSearchQuery] = useState('');
     const [compStatusFilter, setCompStatusFilter] = useState('ALL');
 
+    const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
+    const [filterProgram, setFilterProgram] = useState(null); // programId
+    const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+    const [isProgramDropdownOpen, setIsProgramDropdownOpen] = useState(false);
+    const [programSearch, setProgramSearch] = useState('');
+    const [isAddendumMode, setIsAddendumMode] = useState(false);
+
     useEffect(() => {
         setCompSearchQuery('');
         setCompStatusFilter('ALL');
@@ -194,13 +201,6 @@ function RABContent() {
         window.addEventListener('click', handleGlobalClick);
         return () => window.removeEventListener('click', handleGlobalClick);
     }, [openActionMenuId, isMonthDropdownOpen, isProgramDropdownOpen]);
-
-    const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
-    const [filterProgram, setFilterProgram] = useState(null); // programId
-    const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
-    const [isProgramDropdownOpen, setIsProgramDropdownOpen] = useState(false);
-    const [programSearch, setProgramSearch] = useState('');
-    const [isAddendumMode, setIsAddendumMode] = useState(false);
 
     // States for Sarpras Asset Verification View
     const [sarprasFilterStatus, setSarprasFilterStatus] = useState('PENDING'); // PENDING | APPROVED | REJECTED | ALL
