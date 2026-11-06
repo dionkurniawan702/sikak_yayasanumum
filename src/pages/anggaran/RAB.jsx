@@ -635,143 +635,7 @@ function RABContent() {
         return expensePrograms;
     }, [programs, expensePrograms, activeTab]);
 
-    // AUTO-REPAIR STUCK PENDING PLANS
-    useEffect(() => {
-        if (!rabPlans || rabPlans.length === 0) return;
-        
-        let needsUpdate = false;
-        
-        // Use a timeout to avoid immediate state updates during render phase
-        const timer = setTimeout(async () => {
-            for (const plan of rabPlans) {
-                if (plan.status === 'PENDING' || plan.status === 'APPROVED' || plan.status === 'DRAFT') {
-                    let hasPendingComp = false;
-                    let hasApprovedComp = false;
-                    
-                    // Check expense components
-                    Object.values(plan.expense || {}).forEach(plans => {
-                        const arr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
-                        arr.forEach(p => {
-                            (p.components || []).forEach(c => {
-                                if (c.status === 'PENDING' || !c.status) hasPendingComp = true;
-                                if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
-                            });
-                        });
-                    });
-                    
-                    // Check income components
-                    Object.values(plan.income || {}).forEach(plans => {
-                        const arr = Array.isArray(plans) ? plans : (plans && typeof plans === 'object' && Object.keys(plans).length > 0 ? [plans] : []);
-                        arr.forEach(p => {
-                            (p.components || []).forEach(c => {
-                                if (c.status === 'PENDING' || !c.status) hasPendingComp = true;
-                                if (c.status === 'APPROVED' || c.isApproved) hasApprovedComp = true;
-                            });
-                        });
-                    });
-                    
-                    if (plan.status === 'PENDING' && !hasPendingComp && hasApprovedComp) {
-                        // All components are approved (or draft), none are pending. Fix the plan status.
-                        const updatedPlan = {
-                            ...plan,
-                            status: 'APPROVED',
-                            updatedAt: new Date().toISOString()
-                        };
-                        dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                        needsUpdate = true;
-                    }
-                    else if (plan.status === 'APPROVED' && hasPendingComp) {
-                        // The plan is approved, but some components are stuck in pending. Cascade the approval.
-                        const updatedExpense = { ...plan.expense };
-                        Object.keys(updatedExpense).forEach(itemId => {
-                            const rawPlans = updatedExpense[itemId];
-                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
-                            
-                            updatedExpense[itemId] = plansArr.map(p => {
-                                const comps = p.components || [];
-                                const updatedComps = comps.map(c => ({
-                                    ...c,
-                                    status: 'APPROVED',
-                                    isApproved: true
-                                }));
-                                return { ...p, components: updatedComps };
-                            });
-                        });
-
-                        const updatedIncome = { ...plan.income };
-                        Object.keys(updatedIncome).forEach(itemId => {
-                            const rawPlans = updatedIncome[itemId];
-                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
-                            
-                            updatedIncome[itemId] = plansArr.map(p => {
-                                const comps = p.components || [];
-                                const updatedComps = comps.map(c => ({
-                                    ...c,
-                                    status: 'APPROVED',
-                                    isApproved: true
-                                }));
-                                return { ...p, components: updatedComps };
-                            });
-                        });
-
-                        const updatedPlan = {
-                            ...plan,
-                            expense: updatedExpense,
-                            income: updatedIncome,
-                            updatedAt: new Date().toISOString()
-                        };
-                        dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                        needsUpdate = true;
-                    }
-                    else if (plan.status === 'DRAFT' && hasPendingComp) {
-                        // The plan is DRAFT, but some components are stuck in pending (due to cancel submission). Cascade DRAFT.
-                        const updatedExpense = { ...plan.expense };
-                        Object.keys(updatedExpense).forEach(itemId => {
-                            const rawPlans = updatedExpense[itemId];
-                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
-                            
-                            updatedExpense[itemId] = plansArr.map(p => {
-                                const comps = p.components || [];
-                                const updatedComps = comps.map(c => ({
-                                    ...c,
-                                    status: 'DRAFT',
-                                    isApproved: false
-                                }));
-                                return { ...p, components: updatedComps };
-                            });
-                        });
-
-                        const updatedIncome = { ...plan.income };
-                        Object.keys(updatedIncome).forEach(itemId => {
-                            const rawPlans = updatedIncome[itemId];
-                            const plansArr = Array.isArray(rawPlans) ? rawPlans : (rawPlans && typeof rawPlans === 'object' && Object.keys(rawPlans).length > 0 ? [{ id: `P-${itemId}-LEGACY`, itemId, ...rawPlans }] : []);
-                            
-                            updatedIncome[itemId] = plansArr.map(p => {
-                                const comps = p.components || [];
-                                const updatedComps = comps.map(c => ({
-                                    ...c,
-                                    status: 'DRAFT',
-                                    isApproved: false
-                                }));
-                                return { ...p, components: updatedComps };
-                            });
-                        });
-
-                        const updatedPlan = {
-                            ...plan,
-                            expense: updatedExpense,
-                            income: updatedIncome,
-                            updatedAt: new Date().toISOString()
-                        };
-                        dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-                        needsUpdate = true;
-                    }
-                }
-            }
-        }, 1000);
-        
-        return () => clearTimeout(timer);
-    }, [rabPlans, isSuperAdmin, dispatch, state]);
+    // Note: Auto-repair removed to ensure status changes only happen explicitly via user/admin action
 
     const toggleDetailItem = (parentId, itemId) => {
         const key = `${parentId}|${itemId}`;
@@ -884,7 +748,12 @@ function RABContent() {
                     notified: existingPlan.notified
                 });
 
-                if ((existingPlan.status === 'APPROVED' || existingPlan.status === 'REJECTED') && !existingPlan.notified) {
+                const hasUnlocked = totalUnlockedCount > 0 || (existingPlan.expense && Object.values(existingPlan.expense).some(plans => {
+                    const arr = Array.isArray(plans) ? plans : [plans];
+                    return arr.some(p => p && p.isUnlocked === true);
+                }));
+
+                if ((existingPlan.status === 'APPROVED' || existingPlan.status === 'REJECTED') && !existingPlan.notified && !hasRevision && !hasUnlocked && existingPlan.status !== 'PENDING') {
                     setShowStatusModal(true);
                 }
             } else {
@@ -1409,8 +1278,10 @@ function RABContent() {
         }
         
         let newStatus = entryForm.status;
-        if (editingCompIdx === null) {
-            // Komponen baru yang ditambahkan: status selalu DRAFT (wajib diajukan & disetujui Yayasan/Sarpras)
+        if (!isSuperAdmin) {
+            // Setiap penambahan atau perubahan rincian oleh unit/bidang: status wajib DRAFT (harus diajukan & disetujui Yayasan)
+            newStatus = 'DRAFT';
+        } else if (editingCompIdx === null) {
             newStatus = 'DRAFT';
         } else if (newStatus === 'REJECTED' || !newStatus) {
             newStatus = (currentPlan?.status === 'APPROVED' || currentPlan?.status === 'PENDING') ? currentPlan.status : 'DRAFT';
@@ -1419,11 +1290,10 @@ function RABContent() {
         let newSarprasStatus = entryForm.sarprasStatus;
         if (entryForm.isAsset) {
             if (isSarprasRequiredYear) {
-                if (editingCompIdx === null) {
-                    // Pengajuan baru: wajib verifikasi Sarpras
+                if (editingCompIdx === null || !isSuperAdmin) {
+                    // Pengajuan baru atau perubahan rincian aset oleh unit wajib diverifikasi Sarpras
                     newSarprasStatus = 'PENDING';
                 } else if (!newSarprasStatus) {
-                    // Rincian lama yang sudah ada sebelumnya: otomatis disetujui
                     newSarprasStatus = 'APPROVED';
                 }
             } else {
@@ -2677,7 +2547,7 @@ function RABContent() {
             }
         }
 
-        // Automatically sweep and update all DRAFT/REJECTED components in both income and expense to PENDING
+        // Automatically sweep and update all DRAFT/REJECTED components or components under unlocked items to PENDING
         const updatedExpense = { ...currentPlan.expense };
         Object.keys(updatedExpense).forEach(itemId => {
             const plans = updatedExpense[itemId];
@@ -2685,8 +2555,8 @@ function RABContent() {
                 updatedExpense[itemId] = plans.map(p => {
                     const comps = p.components || [];
                     const updatedComps = comps.map(c => {
-                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) {
-                            return { ...c, status: 'PENDING' };
+                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status || p.isUnlocked) {
+                            return { ...c, status: 'PENDING', isApproved: false };
                         }
                         return c;
                     });
@@ -2702,8 +2572,8 @@ function RABContent() {
                 updatedIncome[itemId] = plans.map(p => {
                     const comps = p.components || [];
                     const updatedComps = comps.map(c => {
-                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status) {
-                            return { ...c, status: 'PENDING' };
+                        if (c.status === 'DRAFT' || c.status === 'REJECTED' || !c.status || p.isUnlocked) {
+                            return { ...c, status: 'PENDING', isApproved: false };
                         }
                         return c;
                     });
@@ -2720,6 +2590,7 @@ function RABContent() {
             income: updatedIncome,
             expense: updatedExpense,
             status: 'PENDING',
+            notified: false,
             updatedAt: new Date().toISOString(),
             updatedBy: currentUser?.username
         };
@@ -2792,7 +2663,7 @@ function RABContent() {
                 status: 'PENDING'
             }));
 
-            setMessage({ type: 'success', text: hasRevision ? 'Usulan revisi RAB telah dikirim ke Yayasan untuk ditelaah.' : 'RAB telah dikirim ke Yayasan untuk direview.' });
+            setMessage({ type: 'success', text: (hasRevision || totalUnlockedCount > 0) ? 'Usulan revisi RAB telah dikirim ke Yayasan untuk ditelaah.' : 'RAB telah dikirim ke Yayasan untuk direview.' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal mengirim RAB: ' + error.message });
         } finally {
@@ -2884,7 +2755,11 @@ function RABContent() {
                     status: status,
                     isApproved: status === 'APPROVED'
                 }));
-                return { ...p, components: updatedComps };
+                return { 
+                    ...p, 
+                    isUnlocked: status === 'APPROVED' ? false : p.isUnlocked,
+                    components: updatedComps 
+                };
             });
         });
 
@@ -2900,7 +2775,11 @@ function RABContent() {
                     status: status,
                     isApproved: status === 'APPROVED'
                 }));
-                return { ...p, components: updatedComps };
+                return { 
+                    ...p, 
+                    isUnlocked: status === 'APPROVED' ? false : p.isUnlocked,
+                    components: updatedComps 
+                };
             });
         });
 
@@ -3298,10 +3177,12 @@ function RABContent() {
     };
 
     const handleAcknowledgeStatus = () => {
-        const planId = currentPlanId;
-        const plan = rabPlans.find(p => p.id === planId);
-        if (plan) {
-            const updatedPlan = { ...plan, notified: true };
+        const basePlanId = `${selectedYearId}-${selectedUnitId}`;
+        const planId = `${basePlanId}-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const revPlanId = `${selectedYearId}-${selectedUnitId}-REVISION-${fundSourceFilter === 'BOS' ? 'BOS' : 'YAYASAN'}`;
+        const targetPlan = (rabPlans || []).find(p => p.id === currentPlanId) || (rabPlans || []).find(p => p.id === revPlanId) || (rabPlans || []).find(p => p.id === planId);
+        if (targetPlan) {
+            const updatedPlan = { ...targetPlan, notified: true };
             dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
             api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
         }
@@ -3922,8 +3803,11 @@ function RABContent() {
 
                                         const originalPlanId = plan.id.replace('-REVISION-', '-');
                                         const originalPlan = rabPlans.find(p => p.id === originalPlanId);
-                                        const isRevision = plan.id.includes('-REVISION-');
-                                        const typeLabelSuffix = isRevision ? ' (REVISI)' : '';
+                                        const hasUnlockedItems = Object.values(plan.expense || {}).some(plans => 
+                                            (Array.isArray(plans) ? plans : [plans]).some(p => p && p.isUnlocked)
+                                        );
+                                        const isRevision = plan.id.includes('-REVISION-') || hasUnlockedItems;
+                                        const typeLabelSuffix = isRevision ? ' (REVISI / PERGESERAN)' : '';
 
                                         const allItemIds = new Set([
                                             ...Object.keys(plan.expense || {}),
@@ -6175,6 +6059,38 @@ function RABContent() {
                         </div>
                     </div>
 
+                    {/* Superadmin Pending RAB Review Banner */}
+                    {isSuperAdmin && pendingPlans.length > 0 && activeTab !== 'REVIEW' && (
+                        <div className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="flex items-center gap-4">
+                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner shrink-0">
+                                    <Wallet size={28} className="text-white animate-bounce" />
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="bg-white/25 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-indigo-50 border border-white/20">
+                                            Perhatian Yayasan
+                                        </span>
+                                        <span className="text-xs font-bold text-indigo-100">TA {activeYearName || '2026-2027'}</span>
+                                    </div>
+                                    <h4 className="text-base font-black tracking-tight text-white mt-1">
+                                        Ada {pendingPlans.length} Pengajuan / Usulan Revisi RAB Menunggu Review Yayasan!
+                                    </h4>
+                                    <p className="text-xs text-indigo-100/90 font-medium">
+                                        Unit telah mengirimkan pengajuan RAB atau usulan perubahan anggaran. Silakan tinjau rincian untuk di-ACC atau ditolak.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setActiveTab('REVIEW')}
+                                className="px-6 py-3.5 bg-white text-indigo-900 font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-indigo-50 hover:shadow-xl transition-all shrink-0 flex items-center gap-2 active:scale-95"
+                            >
+                                <Wallet size={16} className="text-indigo-600" />
+                                Buka Review Pengajuan ({pendingPlans.length})
+                            </button>
+                        </div>
+                    )}
+
                     {/* Sarpras Pending Asset Notification Banner */}
                     {isSarprasAdmin && pendingSarprasCount > 0 && activeTab !== 'SARPRAS_ASSETS' && (
                         <div className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-[2rem] p-6 text-white shadow-xl shadow-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
@@ -6229,7 +6145,12 @@ function RABContent() {
                                     {activeTab === 'REVIEW' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600" />}
                                     <div className="flex items-center gap-2">
                                         <Wallet size={16} />
-                                        Review Pengajuan
+                                        <span>Review Pengajuan</span>
+                                        {pendingPlans.length > 0 && (
+                                            <span className="bg-indigo-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-indigo-500/50">
+                                                {pendingPlans.length}
+                                            </span>
+                                        )}
                                     </div>
                                 </button>
                             )}
