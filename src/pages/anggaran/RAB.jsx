@@ -294,44 +294,7 @@ function RABContent() {
         return map;
     }, [budgetReports]);
 
-    // Helper robust untuk membaca realisasi belanja suatu komponen:
-    // 1. Cek langsung via componentId (ID paten, ID standar, ID legacy)
-    // 2. Fallback pencocokan Nama/Kategori nota ke rincian untuk bulan-bulan yang sudah dilaporkan & di-ACC Yayasan
-    const getComponentSpent = useCallback((comp, cIdx, posItemId, targetPlanDocId, pPlanId) => {
-        if (!comp) return 0;
-        const targetDocId = targetPlanDocId || currentPlanId;
-        const stdId = `COMP-${targetDocId}-${posItemId}-0-${comp.originalIdx ?? cIdx}`;
-        const legacyId = `COMP-${pPlanId || ''}-${posItemId}-0-${comp.originalIdx ?? cIdx}`;
-        
-        // 1. Direct ID match
-        let spent = (comp.id && componentSpending[comp.id]) || componentSpending[stdId] || componentSpending[legacyId] || 0;
-        if (spent > 0) return spent;
 
-        // 2. Name / Category Fallback Match for approved reports (hanya yang sudah dilaporkan dan di-ACC Yayasan)
-        const cLabelNorm = (comp.label || comp.name || '').trim().toLowerCase();
-        if (!cLabelNorm) return 0;
-
-        const matchedReports = (budgetReports || []).filter(r => {
-            if (r.status !== 'APPROVED' || r.isDeleted || r.kategoriAset === 'PENGEMBALIAN') return false;
-            if (selectedYearId && r.academicYearId && r.academicYearId !== selectedYearId) return false;
-            
-            // Match unit/field
-            if (isField ? (r.fieldId !== fieldId) : (r.unitId !== selectedUnitId)) return false;
-
-            const rCatNorm = (r.category || '').trim().toLowerCase();
-            if (rCatNorm !== cLabelNorm) return false;
-
-            // Verify month scheduling if component has months specified
-            const rMonth = r.month || (r.date ? r.date.substring(0, 7) : null);
-            if (rMonth && comp.months && Object.keys(comp.months).some(m => comp.months[m]?.m)) {
-                return Boolean(comp.months[rMonth]?.m);
-            }
-
-            return true;
-        });
-
-        return matchedReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
-    }, [componentSpending, budgetReports, selectedYearId, isField, fieldId, selectedUnitId, currentPlanId]);
 
 
 
@@ -908,6 +871,73 @@ function RABContent() {
     const isField = selectedUnitId.startsWith('FIELD-');
     const fieldId = isField ? selectedUnitId.replace('FIELD-', '') : null;
     const isLocked = ((activePlan?.status === 'APPROVED' && !isAddendumMode) || activePlan?.status === 'PENDING' || isConsolidation) && !isSuperAdmin;
+
+    // Helper robust untuk membaca realisasi belanja suatu komponen:
+    // 1. Cek langsung via componentId (ID paten, ID standar, ID legacy, ID non-revision)
+    // 2. Fallback pencocokan Nama/Kategori nota ke rincian untuk bulan-bulan yang sudah dilaporkan & di-ACC Yayasan
+    const getComponentSpent = useCallback((comp, cIdx, posItemId, targetPlanDocId, pPlanId) => {
+        if (!comp) return 0;
+        const targetDocId = targetPlanDocId || currentPlanId;
+        const oIdx = comp.originalIdx ?? cIdx;
+        const stdId = `COMP-${targetDocId}-${posItemId}-0-${oIdx}`;
+        const legacyId = `COMP-${pPlanId || ''}-${posItemId}-0-${oIdx}`;
+        const nonRevId = targetDocId ? `COMP-${targetDocId.replace('-REVISION-', '-')}-${posItemId}-0-${oIdx}` : null;
+        
+        // 1. Direct ID match
+        let spent = (comp.id && componentSpending[comp.id]) || 
+                    componentSpending[stdId] || 
+                    componentSpending[legacyId] || 
+                    (nonRevId && componentSpending[nonRevId]) || 0;
+        if (spent > 0) return spent;
+
+        // 2. Name / Category Fallback Match for approved reports (hanya yang sudah dilaporkan dan di-ACC Yayasan)
+        const cLabelNorm = (comp.label || comp.name || '').trim().toLowerCase();
+        if (!cLabelNorm) return 0;
+
+        // Determine target unit/field
+        let targetField = isField ? fieldId : null;
+        let targetUnit = !isField && !isConsolidation ? selectedUnitId : null;
+        
+        if (isConsolidation && (targetPlanDocId || pPlanId)) {
+            const ref = targetPlanDocId || pPlanId;
+            if (ref.includes('-FIELD-')) {
+                const m = ref.match(/FIELD-([A-Za-z0-9_-]+)/);
+                if (m) targetField = m[1];
+            } else {
+                const parts = ref.split('-');
+                if (parts.length >= 2) {
+                    const candidate = (units || []).find(u => parts.includes(u.id));
+                    if (candidate) targetUnit = candidate.id;
+                }
+            }
+        }
+
+        const matchedReports = (budgetReports || []).filter(r => {
+            if (r.status !== 'APPROVED' || r.isDeleted || r.kategoriAset === 'PENGEMBALIAN') return false;
+            if (selectedYearId && r.academicYearId && r.academicYearId !== selectedYearId) return false;
+            if (fundSourceFilter === 'BOS' ? !r.planId?.endsWith('-BOS') : r.planId?.endsWith('-BOS')) return false;
+            
+            // Match unit/field if target is determined
+            if (targetField && r.fieldId !== targetField) return false;
+            if (targetUnit && r.unitId !== targetUnit) return false;
+
+            const rCatNorm = (r.category || '').trim().toLowerCase();
+            const rDescNorm = (r.description || '').trim().toLowerCase();
+            const isNameMatch = (rCatNorm && (rCatNorm === cLabelNorm || rCatNorm.includes(cLabelNorm) || cLabelNorm.includes(rCatNorm))) ||
+                               (rDescNorm && (rDescNorm === cLabelNorm || rDescNorm.includes(cLabelNorm)));
+            if (!isNameMatch) return false;
+
+            // Verify month scheduling if component has months specified
+            const rMonth = r.month || (r.date ? r.date.substring(0, 7) : null);
+            if (rMonth && comp.months && Object.keys(comp.months).some(m => comp.months[m]?.m || parseFloat(comp.months[m]?.jumlah) > 0)) {
+                return Boolean(comp.months[rMonth]?.m || parseFloat(comp.months[rMonth]?.jumlah) > 0);
+            }
+
+            return true;
+        });
+
+        return matchedReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+    }, [componentSpending, budgetReports, selectedYearId, isField, fieldId, selectedUnitId, isConsolidation, fundSourceFilter, currentPlanId, units]);
 
     // Evaluasi Sisa Anggaran Semester 1 Khusus Unit/Bidang yang Sedang Dibuka
     const unitSemester1Data = useMemo(() => {
