@@ -294,6 +294,45 @@ function RABContent() {
         return map;
     }, [budgetReports]);
 
+    // Helper robust untuk membaca realisasi belanja suatu komponen:
+    // 1. Cek langsung via componentId (ID paten, ID standar, ID legacy)
+    // 2. Fallback pencocokan Nama/Kategori nota ke rincian untuk bulan-bulan yang sudah dilaporkan & di-ACC Yayasan
+    const getComponentSpent = useCallback((comp, cIdx, posItemId, targetPlanDocId, pPlanId) => {
+        if (!comp) return 0;
+        const targetDocId = targetPlanDocId || currentPlanId;
+        const stdId = `COMP-${targetDocId}-${posItemId}-0-${comp.originalIdx ?? cIdx}`;
+        const legacyId = `COMP-${pPlanId || ''}-${posItemId}-0-${comp.originalIdx ?? cIdx}`;
+        
+        // 1. Direct ID match
+        let spent = (comp.id && componentSpending[comp.id]) || componentSpending[stdId] || componentSpending[legacyId] || 0;
+        if (spent > 0) return spent;
+
+        // 2. Name / Category Fallback Match for approved reports (hanya yang sudah dilaporkan dan di-ACC Yayasan)
+        const cLabelNorm = (comp.label || comp.name || '').trim().toLowerCase();
+        if (!cLabelNorm) return 0;
+
+        const matchedReports = (budgetReports || []).filter(r => {
+            if (r.status !== 'APPROVED' || r.isDeleted || r.kategoriAset === 'PENGEMBALIAN') return false;
+            if (selectedYearId && r.academicYearId && r.academicYearId !== selectedYearId) return false;
+            
+            // Match unit/field
+            if (isField ? (r.fieldId !== fieldId) : (r.unitId !== selectedUnitId)) return false;
+
+            const rCatNorm = (r.category || '').trim().toLowerCase();
+            if (rCatNorm !== cLabelNorm) return false;
+
+            // Verify month scheduling if component has months specified
+            const rMonth = r.month || (r.date ? r.date.substring(0, 7) : null);
+            if (rMonth && comp.months && Object.keys(comp.months).some(m => comp.months[m]?.m)) {
+                return Boolean(comp.months[rMonth]?.m);
+            }
+
+            return true;
+        });
+
+        return matchedReports.reduce((sum, r) => sum + (parseFloat(r.amount) || 0), 0);
+    }, [componentSpending, budgetReports, selectedYearId, isField, fieldId, selectedUnitId, currentPlanId]);
+
 
 
     // Gather all asset items from all units/bidang for Sarpras verification
@@ -5243,9 +5282,8 @@ function RABContent() {
                                             }
 
                                             const standardCompId = c.id || `COMP-${currentPlanId}-${itemMaster.id}-${pIdx}-${cIdx}`;
-                                            const legacyCompId = `COMP-${plan.id}-${itemMaster.id}-${pIdx}-${cIdx}`;
                                             const compId = c.id || standardCompId;
-                                            const spentVal = componentSpending[standardCompId] || componentSpending[c.id] || componentSpending[legacyCompId] || 0;
+                                            const spentVal = getComponentSpent(c, cIdx, itemMaster.id, currentPlanId, plan.id);
                                             return {
                                                 ...c,
                                                 id: compId,
@@ -6767,9 +6805,7 @@ function RABContent() {
                                                                             const monthlyTotal = Object.values(comp.months || {}).reduce((sum, m) => sum + (parseFloat(m.jumlah) || 0), 0);
                                                                             const isUnbalanced = Math.abs((comp.total || 0) - monthlyTotal) > 1.1;
 
-                                                                            const stdCompId = `COMP-${planDocId}-${catalogItemId}-0-${comp.originalIdx ?? idx}`;
-                                                                            const legacyCompId = `COMP-${found?.id || ''}-${itemId}-0-${comp.originalIdx ?? idx}`;
-                                                                            const compSpent = componentSpending[comp.id] || componentSpending[stdCompId] || componentSpending[legacyCompId] || 0;
+                                                                            const compSpent = getComponentSpent(comp, comp.originalIdx ?? idx, catalogItemId, planDocId, found?.id);
                                                                             const compTotal = parseFloat(comp.total) || 0;
                                                                             const compRemaining = compTotal - compSpent;
                                                                             const compOriginalTotal = comp.originalTotal ? parseFloat(comp.originalTotal) : null;
@@ -7010,9 +7046,7 @@ function RABContent() {
                                                                     
                                                                     {(() => {
                                                                         const totalCompsSpent = (item.components || []).reduce((s, c, cIdx) => {
-                                                                            const stdId = `COMP-${planDocId}-${catalogItemId}-0-${cIdx}`;
-                                                                            const legId = `COMP-${found?.id || ''}-${itemId}-0-${cIdx}`;
-                                                                            return s + (componentSpending[c.id] || componentSpending[stdId] || componentSpending[legId] || 0);
+                                                                            return s + getComponentSpent(c, cIdx, catalogItemId, planDocId, found?.id);
                                                                         }, 0);
                                                                         const totalCompsSurplus = Math.max(0, (item.total || 0) - totalCompsSpent);
                                                                         return (
