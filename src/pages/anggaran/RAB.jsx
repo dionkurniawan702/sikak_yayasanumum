@@ -2748,8 +2748,7 @@ function RABContent() {
         }
 
         try {
-            dispatch({ type: 'SET_RAB_PLAN', payload: submittedPlan });
-            await api.pushAction({ type: 'SET_RAB_PLAN', payload: submittedPlan }, state);
+            await persistPlanToServer(submittedPlan);
             
             // Sync local currentPlan state
             setCurrentPlan(prev => ({
@@ -2759,7 +2758,7 @@ function RABContent() {
                 status: 'PENDING'
             }));
 
-            setMessage({ type: 'success', text: 'RAB telah dikirim ke Yayasan untuk direview.' });
+            setMessage({ type: 'success', text: hasRevision ? 'Usulan revisi RAB telah dikirim ke Yayasan untuk ditelaah.' : 'RAB telah dikirim ke Yayasan untuk direview.' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal mengirim RAB: ' + error.message });
         } finally {
@@ -2810,6 +2809,9 @@ function RABContent() {
 
         const updatedPlan = {
             ...plan,
+            academicYearId: selectedYearId,
+            unitId: selectedUnitId.startsWith('FIELD-') ? null : (selectedUnitId === 'FOUNDATION' ? 'FOUNDATION' : selectedUnitId),
+            fieldId: selectedUnitId.startsWith('FIELD-') ? selectedUnitId.replace('FIELD-', '') : null,
             status: 'DRAFT',
             expense: updatedExpense,
             income: updatedIncome,
@@ -2820,10 +2822,9 @@ function RABContent() {
 
         setIsSaving(true);
         try {
-            dispatch({ type: 'SET_RAB_PLAN', payload: updatedPlan });
-            await api.pushAction({ type: 'SET_RAB_PLAN', payload: updatedPlan }, state);
+            await persistPlanToServer(updatedPlan);
             setCurrentPlan(prev => ({ ...prev, status: 'DRAFT' }));
-            setMessage({ type: 'success', text: 'Pengajuan RAB berhasil dibatalkan. RAB kembali ke status Draft.' });
+            setMessage({ type: 'success', text: 'Pengajuan berhasil dibatalkan. Status kembali ke Draft.' });
         } catch (error) {
             setMessage({ type: 'error', text: 'Gagal membatalkan pengajuan: ' + error.message });
         } finally {
@@ -4724,14 +4725,23 @@ function RABContent() {
                 {hasRevision && (
                     <div className="p-8 bg-gradient-to-r from-blue-50 to-indigo-50/50 rounded-[2.5rem] border border-blue-100 shadow-xl shadow-blue-100/20 flex flex-col md:flex-row md:items-center justify-between gap-6 mb-6 animate-in slide-in-from-top-4 duration-500">
                         <div className="flex items-start gap-4">
-                            <div className="p-4 bg-blue-600 text-white rounded-2xl shadow-lg shadow-blue-200">
+                            <div className={`p-4 ${activePlan?.status === 'PENDING' ? 'bg-amber-600' : 'bg-blue-600'} text-white rounded-2xl shadow-lg shadow-blue-200`}>
                                 <Info size={22} />
                             </div>
                             <div>
                                 <div className="flex items-center gap-3 flex-wrap">
                                     <h4 className="font-black text-slate-900 uppercase tracking-tight italic text-lg">
-                                        Draf Usulan Revisi Anggaran
+                                        {activePlan?.status === 'PENDING' ? 'Usulan Revisi Telah Dikirim ke Yayasan' : 'Draf Usulan Revisi Anggaran'}
                                     </h4>
+                                    {activePlan?.status === 'PENDING' ? (
+                                        <span className="px-3 py-1 bg-amber-100 text-amber-800 rounded-full font-black text-[9px] uppercase tracking-wider animate-pulse">
+                                            Menunggu Review / ACC Yayasan
+                                        </span>
+                                    ) : (
+                                        <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full font-black text-[9px] uppercase tracking-wider">
+                                            Mode Pengeditan Draf
+                                        </span>
+                                    )}
                                     {revisionDiff === 0 ? (
                                         <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full font-black text-[9px] uppercase tracking-wider">
                                             Pergeseran Anggaran (Zero-Sum)
@@ -4743,7 +4753,9 @@ function RABContent() {
                                     )}
                                 </div>
                                 <p className="text-slate-500 text-xs font-medium mt-1">
-                                    Anda sedang melakukan perubahan pada anggaran aktif. Data realisasi/belanja riil tidak akan terpengaruh sebelum usulan ini disetujui Yayasan.
+                                    {activePlan?.status === 'PENDING'
+                                        ? 'Usulan revisi anggaran telah dikirim ke Yayasan dan sedang menunggu verifikasi/ACC. Realisasi belanja tetap memakai anggaran sah sebelumnya.'
+                                        : 'Anda sedang melakukan perubahan pada anggaran aktif. Klik "Kirim Usulan ke Yayasan" jika sudah selesai mengedit.'}
                                 </p>
                                 <div className="flex items-center gap-6 mt-4 flex-wrap">
                                     <div>
@@ -4765,14 +4777,37 @@ function RABContent() {
                                 </div>
                             </div>
                         </div>
-                        <button
-                            onClick={handleDeleteRevision}
-                            disabled={isSaving}
-                            className="self-start md:self-center px-6 py-3.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center gap-2"
-                        >
-                            <Trash2 size={14} />
-                            Hapus Draf Revisi
-                        </button>
+                        <div className="flex items-center gap-3 flex-wrap self-start md:self-center">
+                            {activePlan?.status === 'PENDING' ? (
+                                !isSuperAdmin && (
+                                    <button
+                                        onClick={handleCancelSubmission}
+                                        disabled={isSaving}
+                                        className="px-6 py-3.5 bg-amber-100 text-amber-800 hover:bg-amber-200 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                                    >
+                                        <RotateCcw size={14} />
+                                        Tarik Pengajuan
+                                    </button>
+                                )
+                            ) : (
+                                <button
+                                    onClick={handleSubmitReview}
+                                    disabled={isSaving}
+                                    className="px-6 py-3.5 bg-blue-600 text-white hover:bg-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-md active:scale-95 flex items-center gap-2"
+                                >
+                                    <Send size={14} />
+                                    Kirim Usulan ke Yayasan
+                                </button>
+                            )}
+                            <button
+                                onClick={handleDeleteRevision}
+                                disabled={isSaving}
+                                className="px-6 py-3.5 bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                            >
+                                <Trash2 size={14} />
+                                Hapus Draf
+                            </button>
+                        </div>
                     </div>
                 )}
                 {/* Advanced Filter Bar */}
@@ -5536,10 +5571,30 @@ function RABContent() {
                             <button
                                 onClick={handleSave}
                                 disabled={isSaving}
-                                className="group flex items-center gap-4 bg-white text-slate-900 px-10 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
+                                className="group flex items-center gap-4 bg-white text-slate-900 px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl disabled:opacity-50"
                             >
                                 <Save size={20} className="text-blue-600 group-hover:rotate-12 transition-transform" />
                                 {isSaving ? 'MEMPROSES...' : 'SIMPAN SEMUA DATA'}
+                            </button>
+                        )}
+                        {((!isLocked && activePlan?.status === 'DRAFT') || (hasRevision && activePlan?.status === 'DRAFT')) && !isConsolidation && (
+                            <button
+                                onClick={handleSubmitReview}
+                                disabled={isSaving}
+                                className="group flex items-center gap-4 bg-blue-600 hover:bg-slate-900 text-white px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                            >
+                                <Send size={20} className="group-hover:translate-x-1 transition-transform" />
+                                {hasRevision ? 'KIRIM USULAN REVISI KE YAYASAN' : 'AJUKAN RAB KE YAYASAN'}
+                            </button>
+                        )}
+                        {activePlan?.status === 'PENDING' && !isConsolidation && !isSuperAdmin && (
+                            <button
+                                onClick={handleCancelSubmission}
+                                disabled={isSaving}
+                                className="group flex items-center gap-4 bg-amber-500 hover:bg-amber-600 text-white px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                            >
+                                <RotateCcw size={20} />
+                                BATALKAN PENGAJUAN (KEMBALI KE DRAFT)
                             </button>
                         )}
                         {activePlan?.status === 'APPROVED' && !hasRevision && !isConsolidation && (
@@ -5716,8 +5771,16 @@ function RABContent() {
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Pengajuan</p>
                         <div className="flex items-center justify-between">
-                            <p className={`font-black uppercase tracking-tight text-[11px] ${(activePlan.status === 'APPROVED' || activePlan.status === 'PENDING') ? 'text-indigo-600' : 'text-rose-600'}`}>
+                            <p className={`font-black uppercase tracking-tight text-[11px] ${
+                                hasRevision
+                                    ? (activePlan.status === 'PENDING' ? 'text-amber-600' : 'text-blue-600')
+                                    : ((activePlan.status === 'APPROVED' || activePlan.status === 'PENDING') ? 'text-indigo-600' : 'text-rose-600')
+                            }`}>
                                 {(() => {
+                                    if (hasRevision) {
+                                        if (activePlan.status === 'PENDING') return 'USULAN REVISI MENUNGGU ACC YAYASAN';
+                                        return 'DRAF USULAN REVISI (BELUM DIKIRIM)';
+                                    }
                                     if (!activePlan || !activePlan.expense) return activePlan.status === 'APPROVED' ? 'Disetujui' : (activePlan.status === 'PENDING' ? 'Menunggu Review' : 'Draft / Belum Dikirim');
                                     
                                     let approvedCount = 0;
