@@ -81,22 +81,23 @@ export default function BudgetRow({
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-black text-slate-800 tracking-tight text-sm truncate">{data.name}</span>
                                         {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase border shadow-sm ${
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase border shadow-2xs whitespace-nowrap ${
                                                 data.totalNetChange > 0 
-                                                    ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                                                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                                    ? 'bg-amber-500 text-white border-amber-600' 
+                                                    : 'bg-emerald-600 text-white border-emerald-700'
                                             }`}>
-                                                Δ Usulan Revisi: {data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}
+                                                <span>Revisi:</span>
+                                                <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
                                             </span>
                                         )}
                                         {hasUnbalancedComponents && (
-                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
                                                 <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
                                             </span>
                                         )}
                                     </div>
                                     {data.status && (
-                                        <span className={`w-fit px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest mt-1 ${
+                                        <span className={`w-fit px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest mt-1 whitespace-nowrap ${
                                             data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
                                             (data.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-slate-100 text-slate-500 border border-slate-200')
                                         }`}>
@@ -175,40 +176,48 @@ export default function BudgetRow({
                 ) : (
                     <>
                         <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" colSpan={nameColSpan}>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-3 py-1">
                                 <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
                                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </span>
-                                <div className="flex flex-col">
+                                <div className="flex flex-col min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
+                                        <span className="font-black text-slate-800 tracking-tight text-sm">{data.name}</span>
                                         {data.typeLabel && (
-                                            <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 uppercase tracking-wider">
-                                                {data.typeLabel}
+                                            <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 uppercase tracking-wider whitespace-nowrap">
+                                                {data.typeLabel.replace(/\s*\(USULAN REVISI\)/i, '')}
                                             </span>
                                         )}
-                                        {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase border shadow-sm ${
+                                        {data.totalNetChange !== undefined && data.totalNetChange !== 0 ? (
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase border shadow-2xs whitespace-nowrap ${
                                                 data.totalNetChange > 0 
-                                                    ? 'bg-amber-100 text-amber-900 border-amber-300' 
-                                                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                                    ? 'bg-amber-500 text-white border-amber-600' 
+                                                    : 'bg-emerald-600 text-white border-emerald-700'
                                             }`}>
-                                                Δ Total Usulan: {data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}
+                                                <span>Revisi:</span>
+                                                <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
+                                            </span>
+                                        ) : (
+                                            data.typeLabel?.includes('USULAN REVISI') && (
+                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase bg-amber-100 text-amber-900 border border-amber-200 whitespace-nowrap">
+                                                    Revisi
+                                                </span>
+                                            )
+                                        )}
+                                        {data.status && (
+                                            <span className={`w-fit px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${
+                                                data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                                                (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-slate-50 text-slate-400 border border-slate-200')
+                                            }`}>
+                                                {data.status === 'APPROVED' ? '● Disetujui' : (data.status === 'PENDING' ? '● Menunggu Review' : '● Draft')}
                                             </span>
                                         )}
                                         {hasUnbalancedComponents && (
-                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
                                                 <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
                                             </span>
                                         )}
                                     </div>
-                                    {data.status && (
-                                        <span className={`w-fit px-2 py-0.5 rounded-full text-[7px] font-black uppercase tracking-widest mt-0.5 ${data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600' :
-                                            (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600' : 'bg-slate-50 text-slate-400')
-                                            }`}>
-                                            {data.status === 'APPROVED' ? 'Disetujui' : (data.status === 'PENDING' ? 'Menunggu Review' : 'Draft')}
-                                        </span>
-                                    )}
                                 </div>
                             </div>
                         </td>
@@ -251,27 +260,28 @@ export default function BudgetRow({
                             onClick={() => hasSubLevel && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
                         >
                             <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '44px' }} colSpan={showSemesterColumns ? 1 : nameColSpan}>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 py-1">
                                     <span className="text-slate-300">└</span>
                                     {hasSubLevel && (
                                         <span className="text-indigo-400 group-hover:text-indigo-600">
                                             {isDetailExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
                                         </span>
                                     )}
-                                    <span className={`${hasSubLevel ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px] italic`}>
+                                    <span className={`${hasSubLevel ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px] italic whitespace-nowrap`}>
                                         {item.name}
                                     </span>
                                     {item.netChange !== undefined && item.netChange !== 0 && (
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase border shadow-sm ${
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-tight uppercase border whitespace-nowrap shadow-2xs ${
                                             item.netChange > 0 
-                                                ? 'bg-amber-50 text-amber-900 border-amber-300' 
-                                                : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                                ? 'bg-amber-100 text-amber-900 border-amber-300' 
+                                                : 'bg-emerald-100 text-emerald-900 border-emerald-300'
                                         }`}>
-                                            Δ Perubahan Belanja: {item.netChange > 0 ? `+${formatCurrency(item.netChange)}` : `-${formatCurrency(Math.abs(item.netChange))}`}
+                                            <span>Revisi:</span>
+                                            <span className="font-extrabold">{item.netChange > 0 ? `+${formatCurrency(item.netChange)}` : `-${formatCurrency(Math.abs(item.netChange))}`}</span>
                                         </span>
                                     )}
                                     {itemHasUnbalanced && (
-                                        <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                        <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
                                             <AlertCircle size={8} strokeWidth={3} /> Belum Seimbang
                                         </span>
                                     )}

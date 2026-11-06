@@ -3799,7 +3799,7 @@ function RABContent() {
                         <table className="w-full border-separate border-spacing-y-2">
                             <thead>
                                 <tr className="text-slate-400/80 text-[10px] font-black uppercase tracking-[0.2em] italic">
-                                    <th className="px-6 py-2 text-left">Unit / Bidang</th>
+                                    <th className="px-6 py-2 text-left min-w-[300px]">Unit / Bidang</th>
                                     <th className="px-6 py-2 text-right">Limit (RAP)</th>
                                     <th className="px-6 py-2 text-right">Total RAB</th>
                                     <th className="px-6 py-2 text-right">Aksi</th>
@@ -3975,7 +3975,7 @@ function RABContent() {
                                         const rowData = {
                                             id: plan.id,
                                             name: unit?.name || 'Unknown',
-                                            typeLabel: (isBOSPlan ? 'BOS' : 'YAYASAN') + (hasAnyChange || isRevision ? ' (USULAN REVISI)' : ''),
+                                            typeLabel: isBOSPlan ? 'BOS' : 'YAYASAN',
                                             totalNetChange,
                                             status: plan.status,
                                             rap: rapLimit,
