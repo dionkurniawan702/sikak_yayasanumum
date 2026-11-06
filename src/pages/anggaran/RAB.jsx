@@ -6161,7 +6161,7 @@ function RABContent() {
                         </div>
 
                         {/* Quick Stats Cards in Header */}
-                        <div className="flex-1 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 ${isBosRecipient && fundSourceFilter === 'all' ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
                             <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group flex flex-col justify-center">
                                 <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">
                                     {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
@@ -6179,6 +6179,12 @@ function RABContent() {
                             <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group flex flex-col justify-center">
                                 <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Rencana RAB (Total)</p>
                                 <h3 className="text-2xl font-black italic">{formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}</h3>
+                            </div>
+                            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[2rem] text-white shadow-xl shadow-blue-100 relative overflow-hidden group flex flex-col justify-center">
+                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Sisa RAP</p>
+                                <h3 className={`text-2xl font-black italic ${balance < 0 ? 'text-amber-200 animate-pulse' : 'text-white'}`}>
+                                    {formatRupiah(balance)}
+                                </h3>
                             </div>
                         </div>
                     </div>
