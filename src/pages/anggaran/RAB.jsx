@@ -7,7 +7,7 @@ import {
     Send, CheckCircle2, XCircle, AlertCircle, MessageSquare,
     Edit3, PlusCircle, Database, Plus, X, RotateCcw, Package,
     Calculator, Trash2, Pencil, DollarSign, BarChart3, CloudUpload, Eye, EyeOff, Lock, Unlock, CheckSquare, Search,
-    ExternalLink, CheckCheck, Sparkles, Clock, ChevronDown
+    ExternalLink, CheckCheck, Sparkles, Clock, ChevronDown, Check
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import ExcelJS from 'exceljs';
@@ -181,20 +181,25 @@ function RABContent() {
         setCompStatusFilter('ALL');
     }, [editingItem]);
 
-    // Close action menu when clicking outside anywhere on the page
+    // Close action menus & filter dropdowns when clicking outside anywhere on the page
     useEffect(() => {
-        if (!openActionMenuId) return;
+        if (!openActionMenuId && !isMonthDropdownOpen && !isProgramDropdownOpen) return;
         const handleGlobalClick = (e) => {
-            if (!e.target.closest('.action-menu-container')) {
+            if (!e.target.closest('.action-menu-container') && !e.target.closest('.filter-dropdown-container')) {
                 setOpenActionMenuId(null);
+                setIsMonthDropdownOpen(false);
+                setIsProgramDropdownOpen(false);
             }
         };
         window.addEventListener('click', handleGlobalClick);
         return () => window.removeEventListener('click', handleGlobalClick);
-    }, [openActionMenuId]);
+    }, [openActionMenuId, isMonthDropdownOpen, isProgramDropdownOpen]);
 
     const [filterMonth, setFilterMonth] = useState(null); // monthId (e.g. 2026-07)
     const [filterProgram, setFilterProgram] = useState(null); // programId
+    const [isMonthDropdownOpen, setIsMonthDropdownOpen] = useState(false);
+    const [isProgramDropdownOpen, setIsProgramDropdownOpen] = useState(false);
+    const [programSearch, setProgramSearch] = useState('');
     const [isAddendumMode, setIsAddendumMode] = useState(false);
 
     // States for Sarpras Asset Verification View
@@ -4771,36 +4776,172 @@ function RABContent() {
 
                         <div className="h-6 w-px bg-slate-200 shrink-0 mx-1" />
 
-                        {/* Month Filter Pill */}
-                        <div className="relative flex items-center bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shrink-0">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Bulan:</span>
-                            <select
-                                value={filterMonth || ''}
-                                onChange={(e) => setFilterMonth(e.target.value || null)}
-                                className="bg-transparent border-0 p-0 pr-6 text-[10px] font-black uppercase tracking-wider text-slate-700 outline-none cursor-pointer appearance-none"
+                        {/* Custom Month Filter Dropdown */}
+                        <div className="relative inline-block filter-dropdown-container">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsMonthDropdownOpen(prev => !prev);
+                                    setIsProgramDropdownOpen(false);
+                                }}
+                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all border shadow-2xs select-none shrink-0 cursor-pointer ${
+                                    filterMonth 
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
+                                        : (isMonthDropdownOpen 
+                                            ? 'bg-white text-slate-800 border-blue-400 ring-2 ring-blue-100' 
+                                            : 'bg-slate-50/90 hover:bg-slate-100 text-slate-700 border-slate-200/80')
+                                }`}
                             >
-                                <option value="">SELURUH TAHUN (TOTAL)</option>
-                                {monthsOptions.map(m => (
-                                    <option key={m.id} value={m.id}>{m.name.toUpperCase()}</option>
-                                ))}
-                            </select>
-                            <ChevronDown size={13} className="text-slate-400 absolute right-2.5 pointer-events-none shrink-0" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Bulan:</span>
+                                <span className="text-[10px] uppercase tracking-wider font-black truncate max-w-[170px]">
+                                    {filterMonth ? (monthsOptions.find(m => m.id === filterMonth)?.name.toUpperCase() || filterMonth) : 'SELURUH TAHUN (TOTAL)'}
+                                </span>
+                                <ChevronDown size={13} className={`text-slate-400 transition-transform duration-200 shrink-0 ${isMonthDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+                            </button>
+
+                            {isMonthDropdownOpen && (
+                                <div 
+                                    className="absolute left-0 top-full mt-2 z-[200] w-64 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 filter-dropdown-container"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="max-h-60 overflow-y-auto space-y-0.5 p-1 pr-1.5" style={{ scrollbarWidth: 'thin' }}>
+                                        <button
+                                            onClick={() => {
+                                                setFilterMonth(null);
+                                                setIsMonthDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[11px] font-black transition-all cursor-pointer ${
+                                                !filterMonth 
+                                                    ? 'bg-blue-600 text-white shadow-sm' 
+                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            <span>SELURUH TAHUN (TOTAL)</span>
+                                            {!filterMonth && <Check size={14} strokeWidth={3} />}
+                                        </button>
+
+                                        {monthsOptions.map(m => {
+                                            const isSelected = filterMonth === m.id;
+                                            return (
+                                                <button
+                                                    key={m.id}
+                                                    onClick={() => {
+                                                        setFilterMonth(m.id);
+                                                        setIsMonthDropdownOpen(false);
+                                                    }}
+                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[11px] font-bold transition-all cursor-pointer ${
+                                                        isSelected 
+                                                            ? 'bg-blue-50 text-blue-700 font-black' 
+                                                            : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                                                    }`}
+                                                >
+                                                    <span>{m.name.toUpperCase()}</span>
+                                                    {isSelected && <Check size={14} className="text-blue-600 shrink-0" strokeWidth={3} />}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Program Filter Pill */}
-                        <div className="relative flex items-center bg-slate-50/90 hover:bg-slate-100/80 border border-slate-200/80 rounded-xl px-3 py-1.5 focus-within:ring-2 focus-within:ring-blue-100 focus-within:border-blue-400 transition-all shrink-0 max-w-[280px]">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest mr-2 shrink-0">Program:</span>
-                            <select
-                                value={filterProgram || ''}
-                                onChange={(e) => setFilterProgram(e.target.value || null)}
-                                className="bg-transparent border-0 p-0 pr-6 text-[10px] font-black uppercase tracking-wider text-slate-700 outline-none cursor-pointer appearance-none truncate"
+                        {/* Custom Program Filter Dropdown */}
+                        <div className="relative inline-block filter-dropdown-container">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsProgramDropdownOpen(prev => !prev);
+                                    setIsMonthDropdownOpen(false);
+                                    setProgramSearch('');
+                                }}
+                                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all border shadow-2xs select-none shrink-0 max-w-[280px] cursor-pointer ${
+                                    filterProgram 
+                                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' 
+                                        : (isProgramDropdownOpen 
+                                            ? 'bg-white text-slate-800 border-blue-400 ring-2 ring-blue-100' 
+                                            : 'bg-slate-50/90 hover:bg-slate-100 text-slate-700 border-slate-200/80')
+                                }`}
                             >
-                                <option value="">SEMUA PROGRAM</option>
-                                {allPrograms.map(p => (
-                                    <option key={p.id} value={p.id}>{p.name.toUpperCase()}</option>
-                                ))}
-                            </select>
-                            <ChevronDown size={13} className="text-slate-400 absolute right-2.5 pointer-events-none shrink-0" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Program:</span>
+                                <span className="text-[10px] uppercase tracking-wider font-black truncate max-w-[170px]">
+                                    {filterProgram ? (allPrograms.find(p => p.id === filterProgram)?.name.toUpperCase() || 'SEMUA PROGRAM') : 'SEMUA PROGRAM'}
+                                </span>
+                                <ChevronDown size={13} className={`text-slate-400 transition-transform duration-200 shrink-0 ${isProgramDropdownOpen ? 'rotate-180 text-blue-600' : ''}`} />
+                            </button>
+
+                            {isProgramDropdownOpen && (
+                                <div 
+                                    className="absolute left-0 top-full mt-2 z-[200] w-80 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-150 filter-dropdown-container"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {/* Search Input for Programs */}
+                                    <div className="p-1 pb-1.5 border-b border-slate-100">
+                                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200/80 rounded-xl focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-100 transition-all">
+                                            <Search size={13} className="text-slate-400 shrink-0" />
+                                            <input
+                                                type="text"
+                                                placeholder="Cari program..."
+                                                value={programSearch}
+                                                onChange={(e) => setProgramSearch(e.target.value)}
+                                                className="w-full bg-transparent text-xs font-bold text-slate-800 placeholder-slate-400 outline-none"
+                                                autoFocus
+                                            />
+                                            {programSearch && (
+                                                <button onClick={() => setProgramSearch('')} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                                                    <X size={12} />
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* List of Programs */}
+                                    <div className="max-h-64 overflow-y-auto space-y-0.5 p-1 pr-1.5" style={{ scrollbarWidth: 'thin' }}>
+                                        <button
+                                            onClick={() => {
+                                                setFilterProgram(null);
+                                                setIsProgramDropdownOpen(false);
+                                            }}
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[11px] font-black transition-all cursor-pointer ${
+                                                !filterProgram 
+                                                    ? 'bg-blue-600 text-white shadow-sm' 
+                                                    : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                            }`}
+                                        >
+                                            <span>SEMUA PROGRAM</span>
+                                            {!filterProgram && <Check size={14} strokeWidth={3} />}
+                                        </button>
+
+                                        {allPrograms
+                                            .filter(p => !programSearch || p.name.toLowerCase().includes(programSearch.toLowerCase()))
+                                            .map(p => {
+                                                const isSelected = filterProgram === p.id;
+                                                return (
+                                                    <button
+                                                        key={p.id}
+                                                        onClick={() => {
+                                                            setFilterProgram(p.id);
+                                                            setIsProgramDropdownOpen(false);
+                                                        }}
+                                                        className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-[11px] font-bold transition-all cursor-pointer ${
+                                                            isSelected 
+                                                                ? 'bg-blue-50 text-blue-700 font-black' 
+                                                                : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
+                                                        }`}
+                                                    >
+                                                        <span className="truncate pr-2">{p.name.toUpperCase()}</span>
+                                                        {isSelected && <Check size={14} className="text-blue-600 shrink-0" strokeWidth={3} />}
+                                                    </button>
+                                                );
+                                            })}
+
+                                        {allPrograms.filter(p => !programSearch || p.name.toLowerCase().includes(programSearch.toLowerCase())).length === 0 && (
+                                            <div className="py-6 text-center text-xs font-bold text-slate-400 italic">
+                                                Tidak ada program yang cocok
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Clear Filter Button */}
