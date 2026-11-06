@@ -520,14 +520,9 @@ export default function BudgetRow({
                                         <>
                                             <td className="budget-cell budget-cell-number text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <span className={`text-[10px] font-black italic ${isModified && effectiveOldHarga !== undefined && effectiveOldHarga !== comp.harga ? 'text-amber-800 font-black' : 'text-slate-400'}`}>
+                                                    <span className={`text-[10px] font-black italic ${isModified ? 'text-amber-800 font-black' : 'text-slate-400'}`}>
                                                         @{formatCurrency(comp.harga)}
                                                     </span>
-                                                    {isModified && effectiveOldHarga !== undefined && effectiveOldHarga !== comp.harga && (
-                                                        <span className="text-[8px] line-through text-slate-400 font-bold whitespace-nowrap">
-                                                            Semula: @{formatCurrency(effectiveOldHarga)}
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </td>
                                             <td className="budget-cell budget-cell-number text-right">
@@ -535,16 +530,6 @@ export default function BudgetRow({
                                                     <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : (isModified ? 'text-amber-900 font-black' : 'text-slate-800')}`}>
                                                         {formatCurrency(comp.total)}
                                                     </span>
-                                                    {isModified && effectiveOldTotal !== undefined && (
-                                                        <div className="flex flex-col items-end mt-0.5">
-                                                            <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
-                                                                Semula: <span className="line-through">{formatCurrency(effectiveOldTotal)}</span>
-                                                            </span>
-                                                            <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${comp.total - effectiveOldTotal >= 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}`}>
-                                                                {comp.total - effectiveOldTotal >= 0 ? `+${formatCurrency(comp.total - effectiveOldTotal)}` : `-${formatCurrency(Math.abs(comp.total - effectiveOldTotal))}`}
-                                                            </span>
-                                                        </div>
-                                                    )}
                                                 </div>
                                             </td>
                                             <td className="budget-cell" />
@@ -554,14 +539,9 @@ export default function BudgetRow({
                                             <td className="budget-cell" /> 
                                             <td className="budget-cell budget-cell-number">
                                                 <div className="flex flex-col items-end pr-2">
-                                                    <span className={`text-[10px] font-black italic ${isModified && effectiveOldHarga !== undefined && effectiveOldHarga !== comp.harga ? 'text-amber-800 font-black' : 'text-slate-400'}`}>
+                                                    <span className={`text-[10px] font-black italic ${isModified ? 'text-amber-800 font-black' : 'text-slate-400'}`}>
                                                         @{formatCurrency(comp.harga)}
                                                     </span>
-                                                    {isModified && effectiveOldHarga !== undefined && effectiveOldHarga !== comp.harga && (
-                                                        <span className="text-[8px] line-through text-slate-400 font-bold whitespace-nowrap">
-                                                            Semula: @{formatCurrency(effectiveOldHarga)}
-                                                        </span>
-                                                    )}
                                                 </div>
                                             </td>
                                             <td className="budget-cell budget-cell-number">
@@ -570,16 +550,6 @@ export default function BudgetRow({
                                                         <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : (isModified ? 'text-amber-900 font-black' : 'text-slate-800')}`}>
                                                             {formatCurrency(comp.total)}
                                                         </span>
-                                                        {isModified && effectiveOldTotal !== undefined && (
-                                                            <div className="flex flex-col items-end mt-0.5">
-                                                                <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
-                                                                    Semula: <span className="line-through">{formatCurrency(effectiveOldTotal)}</span>
-                                                                </span>
-                                                                <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded ${comp.total - effectiveOldTotal >= 0 ? 'bg-amber-100 text-amber-900 border border-amber-300' : 'bg-emerald-100 text-emerald-900 border border-emerald-300'}`}>
-                                                                    {comp.total - effectiveOldTotal >= 0 ? `+${formatCurrency(comp.total - effectiveOldTotal)}` : `-${formatCurrency(Math.abs(comp.total - effectiveOldTotal))}`}
-                                                                </span>
-                                                            </div>
-                                                        )}
                                                     </div>
                                                 </div>
                                             </td>
