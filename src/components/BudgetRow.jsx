@@ -166,8 +166,22 @@ export default function BudgetRow({
                                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </span>
                                 <div className="flex flex-col">
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-black text-slate-800 tracking-tight">{data.name}</span>
+                                        {data.typeLabel && (
+                                            <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2.5 py-0.5 rounded-full border border-indigo-200 uppercase tracking-wider">
+                                                {data.typeLabel}
+                                            </span>
+                                        )}
+                                        {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase border shadow-sm ${
+                                                data.totalNetChange > 0 
+                                                    ? 'bg-amber-100 text-amber-900 border-amber-300' 
+                                                    : 'bg-emerald-100 text-emerald-900 border-emerald-300'
+                                            }`}>
+                                                Δ Total Usulan: {data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}
+                                            </span>
+                                        )}
                                         {hasUnbalancedComponents && (
                                             <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
                                                 <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
@@ -188,7 +202,14 @@ export default function BudgetRow({
                             {formatCurrency(data.rap)}
                         </td>
                         <td className="budget-cell budget-cell-number font-bold text-slate-500 text-xs italic">
-                            {formatCurrency(data.rab)}
+                            <div className="flex flex-col items-end">
+                                <span className="font-black text-slate-900">{formatCurrency(data.rab)}</span>
+                                {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
+                                    <span className="text-[9px] text-slate-400 font-bold line-through">
+                                        Semula: {formatCurrency((data.rab || 0) - data.totalNetChange)}
+                                    </span>
+                                )}
+                            </div>
                         </td>
                         <td className={`budget-cell budget-cell-number budget-cell-sisa ${isActionOpen ? 'relative z-[100]' : ''}`}>
                             <div className="flex items-center justify-end gap-3">
@@ -226,6 +247,15 @@ export default function BudgetRow({
                                     <span className={`${hasSubLevel ? 'text-slate-700 font-bold' : 'text-slate-500'} text-[12px] italic`}>
                                         {item.name}
                                     </span>
+                                    {item.netChange !== undefined && item.netChange !== 0 && (
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[9px] font-black tracking-wider uppercase border shadow-sm ${
+                                            item.netChange > 0 
+                                                ? 'bg-amber-50 text-amber-900 border-amber-300' 
+                                                : 'bg-emerald-50 text-emerald-900 border-emerald-300'
+                                        }`}>
+                                            Δ Perubahan Belanja: {item.netChange > 0 ? `+${formatCurrency(item.netChange)}` : `-${formatCurrency(Math.abs(item.netChange))}`}
+                                        </span>
+                                    )}
                                     {itemHasUnbalanced && (
                                         <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-widest" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
                                             <AlertCircle size={8} strokeWidth={3} /> Belum Seimbang
@@ -244,6 +274,11 @@ export default function BudgetRow({
                                     <td className="budget-cell budget-cell-number text-right">
                                         <div className="flex flex-col items-end">
                                             <span className="text-[10px] font-bold text-slate-700 italic">{formatCurrency(item.rab)}</span>
+                                            {item.netChange !== undefined && item.netChange !== 0 && (
+                                                <span className="text-[8px] text-slate-400 font-bold line-through">
+                                                    Semula: {formatCurrency(item.oldRab ?? (item.rab - item.netChange))}
+                                                </span>
+                                            )}
                                             <span className={`text-[10px] font-black italic ${item.sisa < 0 ? 'text-rose-500' : 'text-blue-500'}`}>
                                                 Sisa: {formatRupiahShort(item.sisa, formatCurrency)}
                                             </span>
@@ -254,7 +289,14 @@ export default function BudgetRow({
                             ) : (
                                 <>
                                     <td className="budget-cell budget-cell-number text-slate-400 text-[10px] font-bold italic">
-                                        {formatCurrency(item.rab)}
+                                        <div className="flex flex-col items-end">
+                                            <span>{formatCurrency(item.rab)}</span>
+                                            {item.netChange !== undefined && item.netChange !== 0 && (
+                                                <span className="text-[8px] text-slate-400 font-bold line-through">
+                                                    Semula: {formatCurrency(item.oldRab ?? (item.rab - item.netChange))}
+                                                </span>
+                                            )}
+                                        </div>
                                     </td>
                                     <td className="budget-cell budget-cell-number budget-cell-sisa">
                                         <div className="flex items-center justify-end pr-[148px]">
@@ -283,7 +325,7 @@ export default function BudgetRow({
                                         <div className="flex items-center gap-3 py-1.5">
                                             {selectable && (
                                                 isReviewMode 
-                                                    ? comp.status === 'PENDING' 
+                                                    ? (comp.status === 'PENDING' || comp.diffStatus === 'MODIFIED' || comp.diffStatus === 'ADDED')
                                                     : (isSuperAdmin 
                                                         ? (comp.status === 'APPROVED' || comp.status === 'PENDING' || comp.status === 'DRAFT' || comp.status === 'REJECTED')
                                                         : (comp.status === 'DRAFT' || comp.status === 'REJECTED')
@@ -298,9 +340,21 @@ export default function BudgetRow({
                                                 />
                                             )}
                                             <div className="flex flex-col">
-                                                 <span className={`text-[11px] font-bold leading-snug ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
-                                                     {comp.label}
-                                                 </span>
+                                                 <div className="flex items-center gap-2 flex-wrap">
+                                                     <span className={`text-[11px] font-bold leading-snug ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-700'}`}>
+                                                         {comp.label}
+                                                     </span>
+                                                     {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
+                                                         <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500 text-white shadow-xs">
+                                                             🔄 Usulan Revisi: {formatCurrency(comp.oldTotal)} ➔ {formatCurrency(comp.total)} ({comp.total - comp.oldTotal >= 0 ? `+${formatCurrency(comp.total - comp.oldTotal)}` : `-${formatCurrency(Math.abs(comp.total - comp.oldTotal))}`})
+                                                         </span>
+                                                     )}
+                                                     {comp.diffStatus === 'ADDED' && (
+                                                         <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-600 text-white shadow-xs">
+                                                             + Usulan Belanja Baru ({formatCurrency(comp.total)})
+                                                         </span>
+                                                     )}
+                                                 </div>
                                                  {comp.spent > 0 && (
                                                      <div className="flex items-center gap-1.5 mt-0.5">
                                                           <span className="text-[9px] font-bold text-rose-500 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 whitespace-nowrap">
@@ -359,9 +413,17 @@ export default function BudgetRow({
                                                     )}
                                                     {/* Status Pengajuan & Persetujuan Yayasan */}
                                                     {(!comp.isAsset || comp.sarprasStatus === 'APPROVED') && (
-                                                        comp.status === 'APPROVED' ? (
-                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-500 text-white whitespace-nowrap" title="Anggaran disetujui oleh Yayasan (RAB Sah)">
-                                                                ✓ Disetujui Yayasan
+                                                        comp.diffStatus === 'MODIFIED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500 text-white whitespace-nowrap shadow-xs" title="Komponen diubah dan sedang menunggu telaah revisi dari Yayasan">
+                                                                ⏳ Menunggu ACC Perubahan
+                                                            </span>
+                                                        ) : comp.diffStatus === 'ADDED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-600 text-white whitespace-nowrap shadow-xs" title="Komponen baru diajukan">
+                                                                ⏳ Menunggu ACC Belanja Baru
+                                                            </span>
+                                                        ) : comp.status === 'APPROVED' ? (
+                                                            <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap" title="Anggaran disetujui oleh Yayasan (RAB Sah)">
+                                                                ✓ Disetujui (Tetap)
                                                             </span>
                                                         ) : comp.status === 'PENDING' ? (
                                                             <span className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-indigo-500 text-white whitespace-nowrap" title="Sedang menunggu telaah dan persetujuan Yayasan">
@@ -410,19 +472,31 @@ export default function BudgetRow({
                                     {showSemesterColumns ? (
                                         <>
                                             <td className="budget-cell budget-cell-number text-right">
-                                                <span className="text-[10px] font-black text-slate-400 italic">
-                                                    @{formatCurrency(comp.harga)}
-                                                </span>
+                                                <div className="flex flex-col items-end">
+                                                    <span className={`text-[10px] font-black italic ${comp.diffStatus === 'MODIFIED' && comp.oldHarga !== undefined && comp.oldHarga !== comp.harga ? 'text-amber-700' : 'text-slate-400'}`}>
+                                                        @{formatCurrency(comp.harga)}
+                                                    </span>
+                                                    {comp.diffStatus === 'MODIFIED' && comp.oldHarga !== undefined && comp.oldHarga !== comp.harga && (
+                                                        <span className="text-[8px] line-through text-slate-400 font-bold whitespace-nowrap">
+                                                            Semula: @{formatCurrency(comp.oldHarga)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="budget-cell budget-cell-number text-right">
                                                 <div className="flex flex-col items-end">
-                                                    <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                                    <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : (comp.diffStatus === 'MODIFIED' ? 'text-amber-700 font-extrabold' : 'text-slate-800')}`}>
                                                         {formatCurrency(comp.total)}
                                                     </span>
                                                     {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
-                                                        <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
-                                                            Lama: {formatCurrency(comp.oldTotal)}
-                                                        </span>
+                                                        <div className="flex flex-col items-end mt-0.5">
+                                                            <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
+                                                                Semula: <span className="line-through">{formatCurrency(comp.oldTotal)}</span>
+                                                            </span>
+                                                            <span className={`text-[8px] font-extrabold px-1 rounded ${comp.total - comp.oldTotal >= 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                                                                {comp.total - comp.oldTotal >= 0 ? `+${formatCurrency(comp.total - comp.oldTotal)}` : `-${formatCurrency(Math.abs(comp.total - comp.oldTotal))}`}
+                                                            </span>
+                                                        </div>
                                                     )}
                                                 </div>
                                             </td>
@@ -432,20 +506,32 @@ export default function BudgetRow({
                                         <>
                                             <td className="budget-cell" /> 
                                             <td className="budget-cell budget-cell-number">
-                                                <span className="text-[10px] font-black text-slate-400 italic">
-                                                    @{formatCurrency(comp.harga)}
-                                                </span>
+                                                <div className="flex flex-col items-end pr-2">
+                                                    <span className={`text-[10px] font-black italic ${comp.diffStatus === 'MODIFIED' && comp.oldHarga !== undefined && comp.oldHarga !== comp.harga ? 'text-amber-700' : 'text-slate-400'}`}>
+                                                        @{formatCurrency(comp.harga)}
+                                                    </span>
+                                                    {comp.diffStatus === 'MODIFIED' && comp.oldHarga !== undefined && comp.oldHarga !== comp.harga && (
+                                                        <span className="text-[8px] line-through text-slate-400 font-bold whitespace-nowrap">
+                                                            Semula: @{formatCurrency(comp.oldHarga)}
+                                                        </span>
+                                                    )}
+                                                </div>
                                             </td>
                                             <td className="budget-cell budget-cell-number">
                                                 <div className="flex items-center justify-end pr-[148px]">
                                                     <div className="flex flex-col items-end">
-                                                        <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : 'text-slate-800'}`}>
+                                                        <span className={`text-[11px] font-black italic ${comp.diffStatus === 'DELETED' ? 'line-through text-slate-400' : (comp.diffStatus === 'MODIFIED' ? 'text-amber-700 font-extrabold' : 'text-slate-800')}`}>
                                                             {formatCurrency(comp.total)}
                                                         </span>
                                                         {comp.diffStatus === 'MODIFIED' && comp.oldTotal !== undefined && (
-                                                            <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
-                                                                Lama: {formatCurrency(comp.oldTotal)}
-                                                            </span>
+                                                            <div className="flex flex-col items-end mt-0.5">
+                                                                <span className="text-[8px] text-slate-400 font-bold whitespace-nowrap text-right">
+                                                                    Semula: <span className="line-through">{formatCurrency(comp.oldTotal)}</span>
+                                                                </span>
+                                                                <span className={`text-[8px] font-extrabold px-1 rounded ${comp.total - comp.oldTotal >= 0 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                                                                    {comp.total - comp.oldTotal >= 0 ? `+${formatCurrency(comp.total - comp.oldTotal)}` : `-${formatCurrency(Math.abs(comp.total - comp.oldTotal))}`}
+                                                                </span>
+                                                            </div>
                                                         )}
                                                     </div>
                                                 </div>
