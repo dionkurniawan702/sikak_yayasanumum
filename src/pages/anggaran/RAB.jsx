@@ -875,7 +875,7 @@ function RABContent() {
     // Helper robust untuk membaca realisasi belanja suatu komponen:
     // 1. Cek langsung via componentId (ID paten, ID standar, ID legacy, ID non-revision)
     // 2. Fallback pencocokan Nama/Kategori nota ke rincian untuk bulan-bulan yang sudah dilaporkan & di-ACC Yayasan
-    const getComponentSpent = useCallback((comp, cIdx, posItemId, targetPlanDocId, pPlanId) => {
+    const getComponentSpent = useCallback((comp, cIdx, posItemId, targetPlanDocId, pPlanId, targetUnitId, targetFieldId) => {
         if (!comp) return 0;
         const targetDocId = targetPlanDocId || currentPlanId;
         const oIdx = comp.originalIdx ?? cIdx;
@@ -895,10 +895,10 @@ function RABContent() {
         if (!cLabelNorm) return 0;
 
         // Determine target unit/field
-        let targetField = isField ? fieldId : null;
-        let targetUnit = !isField && !isConsolidation ? selectedUnitId : null;
+        let targetField = targetFieldId !== undefined ? targetFieldId : (isField ? fieldId : null);
+        let targetUnit = targetUnitId !== undefined ? targetUnitId : (!isField && !isConsolidation ? selectedUnitId : null);
         
-        if (isConsolidation && (targetPlanDocId || pPlanId)) {
+        if (!targetUnit && !targetField && (targetPlanDocId || pPlanId)) {
             const ref = targetPlanDocId || pPlanId;
             if (ref.includes('-FIELD-')) {
                 const m = ref.match(/FIELD-([A-Za-z0-9_-]+)/);
@@ -4037,6 +4037,7 @@ function RABContent() {
                                                         else compStatus = plan.status === 'APPROVED' ? 'APPROVED' : (plan.status === 'PENDING' ? 'PENDING' : 'DRAFT');
                                                     }
 
+                                                    const compSpent = getComponentSpent(c, cIdx, id, plan.id, originalPlan?.id, plan.unitId, plan.fieldId);
                                                     return {
                                                         ...c,
                                                         _pIdx: pIdx,
@@ -4045,8 +4046,8 @@ function RABContent() {
                                                         diffStatus,
                                                         oldTotal,
                                                         oldHarga,
-                                                        spent: componentSpending[c.id] || componentSpending[`COMP-${currentPlanId}-${itemMaster.id}-${pIdx}-${cIdx}`] || 0,
-                                                        remaining: (parseFloat(c.total) || 0) - (componentSpending[c.id] || componentSpending[`COMP-${currentPlanId}-${itemMaster.id}-${pIdx}-${cIdx}`] || 0)
+                                                        spent: compSpent,
+                                                        remaining: (parseFloat(c.total) || 0) - compSpent
                                                     };
                                                 }));
 
@@ -4054,14 +4055,15 @@ function RABContent() {
                                                 if (isRevision && originalPlan && originalPlan !== plan) {
                                                     const deletedComps = origComps.filter(oc => !revComps.some(rc => rc.id === oc.id));
                                                     deletedComps.forEach((dc, idx) => {
+                                                        const dcSpent = getComponentSpent(dc, idx, id, originalPlan?.id || plan.id, originalPlan?.id, plan.unitId, plan.fieldId);
                                                         revComps.push({
                                                             ...dc,
                                                             _pIdx: 0,
                                                             _cIdx: 9999 + idx,
                                                             status: 'APPROVED',
                                                             diffStatus: 'DELETED',
-                                                            spent: componentSpending[dc.id] || 0,
-                                                            remaining: (parseFloat(dc.total) || 0) - (componentSpending[dc.id] || 0)
+                                                            spent: dcSpent,
+                                                            remaining: (parseFloat(dc.total) || 0) - dcSpent
                                                         });
                                                     });
                                                 }
