@@ -4109,11 +4109,15 @@ function RABContent() {
                                             breakdown: breakdownList
                                         };
 
+                                        const menuId = `REVIEW-${plan.id}`;
+                                        const isMenuOpen = openActionMenuId === menuId;
+                                        const isExpanded = !!expandedReviewPlans[plan.id];
+
                                         return (
                                             <BudgetRow
                                                 key={plan.id}
                                                 data={rowData}
-                                                isExpanded={!!expandedReviewPlans[plan.id]}
+                                                isExpanded={isExpanded}
                                                 onToggle={() => toggleReviewPlan(plan.id)}
                                                 formatCurrency={formatCurrency}
                                                 expandedDetailItems={expandedDetailItems}
@@ -4125,27 +4129,80 @@ function RABContent() {
                                                 isSuperAdmin={isSuperAdmin}
                                                 selectedComponents={selectedComponents}
                                                 onComponentToggle={toggleComponentSelection}
+                                                isActionOpen={isMenuOpen}
                                                 actions={
                                                     isSuperAdmin ? (
-                                                        <div className="flex items-center gap-2">
+                                                        <div className="relative inline-block text-left action-menu-container">
                                                             <button
+                                                                type="button"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
-                                                                    handleApproval(plan.id, 'APPROVED');
+                                                                    e.preventDefault();
+                                                                    setIsMonthDropdownOpen(false);
+                                                                    setIsProgramDropdownOpen(false);
+                                                                    setOpenActionMenuId(prev => (prev === menuId ? null : menuId));
                                                                 }}
-                                                                className="px-4 py-1.5 bg-emerald-600 text-white rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-slate-900 transition-all shadow-lg active:scale-95"
+                                                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none active:scale-95 ${
+                                                                    isMenuOpen 
+                                                                        ? 'bg-blue-800 text-white shadow-md ring-2 ring-blue-300' 
+                                                                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                                                                }`}
+                                                                title="Pilihan Aksi Super Admin"
                                                             >
-                                                                ACC SEMUA
+                                                                <span>Aksi</span>
+                                                                <ChevronDown size={14} className={`text-blue-100 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
                                                             </button>
-                                                            <button
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setShowRejectionInput(plan.id);
-                                                                }}
-                                                                className="px-4 py-1.5 bg-rose-100 text-rose-600 rounded-lg font-black text-[9px] uppercase tracking-widest hover:bg-rose-600 hover:text-white transition-all shadow-sm active:scale-95"
-                                                            >
-                                                                REVISI
-                                                            </button>
+
+                                                            {isMenuOpen && (
+                                                                <div 
+                                                                    className="absolute right-0 top-full mt-1.5 z-[150] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 min-w-[200px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container"
+                                                                    onClick={(e) => e.stopPropagation()}
+                                                                >
+                                                                    {/* 1. Lihat Detail */}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            toggleReviewPlan(plan.id);
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                            <Eye size={15} />
+                                                                        </div>
+                                                                        <span>{isExpanded ? 'Tutup Detail' : 'Lihat Detail'}</span>
+                                                                    </button>
+
+                                                                    <div className="h-px bg-slate-100 my-0.5" />
+
+                                                                    {/* 2. ACC Semua */}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            handleApproval(plan.id, 'APPROVED');
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                            <CheckCircle2 size={15} />
+                                                                        </div>
+                                                                        <span>ACC Semua</span>
+                                                                    </button>
+
+                                                                    {/* 3. Revisi */}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setOpenActionMenuId(null);
+                                                                            setShowRejectionInput(plan.id);
+                                                                        }}
+                                                                        className="flex items-center gap-2.5 w-full px-3 py-2 text-left text-xs font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-all group"
+                                                                    >
+                                                                        <div className="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 group-hover:bg-rose-600 group-hover:text-white flex items-center justify-center shrink-0 transition-colors shadow-xs">
+                                                                            <AlertCircle size={15} />
+                                                                        </div>
+                                                                        <span>Revisi</span>
+                                                                    </button>
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     ) : null
                                                 }
