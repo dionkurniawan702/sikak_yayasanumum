@@ -139,10 +139,15 @@ export default function Login() {
                     style={{ clipPath: 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' }}
                 >
                     <p className="text-[10px] font-bold tracking-[0.26em] uppercase text-[#DFB262]">SIKAD DARELIMAN</p>
-                    <h1 className="text-2xl font-serif font-bold text-[#FAF6EC] mt-1.5 leading-snug">
-                        Selamat <span className="italic font-normal">datang kembali.</span>
+                    <h1 className="mt-2 text-left">
+                        <span dir="rtl" lang="ar" className="block text-left text-3xl font-bold text-[#FAF6EC] leading-snug tracking-normal">
+                            أَهْلًا وَسَهْلًا
+                        </span>
+                        <span className="block text-sm font-serif italic font-normal text-[#DFB262] mt-0.5">
+                            Ahlan wa sahlan.
+                        </span>
                     </h1>
-                    <p className="text-xs text-emerald-100/75 mt-1.5 leading-relaxed">
+                    <p className="text-xs text-emerald-100/75 mt-2 leading-relaxed">
                         Sistem Keuangan Dareliman berbasis PSAK 35.
                     </p>
                 </div>
@@ -188,7 +193,7 @@ export default function Login() {
                                         placeholder="Username"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
+                                        className="login-underline-input w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
                                         required
                                     />
                                     <UserIcon
@@ -207,7 +212,7 @@ export default function Login() {
                                         placeholder="Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
+                                        className="login-underline-input w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
                                         required
                                     />
                                     <button
@@ -366,17 +371,21 @@ export default function Login() {
                             {activeView === 'login' ? 'SIKAD DARELIMAN' : 'PUSAT BANTUAN'}
                         </p>
 
-                        <h1 className="text-3xl lg:text-[34px] font-serif font-bold text-[#FAF6EC] mt-3 leading-[1.15]">
+                        <h1 className="mt-3 text-left">
                             {activeView === 'login' ? (
                                 <>
-                                    Selamat <br />
-                                    <span className="italic font-normal text-[#F2EAD5]">datang kembali.</span>
+                                    <span dir="rtl" lang="ar" className="block text-left text-4xl lg:text-[42px] font-bold text-[#FAF6EC] leading-relaxed tracking-normal">
+                                        أَهْلًا وَسَهْلًا
+                                    </span>
+                                    <span className="block text-lg lg:text-xl font-serif italic font-normal text-[#DFB262] mt-0.5">
+                                        Ahlan wa sahlan.
+                                    </span>
                                 </>
                             ) : (
-                                <>
+                                <span className="block text-3xl lg:text-[34px] font-serif font-bold text-[#FAF6EC] leading-[1.15]">
                                     Akses aman <br />
                                     <span className="italic font-normal text-[#F2EAD5]">terkelola pusat.</span>
-                                </>
+                                </span>
                             )}
                         </h1>
 

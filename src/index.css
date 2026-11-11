@@ -80,6 +80,18 @@ body {
   }
 }
 
+/* Blend browser autofill background cleanly into warm ivory login surface */
+.login-underline-input:-webkit-autofill,
+.login-underline-input:-webkit-autofill:hover,
+.login-underline-input:-webkit-autofill:focus,
+.login-underline-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #FCF9F1 inset !important;
+  box-shadow: 0 0 0 1000px #FCF9F1 inset !important;
+  -webkit-text-fill-color: #13261E !important;
+  caret-color: #13261E;
+  transition: background-color 9999s ease-in-out 0s;
+}
+
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: #cbd5e1 transparent;
