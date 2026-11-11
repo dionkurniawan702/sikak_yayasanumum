@@ -132,7 +132,7 @@ export default function Login() {
             <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#C28D38]/15 blur-3xl" />
 
             {/* Main Diagonal Split-Blade Card */}
-            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-[#FCF9F1] shadow-[0_32px_70px_-15px_rgba(0,0,0,0.68)] ring-1 ring-white/15 relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
+            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-[#FCF9F1] shadow-[0_35px_80px_-15px_rgba(0,0,0,0.78)] relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
                 {/* Mobile Top Emerald Header Banner */}
                 <div
                     className="md:hidden bg-gradient-to-br from-[#103D2A] via-[#0B2A1C] to-[#061810] px-7 pt-7 pb-9 text-white relative"
@@ -349,9 +349,9 @@ export default function Login() {
 
                 {/* ANIMATED DIAGONAL EMERALD BLADE (Desktop Only) */}
                 <div
-                    className="hidden md:flex flex-col justify-center absolute top-0 bottom-0 w-[54%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#124530] via-[#0B291C] to-[#06170F] text-white shadow-2xl"
+                    className="hidden md:flex flex-col justify-center absolute -top-px -bottom-px w-[55%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#124530] via-[#0B291C] to-[#06170F] text-white shadow-2xl"
                     style={{
-                        left: activeView === 'login' ? '46%' : '0%',
+                        left: activeView === 'login' ? '45.5%' : '-0.5%',
                         clipPath:
                             activeView === 'login'
                                 ? 'polygon(14% 0%, 100% 0%, 100% 100%, 0% 100%)'
