@@ -126,18 +126,21 @@ export default function Login() {
     };
 
     return (
-        <div className="login-container min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-gradient-to-br from-[#071A12] via-[#0B271B] to-[#05130D]">
+        <div className="login-container min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-gradient-to-br from-[#081C14] via-[#0C281D] to-[#06160F]">
             {/* Ambient Emerald & Soft Gold Glows */}
             <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#157A52]/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#C28D38]/15 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#C28D38]/12 blur-3xl" />
 
             {/* Main Diagonal Split-Blade Card */}
-            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-[#FCF9F1] shadow-[0_35px_80px_-15px_rgba(0,0,0,0.78)] relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
-                {/* Mobile Top Emerald Header Banner */}
+            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-[#0B281B] shadow-[0_28px_90px_-12px_rgba(2,10,6,0.68)] relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
+                {/* Sliding Ivory Cream Backdrop (Desktop Only: keeps opposite curved corners pure dark emerald with zero white edge bleed) */}
                 <div
-                    className="md:hidden bg-gradient-to-br from-[#103D2A] via-[#0B2A1C] to-[#061810] px-7 pt-7 pb-9 text-white relative"
-                    style={{ clipPath: 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' }}
-                >
+                    className="hidden md:block absolute top-0 bottom-0 w-[55%] z-0 bg-[#FCF9F1] transition-all duration-700 ease-in-out"
+                    style={{ left: activeView === 'login' ? '0%' : '45%' }}
+                />
+
+                {/* Mobile Top Emerald Header Banner */}
+                <div className="md:hidden bg-gradient-to-br from-[#103827] via-[#0B281B] to-[#071A12] px-7 pt-7 pb-10 text-white relative">
                     <p className="text-[10px] font-bold tracking-[0.26em] uppercase text-[#DFB262]">SIKAD DARELIMAN</p>
                     <h1
                         className="mt-2 text-left text-4xl sm:text-[42px] text-[#FAF6EC] leading-[1.12] tracking-normal font-normal drop-shadow-sm"
@@ -151,7 +154,7 @@ export default function Login() {
                 </div>
 
                 {/* Desktop & Mobile Panel Wrapper */}
-                <div className="relative flex-1 md:min-h-[500px] flex flex-col md:flex-row">
+                <div className="relative flex-1 md:min-h-[500px] flex flex-col md:flex-row bg-[#FCF9F1] rounded-t-[24px] -mt-4 pt-1 md:bg-transparent md:rounded-none md:mt-0 md:pt-0 z-10">
                     {/* LEFT SLOT: Login Form Panel */}
                     <div
                         className={`w-full md:w-[47%] px-7 py-7 sm:px-10 sm:py-10 flex flex-col justify-center relative z-10 transition-all duration-500 ${
@@ -349,7 +352,7 @@ export default function Login() {
 
                 {/* ANIMATED DIAGONAL EMERALD BLADE (Desktop Only) */}
                 <div
-                    className="hidden md:flex flex-col justify-center absolute -top-px -bottom-px w-[55%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#124530] via-[#0B291C] to-[#06170F] text-white shadow-2xl"
+                    className="hidden md:flex flex-col justify-center absolute -top-px -bottom-px w-[55%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#103827] via-[#0B281B] to-[#071A12] text-white"
                     style={{
                         left: activeView === 'login' ? '45.5%' : '-0.5%',
                         clipPath:
