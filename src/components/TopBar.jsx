@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Bell, Calendar, Search } from 'lucide-react';
+import { Bell, Calendar, Menu, Search, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 const ROUTE_LABELS = {
@@ -39,7 +39,7 @@ const ROUTE_LABELS = {
  * Top Header Bar global bernuansa bersih & lapang (Ferna-inspired).
  * Hanya menampilkan ringkasan konteks aktif dan pemicu Command Palette (Ctrl+K).
  */
-export default function TopBar({ onOpenSearch }) {
+export default function TopBar({ onOpenSearch, isSidebarOpen = false, onToggleMobileMenu }) {
     const { state } = useApp();
     const location = useLocation();
     const navigate = useNavigate();
@@ -87,14 +87,29 @@ export default function TopBar({ onOpenSearch }) {
     return (
         <header className="print:hidden sticky top-0 z-[500] bg-[#F4F7F5]/90 backdrop-blur-sm border-b border-[#E3E9E5] px-4 lg:px-8 py-3">
             <div className="max-w-[1440px] mx-auto flex items-center justify-between gap-4">
-                {/* Left: Greeting & Live Context */}
-                <div className="min-w-0 pl-10 lg:pl-0">
-                    <p className="text-sm font-bold text-[#142920] truncate leading-tight">
-                        {greeting}, <span className="text-[#157A52]">{currentUser?.name || 'Admin'}</span>
-                    </p>
-                    <div className="flex items-center gap-2 text-[11px] font-medium text-[#6A7B73] mt-0.5 truncate">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#157A52] shrink-0" />
-                        <span className="truncate">{todayText} • <span className="font-semibold text-[#3B4F46]">{activeRouteLabel}</span></span>
+                {/* Left: Mobile Drawer Toggle + Greeting & Live Context */}
+                <div className="flex items-center gap-3 min-w-0">
+                    {onToggleMobileMenu && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleMobileMenu();
+                            }}
+                            className="lg:hidden p-2 bg-white hover:bg-[#EFF4F1] border border-[#DCE4DF] rounded-xl text-[#1E3A5F] shadow-[0_1px_2px_rgba(16,32,26,0.03)] transition-colors cursor-pointer shrink-0"
+                            title={isSidebarOpen ? 'Tutup Menu' : 'Buka Menu'}
+                        >
+                            {isSidebarOpen ? <X size={18} /> : <Menu size={18} />}
+                        </button>
+                    )}
+                    <div className="min-w-0">
+                        <p className="text-sm font-bold text-[#142920] truncate leading-tight">
+                            {greeting}, <span className="text-[#157A52]">{currentUser?.name || 'Admin'}</span>
+                        </p>
+                        <div className="flex items-center gap-2 text-[11px] font-medium text-[#6A7B73] mt-0.5 truncate">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#157A52] shrink-0" />
+                            <span className="truncate">{todayText} • <span className="font-semibold text-[#3B4F46]">{activeRouteLabel}</span></span>
+                        </div>
                     </div>
                 </div>
 

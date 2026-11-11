@@ -103,14 +103,14 @@ body {
   background-color: #94a3b8;
 }
 
-/* Clean vertical scrollbar for the airy light sidebar nav */
+/* Clean vertical scrollbar for atmospheric gradient sidebar nav */
 .sidebar-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #CBD5CE transparent;
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-track {
@@ -118,13 +118,13 @@ body {
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-thumb {
-  background: #D1DBD5;
+  background: rgba(255, 255, 255, 0.22);
   border-radius: 9999px;
   transition: background 0.2s ease;
 }
 
 .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #9FB2A7;
+  background: rgba(255, 255, 255, 0.42);
 }
 
 /* Scrollbar at top utility */

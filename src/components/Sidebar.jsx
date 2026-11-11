@@ -446,80 +446,142 @@ export default function Sidebar({
         navigate('/login');
     };
 
+    const formatRoleLabel = (role) => {
+        if (role === 'superadmin') return 'Super Administrator';
+        if (role === 'admin_unit') return 'Admin Unit';
+        if (role === 'admin_bidang') return 'Admin Bidang';
+        return role || 'Pengguna';
+    };
+
+    const getGroupRingClass = (title) => {
+        if (title === 'PERENCANAAN (RAB)') {
+            return 'bg-gradient-to-br from-[#34D399] to-[#157A52] border-emerald-200/80 shadow-[0_0_12px_rgba(52,211,153,0.45)]';
+        }
+        if (title === 'REALISASI ANGGARAN') {
+            return 'bg-gradient-to-br from-[#FB7185] via-[#DF6B45] to-[#F59E0B] border-amber-200/80 shadow-[0_0_12px_rgba(245,158,11,0.45)]';
+        }
+        if (title === 'DATABASE ANGGARAN' || title === 'PENGATURAN' || title === 'PENGATURAN ANGGARAN' || title === 'PENGATURAN SISTEM') {
+            return 'bg-gradient-to-br from-[#2DD4BF] to-[#0D9488] border-teal-200/80 shadow-[0_0_12px_rgba(45,212,191,0.45)]';
+        }
+        return 'bg-gradient-to-br from-[#38BDF8] to-[#2563EB] border-sky-200/80 shadow-[0_0_12px_rgba(56,189,248,0.45)]';
+    };
+
     return (
         <>
         <aside 
-            className={`sidebar fixed inset-y-0 bg-[#F7F9F8] border-r border-[#E3E9E5] w-64 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'} z-[1000] lg:translate-x-0 transition-all duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            className={`sidebar fixed inset-y-0 left-0 w-64 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'} z-[900] lg:z-[1000] transition-all duration-300 flex flex-col overflow-hidden bg-gradient-to-br from-[#0B1E3D] via-[#174673] to-[#1A7385] text-white border-r border-white/10 lg:shadow-[4px_0_24px_rgba(11,30,61,0.16)] ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}
         >
-            {/* Brand + Collapse Toggle (Ferna Light Header) */}
-            <div className={`sidebar-brand shrink-0 ${isCollapsed ? 'px-4 pt-5 pb-3 lg:px-3' : 'px-4 pt-5 pb-3'}`}>
-                <div className={`flex items-center ${isCollapsed ? 'justify-between lg:flex-col lg:gap-2.5' : 'justify-between gap-2.5'}`}>
-                    <div className="flex items-center gap-2.5 min-w-0">
-                        <div className="w-9 h-9 bg-[#157A52] rounded-xl flex items-center justify-center text-white shadow-xs shrink-0">
-                            <Landmark size={18} />
-                        </div>
-                        <div className={`flex flex-col min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            <span className="text-base font-extrabold text-[#13261E] tracking-tight leading-tight truncate">SIKAD</span>
-                            <span className="text-[10px] text-[#6A7B73] font-medium truncate">
-                                Keuangan Dareliman
-                            </span>
-                        </div>
-                    </div>
+            {/* Atmospheric Ambient Glows */}
+            <div className="pointer-events-none absolute -top-16 -left-16 w-60 h-60 rounded-full bg-sky-400/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -right-14 w-56 h-56 rounded-full bg-teal-300/15 blur-3xl" />
 
-                    {onToggleCollapse && (
+            {/* Top Edge: Subtle SIKAD Brand & Collapse Toggle */}
+            <div className={`relative z-10 shrink-0 px-4 pt-3.5 pb-1 flex items-center ${isCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between'}`}>
+                <div className={`flex items-center gap-2 min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                    <div className="w-6 h-6 rounded-lg bg-white/15 border border-white/25 flex items-center justify-center text-white shrink-0">
+                        <Landmark size={13} />
+                    </div>
+                    <span className="text-[11px] font-bold tracking-[0.18em] text-white/85 uppercase truncate">SIKAD</span>
+                </div>
+
+                {onToggleCollapse && (
+                    <button
+                        type="button"
+                        onClick={onToggleCollapse}
+                        className="hidden lg:flex p-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/15 text-white/80 hover:text-white transition-colors cursor-pointer shrink-0"
+                        title={isCollapsed ? 'Perluas Sidebar' : 'Lipat Sidebar'}
+                    >
+                        {isCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                    </button>
+                )}
+            </div>
+
+            {/* Hero User Profile (Centered Avatar with Flanking Settings & Logout) */}
+            <div className={`relative z-10 shrink-0 border-b border-white/12 ${isCollapsed ? 'px-2 pt-2 pb-3' : 'px-4 pt-2 pb-4'}`}>
+                {isCollapsed ? (
+                    <div className="flex flex-col items-center gap-2" title={`${currentUser?.name} (${formatRoleLabel(currentUser?.role)})`}>
                         <button
                             type="button"
-                            onClick={onToggleCollapse}
-                            className="hidden lg:flex p-1.5 rounded-lg bg-white border border-[#DCE4DF] text-[#55675F] hover:text-[#142920] hover:bg-[#EFF4F1] transition-colors cursor-pointer shrink-0 shadow-[0_1px_2px_rgba(16,32,26,0.03)]"
-                            title={isCollapsed ? 'Perluas Sidebar' : 'Lipat Sidebar'}
+                            onClick={() => navigate('/profil')}
+                            className="relative w-10 h-10 rounded-full p-[2px] bg-gradient-to-br from-[#F43F5E] via-[#E11D48] to-[#FB7185] shadow-md cursor-pointer"
                         >
-                            {isCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                            <div className="w-full h-full rounded-full bg-gradient-to-b from-[#FB7185] to-[#E11D48] flex items-center justify-center text-white font-bold text-xs uppercase">
+                                {(currentUser?.name || 'AD').slice(0, 2)}
+                            </div>
+                            <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#113158]" />
                         </button>
-                    )}
-                </div>
-            </div>
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-center text-center">
+                        <div className="flex items-center justify-center gap-5">
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigate('/profil');
+                                    if (window.innerWidth < 1024) onClose();
+                                }}
+                                className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white/85 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                                title="Pengaturan Profil"
+                            >
+                                <Settings size={16} strokeWidth={1.8} />
+                            </button>
 
-            {/* Quick Action Dark Forest Pill (Ferna "Move money" silhouette -> Cari Menu) */}
-            <div className={`shrink-0 pb-3 border-b border-[#E6ECE8] ${isCollapsed ? 'px-3 lg:px-2.5' : 'px-4'}`}>
-                <button
-                    type="button"
-                    onClick={openCmd}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#162922] hover:bg-[#1E362D] text-white transition-all shadow-xs cursor-pointer ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}
-                    title="Lompat Cepat ke Menu (Ctrl + K)"
-                >
-                    <div className="flex items-center gap-2 min-w-0">
-                        <div className="w-5 h-5 rounded-md bg-white/15 flex items-center justify-center shrink-0">
-                            <Search size={12} className="text-emerald-200" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    navigate('/profil');
+                                    if (window.innerWidth < 1024) onClose();
+                                }}
+                                className="relative w-16 h-16 rounded-full p-[3px] bg-gradient-to-br from-[#F43F5E] via-[#E11D48] to-[#FB7185] shadow-[0_8px_24px_rgba(225,29,72,0.38)] hover:scale-105 transition-transform cursor-pointer"
+                                title="Buka Profil Saya"
+                            >
+                                <div className="w-full h-full rounded-full bg-gradient-to-b from-[#FB7185] to-[#E11D48] flex items-center justify-center text-white font-extrabold text-xl tracking-wide uppercase">
+                                    {(currentUser?.name || 'AD').slice(0, 2)}
+                                </div>
+                                <span className="absolute bottom-0.5 right-0.5 w-3 h-3 rounded-full bg-emerald-400 ring-2 ring-[#13355A]" />
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={handleLogout}
+                                className="w-9 h-9 rounded-full bg-white/10 hover:bg-rose-500/30 border border-white/20 hover:border-rose-300/50 text-white/85 hover:text-white flex items-center justify-center transition-all cursor-pointer active:scale-95"
+                                title="Keluar dari sistem"
+                            >
+                                <LogOut size={16} strokeWidth={1.8} />
+                            </button>
                         </div>
-                        <span className={`text-xs font-bold tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            Cari Menu
+
+                        <p className="text-sm font-bold text-white tracking-tight truncate max-w-full px-2 mt-2.5">
+                            {currentUser?.name || 'Pengguna SIKAD'}
+                        </p>
+                        <span className="mt-1 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-white/10 border border-white/15 text-[10px] font-semibold text-sky-100/90 tracking-wide">
+                            {formatRoleLabel(currentUser?.role)}
                         </span>
                     </div>
-                    <kbd className={`px-1.5 py-0.5 text-[9px] font-bold text-emerald-100/90 bg-white/10 border border-white/15 rounded shrink-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                        Ctrl K
-                    </kbd>
-                </button>
+                )}
             </div>
 
-            <nav className={`flex-1 overflow-y-auto min-h-0 py-3 space-y-1 sidebar-scrollbar ${isCollapsed ? 'px-3 lg:px-2' : 'px-3'}`}>
-                {menuGroups.map((group, gIdx) => (
+            <nav className={`relative z-10 flex-1 overflow-y-auto min-h-0 py-3 space-y-1 sidebar-scrollbar ${isCollapsed ? 'px-3 lg:px-2' : 'px-3'}`}>
+                {menuGroups.map((group, gIdx) => {
+                    const groupRingAccent = getGroupRingClass(group.title);
+                    return (
                     <div 
                         key={gIdx} 
                         className="space-y-0.5"
                     >
                         {/* Accounting System Section (Only for Super Admin at the start) */}
                         {isSuperAdmin && gIdx === 0 && (
-                            <div className={`px-2.5 pt-2 pb-1 flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                <span className="text-[10px] font-bold text-[#7D8C84] uppercase tracking-[0.12em] whitespace-nowrap">AKUNTANSI</span>
-                                <div className="h-px flex-1 bg-[#E4EAE6]"></div>
+                            <div className={`px-2 pt-1.5 pb-1 flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                                <span className="text-[9.5px] font-bold text-sky-200/75 uppercase tracking-[0.15em] whitespace-nowrap">AKUNTANSI</span>
+                                <div className="h-px flex-1 bg-white/12"></div>
                             </div>
                         )}
 
                         {/* Budgeting & Reporting Section */}
                         {((isSuperAdmin && group.title === 'DASHBOARD & SALDO') || (!isSuperAdmin && gIdx === 0)) && (
-                            <div className={`px-2.5 pt-3 pb-1 flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                <span className="text-[10px] font-bold text-[#157A52] uppercase tracking-[0.12em] whitespace-nowrap">ANGGARAN &amp; LAPORAN</span>
-                                <div className="h-px flex-1 bg-[#DCE6E0]"></div>
+                            <div className={`px-2 pt-2.5 pb-1 flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                                <span className="text-[9.5px] font-bold text-emerald-300/85 uppercase tracking-[0.15em] whitespace-nowrap">ANGGARAN &amp; LAPORAN</span>
+                                <div className="h-px flex-1 bg-white/12"></div>
                             </div>
                         )}
 
@@ -531,30 +593,30 @@ export default function Sidebar({
                                 <>
                                     <button
                                         onClick={() => toggleGroup(group.title)}
-                                        className={`w-full flex items-center justify-between px-2.5 py-2 mt-1 text-[10px] font-bold text-[#7A8A82] hover:text-[#24372F] uppercase tracking-[0.12em] transition-colors group cursor-pointer ${isCollapsed ? 'lg:hidden' : ''}`}
+                                        className={`w-full flex items-center justify-between px-2 py-2 mt-1 text-[10px] font-bold text-white/55 hover:text-white uppercase tracking-[0.14em] transition-colors group cursor-pointer ${isCollapsed ? 'lg:hidden' : ''}`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <span>{group.title}</span>
                                             {showDot && (
-                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shrink-0"></span>
                                             )}
                                         </div>
                                         {expandedGroups[group.title] ? (
-                                            <ChevronDown size={12} className="text-[#8E9E96] group-hover:text-[#364940]" />
+                                            <ChevronDown size={12} className="text-white/45 group-hover:text-white" />
                                         ) : (
-                                            <ChevronRight size={12} className="text-[#8E9E96] group-hover:text-[#364940]" />
+                                            <ChevronRight size={12} className="text-white/45 group-hover:text-white" />
                                         )}
                                     </button>
                                     {isCollapsed && gIdx > 0 && (
-                                        <div className="hidden lg:block h-px bg-[#E3E9E5] my-2 mx-2" />
+                                        <div className="hidden lg:block h-px bg-white/12 my-2 mx-2" />
                                     )}
                                 </>
                             );
                         })()}
 
-                        {/* Group Items */}
+                        {/* Group Items (Circular Icon Rings + Minimalist Hairline Contrast List) */}
                         {(expandedGroups[group.title] || isCollapsed) && (
-                            <div className={`${expandedGroups[group.title] ? 'block' : 'hidden lg:block'} space-y-1 animate-in slide-in-from-top-1 duration-200`}>
+                            <div className={`${expandedGroups[group.title] ? 'block' : 'hidden lg:block'} space-y-0.5 animate-in slide-in-from-top-1 duration-200`}>
                                 {group.items.map((item, iIdx) => {
                                     const Icon = item.icon;
                                     const hasNotifBadge =
@@ -581,8 +643,10 @@ export default function Sidebar({
                                                 const isTrulyActive = isActive && isParamMatch;
 
                                                 return `
-                                                    relative flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}
-                                                    ${isTrulyActive ? 'bg-[#E2F1EA] text-[#0D6844] font-bold' : 'text-[#44564E] font-medium hover:bg-[#ECF2EE] hover:text-[#142920]'}
+                                                    group relative flex items-center gap-3 px-2.5 py-2 rounded-xl transition-all duration-200 ${isCollapsed ? 'lg:justify-center lg:px-1' : 'border-b border-white/[0.06] last:border-b-0'}
+                                                    ${isTrulyActive
+                                                        ? 'bg-white/15 text-white font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] backdrop-blur-xs'
+                                                        : 'text-white/75 font-medium hover:bg-white/[0.07] hover:text-white'}
                                                 `;
                                             }}
                                             end={(item.path || '').split('?')[0] === '/'}
@@ -595,50 +659,58 @@ export default function Sidebar({
 
                                                 return (
                                                     <>
-                                                        <span className={`shrink-0 transition-colors ${isTrulyActive ? 'text-[#157A52]' : 'text-[#6A7B73]'}`}>
-                                                            {Icon ? <Icon size={17} strokeWidth={isTrulyActive ? 2.25 : 1.9} /> : <div className="w-[17px] h-[17px] bg-[#E3E9E5] rounded" />}
+                                                        {isTrulyActive && !isCollapsed && (
+                                                            <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.75)]" />
+                                                        )}
+
+                                                        <span className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border transition-all duration-200 ${
+                                                            isTrulyActive
+                                                                ? `${groupRingAccent} text-white scale-105`
+                                                                : 'border-white/30 bg-white/[0.05] text-white/80 group-hover:border-white/65 group-hover:bg-white/12 group-hover:text-white'
+                                                        }`}>
+                                                            {Icon ? <Icon size={15} strokeWidth={isTrulyActive ? 2.2 : 1.75} /> : <div className="w-3.5 h-3.5 bg-white/30 rounded-full" />}
                                                         </span>
                                                         <span className={`text-[13px] flex-1 tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
 
                                                         {/* Compact notification dot when collapsed on desktop */}
                                                         {isCollapsed && hasNotifBadge && (
-                                                            <span className="hidden lg:block absolute top-1.5 right-2 w-2 h-2 rounded-full bg-[#157A52] ring-2 ring-[#F7F9F8]" />
+                                                            <span className="hidden lg:block absolute top-1.5 right-2 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#113158]" />
                                                         )}
 
-                                                        {/* Notification Badges (Sleek Dark Charcoal / Semantic Pills ala Ferna) */}
+                                                        {/* Notification Badges (Vibrant Pills on Cobalt-Teal Canvas) */}
                                                         <div className={`flex items-center gap-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
                                                             {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
-                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                <span className="bg-amber-400 text-[#13261E] text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums shadow-2xs">
                                                                     {pendingRabYayasanCount}
                                                                 </span>
                                                             )}
                                                             {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingSarprasAssetCount > 0 && (
-                                                                <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 tabular-nums" title={`${pendingSarprasAssetCount} Pengajuan Aset Menunggu Verifikasi Sarpras`}>
+                                                                <span className="bg-amber-300/25 text-amber-100 border border-amber-300/40 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 tabular-nums" title={`${pendingSarprasAssetCount} Pengajuan Aset Menunggu Verifikasi Sarpras`}>
                                                                     📦 {pendingSarprasAssetCount}
                                                                 </span>
                                                             )}
                                                             {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
-                                                                <span className="bg-[#157A52] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                <span className="bg-emerald-400 text-[#0B291E] text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums shadow-2xs">
                                                                     {pendingRabBosCount}
                                                                 </span>
                                                             )}
                                                             {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
-                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                <span className="bg-sky-300 text-[#0B1E3D] text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums shadow-2xs">
                                                                     {pendingFundRequestCount}
                                                                 </span>
                                                             )}
                                                             {item.label === 'Pengeluaran Yayasan' && pendingReportCount > 0 && (
-                                                                <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                <span className="bg-rose-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums shadow-2xs">
                                                                     {pendingReportCount}
                                                                 </span>
                                                             )}
                                                             {item.label === 'Saldo Yayasan' && pendingReturnYayasanCount > 0 && (
-                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                <span className="bg-sky-300 text-[#0B1E3D] text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums shadow-2xs">
                                                                     {pendingReturnYayasanCount}
                                                                 </span>
                                                             )}
                                                             {item.label === 'Saldo BOS' && pendingReturnBosCount > 0 && (
-                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                <span className="bg-emerald-400 text-[#0B291E] text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums shadow-2xs">
                                                                     {pendingReturnBosCount}
                                                                 </span>
                                                             )}
@@ -652,30 +724,39 @@ export default function Sidebar({
                             </div>
                         )}
                     </div>
-                ))}
+                    );
+                })}
             </nav>
 
-            {/* Footer: User Profile Card & Logout (Ferna bottom-left profile style) */}
-            <div className={`border-t border-[#E3E9E5] bg-white/75 shrink-0 ${isCollapsed ? 'p-3 lg:px-2' : 'p-3.5'}`}>
-                <div className={`flex items-center gap-2.5 ${isCollapsed ? 'lg:flex-col lg:gap-2' : 'justify-between'}`}>
-                    <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'lg:justify-center' : ''}`} title={isCollapsed ? `${currentUser?.name} (${currentUser?.role})` : undefined}>
-                        <div className="w-8 h-8 rounded-full bg-[#E2F1EA] text-[#0D6844] border border-[#C6E3D4] flex items-center justify-center text-xs font-extrabold uppercase shrink-0">
-                            {(currentUser?.name || 'AD').slice(0, 2)}
-                        </div>
-                        <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            <p className="text-xs font-bold text-[#142920] truncate leading-tight">{currentUser?.name}</p>
-                            <p className="text-[10px] text-[#7A8A82] font-semibold uppercase tracking-wider truncate">{currentUser?.role}</p>
-                        </div>
+            {/* Bottom Anchor: Quick Search Pill (+ Logout when desktop collapsed) */}
+            <div className={`relative z-10 border-t border-white/12 bg-black/15 shrink-0 ${isCollapsed ? 'p-2.5 space-y-2' : 'p-3'}`}>
+                <button
+                    type="button"
+                    onClick={openCmd}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-white/10 hover:bg-white/18 border border-white/20 text-white/90 transition-all cursor-pointer ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}
+                    title="Lompat Cepat ke Menu (Ctrl + K)"
+                >
+                    <div className="flex items-center gap-2 min-w-0">
+                        <Search size={14} className="text-sky-200 shrink-0" />
+                        <span className={`text-xs font-semibold tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
+                            Cari Menu Cepat
+                        </span>
                     </div>
+                    <kbd className={`px-1.5 py-0.5 text-[9px] font-bold text-white/85 bg-white/15 border border-white/20 rounded shrink-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                        Ctrl K
+                    </kbd>
+                </button>
 
+                {isCollapsed && (
                     <button
-                        className="p-2 text-[#6A7B73] hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-all cursor-pointer shrink-0"
+                        type="button"
+                        className="hidden lg:flex w-full items-center justify-center p-2 text-white/75 hover:text-white hover:bg-rose-500/30 border border-transparent hover:border-rose-300/40 rounded-xl transition-all cursor-pointer"
                         onClick={handleLogout}
                         title="Keluar dari sistem"
                     >
                         <LogOut size={15} />
                     </button>
-                </div>
+                )}
             </div>
         </aside>
 
