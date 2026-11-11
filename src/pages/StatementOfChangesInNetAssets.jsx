@@ -240,8 +240,8 @@ export default function StatementOfChangesInNetAssets() {
                                     </td>
                                 </tr>
                             ))}
-                            <tr className="bg-gradient-to-r from-[#114C35] to-[#157A52] text-white font-bold">
-                                <td className="px-6 py-6 text-xs uppercase tracking-wider text-emerald-100">
+                            <tr className="bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] text-white font-bold">
+                                <td className="px-6 py-6 text-xs uppercase tracking-wider text-sky-100">
                                     Total Seluruh Aset Neto
                                 </td>
                                 <td className="px-6 py-6 text-right tabular-nums">

@@ -903,45 +903,45 @@ export default function FundAvailability() {
 
             {/* ── Stats Row */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
-                <div className="p-6 bg-gradient-to-br from-white via-[#FAFDFB] to-[#EFF7F2] rounded-2xl border border-[#E4EAE6] shadow-xs hover:-translate-y-0.5 transition-all">
+                <div className="p-6 bg-gradient-to-br from-white via-[#F6FCF9] to-[#EBF7F0] rounded-2xl border border-[#D8EAE0] shadow-xs hover:-translate-y-0.5 transition-all">
                     <div className="w-10 h-10 bg-[#E2F1EA] text-[#157A52] rounded-xl flex items-center justify-center mb-3.5"><CheckCircle size={20} /></div>
-                    <p className="text-[11px] font-semibold text-[#6B7E75] mb-1">
+                    <p className="text-[11px] font-semibold text-[#5C7A6B] mb-1">
                         Total Dana ACC {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Masuk)'}
                     </p>
                     <h2 className="text-xl font-bold text-[#13261E] tabular-nums">{formatRupiah(statApproved)}</h2>
                 </div>
-                <div className="p-6 bg-gradient-to-br from-white via-[#FAFDFB] to-[#FFF6F5] rounded-2xl border border-[#E4EAE6] shadow-xs hover:-translate-y-0.5 transition-all">
-                    <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-3.5"><TrendingUp size={20} /></div>
-                    <p className="text-[11px] font-semibold text-[#6B7E75] mb-1">
+                <div className="p-6 bg-gradient-to-br from-white via-[#FEF8F6] to-[#FCECE7] rounded-2xl border border-[#F3DDD6] shadow-xs hover:-translate-y-0.5 transition-all">
+                    <div className="w-10 h-10 bg-[#FCE6DE] text-[#D65A38] rounded-xl flex items-center justify-center mb-3.5"><TrendingUp size={20} /></div>
+                    <p className="text-[11px] font-semibold text-[#8A6256] mb-1">
                         Total Realisasi {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Keluar)'}
                     </p>
                     <h2 className="text-xl font-bold text-[#13261E] tabular-nums">{formatRupiah(statUsed)}</h2>
                 </div>
-                <div className="p-6 bg-gradient-to-br from-[#0F4D35] via-[#157A52] to-[#209266] rounded-2xl border border-[#1E8F62]/40 shadow-sm hover:-translate-y-0.5 transition-all text-white">
-                    <div className="w-10 h-10 bg-white/15 text-emerald-100 rounded-xl flex items-center justify-center mb-3.5"><Wallet size={20} /></div>
-                    <p className="text-[11px] font-semibold text-emerald-100/80 mb-1">
+                <div className="p-6 bg-gradient-to-br from-[#1B3A63] via-[#1C647E] to-[#1A8A7D] rounded-2xl border border-[#237B87]/40 shadow-sm hover:-translate-y-0.5 transition-all text-white">
+                    <div className="w-10 h-10 bg-white/15 text-sky-100 rounded-xl flex items-center justify-center mb-3.5"><Wallet size={20} /></div>
+                    <p className="text-[11px] font-semibold text-sky-100/85 mb-1">
                         Sisa Dana {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Saldo)'}
                     </p>
                     <h2 className="text-xl font-bold text-white tabular-nums">{formatRupiah(statBalance)}</h2>
                 </div>
-                <div className="p-6 bg-gradient-to-br from-white via-[#FAFDFB] to-[#FBF8EF] rounded-2xl border border-[#E4EAE6] shadow-xs hover:-translate-y-0.5 transition-all">
-                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-3.5"><Clock size={20} /></div>
-                    <p className="text-[11px] font-semibold text-[#6B7E75] mb-1">Menunggu ACC (Proses)</p>
-                    <h2 className="text-xl font-bold text-amber-700 tabular-nums">{formatRupiah(statPending)}</h2>
+                <div className="p-6 bg-gradient-to-br from-white via-[#FEFBF4] to-[#FAF0D8] rounded-2xl border border-[#EFE0BC] shadow-xs hover:-translate-y-0.5 transition-all">
+                    <div className="w-10 h-10 bg-[#FBECC8] text-[#B87314] rounded-xl flex items-center justify-center mb-3.5"><Clock size={20} /></div>
+                    <p className="text-[11px] font-semibold text-[#8A7042] mb-1">Menunggu ACC (Proses)</p>
+                    <h2 className="text-xl font-bold text-[#A6630D] tabular-nums">{formatRupiah(statPending)}</h2>
                 </div>
             </div>
 
             {/* ── SUPERADMIN: Tabel per Unit & Bidang */}
             {isSuperAdmin ? (
-                <div className="overflow-hidden shadow-xs mb-8 rounded-2xl bg-white border border-[#E4EAE6]">
-                    <div className="px-6 py-4 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
+                <div className="overflow-hidden shadow-xs mb-8 rounded-2xl bg-white border border-[#DCE5F2]">
+                    <div className="px-6 py-4 bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] text-white flex items-center justify-between">
                         <h3 className="font-bold text-sm tracking-tight flex items-center gap-2.5">
-                            <span className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-emerald-100">
+                            <span className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-sky-100">
                                 <Layers size={15} />
                             </span>
                             <span>Saldo per Unit &amp; Bidang {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}</span>
                         </h3>
-                        <span className="text-[11px] text-emerald-100/85 font-medium">Klik baris untuk lihat rincian kategori</span>
+                        <span className="text-[11px] text-sky-100/85 font-medium">Klik baris untuk lihat rincian kategori</span>
                     </div>
                     <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
                         <table className="w-full text-left border-collapse">
@@ -1043,18 +1043,18 @@ export default function FundAvailability() {
                                         {/* Card Header */}
                                         <div 
                                             onClick={() => toggleExpandRequest(card.reqId)}
-                                            className="p-6 md:p-7 bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer hover:brightness-105 transition-all"
+                                            className="p-6 md:p-7 bg-gradient-to-r from-[#1D3B60] via-[#245A7D] to-[#1A7D7A] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer hover:brightness-105 transition-all"
                                         >
                                             <div className="flex items-start gap-4">
-                                                <div className="w-11 h-11 rounded-2xl bg-white/15 text-emerald-100 border border-white/25 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <div className="w-11 h-11 rounded-2xl bg-white/15 text-sky-100 border border-white/25 flex items-center justify-center flex-shrink-0 mt-0.5">
                                                     <Calendar size={20} />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-3 mb-1">
-                                                        <span className="px-3 py-0.5 bg-white/15 text-emerald-50 rounded-lg text-xs font-bold uppercase tracking-wider border border-white/20">
+                                                        <span className="px-3 py-0.5 bg-white/15 text-sky-50 rounded-lg text-xs font-bold uppercase tracking-wider border border-white/20">
                                                             {formatMonthLabel(card.reqMonth)}
                                                         </span>
-                                                        <span className="text-xs font-semibold text-emerald-100/75">ID: {card.reqId}</span>
+                                                        <span className="text-xs font-semibold text-sky-100/75">ID: {card.reqId}</span>
                                                     </div>
                                                     <h4 className="text-lg font-bold text-white">{card.reqDescription || 'Surat Permintaan Dana'}</h4>
                                                 </div>
@@ -1062,7 +1062,7 @@ export default function FundAvailability() {
 
                                             <div className="flex items-center gap-6 self-end md:self-center">
                                                 <div className="text-right">
-                                                    <p className="text-[10px] font-bold text-emerald-100/80 uppercase tracking-wider">Sisa Saldo Bulan Ini</p>
+                                                    <p className="text-[10px] font-bold text-sky-100/80 uppercase tracking-wider">Sisa Saldo Bulan Ini</p>
                                                     <p className="text-2xl font-bold text-emerald-200 tabular-nums">{formatRupiah(card.reqSisa)}</p>
                                                 </div>
                                                 <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white">
@@ -1185,8 +1185,8 @@ export default function FundAvailability() {
                     </div>
                 ) : (
                     /* ── MODE 2: TABEL PER KATEGORI (BERDASARKAN FILTER BULAN) */
-                    <div className="overflow-hidden shadow-xs mb-10 rounded-2xl bg-white border border-[#E4EAE6]">
-                        <div className="px-6 py-4 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
+                    <div className="overflow-hidden shadow-xs mb-10 rounded-2xl bg-white border border-[#DCE5F2]">
+                        <div className="px-6 py-4 bg-gradient-to-r from-[#12514A] via-[#17786B] to-[#218E6B] text-white flex items-center justify-between">
                             <h3 className="font-bold text-sm tracking-tight flex items-center gap-2.5">
                                 <span className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-emerald-100">
                                     <Layers size={15} />
@@ -1217,11 +1217,18 @@ export default function FundAvailability() {
                                         categoryList.map((item, idx) => {
                                             const available = Math.max(0, item.totalApproved - item.totalUsed - (item.totalReturned || 0));
                                             const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
+                                            const palette = [
+                                                { pill: 'bg-[#2557A7]', bar: 'from-[#1E3A5F] to-[#3B76CC]' },
+                                                { pill: 'bg-[#DF6B45]', bar: 'from-[#B84624] to-[#E8845F]' },
+                                                { pill: 'bg-[#157A52]', bar: 'from-[#0F5E3F] to-[#239B6D]' },
+                                                { pill: 'bg-[#C9821E]', bar: 'from-[#9E5F0B] to-[#E2A53B]' },
+                                                { pill: 'bg-[#178582]', bar: 'from-[#0E5E5C] to-[#27ABA6]' }
+                                            ][idx % 5];
                                             return (
                                                 <tr key={idx} className="hover:bg-[#F6F9F7] transition-colors group">
                                                     <td className="px-8 py-6">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="w-1.5 h-9 rounded-full bg-[#157A52] group-hover:scale-y-115 transition-transform" />
+                                                            <div className={`w-1.5 h-9 rounded-full ${palette.pill} group-hover:scale-y-115 transition-transform`} />
                                                             <span className="font-bold text-[#13261E]">{item.category}</span>
                                                         </div>
                                                     </td>
@@ -1239,7 +1246,7 @@ export default function FundAvailability() {
                                                                 <span>Terpakai</span><span>{pct.toFixed(1)}%</span>
                                                             </div>
                                                             <div className="w-full bg-[#E9EEEC] h-2.5 rounded-full overflow-hidden">
-                                                                <div className="h-full bg-gradient-to-r from-[#157A52] to-[#249A70]" style={{ width: `${Math.min(100, pct)}%` }} />
+                                                                <div className={`h-full bg-gradient-to-r ${palette.bar}`} style={{ width: `${Math.min(100, pct)}%` }} />
                                                             </div>
                                                         </div>
                                                     </td>

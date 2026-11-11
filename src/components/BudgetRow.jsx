@@ -43,10 +43,10 @@ export default function BudgetRow({
     nameColSpan = 1,
     showSemesterColumns = false
 }) {
-    // Theme selection (Calm Ferna Sage & Emerald)
+    // Theme selection (Multi-tone Ferna: Teal-Cyan BOS, Steel Cobalt Bidang, Emerald Unit)
     const activeClass = isBos
-        ? 'bg-[#157A52] text-white shadow-2xs'
-        : (isField ? 'bg-[#162922] text-white shadow-2xs' : 'bg-[#157A52] text-white shadow-2xs');
+        ? 'bg-[#14828A] text-white shadow-2xs'
+        : (isField ? 'bg-[#2557A7] text-white shadow-2xs' : 'bg-[#157A52] text-white shadow-2xs');
 
     const isPergeseran = data.sisa < 0 && (data.isUnlocked || data.isShift);
     const sisaColor = data.sisa < 0

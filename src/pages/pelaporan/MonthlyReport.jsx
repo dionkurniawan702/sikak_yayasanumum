@@ -2849,10 +2849,10 @@ export default function MonthlyReport() {
                     </div>
 
                     {/* Dense Table */}
-                    <div className="overflow-hidden rounded-2xl border border-[#E4EAE6] bg-white shadow-xs">
-                        <div className="bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] px-6 py-4 flex items-center justify-between gap-3">
+                    <div className="overflow-hidden rounded-2xl border border-[#DCE5F2] bg-white shadow-xs">
+                        <div className="bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] px-6 py-4 flex items-center justify-between gap-3">
                             <div className="flex items-center gap-3">
-                                <History size={15} className="text-emerald-100" />
+                                <History size={15} className="text-sky-100" />
                                 <span className="text-xs font-bold text-white uppercase tracking-wider">Riwayat Laporan Realisasi</span>
                             </div>
                             <div className="flex items-center gap-4">
@@ -2961,8 +2961,8 @@ export default function MonthlyReport() {
                                 </tbody>
                                 {filteredReports.length > 0 && (
                                     <tfoot>
-                                        <tr className="bg-gradient-to-r from-[#114C35] to-[#157A52] text-white">
-                                            <td colSpan={isSuperAdmin ? 8 : 9} className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-emerald-100">Total</td>
+                                        <tr className="bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] text-white">
+                                            <td colSpan={isSuperAdmin ? 8 : 9} className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-sky-100">Total</td>
                                             <td className="px-5 py-4 text-right font-bold text-emerald-200 text-base tabular-nums">{formatRupiah(totalNilai)}</td>
                                             <td colSpan="4"></td>
                                         </tr>
@@ -2975,18 +2975,18 @@ export default function MonthlyReport() {
             ) : activeTab === 'verification' && isSuperAdmin ? (
                 /* VERIFICATION TAB */
                 <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-r from-[#EEF7F2] to-[#F6FBF8] border border-[#C6E3D5] rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="p-6 bg-gradient-to-r from-[#F2F6FC] to-[#F7FAF8] border border-[#D4E0F0] rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <AlertCircle size={24} className="text-[#157A52] shrink-0" />
+                            <AlertCircle size={24} className="text-[#2557A7] shrink-0" />
                             <div>
-                                <h3 className="font-bold text-[#13261E] text-lg">Persetujuan Laporan Realisasi</h3>
-                                <p className="text-xs text-[#5C6F66] font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
+                                <h3 className="font-bold text-[#1C375B] text-lg">Persetujuan Laporan Realisasi</h3>
+                                <p className="text-xs text-[#556A82] font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
                             </div>
                         </div>
                         <select 
                             value={selectedUnitFilter} 
                             onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                            className="bg-white border border-[#DCE5DF] rounded-xl px-4 py-3 text-[10px] font-bold text-[#13261E] uppercase tracking-wider focus:ring-2 focus:ring-[#157A52]/20 outline-none cursor-pointer shadow-2xs shrink-0 w-full md:w-auto"
+                            className="bg-white border border-[#DCE5F2] rounded-xl px-4 py-3 text-[10px] font-bold text-[#13261E] uppercase tracking-wider focus:ring-2 focus:ring-[#2557A7]/20 outline-none cursor-pointer shadow-2xs shrink-0 w-full md:w-auto"
                         >
                             <option value="ALL">Semua Unit &amp; Bidang</option>
                             <optgroup label="Bidang">
@@ -2998,11 +2998,11 @@ export default function MonthlyReport() {
                         </select>
                     </div>
 
-                    <div className="overflow-hidden rounded-2xl border border-[#E4EAE6] bg-white shadow-xs animate-in fade-in duration-300">
-                        <div className="bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] px-6 py-4 flex items-center gap-3 flex-wrap">
-                            <CheckCircle2 size={15} className="text-emerald-100" />
+                    <div className="overflow-hidden rounded-2xl border border-[#DCE5F2] bg-white shadow-xs animate-in fade-in duration-300">
+                        <div className="bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] px-6 py-4 flex items-center gap-3 flex-wrap">
+                            <CheckCircle2 size={15} className="text-sky-100" />
                             <span className="text-xs font-bold text-white uppercase tracking-wider">Daftar Menunggu Persetujuan</span>
-                            <span className="text-[10px] text-emerald-50 font-bold bg-white/15 px-2.5 py-0.5 rounded-full">{verificationReports.length} laporan</span>
+                            <span className="text-[10px] text-sky-50 font-bold bg-white/15 px-2.5 py-0.5 rounded-full">{verificationReports.length} laporan</span>
                             
                             {selectedReportIds.length > 0 && (
                                 <div className="ml-auto flex items-center gap-2 animate-in slide-in-from-right-5 duration-300">

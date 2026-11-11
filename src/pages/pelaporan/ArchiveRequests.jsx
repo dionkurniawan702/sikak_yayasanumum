@@ -282,14 +282,14 @@ export default function ArchiveRequests() {
         <div className="p-4 md:p-8 animate-in text-[#13261E]">
             {/* Header */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-                <div className="lg:col-span-3 bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] rounded-3xl p-8 sm:p-9 text-white shadow-md border border-[#2A946B]/35 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-15 group-hover:scale-110 transition-transform text-emerald-100">
+                <div className="lg:col-span-3 bg-gradient-to-br from-[#1C375B] via-[#265187] to-[#1B7678] rounded-3xl p-8 sm:p-9 text-white shadow-md border border-[#2D6794]/35 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-10 opacity-15 group-hover:scale-110 transition-transform text-sky-100">
                         <Archive size={150} />
                     </div>
                     <div className="relative z-10 flex flex-col h-full justify-between">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-bold mb-1 tracking-tight">Arsip Permintaan Dana</h1>
-                            <p className="text-emerald-100/80 font-semibold mb-6 uppercase text-[10px] tracking-wider">
+                            <p className="text-sky-100/80 font-semibold mb-6 uppercase text-[10px] tracking-wider">
                                 DOKUMEN RESMI YANG TELAH DI-ACC • {isSuperAdmin ? 'SELURUH YAYASAN' : (units.find(u => u.id === myUnitId)?.name || fields.find(f => f.id === myFieldId)?.name || 'UNIT SAYA')}
                             </p>
 
@@ -297,7 +297,7 @@ export default function ArchiveRequests() {
                                 <div className="flex bg-black/15 p-1 rounded-xl">
                                     <button 
                                         onClick={() => setSourceMode('YAYASAN')}
-                                        className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-sm' : 'text-white/75 hover:text-white'}`}
+                                        className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#244E82] shadow-sm' : 'text-white/75 hover:text-white'}`}
                                     >
                                         <Building2 size={12} className="inline mr-2" />
                                         Yayasan

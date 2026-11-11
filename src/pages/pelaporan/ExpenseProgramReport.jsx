@@ -247,15 +247,15 @@ export default function ExpenseProgramReport() {
     return (
         <div className="p-6 md:p-8 space-y-8 bg-slate-50 min-h-screen">
             {/* Header Title Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#E4EAE6] shadow-xs">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#DCE5F2] shadow-xs">
                 <div className="flex items-center gap-4">
-                    <div className="p-4 bg-gradient-to-br from-[#125138] to-[#157A52] rounded-2xl text-white shadow-sm">
+                    <div className="p-4 bg-gradient-to-br from-[#1C375B] via-[#265187] to-[#1B7678] rounded-2xl text-white shadow-sm">
                         <FolderKanban size={26} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
                             <h1 className="text-2xl font-bold text-[#13261E] tracking-tight">Laporan Program Belanja</h1>
-                            <span className="px-3 py-1 bg-[#E2F1EA] text-[#0D6844] text-xs font-bold rounded-full border border-[#C6E3D5]">
+                            <span className="px-3 py-1 bg-[#EBF3FD] text-[#244E82] text-xs font-bold rounded-full border border-[#C6DAF4]">
                                 Realisasi Anggaran
                             </span>
                         </div>
@@ -277,7 +277,7 @@ export default function ExpenseProgramReport() {
                         onClick={handlePrint}
                         className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#F7FAF8] text-[#13261E] border border-[#DCE5DF] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
                     >
-                        <Printer size={15} className="text-[#157A52]" />
+                        <Printer size={15} className="text-[#2557A7]" />
                         Cetak Laporan
                     </button>
                 </div>
@@ -368,18 +368,18 @@ export default function ExpenseProgramReport() {
                 </div>
             </div>
 
-            {/* Executive Metric Cards */}
+            {/* Executive Metric Cards (Multi-Color Gradasi) */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {/* Total Pagu */}
-                <div className="bg-gradient-to-br from-[#0F4D35] via-[#157A52] to-[#209266] p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
+                {/* Total Pagu - Royal Cobalt Blue */}
+                <div className="bg-gradient-to-br from-[#1C375B] via-[#265187] to-[#2E69A8] p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
                     <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
                         <Wallet size={100} />
                     </div>
-                    <p className="text-emerald-100/85 text-xs font-bold uppercase tracking-wider">Total Pagu RAB Program</p>
+                    <p className="text-sky-100/85 text-xs font-bold uppercase tracking-wider">Total Pagu RAB Program</p>
                     <h3 className="text-2xl font-bold mt-2 tracking-tight tabular-nums">
                         <CurrencyDisplay value={overallMetrics.totalPagu} />
                     </h3>
-                    <div className="mt-4 flex items-center gap-2 text-emerald-50 text-xs font-semibold">
+                    <div className="mt-4 flex items-center gap-2 text-sky-50 text-xs font-semibold">
                         <span className="px-2 py-0.5 bg-white/20 rounded-full font-bold">
                             {programMetricsData.length} Program
                         </span>
@@ -387,18 +387,18 @@ export default function ExpenseProgramReport() {
                     </div>
                 </div>
 
-                {/* Total Realisasi */}
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 p-6 rounded-3xl text-white shadow-xl shadow-blue-500/20 relative overflow-hidden">
+                {/* Total Realisasi - Terracotta Coral */}
+                <div className="bg-gradient-to-br from-[#A64024] via-[#CF5A38] to-[#E57953] p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
                     <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
                         <TrendingUp size={100} />
                     </div>
-                    <p className="text-blue-100 text-xs font-bold uppercase tracking-wider">Total Realisasi Belanja</p>
-                    <h3 className="text-2xl font-black mt-2 tracking-tight">
+                    <p className="text-orange-100/85 text-xs font-bold uppercase tracking-wider">Total Realisasi Belanja</p>
+                    <h3 className="text-2xl font-bold mt-2 tracking-tight tabular-nums">
                         <CurrencyDisplay value={overallMetrics.totalRealisasi} />
                     </h3>
-                    <div className="mt-4 flex items-center gap-2 text-blue-100 text-xs font-semibold">
+                    <div className="mt-4 flex items-center gap-2 text-orange-50 text-xs font-semibold">
                         {overallMetrics.totalPengembalian > 0 && (
-                            <span className="px-2 py-0.5 bg-emerald-400/30 text-emerald-100 rounded-full font-bold">
+                            <span className="px-2 py-0.5 bg-white/20 text-white rounded-full font-bold">
                                 Retur: {formatRupiah(overallMetrics.totalPengembalian)}
                             </span>
                         )}
@@ -406,34 +406,34 @@ export default function ExpenseProgramReport() {
                     </div>
                 </div>
 
-                {/* Total Sisa */}
-                <div className="bg-gradient-to-br from-amber-500 to-amber-600 p-6 rounded-3xl text-white shadow-xl shadow-amber-500/20 relative overflow-hidden">
+                {/* Total Sisa - Warm Gold Amber */}
+                <div className="bg-gradient-to-br from-[#965C10] via-[#BC7916] to-[#D99626] p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
                     <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
                         <PieChart size={100} />
                     </div>
-                    <p className="text-amber-100 text-xs font-bold uppercase tracking-wider">Total Sisa Anggaran</p>
-                    <h3 className="text-2xl font-black mt-2 tracking-tight">
+                    <p className="text-amber-100/90 text-xs font-bold uppercase tracking-wider">Total Sisa Anggaran</p>
+                    <h3 className="text-2xl font-bold mt-2 tracking-tight tabular-nums">
                         <CurrencyDisplay value={overallMetrics.totalSisa} />
                     </h3>
-                    <div className="mt-4 flex items-center gap-2 text-amber-100 text-xs font-semibold">
+                    <div className="mt-4 flex items-center gap-2 text-amber-50 text-xs font-semibold">
                         <span className="px-2 py-0.5 bg-white/20 rounded-full font-bold">
                             Belum Terpakai
                         </span>
                     </div>
                 </div>
 
-                {/* Persentase Penyerapan */}
-                <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6 rounded-3xl text-white shadow-xl shadow-emerald-500/20 relative overflow-hidden">
+                {/* Persentase Penyerapan - Ocean Teal Emerald */}
+                <div className="bg-gradient-to-br from-[#12514A] via-[#157A52] to-[#21966B] p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
                     <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
                         <Layers size={100} />
                     </div>
-                    <p className="text-emerald-100 text-xs font-bold uppercase tracking-wider">Rata-Rata Penyerapan</p>
-                    <h3 className="text-3xl font-black mt-2 tracking-tight">
+                    <p className="text-emerald-100/90 text-xs font-bold uppercase tracking-wider">Rata-Rata Penyerapan</p>
+                    <h3 className="text-3xl font-bold mt-2 tracking-tight tabular-nums">
                         {overallMetrics.avgPercentage}%
                     </h3>
-                    <div className="w-full bg-white/20 rounded-full h-2 mt-4 overflow-hidden">
+                    <div className="w-full bg-black/20 rounded-full h-2 mt-4 overflow-hidden">
                         <div
-                            className="bg-white h-full rounded-full transition-all duration-500"
+                            className="bg-gradient-to-r from-[#A7F3D0] to-[#6EE7B7] h-full rounded-full transition-all duration-500"
                             style={{ width: `${overallMetrics.avgPercentage}%` }}
                         />
                     </div>
@@ -557,14 +557,14 @@ export default function ExpenseProgramReport() {
                 <div className="fixed inset-0 z-50 bg-[#142920]/45 backdrop-blur-xs flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-[#E4EAE6] animate-in zoom-in-95 duration-200">
                         {/* Modal Header */}
-                        <div className="p-6 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
+                        <div className="p-6 bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="p-3 bg-white/15 rounded-2xl border border-white/20">
                                     <FolderKanban size={24} />
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold">{selectedProgramDetail.name}</h3>
-                                    <p className="text-xs text-emerald-100 mt-0.5">Rincian Item Anggaran &amp; Realisasi Belanja</p>
+                                    <p className="text-xs text-sky-100 mt-0.5">Rincian Item Anggaran &amp; Realisasi Belanja</p>
                                 </div>
                             </div>
                             <button

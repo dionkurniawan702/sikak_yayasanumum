@@ -21,9 +21,9 @@ export default function ReportRow({
     const isDetail = type === 'detail';
 
     const rowStyles = {
-        category: "bg-[#F4F8F6] border-l-4 border-[#157A52]",
+        category: "bg-[#F3F7FB] border-l-4 border-[#2557A7]",
         header: "bg-white",
-        total: "bg-gradient-to-r from-[#114C35] to-[#157A52] text-white",
+        total: "bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#1B7678] text-white",
         detail: "bg-white hover:bg-[#F7FAF8]"
     };
 

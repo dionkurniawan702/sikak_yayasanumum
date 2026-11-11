@@ -447,12 +447,12 @@ export default function BudgetShiftManagement() {
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white p-6 md:p-8 rounded-3xl shadow-md border border-[#2A946B]/35 relative overflow-hidden">
-                <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#1D3557] via-[#2B507E] to-[#1D736B] text-white p-6 md:p-8 rounded-3xl shadow-md border border-[#346591]/35 relative overflow-hidden">
+                <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-amber-300/10 rounded-full blur-3xl pointer-events-none" />
                 
                 <div className="relative z-10 space-y-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-50">
-                        <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-200" />
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-amber-100">
+                        <ArrowLeftRight className="w-3.5 h-3.5 text-amber-300" />
                         Tata Kelola &amp; Mutasi Anggaran Berjalan
                     </div>
                     <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white flex items-center gap-3">

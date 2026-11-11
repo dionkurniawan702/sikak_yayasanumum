@@ -307,12 +307,12 @@ export default function BalanceSheet() {
                     <div className="space-y-8 flex flex-col">
                         {/* LIABILITAS */}
                         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-                            <div className="bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] p-6 text-white flex justify-between items-center">
+                            <div className="bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#2E69A8] p-6 text-white flex justify-between items-center">
                                 <div>
-                                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/80 mb-0.5">Sisi Kewajiban</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-sky-100/80 mb-0.5">Sisi Kewajiban</p>
                                     <h3 className="text-xl font-bold">LIABILITAS</h3>
                                 </div>
-                                <TrendingDown size={28} className="text-emerald-200 opacity-70" />
+                                <TrendingDown size={28} className="text-sky-100 opacity-75" />
                             </div>
                             <div className="p-3">
                                 <table className="w-full text-left border-separate border-spacing-y-1">

@@ -943,50 +943,50 @@ export default function RealizationDashboard() {
 
             {/* METRICS CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-                <div className="bg-gradient-to-br from-white via-[#FAFDFB] to-[#F1F7F4] p-7 rounded-3xl border border-[#E4EAE6] shadow-xs relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-white via-[#F6F9FE] to-[#EAF1FC] p-7 rounded-3xl border border-[#DAE4F2] shadow-xs relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[11px] font-semibold text-[#6B7E75] uppercase tracking-wider mb-1.5">Total Anggaran</p>
+                        <p className="text-[11px] font-semibold text-[#5B6F8A] uppercase tracking-wider mb-1.5">Total Anggaran</p>
                         <h3 className="text-xl sm:text-2xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(dashboardData.totalBudget)}</h3>
-                        <div className="mt-4 flex items-center gap-1.5 text-[#1E3448] font-bold text-xs">
-                            <Target size={14} className="text-[#157A52]" />
+                        <div className="mt-4 flex items-center gap-1.5 text-[#2557A7] font-bold text-xs">
+                            <Target size={14} className="text-[#2557A7]" />
                             <span>RAB {sourceMode}</span>
                         </div>
                     </div>
-                    <Target size={96} className="absolute -bottom-5 -right-5 text-[#E5EFEA]/70 group-hover:text-[#D9EAE1] transition-colors" />
+                    <Target size={96} className="absolute -bottom-5 -right-5 text-[#DCE7F7]/80 group-hover:text-[#CDDDF4] transition-colors" />
                 </div>
 
-                <div className="bg-gradient-to-br from-white via-[#FAFDFB] to-[#EEF6F2] p-7 rounded-3xl border border-[#E4EAE6] shadow-xs relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-white via-[#FEF8F6] to-[#FCECE7] p-7 rounded-3xl border border-[#F3DDD6] shadow-xs relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[11px] font-semibold text-[#6B7E75] uppercase tracking-wider mb-1.5">Total Terpakai</p>
+                        <p className="text-[11px] font-semibold text-[#8A6256] uppercase tracking-wider mb-1.5">Total Terpakai</p>
                         <h3 className="text-xl sm:text-2xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(dashboardData.totalSpent)}</h3>
-                        <div className="mt-4 flex items-center gap-1.5 text-[#157A52] font-bold text-xs">
+                        <div className="mt-4 flex items-center gap-1.5 text-[#D65A38] font-bold text-xs">
                             <ArrowUpRight size={14} />
                             <span>Realisasi Berjalan</span>
                         </div>
                     </div>
-                    <TrendingUp size={96} className="absolute -bottom-5 -right-5 text-[#E2EFE8]/80 group-hover:text-[#D2E7DC] transition-colors" />
+                    <TrendingUp size={96} className="absolute -bottom-5 -right-5 text-[#F6DFD7]/80 group-hover:text-[#F0CFC4] transition-colors" />
                 </div>
 
-                <div className="bg-gradient-to-br from-white via-[#FAFDFB] to-[#F4F8F5] p-7 rounded-3xl border border-[#E4EAE6] shadow-xs relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-white via-[#F6FCF9] to-[#E9F6EF] p-7 rounded-3xl border border-[#D8EAE0] shadow-xs relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[11px] font-semibold text-[#6B7E75] uppercase tracking-wider mb-1.5">Sisa Anggaran</p>
+                        <p className="text-[11px] font-semibold text-[#5C7A6B] uppercase tracking-wider mb-1.5">Sisa Anggaran</p>
                         <h3 className="text-xl sm:text-2xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(dashboardData.totalBudget - dashboardData.totalSpent)}</h3>
-                        <div className="mt-4 flex items-center gap-1.5 text-[#0D6844] font-bold text-xs">
+                        <div className="mt-4 flex items-center gap-1.5 text-[#157A52] font-bold text-xs">
                             <Wallet size={14} />
                             <span>Sisa RAB</span>
                         </div>
                     </div>
-                    <Landmark size={96} className="absolute -bottom-5 -right-5 text-[#E5EFEA]/70 group-hover:text-[#D9EAE1] transition-colors" />
+                    <Landmark size={96} className="absolute -bottom-5 -right-5 text-[#DCEEE4]/80 group-hover:text-[#CBE5D7] transition-colors" />
                 </div>
 
-                <div className="bg-gradient-to-br from-[#0E4A33] via-[#157A52] to-[#22986A] p-7 rounded-3xl shadow-md border border-[#1E8F62]/40 relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-[#1B3A63] via-[#1C5E75] to-[#157A52] p-7 rounded-3xl shadow-md border border-[#236B7C]/40 relative overflow-hidden group">
                     <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
                     <div className="relative z-10">
-                        <p className="text-[11px] font-bold text-emerald-100/85 uppercase tracking-wider mb-1.5">Serapan Dana</p>
+                        <p className="text-[11px] font-bold text-sky-100/85 uppercase tracking-wider mb-1.5">Serapan Dana</p>
                         <h3 className="text-3xl sm:text-4xl font-bold text-white tracking-tight tabular-nums">{absorptionRate.toFixed(1)}%</h3>
-                        <div className="mt-4 w-full bg-black/20 h-2 rounded-full overflow-hidden">
+                        <div className="mt-4 w-full bg-black/25 h-2 rounded-full overflow-hidden">
                             <div 
-                                className="h-full bg-gradient-to-r from-[#A7F3D0] via-[#6EE7B7] to-[#34D399] rounded-full transition-all duration-1000" 
+                                className="h-full bg-gradient-to-r from-[#F59E0B] via-[#34D399] to-[#6EE7B7] rounded-full transition-all duration-1000" 
                                 style={{ width: `${Math.min(absorptionRate, 100)}%` }}
                             />
                         </div>
@@ -1000,17 +1000,17 @@ export default function RealizationDashboard() {
             {/* (DISEMBUNYIKAN SECARA DEFAULT, DIKLIK BARU MUNCUL SESUAI INSTRUKSI USER) */}
             {/* ========================================================================= */}
             <div className="mb-9 transition-all">
-                {/* Trigger Banner (Pola Gradasi Emerald Forest) */}
+                {/* Trigger Banner (Pola Gradasi Multi-Tone Cobalt-Teal + Aksen Hangat) */}
                 <div 
                     onClick={() => setShowSemesterAnalysis(!showSemesterAnalysis)}
-                    className="cursor-pointer group p-6 rounded-3xl bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white shadow-md border border-[#2A946B]/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden"
+                    className="cursor-pointer group p-6 rounded-3xl bg-gradient-to-r from-[#1C3557] via-[#26517D] to-[#197278] text-white shadow-md border border-[#346A96]/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden"
                 >
-                    <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none group-hover:scale-110 transition-transform text-emerald-200">
+                    <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none group-hover:scale-110 transition-transform text-sky-200">
                         <Sparkles size={120} />
                     </div>
                     <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-13 h-13 rounded-2xl bg-white/15 text-emerald-100 border border-white/25 flex items-center justify-center shadow-inner group-hover:bg-white/20 transition-colors shrink-0">
+                            <div className="w-13 h-13 rounded-2xl bg-white/15 text-sky-100 border border-white/25 flex items-center justify-center shadow-inner group-hover:bg-white/20 transition-colors shrink-0">
                                 <ArrowLeftRight size={24} className="group-hover:rotate-180 transition-transform duration-500" />
                             </div>
                             <div>
@@ -1018,21 +1018,21 @@ export default function RealizationDashboard() {
                                     <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
                                         Evaluasi Sisa Anggaran Semester 1 &amp; Realokasi Semester 2
                                     </h3>
-                                    <span className="px-3 py-0.5 bg-emerald-200/20 text-emerald-50 border border-emerald-200/30 rounded-full font-bold text-[10px] uppercase tracking-wider">
+                                    <span className="px-3 py-0.5 bg-gradient-to-r from-[#DF6B45]/90 to-[#E59838]/90 text-white rounded-full font-bold text-[10px] uppercase tracking-wider shadow-xs">
                                         Persiapan Perubahan Anggaran (Oktober)
                                     </span>
                                 </div>
-                                <p className="text-emerald-100/80 text-xs font-medium mt-1">
+                                <p className="text-sky-100/80 text-xs font-medium mt-1">
                                     Lihat rincian sisa efisiensi belanja Semester 1 (Juli–Desember) yang siap dimanfaatkan untuk penambahan pagu Semester 2.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/85 hidden sm:inline">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-sky-100/85 hidden sm:inline">
                                 {showSemesterAnalysis ? 'Klik untuk Menyembunyikan' : 'Klik untuk Membuka Analisis'}
                             </span>
-                            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-sm ${showSemesterAnalysis ? 'bg-[#0E3A2A] text-emerald-100 border border-emerald-300/30' : 'bg-white text-[#0F5E3F] hover:bg-[#E9F5EF] group-hover:scale-[1.03]'}`}>
+                            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-sm ${showSemesterAnalysis ? 'bg-[#132640] text-sky-100 border border-sky-300/30' : 'bg-white text-[#1C3557] hover:bg-sky-50 group-hover:scale-[1.03]'}`}>
                                 {showSemesterAnalysis ? (
                                     <>
                                         <ChevronUp size={16} />
@@ -1277,27 +1277,27 @@ export default function RealizationDashboard() {
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         {/* Multi-tier group header */}
-                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1C7F58] text-white font-bold uppercase text-[10px] tracking-wider">
+                                        <tr className="bg-gradient-to-r from-[#1C375B] via-[#244E82] to-[#17726C] text-white font-bold uppercase text-[10px] tracking-wider">
                                             <th rowSpan={2} className="px-4 py-4 w-12 text-center border-r border-white/15">No</th>
                                             <th rowSpan={2} className="px-5 py-4 min-w-[240px] border-r border-white/15">Pos Pengeluaran</th>
                                             {currentUser?.role !== 'admin_unit' && (
                                                 <th rowSpan={2} className="px-4 py-4 min-w-[140px] border-r border-white/15">Unit / Bidang</th>
                                             )}
-                                            <th colSpan={4} className="px-6 py-3 text-center bg-[#13553C]/80 border-r border-white/15">
+                                            <th colSpan={4} className="px-6 py-3 text-center bg-[#234C82]/85 border-r border-white/15">
                                                 SEMESTER 1 (JULI – DESEMBER)
                                             </th>
-                                            <th colSpan={2} className="px-6 py-3 text-center bg-[#0F6E66]/80 border-r border-white/15">
+                                            <th colSpan={2} className="px-6 py-3 text-center bg-[#14706A]/85 border-r border-white/15">
                                                 SEMESTER 2 (JANUARI – JUNI)
                                             </th>
                                             <th rowSpan={2} className="px-4 py-4 min-w-[170px] text-center">Status Efisiensi</th>
                                         </tr>
-                                        <tr className="bg-[#165D42] text-emerald-50 font-bold text-[9px] uppercase tracking-wider">
-                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Pagu Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Realisasi Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15 text-emerald-200 font-bold">Sisa Smt 1 (Surplus)</th>
-                                            <th className="px-3 py-2.5 text-center bg-[#114B35]/80 border-r border-white/15">% Serap</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15">Pagu Awal S2</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15 text-emerald-200 font-bold">Proyeksi S2 Baru</th>
+                                        <tr className="bg-[#1D406D] text-sky-50 font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-2.5 text-right bg-[#1A3B66]/85 border-r border-white/15">Pagu Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#1A3B66]/85 border-r border-white/15">Realisasi Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#1A3B66]/85 border-r border-white/15 text-emerald-200 font-bold">Sisa Smt 1 (Surplus)</th>
+                                            <th className="px-3 py-2.5 text-center bg-[#1A3B66]/85 border-r border-white/15">% Serap</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#115F5A]/85 border-r border-white/15">Pagu Awal S2</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#115F5A]/85 border-r border-white/15 text-sky-100 font-bold">Proyeksi S2 Baru</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -1372,8 +1372,8 @@ export default function RealizationDashboard() {
                                         )}
 
                                         {/* TOTAL ROW FOR ITEMS */}
-                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1B7E57] text-white font-bold text-xs border-t border-white/15">
-                                            <td colSpan={currentUser?.role !== 'admin_unit' ? 3 : 2} className="px-6 py-4 text-center uppercase tracking-wider text-emerald-100">
+                                        <tr className="bg-gradient-to-r from-[#1C375B] via-[#244E82] to-[#17726C] text-white font-bold text-xs border-t border-white/15">
+                                            <td colSpan={currentUser?.role !== 'admin_unit' ? 3 : 2} className="px-6 py-4 text-center uppercase tracking-wider text-sky-100">
                                                 TOTAL ({flatSemesterItems.length} POS BELANJA TERFILTER)
                                             </td>
                                             <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
@@ -1391,7 +1391,7 @@ export default function RealizationDashboard() {
                                             <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(flatTotals.totalBudgetS2)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-emerald-100 bg-black/15 tabular-nums">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-sky-100 bg-black/15 tabular-nums">
                                                 {formatRupiah(flatTotals.totalProjectedS2)}
                                             </td>
                                             <td className="px-4 py-4 text-center border-l border-white/15">
@@ -1409,24 +1409,24 @@ export default function RealizationDashboard() {
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         {/* Multi-tier group header */}
-                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1C7F58] text-white font-bold uppercase text-[10px] tracking-wider">
+                                        <tr className="bg-gradient-to-r from-[#1C375B] via-[#244E82] to-[#17726C] text-white font-bold uppercase text-[10px] tracking-wider">
                                             <th rowSpan={2} className="px-5 py-4 w-12 text-center border-r border-white/15">No</th>
                                             <th rowSpan={2} className="px-6 py-4 min-w-[200px] border-r border-white/15">Nama Unit / Bidang</th>
-                                            <th colSpan={4} className="px-6 py-3 text-center bg-[#13553C]/80 border-r border-white/15">
+                                            <th colSpan={4} className="px-6 py-3 text-center bg-[#234C82]/85 border-r border-white/15">
                                                 SEMESTER 1 (JULI – DESEMBER)
                                             </th>
-                                            <th colSpan={2} className="px-6 py-3 text-center bg-[#0F6E66]/80 border-r border-white/15">
+                                            <th colSpan={2} className="px-6 py-3 text-center bg-[#14706A]/85 border-r border-white/15">
                                                 SEMESTER 2 (JANUARI – JUNI)
                                             </th>
                                             <th rowSpan={2} className="px-4 py-4 w-28 text-center">Rincian Pos</th>
                                         </tr>
-                                        <tr className="bg-[#165D42] text-emerald-50 font-bold text-[9px] uppercase tracking-wider">
-                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Pagu Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Realisasi Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15 text-emerald-200 font-bold">Sisa Smt 1 (Surplus)</th>
-                                            <th className="px-3 py-2.5 text-center bg-[#114B35]/80 border-r border-white/15">% Serap</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15">Pagu Awal S2</th>
-                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15 text-emerald-200 font-bold">Proyeksi S2 Baru</th>
+                                        <tr className="bg-[#1D406D] text-sky-50 font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-2.5 text-right bg-[#1A3B66]/85 border-r border-white/15">Pagu Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#1A3B66]/85 border-r border-white/15">Realisasi Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#1A3B66]/85 border-r border-white/15 text-emerald-200 font-bold">Sisa Smt 1 (Surplus)</th>
+                                            <th className="px-3 py-2.5 text-center bg-[#1A3B66]/85 border-r border-white/15">% Serap</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#115F5A]/85 border-r border-white/15">Pagu Awal S2</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#115F5A]/85 border-r border-white/15 text-sky-100 font-bold">Proyeksi S2 Baru</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -1568,8 +1568,8 @@ export default function RealizationDashboard() {
                                         )}
 
                                         {/* GRAND TOTAL SEMESTER ROW */}
-                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1B7E57] text-white font-bold text-xs border-t border-white/15">
-                                            <td colSpan={2} className="px-6 py-4 text-center uppercase tracking-wider text-emerald-100">
+                                        <tr className="bg-gradient-to-r from-[#1C375B] via-[#244E82] to-[#17726C] text-white font-bold text-xs border-t border-white/15">
+                                            <td colSpan={2} className="px-6 py-4 text-center uppercase tracking-wider text-sky-100">
                                                 TOTAL KESELURUHAN (EVALUASI SEMESTER)
                                             </td>
                                             <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
@@ -1587,7 +1587,7 @@ export default function RealizationDashboard() {
                                             <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS2Budget)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-emerald-100 bg-black/15 tabular-nums">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-sky-100 bg-black/15 tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS2Projected)}
                                             </td>
                                             <td className="px-4 py-4 text-center border-l border-white/15">
@@ -1617,11 +1617,11 @@ export default function RealizationDashboard() {
 
             {/* MAIN DATA TABLES */}
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* BIDANG REALISASI */}
+                {/* BIDANG REALISASI (Gradasi Cobalt Steel Blue) */}
                 {currentUser.role !== 'admin_unit' && (
-                    <div className="budget-table-wrapper bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden mb-8">
-                        <div className="budget-table-title bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white px-5 py-3.5 flex items-center gap-3">
-                            <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
+                    <div className="budget-table-wrapper bg-white rounded-2xl border border-[#DCE5F2] shadow-xs overflow-hidden mb-8">
+                        <div className="budget-table-title bg-gradient-to-r from-[#1C375B] via-[#265187] to-[#2E69A8] text-white px-5 py-3.5 flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-sky-100 flex items-center justify-center shrink-0">
                                 <Layers size={16} />
                             </span>
                             <span className="tracking-tight text-sm font-bold text-white">Serapan Anggaran Per Bidang</span>
@@ -1649,13 +1649,13 @@ export default function RealizationDashboard() {
                                                     isField={true}
                                                 />
                                             ))}
-                                            <tr className="budget-row-total bg-[#F2F6F4]">
-                                                <td className="budget-cell budget-cell-name font-bold text-xs text-[#13261E] uppercase tracking-wider">
+                                            <tr className="budget-row-total bg-[#F3F7FC]">
+                                                <td className="budget-cell budget-cell-name font-bold text-xs text-[#1C375B] uppercase tracking-wider">
                                                     TOTAL KESELURUHAN
                                                 </td>
-                                                <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#E3E9E5] tabular-nums">{formatRupiah(dashboardData.totalBidangRAB)}</td>
+                                                <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#DCE5F2] tabular-nums">{formatRupiah(dashboardData.totalBidangRAB)}</td>
                                                 <td className="budget-cell budget-cell-number font-bold text-[#13261E] tabular-nums">{formatRupiah(dashboardData.totalBidangSpent)}</td>
-                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#E9F5EF]/70 text-[#157A52] font-bold tabular-nums">{formatRupiah(dashboardData.totalBidangRemaining)}</td>
+                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#EBF3FD] text-[#244E82] font-bold tabular-nums">{formatRupiah(dashboardData.totalBidangRemaining)}</td>
                                             </tr>
                                         </>
                                     ) : (
@@ -1671,10 +1671,10 @@ export default function RealizationDashboard() {
                     </div>
                 )}
 
-                {/* UNIT REALISASI */}
+                {/* UNIT REALISASI (Gradasi Teal to Emerald) */}
                 {currentUser.role !== 'admin_bidang' && (
-                    <div className="budget-table-wrapper bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden">
-                        <div className="budget-table-title bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white px-5 py-3.5 flex items-center gap-3">
+                    <div className="budget-table-wrapper bg-white rounded-2xl border border-[#DCEAE3] shadow-xs overflow-hidden">
+                        <div className="budget-table-title bg-gradient-to-r from-[#12514A] via-[#157A52] to-[#22986B] text-white px-5 py-3.5 flex items-center gap-3">
                             <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
                                 <Building2 size={16} />
                             </span>

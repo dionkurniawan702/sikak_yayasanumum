@@ -1898,20 +1898,24 @@ export default function MonthlyRequest() {
             )}
             {/* Header */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="lg:col-span-2 bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] rounded-3xl p-8 sm:p-9 text-white shadow-md border border-[#2A946B]/35 relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-15 group-hover:scale-110 transition-transform text-emerald-100">
+                <div className={`lg:col-span-2 rounded-3xl p-8 sm:p-9 text-white shadow-md relative overflow-hidden group transition-all ${
+                    sourceMode === 'BOS'
+                        ? 'bg-gradient-to-br from-[#0F525C] via-[#157A66] to-[#1FA17D] border border-[#23967E]/35'
+                        : 'bg-gradient-to-br from-[#1C375B] via-[#255285] to-[#1B7678] border border-[#2D6794]/35'
+                }`}>
+                    <div className="absolute top-0 right-0 p-10 opacity-15 group-hover:scale-110 transition-transform text-sky-100">
                         <Send size={150} />
                     </div>
                     <div className="relative z-10">
                         <h1 className="text-2xl sm:text-3xl font-bold mb-1 tracking-tight">Permintaan Dana</h1>
-                        <p className="text-emerald-100/80 font-semibold mb-5 uppercase text-[11px] tracking-wider">
+                        <p className="text-sky-100/80 font-semibold mb-5 uppercase text-[11px] tracking-wider">
                             TA {currentYear?.name || '-'} • {isSuperAdmin ? 'SELURUH YAYASAN' : (units.find(u => u.id === myUnitId)?.name || fields.find(f => f.id === myFieldId)?.name || 'Unit Saya')}
                         </p>
 
                         <div className="flex bg-black/15 backdrop-blur-md p-1 rounded-xl border border-white/20 mb-7 inline-flex">
                             <button 
                                 onClick={() => setSourceMode('YAYASAN')}
-                                className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-sm' : 'text-white/75 hover:text-white'}`}
+                                className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#244E82] shadow-sm' : 'text-white/75 hover:text-white'}`}
                             >
                                 <Building2 size={12} className="inline mr-2" />
                                 Dana Yayasan
@@ -1919,7 +1923,7 @@ export default function MonthlyRequest() {
                             {(!myFieldId || isSuperAdmin) && (
                                 <button 
                                     onClick={() => setSourceMode('BOS')}
-                                    className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'BOS' ? 'bg-white text-[#0D6844] shadow-sm' : 'text-white/75 hover:text-white'}`}
+                                    className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'BOS' ? 'bg-white text-[#157A52] shadow-sm' : 'text-white/75 hover:text-white'}`}
                                 >
                                     <Gem size={12} className="inline mr-2" />
                                     Dana BOS
@@ -1930,7 +1934,7 @@ export default function MonthlyRequest() {
                         {!isSuperAdmin ? (
                             <button
                                 onClick={() => setShowRequestModal(true)}
-                                className="bg-white text-[#0F5E3F] font-bold px-6 py-3.5 rounded-xl flex items-center gap-2.5 hover:bg-[#E9F5EF] hover:scale-[1.02] active:scale-95 transition-all shadow-sm cursor-pointer text-xs uppercase tracking-wider"
+                                className={`bg-white font-bold px-6 py-3.5 rounded-xl flex items-center gap-2.5 hover:bg-sky-50 hover:scale-[1.02] active:scale-95 transition-all shadow-sm cursor-pointer text-xs uppercase tracking-wider ${sourceMode === 'BOS' ? 'text-[#0F5E3F]' : 'text-[#1C375B]'}`}
                             >
                                 <Plus size={18} strokeWidth={3} />
                                 <span>Buat Pengajuan Dana</span>

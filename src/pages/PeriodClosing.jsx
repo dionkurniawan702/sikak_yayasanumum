@@ -188,11 +188,11 @@ export default function PeriodClosing() {
                 </div>
 
                 {/* SUMMARY DATA */}
-                <div className="bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] p-9 rounded-3xl text-white shadow-md border border-[#2A946B]/35 flex flex-col justify-between">
+                <div className="bg-gradient-to-br from-[#1C375B] via-[#22517A] to-[#157A66] p-9 rounded-3xl text-white shadow-md border border-[#2D6794]/35 flex flex-col justify-between">
                     <div>
                         <div className="flex items-center gap-4 mb-10">
                              <div className="w-13 h-13 bg-white/15 rounded-2xl flex items-center justify-center border border-white/20">
-                                 <Save size={24} className="text-emerald-100" />
+                                 <Save size={24} className="text-sky-100" />
                              </div>
                              <h3 className="text-lg font-bold text-white uppercase tracking-wider leading-none">Status Nominal {selectedYear}</h3>
                         </div>

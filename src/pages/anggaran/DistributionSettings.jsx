@@ -100,17 +100,17 @@ export default function DistributionSettings() {
     return (
         <div className="p-8 animate-in">
             {/* Header */}
-            <div className="mb-8 p-8 sm:p-9 bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] rounded-3xl text-white shadow-md border border-[#2A946B]/35 relative overflow-hidden">
+            <div className="mb-8 p-8 sm:p-9 bg-gradient-to-br from-[#1C375B] via-[#265187] to-[#1B7678] rounded-3xl text-white shadow-md border border-[#2D6794]/35 relative overflow-hidden">
                 <div className="relative z-10">
                     <div className="flex items-center gap-4 mb-3">
-                        <div className="w-12 h-12 bg-white/15 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/25 text-emerald-100">
+                        <div className="w-12 h-12 bg-white/15 backdrop-blur-xl rounded-2xl flex items-center justify-center border border-white/25 text-sky-100">
                             <Share2 size={22} />
                         </div>
                         <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">Pengaturan Distribusi</h1>
                     </div>
-                    <p className="text-emerald-100/85 font-medium max-w-xl text-sm">Konfigurasikan persentase pembagian dana dari item penerimaan unit ke berbagai pos pengeluaran unit atau bidang terkait.</p>
+                    <p className="text-sky-100/85 font-medium max-w-xl text-sm">Konfigurasikan persentase pembagian dana dari item penerimaan unit ke berbagai pos pengeluaran unit atau bidang terkait.</p>
                 </div>
-                <div className="absolute top-0 right-0 p-8 opacity-15 scale-150 rotate-12 text-emerald-100">
+                <div className="absolute top-0 right-0 p-8 opacity-15 scale-150 rotate-12 text-sky-100">
                     <Percent size={150} />
                 </div>
             </div>

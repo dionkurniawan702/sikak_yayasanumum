@@ -2878,8 +2878,8 @@ export default function BOSMonthlyReport() {
                                 </tbody>
                                 {filteredReports.length > 0 && (
                                     <tfoot>
-                                        <tr className="bg-gradient-to-r from-[#0F5F4A] to-[#157A52] text-white">
-                                            <td colSpan={isSuperAdmin ? 8 : 9} className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-emerald-100">Total</td>
+                                        <tr className="bg-gradient-to-r from-[#0F525C] to-[#17838E] text-white">
+                                            <td colSpan={isSuperAdmin ? 8 : 9} className="px-5 py-4 text-[10px] font-bold uppercase tracking-wider text-cyan-100">Total</td>
                                             <td className="px-5 py-4 text-right font-bold text-emerald-200 text-base tabular-nums">{formatRupiah(totalNilai)}</td>
                                             <td colSpan="4"></td>
                                         </tr>
@@ -2892,18 +2892,18 @@ export default function BOSMonthlyReport() {
             ) : activeTab === 'verification' && isSuperAdmin ? (
                 /* VERIFICATION TAB */
                 <div className="space-y-6">
-                    <div className="p-6 bg-gradient-to-r from-[#EEF7F2] to-[#F6FBF8] border border-[#C6E3D5] rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="p-6 bg-gradient-to-r from-[#EDF8F7] to-[#F5FBFA] border border-[#C2E3E0] rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="flex items-center gap-4">
-                            <AlertCircle size={24} className="text-[#157A52] shrink-0" />
+                            <AlertCircle size={24} className="text-[#14828A] shrink-0" />
                             <div>
-                                <h3 className="font-bold text-[#13261E] text-lg">Persetujuan Laporan Realisasi</h3>
-                                <p className="text-xs text-[#5C6F66] font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
+                                <h3 className="font-bold text-[#13261E] text-lg">Persetujuan Laporan Realisasi BOS</h3>
+                                <p className="text-xs text-[#4F6D6F] font-medium">Laporan yang diajukan unit dan bidang akan mengunci saldo Sisa Dana Cair sementara. Anda perlu menyetujui laporan berikut agar statusnya menjadi final (VERIFIED).</p>
                             </div>
                         </div>
                         <select 
                             value={selectedUnitFilter} 
                             onChange={(e) => setSelectedUnitFilter(e.target.value)}
-                            className="bg-white border border-[#DCE5DF] rounded-xl px-4 py-3 text-[10px] font-bold text-[#13261E] uppercase tracking-wider focus:ring-2 focus:ring-[#157A52]/20 outline-none cursor-pointer shadow-2xs shrink-0 w-full md:w-auto"
+                            className="bg-white border border-[#C9E2E0] rounded-xl px-4 py-3 text-[10px] font-bold text-[#13261E] uppercase tracking-wider focus:ring-2 focus:ring-[#14828A]/20 outline-none cursor-pointer shadow-2xs shrink-0 w-full md:w-auto"
                         >
                             <option value="ALL">Semua Unit &amp; Bidang</option>
                             <optgroup label="Bidang">
@@ -2915,11 +2915,11 @@ export default function BOSMonthlyReport() {
                         </select>
                     </div>
 
-                    <div className="overflow-hidden rounded-2xl border border-[#E4EAE6] bg-white shadow-xs animate-in fade-in duration-300">
-                        <div className="bg-gradient-to-r from-[#0F5F4A] via-[#157A52] to-[#1FA376] px-6 py-4 flex items-center gap-3 flex-wrap">
-                            <CheckCircle2 size={15} className="text-emerald-100" />
+                    <div className="overflow-hidden rounded-2xl border border-[#D4E7E6] bg-white shadow-xs animate-in fade-in duration-300">
+                        <div className="bg-gradient-to-r from-[#0F525C] via-[#17838E] to-[#1FA19B] px-6 py-4 flex items-center gap-3 flex-wrap">
+                            <CheckCircle2 size={15} className="text-cyan-100" />
                             <span className="text-xs font-bold text-white uppercase tracking-wider">Daftar Menunggu Persetujuan</span>
-                            <span className="text-[10px] text-emerald-50 font-bold bg-white/15 px-2.5 py-0.5 rounded-full">{verificationReports.length} laporan</span>
+                            <span className="text-[10px] text-cyan-50 font-bold bg-white/15 px-2.5 py-0.5 rounded-full">{verificationReports.length} laporan</span>
                             
                             {selectedReportIds.length > 0 && (
                                 <div className="ml-auto flex items-center gap-2 animate-in slide-in-from-right-5 duration-300">

@@ -4357,11 +4357,11 @@ function RABContent() {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
                 {/* Header Information Banner */}
-                <div className="bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] p-8 rounded-3xl border border-[#2A946B]/40 text-white shadow-md relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+                <div className="bg-gradient-to-r from-[#7A3512] via-[#A84E16] to-[#CC6A1B] p-8 rounded-3xl border border-[#DF802B]/40 text-white shadow-md relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-amber-300/15 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
                     <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                         <div className="flex items-start gap-4">
-                            <div className="p-4 bg-white/15 text-emerald-100 rounded-2xl border border-white/25 shrink-0">
+                            <div className="p-4 bg-white/15 text-amber-100 rounded-2xl border border-white/25 shrink-0">
                                 <Package size={30} />
                             </div>
                             <div>
@@ -4369,14 +4369,14 @@ function RABContent() {
                                     <span className="bg-amber-300 text-[#13261E] text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                         Bidang Sarana Prasarana
                                     </span>
-                                    <span className="text-emerald-100/80 text-xs font-semibold">
+                                    <span className="text-amber-100/85 text-xs font-semibold">
                                         TA {activeYearName || 'Aktif'}
                                     </span>
                                 </div>
                                 <h3 className="text-2xl font-bold tracking-tight text-white">
                                     Verifikasi Pengadaan Aset Seluruh Unit &amp; Bidang
                                 </h3>
-                                <p className="text-emerald-100/85 text-xs mt-1 max-w-2xl leading-relaxed">
+                                <p className="text-amber-50/85 text-xs mt-1 max-w-2xl leading-relaxed">
                                     Verifikasi dan berikan persetujuan (ACC) rencana pengadaan barang bersifat aset dari seluruh unit pendidikan dan bidang yayasan agar pengadaan tercatat rapi dan terpantau sebelum realisasi anggaran.
                                 </p>
                             </div>
@@ -5902,13 +5902,13 @@ function RABContent() {
                 </div>
 
                 {/* Sticky Table Footer / Save Bar */}
-                <div className="mt-8 p-8 sm:p-9 bg-gradient-to-r from-[#103E2D] via-[#145C40] to-[#1A7A54] rounded-3xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-md relative overflow-hidden group border border-[#2A946B]/35">
-                    <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none group-hover:scale-110 transition-transform text-emerald-200">
+                <div className="mt-8 p-8 sm:p-9 bg-gradient-to-r from-[#1B3759] via-[#1B5C6E] to-[#157A52] rounded-3xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-md relative overflow-hidden group border border-[#2B6E82]/35">
+                    <div className="absolute top-0 right-0 p-10 opacity-15 pointer-events-none group-hover:scale-110 transition-transform text-sky-100">
                         <Save size={150} />
                     </div>
                     <div className="relative z-10 flex items-center gap-10">
                         <div className="flex flex-col">
-                            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-100/80 mb-1">Total Sisa Anggaran</span>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-sky-100/80 mb-1">Total Sisa Anggaran</span>
                             <h4 className={`text-3xl sm:text-4xl font-bold tracking-tight tabular-nums ${balance < 0 ? 'text-rose-300 animate-pulse' : 'text-emerald-200'}`}>
                                 {formatRupiah(balance)}
                             </h4>
@@ -6435,9 +6435,9 @@ function RABContent() {
                     {/* Header Info (Calm Ferna Executive Cards) */}
                     <div className="w-full flex flex-col xl:flex-row gap-3.5">
                         {/* Selected Entity Card */}
-                        <div className="bg-white px-5 py-4 rounded-2xl shadow-xs border border-[#E4EAE6] flex items-center gap-4 xl:w-[30%]">
-                            <div className="p-3 bg-[#E2F1EA] border border-[#C6E3D5] rounded-xl shrink-0">
-                                <Building2 size={22} className="text-[#157A52]" />
+                        <div className="bg-gradient-to-br from-white to-[#F4F8FC] px-5 py-4 rounded-2xl shadow-xs border border-[#DCE5F2] flex items-center gap-4 xl:w-[30%]">
+                            <div className="p-3 bg-[#EBF3FD] border border-[#C6DAF4] rounded-xl shrink-0">
+                                <Building2 size={22} className="text-[#244E82]" />
                             </div>
                             <div className="min-w-0">
                                 <h3 className="text-lg font-bold text-[#13261E] tracking-tight leading-snug truncate">
@@ -6447,49 +6447,49 @@ function RABContent() {
                                             : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
                                     )}
                                 </h3>
-                                <p className="text-[#6B7E75] text-[10px] font-bold uppercase tracking-wider mt-0.5">
+                                <p className="text-[#5B6F8A] text-[10px] font-bold uppercase tracking-wider mt-0.5">
                                     {isConsolidation ? 'Konsolidasi Data Strategis' : (selectedUnitId.startsWith('FIELD-') ? 'Bidang Struktural' : 'Unit Pendidikan')}
                                 </p>
                             </div>
                         </div>
 
-                        {/* Quick Stats Cards in Header */}
+                        {/* Quick Stats Cards in Header (Multi-Color Ferna Palette) */}
                         <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 ${isBosRecipient && fundSourceFilter === 'all' ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
-                            <div className="bg-white px-5 py-4 rounded-2xl border border-[#E4EAE6] shadow-xs flex flex-col justify-center">
+                            <div className="bg-gradient-to-br from-white to-[#F1F8F4] px-5 py-4 rounded-2xl border border-[#DCEAE2] shadow-xs flex flex-col justify-center">
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-[11px] font-semibold text-[#6B7E75]">
+                                    <p className="text-[11px] font-semibold text-[#5C7A6B]">
                                         {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
                                     </p>
-                                    <span className="w-2 h-2 rounded-full bg-[#157A52]" />
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#157A52]" />
                                 </div>
                                 <h3 className="text-xl font-bold text-[#13261E] tracking-tight tabular-nums">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget)}
                                 </h3>
                             </div>
                             {isBosRecipient && fundSourceFilter === 'all' && (
-                                <div className="bg-white px-5 py-4 rounded-2xl border border-[#E4EAE6] shadow-xs flex flex-col justify-center">
+                                <div className="bg-gradient-to-br from-white to-[#EFF9F8] px-5 py-4 rounded-2xl border border-[#D4ECEA] shadow-xs flex flex-col justify-center">
                                     <div className="flex items-center justify-between gap-2 mb-1">
-                                        <p className="text-[11px] font-semibold text-[#6B7E75]">RAP BOS</p>
-                                        <span className="w-2 h-2 rounded-full bg-[#249A8B]" />
+                                        <p className="text-[11px] font-semibold text-[#4B7573]">RAP BOS</p>
+                                        <span className="w-2.5 h-2.5 rounded-full bg-[#178582]" />
                                     </div>
-                                    <h3 className="text-xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(totalBosAllocated)}</h3>
+                                    <h3 className="text-xl font-bold text-[#0F525C] tracking-tight tabular-nums">{formatRupiah(totalBosAllocated)}</h3>
                                 </div>
                             )}
-                            <div className="bg-white px-5 py-4 rounded-2xl border border-[#E4EAE6] shadow-xs flex flex-col justify-center">
+                            <div className="bg-gradient-to-br from-white to-[#F2F6FC] px-5 py-4 rounded-2xl border border-[#DAE4F2] shadow-xs flex flex-col justify-center">
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-[11px] font-semibold text-[#6B7E75]">Rencana RAB (Total)</p>
-                                    <span className="w-2 h-2 rounded-full bg-[#1E3448]" />
+                                    <p className="text-[11px] font-semibold text-[#5B6F8A]">Rencana RAB (Total)</p>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#2557A7]" />
                                 </div>
-                                <h3 className="text-xl font-bold text-[#1E3448] tracking-tight tabular-nums">
+                                <h3 className="text-xl font-bold text-[#1C375B] tracking-tight tabular-nums">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}
                                 </h3>
                             </div>
-                            <div className={`px-5 py-4 rounded-2xl border shadow-xs flex flex-col justify-center ${balance < 0 ? 'border-rose-200 bg-rose-50/40' : 'border-[#E4EAE6] bg-white'}`}>
+                            <div className={`px-5 py-4 rounded-2xl border shadow-xs flex flex-col justify-center ${balance < 0 ? 'border-rose-200 bg-rose-50/40' : 'border-[#EFE1C3] bg-gradient-to-br from-white to-[#FCF8EE]'}`}>
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-[11px] font-semibold text-[#6B7E75]">Sisa RAP</p>
-                                    <span className={`w-2 h-2 rounded-full ${balance < 0 ? 'bg-rose-600 animate-ping' : 'bg-[#0D6844]'}`} />
+                                    <p className="text-[11px] font-semibold text-[#8A7042]">Sisa RAP</p>
+                                    <span className={`w-2.5 h-2.5 rounded-full ${balance < 0 ? 'bg-rose-600 animate-ping' : 'bg-[#D49B27]'}`} />
                                 </div>
-                                <h3 className={`text-xl font-bold tracking-tight tabular-nums ${balance < 0 ? 'text-rose-600' : 'text-[#157A52]'}`}>
+                                <h3 className={`text-xl font-bold tracking-tight tabular-nums ${balance < 0 ? 'text-rose-600' : 'text-[#13261E]'}`}>
                                     {formatRupiah(balance)}
                                 </h3>
                                 {(() => {
@@ -6499,7 +6499,7 @@ function RABContent() {
                                     return (
                                         <div className="mt-2 h-1.5 w-full rounded-full bg-[#E9EEEC] overflow-hidden" title={`Serapan rencana: ${ratio}%`}>
                                             <div
-                                                className={`h-full rounded-full transition-all duration-500 ${balance < 0 ? 'bg-rose-500' : 'bg-[#157A52]'}`}
+                                                className={`h-full rounded-full transition-all duration-500 ${balance < 0 ? 'bg-rose-500' : 'bg-gradient-to-r from-[#2557A7] via-[#178582] to-[#157A52]'}`}
                                                 style={{ width: `${ratio}%` }}
                                             />
                                         </div>
@@ -6511,31 +6511,31 @@ function RABContent() {
 
                     {/* Superadmin Pending RAB Review Banner */}
                     {isSuperAdmin && pendingPlans.length > 0 && activeTab !== 'REVIEW' && (
-                        <div className="w-full bg-[#162922] rounded-2xl px-5 py-4 text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-[#244036] animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="w-full bg-gradient-to-r from-[#1C3557] via-[#26517D] to-[#1A6F72] rounded-2xl px-5 py-4 text-white shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-[#346A96]/40 animate-in fade-in slide-in-from-top-4 duration-300">
                             <div className="flex items-center gap-3.5">
-                                <div className="p-2.5 bg-[#157A52]/30 border border-emerald-400/25 rounded-xl shrink-0">
-                                    <Wallet size={20} className="text-emerald-300" />
+                                <div className="p-2.5 bg-white/15 border border-white/25 rounded-xl shrink-0">
+                                    <Wallet size={20} className="text-amber-300" />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="bg-[#157A52] px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-emerald-50">
+                                        <span className="bg-gradient-to-r from-[#DF6B45] to-[#E59838] px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-white">
                                             Perhatian Yayasan
                                         </span>
-                                        <span className="text-[11px] font-semibold text-emerald-100/75">TA {activeYearName || '2026-2027'}</span>
+                                        <span className="text-[11px] font-semibold text-sky-100/80">TA {activeYearName || '2026-2027'}</span>
                                     </div>
                                     <h4 className="text-sm font-bold tracking-tight text-white mt-0.5">
                                         Ada {pendingPlans.length} Pengajuan / Usulan Revisi RAB Menunggu Review Yayasan!
                                     </h4>
-                                    <p className="text-[11px] text-emerald-100/75 font-medium">
+                                    <p className="text-[11px] text-sky-100/80 font-medium">
                                         Unit telah mengirimkan pengajuan RAB atau usulan perubahan anggaran. Silakan tinjau rincian untuk di-ACC atau ditolak.
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setActiveTab('REVIEW')}
-                                className="px-4 py-2.5 bg-white text-[#13261E] font-bold text-xs rounded-xl shadow-xs hover:bg-[#E9F5EF] transition-all shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
+                                className="px-4 py-2.5 bg-white text-[#1C3557] font-bold text-xs rounded-xl shadow-xs hover:bg-sky-50 transition-all shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
                             >
-                                <Wallet size={15} className="text-[#157A52]" />
+                                <Wallet size={15} className="text-[#2557A7]" />
                                 Buka Review Pengajuan ({pendingPlans.length})
                             </button>
                         </div>
@@ -7694,12 +7694,12 @@ function RABContent() {
                                                             </div>
                                                         </div>
 
-                                                        {/* Right Column: Monthly Allocation */}
-                                                        <div className="p-8 bg-gradient-to-br from-[#103829] via-[#134B36] to-[#176145] rounded-3xl text-white flex flex-col border border-[#2A946B]/30">
+                                                        {/* Right Column: Monthly Allocation (Steel-Cobalt Contrast Panel) */}
+                                                        <div className="p-8 bg-gradient-to-br from-[#182E49] via-[#1F416B] to-[#25558A] rounded-3xl text-white flex flex-col border border-[#3B6DA6]/35">
                                                             <div className="flex items-center justify-between mb-6">
-                                                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-emerald-200">Alokasi Bulanan Rincian</h4>
+                                                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-sky-200">Alokasi Bulanan Rincian</h4>
                                                                 {!isReadOnlyComp && (
-                                                                    <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-[#157A52] hover:bg-[#1E9666] border border-white/20 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-2 cursor-pointer">
+                                                                    <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-[#2B62A8] hover:bg-[#3574C4] border border-white/20 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-2 cursor-pointer">
                                                                         <RefreshCw size={12} />
                                                                         Sync
                                                                     </button>
@@ -7713,19 +7713,19 @@ function RABContent() {
 
 
                                                                     return (
-                                                                        <div key={m.id} className={`p-3 rounded-2xl border transition-all ${mData.m ? 'bg-[#157A52] border-[#6EE7B7]/60 shadow-xs' : (isSelectable ? 'bg-white/5 border-white/15 hover:border-emerald-300/40' : 'opacity-10 pointer-events-none')} ${isReadOnlyComp ? 'pointer-events-none' : ''}`}>
+                                                                        <div key={m.id} className={`p-3 rounded-2xl border transition-all ${mData.m ? 'bg-[#2B62A8] border-sky-300/60 shadow-xs' : (isSelectable ? 'bg-white/5 border-white/15 hover:border-sky-300/40' : 'opacity-10 pointer-events-none')} ${isReadOnlyComp ? 'pointer-events-none' : ''}`}>
                                                                             <div className="flex items-center justify-between mb-1.5">
-                                                                                <span className="text-[9px] font-bold text-emerald-100/80 uppercase tracking-wider">{m.shortLabel}</span>
-                                                                                <input type="checkbox" disabled={isReadOnlyComp} checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-black/20 border-white/30 text-emerald-400 disabled:opacity-50" />
+                                                                                <span className="text-[9px] font-bold text-sky-100/80 uppercase tracking-wider">{m.shortLabel}</span>
+                                                                                <input type="checkbox" disabled={isReadOnlyComp} checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-black/20 border-white/30 text-sky-400 disabled:opacity-50" />
                                                                             </div>
                                                                             <div className="relative mt-1">
-                                                                                <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold transition-colors ${mData.m ? 'text-emerald-100' : 'text-white/40'}`}>Rp</span>
+                                                                                <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold transition-colors ${mData.m ? 'text-sky-100' : 'text-white/40'}`}>Rp</span>
                                                                                 <input 
                                                                                     type="text" 
                                                                                     readOnly={isReadOnlyComp} 
                                                                                     className={`w-full pl-7 pr-2 py-1.5 rounded-xl font-bold text-[11px] tabular-nums outline-none placeholder-white/25 transition-all border ${
                                                                                         mData.m 
-                                                                                            ? 'bg-black/15 border-emerald-200/35 text-white focus:bg-black/25 focus:border-emerald-200' 
+                                                                                            ? 'bg-black/15 border-sky-200/35 text-white focus:bg-black/25 focus:border-sky-200' 
                                                                                             : 'bg-white/5 border-white/10 text-white focus:bg-white/10 focus:border-white/30'
                                                                                     } ${isReadOnlyComp ? 'pointer-events-none opacity-70' : 'cursor-text'}`} 
                                                                                     placeholder="0" 
@@ -7739,7 +7739,7 @@ function RABContent() {
                                                             </div>
 
                                                             <div className="mt-6 pt-4 border-t border-white/15 flex items-center justify-between">
-                                                                <span className="text-[10px] font-bold text-emerald-100/75 uppercase tracking-wider">Total Terdistribusi</span>
+                                                                <span className="text-[10px] font-bold text-sky-100/75 uppercase tracking-wider">Total Terdistribusi</span>
                                                                 <span className="text-sm font-bold tabular-nums">{formatRupiah(Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0))}</span>
                                                             </div>
                                                         </div>
@@ -7830,13 +7830,13 @@ function RABContent() {
             {/* Bulk Action Bar */}
             {selectedComponents.size > 0 && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[5000] animate-in slide-in-from-bottom-20 duration-500">
-                    <div className="bg-gradient-to-r from-[#103E2D] via-[#145C40] to-[#1A7A54] text-white px-7 py-5 rounded-3xl shadow-2xl flex items-center gap-8 ring-4 ring-white/40 backdrop-blur-md border border-[#2A946B]/40">
+                    <div className="bg-gradient-to-r from-[#1C3557] via-[#26517D] to-[#1A6F72] text-white px-7 py-5 rounded-3xl shadow-2xl flex items-center gap-8 ring-4 ring-white/40 backdrop-blur-md border border-[#346A96]/40">
                         <div className="flex items-center gap-4 border-r border-white/15 pr-8">
-                            <div className="w-11 h-11 bg-[#157A52] border border-white/25 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm">
+                            <div className="w-11 h-11 bg-[#2557A7] border border-white/25 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm">
                                 {selectedComponents.size}
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/80">Rincian Terpilih</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-sky-100/80">Rincian Terpilih</p>
                                 <p className="text-sm font-bold text-white">Siap untuk diproses</p>
                             </div>
                         </div>
