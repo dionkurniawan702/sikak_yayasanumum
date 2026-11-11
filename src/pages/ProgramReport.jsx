@@ -355,7 +355,7 @@ export default function ProgramReport() {
                                      </div>
                                      <button 
                                         onClick={() => setSelectedProgramLedger(p.id)} 
-                                        className="px-4 py-2.5 bg-slate-900 text-white rounded-xl hover:bg-blue-600 transition-all text-xs font-bold flex items-center gap-2 print:hidden"
+                                        className="px-4 py-2.5 bg-[#157A52] text-white rounded-xl hover:bg-[#0F5E3F] transition-all text-xs font-bold flex items-center gap-2 print:hidden cursor-pointer"
                                      >
                                          <List size={16} /> Riwayat
                                      </button>
@@ -364,9 +364,9 @@ export default function ProgramReport() {
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-white rounded-[32px] border border-slate-200/80 shadow-xl overflow-hidden">
+                    <div className="bg-white rounded-3xl border border-[#E4EAE6] shadow-xs overflow-hidden">
                         <table className="w-full text-left">
-                            <thead className="bg-slate-50 text-[10px] font-black text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                            <thead className="bg-[#F2F6F4] text-[10px] font-bold text-[#364940] uppercase tracking-wider border-b border-[#DCE5DF]">
                                 <tr>
                                     <th className="px-6 py-4">Nama Program</th>
                                     <th className="px-6 py-4">Kategori</th>
@@ -376,23 +376,23 @@ export default function ProgramReport() {
                                     <th className="px-6 py-4 text-right">Sisa Saldo</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100 text-sm">
+                            <tbody className="divide-y divide-[#EEF2F0] text-sm">
                                 {programSummary.map(p => (
-                                    <tr key={p.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-4 font-bold text-slate-900">{p.name}</td>
-                                        <td className="px-6 py-4 text-xs font-semibold text-slate-500">{p.category || '-'}</td>
-                                        <td className="px-6 py-4 text-right font-medium text-slate-500 tabular-nums"><CurrencyDisplay value={p.initialDonationBalance || 0} useColor={false} /></td>
-                                        <td className="px-6 py-4 text-right font-bold text-emerald-600 tabular-nums"><CurrencyDisplay value={p.donasiMasuk} useColor={false} /></td>
+                                    <tr key={p.id} className="hover:bg-[#F7FAF8] transition-colors">
+                                        <td className="px-6 py-4 font-bold text-[#13261E]">{p.name}</td>
+                                        <td className="px-6 py-4 text-xs font-semibold text-[#6B7E75]">{p.category || '-'}</td>
+                                        <td className="px-6 py-4 text-right font-medium text-[#6B7E75] tabular-nums"><CurrencyDisplay value={p.initialDonationBalance || 0} useColor={false} /></td>
+                                        <td className="px-6 py-4 text-right font-bold text-[#157A52] tabular-nums"><CurrencyDisplay value={p.donasiMasuk} useColor={false} /></td>
                                         <td className="px-6 py-4 text-right font-bold text-rose-600 tabular-nums"><CurrencyDisplay value={p.totalPenyaluran} useColor={false} /></td>
-                                        <td className="px-6 py-4 text-right font-black text-slate-900 tabular-nums"><CurrencyDisplay value={p.totalSaldo} /></td>
+                                        <td className="px-6 py-4 text-right font-bold text-[#13261E] tabular-nums"><CurrencyDisplay value={p.totalSaldo} /></td>
                                     </tr>
                                 ))}
-                                <tr className="bg-slate-900 text-white font-black text-sm">
-                                    <td colSpan={2} className="px-6 py-5 text-right text-xs uppercase tracking-widest text-slate-300">Total Konsolidasi Seluruh Program</td>
+                                <tr className="bg-gradient-to-r from-[#114C35] to-[#157A52] text-white font-bold text-sm">
+                                    <td colSpan={2} className="px-6 py-5 text-right text-xs uppercase tracking-wider text-emerald-100">Total Konsolidasi Seluruh Program</td>
                                     <td className="px-6 py-5 text-right">-</td>
                                     <td className="px-6 py-5 text-right tabular-nums"><CurrencyDisplay value={totalAllDonasi} useColor={false} /></td>
                                     <td className="px-6 py-5 text-right tabular-nums"><CurrencyDisplay value={totalAllPenyaluran} useColor={false} /></td>
-                                    <td className="px-6 py-5 text-right tabular-nums text-emerald-400 text-base"><CurrencyDisplay value={totalAllSisa} useColor={false} /></td>
+                                    <td className="px-6 py-5 text-right tabular-nums text-emerald-200 text-base"><CurrencyDisplay value={totalAllSisa} useColor={false} /></td>
                                 </tr>
                             </tbody>
                         </table>

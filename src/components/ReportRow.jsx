@@ -21,17 +21,17 @@ export default function ReportRow({
     const isDetail = type === 'detail';
 
     const rowStyles = {
-        category: "bg-slate-50/80 border-l-4 border-blue-600",
+        category: "bg-[#F4F8F6] border-l-4 border-[#157A52]",
         header: "bg-white",
-        total: "bg-slate-900 text-white",
-        detail: "bg-white hover:bg-slate-50/50"
+        total: "bg-gradient-to-r from-[#114C35] to-[#157A52] text-white",
+        detail: "bg-white hover:bg-[#F7FAF8]"
     };
 
     const textStyles = {
-        category: "font-black text-[10px] text-slate-400 uppercase tracking-[0.2em] italic",
-        header: "font-black text-slate-700 text-sm tracking-tight",
-        total: "font-black text-sm uppercase tracking-widest",
-        detail: "font-medium text-slate-600 text-sm"
+        category: "font-bold text-[10px] text-[#5C6F66] uppercase tracking-widest",
+        header: "font-bold text-[#13261E] text-sm tracking-tight",
+        total: "font-bold text-sm uppercase tracking-wider",
+        detail: "font-medium text-[#364940] text-sm"
     };
 
     const handleClick = () => {

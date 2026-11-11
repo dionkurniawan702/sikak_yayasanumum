@@ -247,19 +247,19 @@ export default function ExpenseProgramReport() {
     return (
         <div className="p-6 md:p-8 space-y-8 bg-slate-50 min-h-screen">
             {/* Header Title Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-[#E4EAE6] shadow-xs">
                 <div className="flex items-center gap-4">
-                    <div className="p-4 bg-gradient-to-br from-indigo-500 to-blue-600 rounded-2xl text-white shadow-lg shadow-indigo-500/25">
-                        <FolderKanban size={28} />
+                    <div className="p-4 bg-gradient-to-br from-[#125138] to-[#157A52] rounded-2xl text-white shadow-sm">
+                        <FolderKanban size={26} />
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-2xl font-black text-slate-800 tracking-tight">Laporan Program Belanja</h1>
-                            <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full border border-indigo-200">
+                            <h1 className="text-2xl font-bold text-[#13261E] tracking-tight">Laporan Program Belanja</h1>
+                            <span className="px-3 py-1 bg-[#E2F1EA] text-[#0D6844] text-xs font-bold rounded-full border border-[#C6E3D5]">
                                 Realisasi Anggaran
                             </span>
                         </div>
-                        <p className="text-slate-500 text-sm font-medium mt-1">
+                        <p className="text-[#6B7E75] text-sm font-medium mt-1">
                             Rekapitulasi alokasi Pagu RAB dan realisasi pengeluaran berdasarkan Program Belanja
                         </p>
                     </div>
@@ -268,16 +268,16 @@ export default function ExpenseProgramReport() {
                 <div className="flex items-center gap-3">
                     <button
                         onClick={handleExportExcel}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl shadow-lg shadow-emerald-600/20 transition-all cursor-pointer"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-[#125138] to-[#157A52] hover:from-[#0E402C] hover:to-[#0F5E3F] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer"
                     >
-                        <Download size={16} />
+                        <Download size={15} />
                         Export Excel
                     </button>
                     <button
                         onClick={handlePrint}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 text-white font-bold text-sm rounded-2xl shadow-lg shadow-slate-800/20 transition-all cursor-pointer"
+                        className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#F7FAF8] text-[#13261E] border border-[#DCE5DF] font-bold text-xs rounded-xl shadow-2xs transition-all cursor-pointer"
                     >
-                        <Printer size={16} />
+                        <Printer size={15} className="text-[#157A52]" />
                         Cetak Laporan
                     </button>
                 </div>
@@ -371,15 +371,15 @@ export default function ExpenseProgramReport() {
             {/* Executive Metric Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 {/* Total Pagu */}
-                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 p-6 rounded-3xl text-white shadow-xl shadow-indigo-500/20 relative overflow-hidden">
+                <div className="bg-gradient-to-br from-[#0F4D35] via-[#157A52] to-[#209266] p-6 rounded-3xl text-white shadow-md relative overflow-hidden">
                     <div className="absolute right-[-10px] bottom-[-10px] opacity-15">
                         <Wallet size={100} />
                     </div>
-                    <p className="text-indigo-100 text-xs font-bold uppercase tracking-wider">Total Pagu RAB Program</p>
-                    <h3 className="text-2xl font-black mt-2 tracking-tight">
+                    <p className="text-emerald-100/85 text-xs font-bold uppercase tracking-wider">Total Pagu RAB Program</p>
+                    <h3 className="text-2xl font-bold mt-2 tracking-tight tabular-nums">
                         <CurrencyDisplay value={overallMetrics.totalPagu} />
                     </h3>
-                    <div className="mt-4 flex items-center gap-2 text-indigo-100 text-xs font-semibold">
+                    <div className="mt-4 flex items-center gap-2 text-emerald-50 text-xs font-semibold">
                         <span className="px-2 py-0.5 bg-white/20 rounded-full font-bold">
                             {programMetricsData.length} Program
                         </span>
@@ -554,17 +554,17 @@ export default function ExpenseProgramReport() {
 
             {/* Drill-Down Detail Modal */}
             {selectedProgramDetail && (
-                <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-200">
+                <div className="fixed inset-0 z-50 bg-[#142920]/45 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl border border-[#E4EAE6] animate-in zoom-in-95 duration-200">
                         {/* Modal Header */}
-                        <div className="p-6 bg-gradient-to-r from-indigo-600 to-blue-600 text-white flex items-center justify-between">
+                        <div className="p-6 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="p-3 bg-white/10 rounded-2xl">
+                                <div className="p-3 bg-white/15 rounded-2xl border border-white/20">
                                     <FolderKanban size={24} />
                                 </div>
                                 <div>
                                     <h3 className="text-xl font-bold">{selectedProgramDetail.name}</h3>
-                                    <p className="text-xs text-indigo-100 mt-0.5">Rincian Item Anggaran & Realisasi Belanja</p>
+                                    <p className="text-xs text-emerald-100 mt-0.5">Rincian Item Anggaran &amp; Realisasi Belanja</p>
                                 </div>
                             </div>
                             <button

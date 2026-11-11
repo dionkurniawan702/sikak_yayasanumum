@@ -4357,26 +4357,26 @@ function RABContent() {
         return (
             <div className="space-y-8 animate-in fade-in duration-500">
                 {/* Header Information Banner */}
-                <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-8 rounded-[2.5rem] border border-slate-800 text-white shadow-xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
+                <div className="bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] p-8 rounded-3xl border border-[#2A946B]/40 text-white shadow-md relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
                     <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                         <div className="flex items-start gap-4">
-                            <div className="p-4 bg-amber-500/20 text-amber-400 rounded-2xl border border-amber-500/30 shrink-0">
-                                <Package size={32} />
+                            <div className="p-4 bg-white/15 text-emerald-100 rounded-2xl border border-white/25 shrink-0">
+                                <Package size={30} />
                             </div>
                             <div>
                                 <div className="flex items-center gap-2 mb-1">
-                                    <span className="bg-amber-500 text-slate-950 text-[10px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                                    <span className="bg-amber-300 text-[#13261E] text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                                         Bidang Sarana Prasarana
                                     </span>
-                                    <span className="text-slate-400 text-xs font-bold">
+                                    <span className="text-emerald-100/80 text-xs font-semibold">
                                         TA {activeYearName || 'Aktif'}
                                     </span>
                                 </div>
-                                <h3 className="text-2xl font-black tracking-tight text-white">
-                                    Verifikasi Pengadaan Aset Seluruh Unit & Bidang
+                                <h3 className="text-2xl font-bold tracking-tight text-white">
+                                    Verifikasi Pengadaan Aset Seluruh Unit &amp; Bidang
                                 </h3>
-                                <p className="text-slate-300 text-xs mt-1 max-w-2xl leading-relaxed">
+                                <p className="text-emerald-100/85 text-xs mt-1 max-w-2xl leading-relaxed">
                                     Verifikasi dan berikan persetujuan (ACC) rencana pengadaan barang bersifat aset dari seluruh unit pendidikan dan bidang yayasan agar pengadaan tercatat rapi dan terpantau sebelum realisasi anggaran.
                                 </p>
                             </div>
@@ -5888,7 +5888,7 @@ function RABContent() {
                                                             canEdit: true
                                                         });
                                                     }}
-                                                    className="w-10 h-10 flex items-center justify-center bg-blue-600 text-white rounded-xl shadow-lg hover:bg-slate-900 transition-all active:scale-95"
+                                                    className="w-10 h-10 flex items-center justify-center bg-[#157A52] text-white rounded-xl shadow-xs hover:bg-[#0F5E3F] transition-all active:scale-95 cursor-pointer"
                                                 >
                                                     <Plus size={18} strokeWidth={3} />
                                                 </button>
@@ -5902,14 +5902,14 @@ function RABContent() {
                 </div>
 
                 {/* Sticky Table Footer / Save Bar */}
-                <div className="mt-8 p-10 bg-slate-900 rounded-[3rem] text-white flex items-center justify-between shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-5 pointer-events-none group-hover:scale-110 transition-transform">
-                        <Save size={160} />
+                <div className="mt-8 p-8 sm:p-9 bg-gradient-to-r from-[#103E2D] via-[#145C40] to-[#1A7A54] rounded-3xl text-white flex flex-col sm:flex-row sm:items-center justify-between gap-6 shadow-md relative overflow-hidden group border border-[#2A946B]/35">
+                    <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none group-hover:scale-110 transition-transform text-emerald-200">
+                        <Save size={150} />
                     </div>
                     <div className="relative z-10 flex items-center gap-10">
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 italic mb-1">Total Sisa Anggaran</span>
-                            <h4 className={`text-5xl font-black italic tracking-tighter ${balance < 0 ? 'text-rose-400 animate-pulse' : 'text-emerald-400'}`}>
+                            <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-100/80 mb-1">Total Sisa Anggaran</span>
+                            <h4 className={`text-3xl sm:text-4xl font-bold tracking-tight tabular-nums ${balance < 0 ? 'text-rose-300 animate-pulse' : 'text-emerald-200'}`}>
                                 {formatRupiah(balance)}
                             </h4>
                         </div>
@@ -5922,12 +5922,12 @@ function RABContent() {
                             <button
                                 onClick={handleSubmitReview}
                                 disabled={isSaving}
-                                className="group flex items-center gap-4 bg-blue-600 hover:bg-slate-900 text-white px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                                className="group flex items-center gap-3 bg-white hover:bg-[#E9F5EF] text-[#0F5E3F] px-6 py-4 rounded-2xl font-bold text-sm tracking-tight transition-all hover:scale-[1.02] active:scale-95 shadow-sm cursor-pointer"
                             >
-                                <Send size={20} className="group-hover:translate-x-1 transition-transform" />
+                                <Send size={18} className="group-hover:translate-x-0.5 transition-transform" />
                                 <span>{hasRevision || totalUnlockedCount > 0 ? 'KIRIM USULAN REVISI KE YAYASAN' : 'AJUKAN RAB KE YAYASAN'}</span>
                                 {draftCount > 0 && (
-                                    <span className="px-2.5 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-black tracking-normal">
+                                    <span className="px-2.5 py-0.5 rounded-full bg-[#157A52] text-white text-[10px] font-bold tracking-normal">
                                         {draftCount} Draf Baru
                                     </span>
                                 )}
@@ -5939,18 +5939,18 @@ function RABContent() {
                             <button
                                 onClick={handleCancelSubmission}
                                 disabled={isSaving}
-                                className="group flex items-center gap-4 bg-amber-500 hover:bg-amber-600 text-white px-8 py-5 rounded-[2rem] font-black text-sm tracking-tight transition-all hover:scale-105 active:scale-95 shadow-xl"
+                                className="group flex items-center gap-3 bg-amber-400 hover:bg-amber-300 text-[#13261E] px-6 py-4 rounded-2xl font-bold text-sm tracking-tight transition-all hover:scale-[1.02] active:scale-95 shadow-sm cursor-pointer"
                             >
-                                <RotateCcw size={20} />
+                                <RotateCcw size={18} />
                                 BATALKAN PENGAJUAN (KEMBALI KE DRAFT)
                             </button>
                         )}
 
                         {/* 4. Jika status APPROVED dan seluruh pos terkunci (tidak ada yang dibuka Superadmin), tampilkan badge info terkunci */}
                         {activePlan?.status === 'APPROVED' && totalUnlockedCount === 0 && draftCount === 0 && !hasRevision && !isConsolidation && (
-                            <div className="flex items-center gap-2.5 px-6 py-4 bg-slate-800/90 text-slate-300 rounded-[2rem] font-bold text-xs tracking-tight border border-slate-700/80 shadow-md">
-                                <Lock size={16} className="text-emerald-400" />
-                                <span>ANGGARAN DISAHKAN & TERKUNCI</span>
+                            <div className="flex items-center gap-2.5 px-5 py-3.5 bg-white/15 text-emerald-50 rounded-2xl font-bold text-xs tracking-wide border border-white/25 shadow-xs">
+                                <Lock size={16} className="text-emerald-200" />
+                                <span>ANGGARAN DISAHKAN &amp; TERKUNCI</span>
                             </div>
                         )}
 
@@ -7695,11 +7695,11 @@ function RABContent() {
                                                         </div>
 
                                                         {/* Right Column: Monthly Allocation */}
-                                                        <div className="p-8 bg-slate-900 rounded-[2.5rem] text-white flex flex-col">
+                                                        <div className="p-8 bg-gradient-to-br from-[#103829] via-[#134B36] to-[#176145] rounded-3xl text-white flex flex-col border border-[#2A946B]/30">
                                                             <div className="flex items-center justify-between mb-6">
-                                                                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] italic text-blue-400">Alokasi Bulanan Rincian</h4>
+                                                                <h4 className="text-[11px] font-bold uppercase tracking-wider text-emerald-200">Alokasi Bulanan Rincian</h4>
                                                                 {!isReadOnlyComp && (
-                                                                    <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-2">
+                                                                    <button onClick={handleSyncEntryMonthly} className="px-4 py-2 bg-[#157A52] hover:bg-[#1E9666] border border-white/20 rounded-xl text-[10px] font-bold uppercase transition-all flex items-center gap-2 cursor-pointer">
                                                                         <RefreshCw size={12} />
                                                                         Sync
                                                                     </button>
@@ -7713,19 +7713,19 @@ function RABContent() {
 
 
                                                                     return (
-                                                                        <div key={m.id} className={`p-3 rounded-2xl border-2 transition-all ${mData.m ? 'bg-blue-600 border-blue-400' : (isSelectable ? 'bg-white/5 border-white/10 hover:border-blue-500/30' : 'opacity-10 pointer-events-none')} ${isReadOnlyComp ? 'pointer-events-none' : ''}`}>
+                                                                        <div key={m.id} className={`p-3 rounded-2xl border transition-all ${mData.m ? 'bg-[#157A52] border-[#6EE7B7]/60 shadow-xs' : (isSelectable ? 'bg-white/5 border-white/15 hover:border-emerald-300/40' : 'opacity-10 pointer-events-none')} ${isReadOnlyComp ? 'pointer-events-none' : ''}`}>
                                                                             <div className="flex items-center justify-between mb-1.5">
-                                                                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{m.shortLabel}</span>
-                                                                                <input type="checkbox" disabled={isReadOnlyComp} checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-slate-800 border-slate-700 text-blue-500 disabled:opacity-50" />
+                                                                                <span className="text-[9px] font-bold text-emerald-100/80 uppercase tracking-wider">{m.shortLabel}</span>
+                                                                                <input type="checkbox" disabled={isReadOnlyComp} checked={mData.m} onChange={e => handleEntryMonthlyUpdate(m.id, 'm', e.target.checked)} className="w-3.5 h-3.5 rounded bg-black/20 border-white/30 text-emerald-400 disabled:opacity-50" />
                                                                             </div>
                                                                             <div className="relative mt-1">
-                                                                                <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold transition-colors ${mData.m ? 'text-blue-200' : 'text-white/40'}`}>Rp</span>
+                                                                                <span className={`absolute left-2.5 top-1/2 -translate-y-1/2 text-[9px] font-bold transition-colors ${mData.m ? 'text-emerald-100' : 'text-white/40'}`}>Rp</span>
                                                                                 <input 
                                                                                     type="text" 
                                                                                     readOnly={isReadOnlyComp} 
-                                                                                    className={`w-full pl-7 pr-2 py-1.5 rounded-xl font-black text-[11px] outline-none placeholder-white/20 transition-all border ${
+                                                                                    className={`w-full pl-7 pr-2 py-1.5 rounded-xl font-bold text-[11px] tabular-nums outline-none placeholder-white/25 transition-all border ${
                                                                                         mData.m 
-                                                                                            ? 'bg-blue-700/40 border-blue-400/40 text-white focus:bg-blue-800/40 focus:border-blue-300' 
+                                                                                            ? 'bg-black/15 border-emerald-200/35 text-white focus:bg-black/25 focus:border-emerald-200' 
                                                                                             : 'bg-white/5 border-white/10 text-white focus:bg-white/10 focus:border-white/30'
                                                                                     } ${isReadOnlyComp ? 'pointer-events-none opacity-70' : 'cursor-text'}`} 
                                                                                     placeholder="0" 
@@ -7738,20 +7738,20 @@ function RABContent() {
                                                                 })}
                                                             </div>
 
-                                                            <div className="mt-6 pt-4 border-t border-white/10 flex items-center justify-between">
-                                                                <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Terdistribusi</span>
-                                                                <span className="text-sm font-black italic">{formatRupiah(Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0))}</span>
+                                                            <div className="mt-6 pt-4 border-t border-white/15 flex items-center justify-between">
+                                                                <span className="text-[10px] font-bold text-emerald-100/75 uppercase tracking-wider">Total Terdistribusi</span>
+                                                                <span className="text-sm font-bold tabular-nums">{formatRupiah(Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0))}</span>
                                                             </div>
                                                         </div>
                                                     </div>
                                                 </div>
 
-                                                <div className="p-8 pt-0 flex gap-4 bg-slate-50/50">
+                                                <div className="p-8 pt-0 flex gap-4 bg-[#F7FAF8]">
                                                     {isReadOnlyComp ? (
-                                                        <button onClick={() => setShowCompModal(false)} className="w-full py-5 bg-blue-600 hover:bg-slate-900 text-white rounded-2xl font-black text-xs uppercase transition-all flex items-center justify-center gap-2">TUTUP DETIL</button>
+                                                        <button onClick={() => setShowCompModal(false)} className="w-full py-4 bg-[#157A52] hover:bg-[#0F5E3F] text-white rounded-2xl font-bold text-xs uppercase transition-all flex items-center justify-center gap-2 cursor-pointer">TUTUP DETIL</button>
                                                     ) : (
                                                         <>
-                                                            <button onClick={() => setShowCompModal(false)} className="flex-1 py-5 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black text-xs uppercase hover:bg-slate-50 transition-all">BATAL</button>
+                                                            <button onClick={() => setShowCompModal(false)} className="flex-1 py-4 bg-white border border-[#DCE5DF] text-[#5C6F66] rounded-2xl font-bold text-xs uppercase hover:bg-[#EEF3F0] transition-all cursor-pointer">BATAL</button>
                                                             {(() => {
                                                                 const total = (parseFloat(entryForm.volume) || 0) * (parseFloat(entryForm.kali) || 1) * (parseFloat(entryForm.harga) || 0);
                                                                 const monthlyTotal = Object.values(entryForm.months || {}).reduce((sum, m) => sum + (m?.m ? (parseFloat(m?.jumlah) || 0) : 0), 0);
@@ -7762,7 +7762,7 @@ function RABContent() {
                                                                     <button
                                                                         disabled={!canSave}
                                                                         onClick={() => handlePushComponent(itemId, item.id)}
-                                                                        className={`flex-[2] py-5 rounded-2xl font-black text-xs uppercase transition-all shadow-lg active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-slate-900'}`}
+                                                                        className={`flex-[2] py-4 rounded-2xl font-bold text-xs uppercase transition-all shadow-sm active:scale-95 flex items-center justify-center gap-3 ${!canSave ? 'bg-[#E4EAE6] text-[#8DA096] cursor-not-allowed' : 'bg-[#157A52] text-white hover:bg-[#0F5E3F] cursor-pointer'}`}
                                                                     >
                                                                         {!isBalanced && total > 0 ? 'ALOKASI BELUM SEIMBANG' : (editingCompIdx !== null ? 'PERBARUI RINCIAN' : 'SIMPAN RINCIAN')}
                                                                     </button>
@@ -7830,14 +7830,14 @@ function RABContent() {
             {/* Bulk Action Bar */}
             {selectedComponents.size > 0 && (
                 <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-[5000] animate-in slide-in-from-bottom-20 duration-500">
-                    <div className="bg-slate-900 text-white px-8 py-6 rounded-[2.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center gap-8 ring-8 ring-white/10 backdrop-blur-md">
-                        <div className="flex items-center gap-4 border-r border-white/10 pr-8">
-                            <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center font-black text-xl shadow-lg shadow-blue-500/20">
+                    <div className="bg-gradient-to-r from-[#103E2D] via-[#145C40] to-[#1A7A54] text-white px-7 py-5 rounded-3xl shadow-2xl flex items-center gap-8 ring-4 ring-white/40 backdrop-blur-md border border-[#2A946B]/40">
+                        <div className="flex items-center gap-4 border-r border-white/15 pr-8">
+                            <div className="w-11 h-11 bg-[#157A52] border border-white/25 rounded-2xl flex items-center justify-center font-bold text-lg shadow-sm">
                                 {selectedComponents.size}
                             </div>
                             <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Rincian Terpilih</p>
-                                <p className="text-sm font-black italic">Siap untuk diproses</p>
+                                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-100/80">Rincian Terpilih</p>
+                                <p className="text-sm font-bold text-white">Siap untuk diproses</p>
                             </div>
                         </div>
 

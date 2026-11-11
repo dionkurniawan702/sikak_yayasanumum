@@ -903,17 +903,17 @@ export default function RealizationDashboard() {
     return (
         <div className="p-8 pb-24 animate-in">
             {/* HEADER */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8">
                 <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Dashboard Realisasi</h2>
-                    <p className="text-slate-500 font-medium tracking-tight">Analisis efisiensi penyerapan anggaran {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-[#13261E] tracking-tight">Dashboard Realisasi</h2>
+                    <p className="text-[#6B7E75] text-xs sm:text-sm font-medium mt-0.5">Analisis efisiensi penyerapan anggaran {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+                    <div className="flex bg-[#EEF3F0] p-1 rounded-xl border border-[#DCE5DF]">
                         <button
                             onClick={() => setSourceMode('YAYASAN')}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-xs border border-[#E3E9E5]' : 'text-[#6B7E75] hover:text-[#13261E]'}`}
                         >
                             <Building2 size={14} />
                             Yayasan
@@ -921,7 +921,7 @@ export default function RealizationDashboard() {
                         {(currentUser?.role !== 'admin_bidang' || currentUser?.role === 'superadmin') && (
                             <button
                                 onClick={() => setSourceMode('BOS')}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${sourceMode === 'BOS' ? 'bg-white text-[#0D6844] shadow-xs border border-[#E3E9E5]' : 'text-[#6B7E75] hover:text-[#13261E]'}`}
                             >
                                 <Gem size={14} />
                                 BOS
@@ -932,7 +932,7 @@ export default function RealizationDashboard() {
                     <select
                         value={selectedAcademicYearId}
                         onChange={(e) => setSelectedAcademicYearId(e.target.value)}
-                        className="p-3 bg-white border-2 border-slate-100 rounded-2xl font-black text-xs text-slate-800 uppercase tracking-widest focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                        className="px-3.5 py-2.5 bg-white border border-[#DCE5DF] rounded-xl font-bold text-xs text-[#13261E] tracking-wide focus:ring-2 focus:ring-[#157A52]/20 focus:border-[#157A52] outline-none transition-all shadow-2xs"
                     >
                         {academicYears.filter(y => !y.isDeleted).map(y => (
                             <option key={y.id} value={y.id}>Tahun {y.name}</option>
@@ -942,55 +942,56 @@ export default function RealizationDashboard() {
             </div>
 
             {/* METRICS CARDS */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <div className="bg-gradient-to-br from-white via-[#FAFDFB] to-[#F1F7F4] p-7 rounded-3xl border border-[#E4EAE6] shadow-xs relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Anggaran</p>
-                        <h3 className="text-2xl font-black text-slate-900">{formatRupiah(dashboardData.totalBudget)}</h3>
-                        <div className="mt-4 flex items-center gap-2 text-blue-600 font-bold text-xs">
-                            <Target size={14} />
+                        <p className="text-[11px] font-semibold text-[#6B7E75] uppercase tracking-wider mb-1.5">Total Anggaran</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(dashboardData.totalBudget)}</h3>
+                        <div className="mt-4 flex items-center gap-1.5 text-[#1E3448] font-bold text-xs">
+                            <Target size={14} className="text-[#157A52]" />
                             <span>RAB {sourceMode}</span>
                         </div>
                     </div>
-                    <Target size={100} className="absolute -bottom-6 -right-6 text-slate-50 group-hover:text-blue-50/50 transition-colors" />
+                    <Target size={96} className="absolute -bottom-5 -right-5 text-[#E5EFEA]/70 group-hover:text-[#D9EAE1] transition-colors" />
                 </div>
 
-                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-white via-[#FAFDFB] to-[#EEF6F2] p-7 rounded-3xl border border-[#E4EAE6] shadow-xs relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Terpakai</p>
-                        <h3 className="text-2xl font-black text-slate-900">{formatRupiah(dashboardData.totalSpent)}</h3>
-                        <div className="mt-4 flex items-center gap-2 text-emerald-600 font-bold text-xs">
+                        <p className="text-[11px] font-semibold text-[#6B7E75] uppercase tracking-wider mb-1.5">Total Terpakai</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(dashboardData.totalSpent)}</h3>
+                        <div className="mt-4 flex items-center gap-1.5 text-[#157A52] font-bold text-xs">
                             <ArrowUpRight size={14} />
                             <span>Realisasi Berjalan</span>
                         </div>
                     </div>
-                    <TrendingUp size={100} className="absolute -bottom-6 -right-6 text-slate-50 group-hover:text-emerald-50/50 transition-colors" />
+                    <TrendingUp size={96} className="absolute -bottom-5 -right-5 text-[#E2EFE8]/80 group-hover:text-[#D2E7DC] transition-colors" />
                 </div>
 
-                <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-xl shadow-slate-200/40 relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-white via-[#FAFDFB] to-[#F4F8F5] p-7 rounded-3xl border border-[#E4EAE6] shadow-xs relative overflow-hidden group">
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Sisa Anggaran</p>
-                        <h3 className="text-2xl font-black text-slate-900">{formatRupiah(dashboardData.totalBudget - dashboardData.totalSpent)}</h3>
-                        <div className="mt-4 flex items-center gap-2 text-amber-600 font-bold text-xs">
+                        <p className="text-[11px] font-semibold text-[#6B7E75] uppercase tracking-wider mb-1.5">Sisa Anggaran</p>
+                        <h3 className="text-xl sm:text-2xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(dashboardData.totalBudget - dashboardData.totalSpent)}</h3>
+                        <div className="mt-4 flex items-center gap-1.5 text-[#0D6844] font-bold text-xs">
                             <Wallet size={14} />
                             <span>Sisa RAB</span>
                         </div>
                     </div>
-                    <Landmark size={100} className="absolute -bottom-6 -right-6 text-slate-50 group-hover:text-amber-50/50 transition-colors" />
+                    <Landmark size={96} className="absolute -bottom-5 -right-5 text-[#E5EFEA]/70 group-hover:text-[#D9EAE1] transition-colors" />
                 </div>
 
-                <div className="bg-slate-900 p-8 rounded-[32px] shadow-2xl relative overflow-hidden group">
+                <div className="bg-gradient-to-br from-[#0E4A33] via-[#157A52] to-[#22986A] p-7 rounded-3xl shadow-md border border-[#1E8F62]/40 relative overflow-hidden group">
+                    <div className="absolute -top-10 -right-10 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
                     <div className="relative z-10">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Serapan Dana</p>
-                        <h3 className="text-4xl font-black text-white">{absorptionRate.toFixed(1)}%</h3>
-                        <div className="mt-4 w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                        <p className="text-[11px] font-bold text-emerald-100/85 uppercase tracking-wider mb-1.5">Serapan Dana</p>
+                        <h3 className="text-3xl sm:text-4xl font-bold text-white tracking-tight tabular-nums">{absorptionRate.toFixed(1)}%</h3>
+                        <div className="mt-4 w-full bg-black/20 h-2 rounded-full overflow-hidden">
                             <div 
-                                className="h-full bg-blue-500 rounded-full transition-all duration-1000" 
+                                className="h-full bg-gradient-to-r from-[#A7F3D0] via-[#6EE7B7] to-[#34D399] rounded-full transition-all duration-1000" 
                                 style={{ width: `${Math.min(absorptionRate, 100)}%` }}
                             />
                         </div>
                     </div>
-                    <PieChart size={100} className="absolute -bottom-6 -right-6 text-white/5" />
+                    <PieChart size={96} className="absolute -bottom-5 -right-5 text-white/10" />
                 </div>
             </div>
 
@@ -998,40 +999,40 @@ export default function RealizationDashboard() {
             {/* COLLAPSIBLE SECTION: EVALUASI SEMESTER 1 & REALOKASI SEMESTER 2 */}
             {/* (DISEMBUNYIKAN SECARA DEFAULT, DIKLIK BARU MUNCUL SESUAI INSTRUKSI USER) */}
             {/* ========================================================================= */}
-            <div className="mb-12 transition-all">
-                {/* Trigger Banner (Selalu tampak rapi & ringkas) */}
+            <div className="mb-9 transition-all">
+                {/* Trigger Banner (Pola Gradasi Emerald Forest) */}
                 <div 
                     onClick={() => setShowSemesterAnalysis(!showSemesterAnalysis)}
-                    className="cursor-pointer group p-6 rounded-[2.5rem] bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-xl shadow-indigo-950/20 border border-indigo-900/40 hover:border-indigo-500/50 transition-all duration-300 relative overflow-hidden"
+                    className="cursor-pointer group p-6 rounded-3xl bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white shadow-md border border-[#2A946B]/40 hover:shadow-lg transition-all duration-300 relative overflow-hidden"
                 >
-                    <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none group-hover:scale-110 transition-transform">
+                    <div className="absolute top-0 right-0 p-8 opacity-15 pointer-events-none group-hover:scale-110 transition-transform text-emerald-200">
                         <Sparkles size={120} />
                     </div>
                     <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                         <div className="flex items-center gap-4">
-                            <div className="w-14 h-14 rounded-2xl bg-indigo-500/20 text-indigo-300 border border-indigo-400/30 flex items-center justify-center shadow-inner group-hover:bg-indigo-500/30 transition-colors">
-                                <ArrowLeftRight size={26} className="group-hover:rotate-180 transition-transform duration-500" />
+                            <div className="w-13 h-13 rounded-2xl bg-white/15 text-emerald-100 border border-white/25 flex items-center justify-center shadow-inner group-hover:bg-white/20 transition-colors shrink-0">
+                                <ArrowLeftRight size={24} className="group-hover:rotate-180 transition-transform duration-500" />
                             </div>
                             <div>
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    <h3 className="text-lg md:text-xl font-black tracking-tight text-white italic">
-                                        Evaluasi Sisa Anggaran Semester 1 & Realokasi Semester 2
+                                    <h3 className="text-base sm:text-lg font-bold tracking-tight text-white">
+                                        Evaluasi Sisa Anggaran Semester 1 &amp; Realokasi Semester 2
                                     </h3>
-                                    <span className="px-3 py-1 bg-amber-400/20 text-amber-300 border border-amber-400/30 rounded-full font-black text-[9px] uppercase tracking-wider">
+                                    <span className="px-3 py-0.5 bg-emerald-200/20 text-emerald-50 border border-emerald-200/30 rounded-full font-bold text-[10px] uppercase tracking-wider">
                                         Persiapan Perubahan Anggaran (Oktober)
                                     </span>
                                 </div>
-                                <p className="text-slate-400 text-xs font-medium mt-1">
+                                <p className="text-emerald-100/80 text-xs font-medium mt-1">
                                     Lihat rincian sisa efisiensi belanja Semester 1 (Juli–Desember) yang siap dimanfaatkan untuk penambahan pagu Semester 2.
                                 </p>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-3 shrink-0 self-end md:self-auto">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300 hidden sm:inline">
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/85 hidden sm:inline">
                                 {showSemesterAnalysis ? 'Klik untuk Menyembunyikan' : 'Klik untuk Membuka Analisis'}
                             </span>
-                            <div className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-lg ${showSemesterAnalysis ? 'bg-indigo-600 text-white shadow-indigo-600/30' : 'bg-white text-slate-900 hover:bg-indigo-50 group-hover:scale-105'}`}>
+                            <div className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-xs tracking-wide transition-all shadow-sm ${showSemesterAnalysis ? 'bg-[#0E3A2A] text-emerald-100 border border-emerald-300/30' : 'bg-white text-[#0F5E3F] hover:bg-[#E9F5EF] group-hover:scale-[1.03]'}`}>
                                 {showSemesterAnalysis ? (
                                     <>
                                         <ChevronUp size={16} />
@@ -1050,18 +1051,18 @@ export default function RealizationDashboard() {
 
                 {/* Content Panel (Hanya Muncul Saat Diklik) */}
                 {showSemesterAnalysis && (
-                    <div className="mt-4 p-8 bg-white rounded-[2.5rem] border-2 border-indigo-100 shadow-2xl shadow-indigo-100/50 animate-in fade-in slide-in-from-top-4 duration-500">
+                    <div className="mt-4 p-7 bg-white rounded-3xl border border-[#DCE6E0] shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
                         {/* Guideline Banner */}
-                        <div className="p-5 bg-gradient-to-r from-blue-50 to-indigo-50/70 border border-blue-200 rounded-3xl mb-8 flex items-start gap-4">
-                            <div className="p-2.5 bg-blue-600 text-white rounded-xl shadow-md shrink-0">
+                        <div className="p-5 bg-gradient-to-r from-[#EEF7F2] to-[#F6FBF8] border border-[#C6E3D5] rounded-2xl mb-7 flex items-start gap-4">
+                            <div className="p-2.5 bg-[#157A52] text-white rounded-xl shadow-xs shrink-0">
                                 <HelpCircle size={20} />
                             </div>
-                            <div className="text-xs text-slate-700 leading-relaxed">
-                                <span className="font-black text-slate-900 text-sm block mb-1">
+                            <div className="text-xs text-[#364940] leading-relaxed">
+                                <span className="font-bold text-[#13261E] text-sm block mb-1">
                                     Pedoman Tata Kelola Perubahan Anggaran (Oktober):
                                 </span>
                                 Tabel di bawah ini secara otomatis memisahkan pagu dan realisasi belanja antara <strong>Semester 1 (Juli–Desember)</strong> dan <strong>Semester 2 (Januari–Juni)</strong>. 
-                                Sisa anggaran yang hemat/tidak terserap pada Semester 1 dihitung sebagai <span className="text-emerald-700 font-bold bg-emerald-100 px-1.5 py-0.5 rounded">Surplus Sisa Pagu</span>, 
+                                Sisa anggaran yang hemat/tidak terserap pada Semester 1 dihitung sebagai <span className="text-[#0D6844] font-bold bg-[#E2F1EA] px-1.5 py-0.5 rounded">Surplus Sisa Pagu</span>, 
                                 yang dapat Anda jadikan dasar penambahan pagu belanja Semester 2 pada saat Perubahan Anggaran disahkan.
                             </div>
                         </div>
@@ -1189,7 +1190,7 @@ export default function RealizationDashboard() {
 
                                     <button
                                         onClick={() => navigate('/anggaran/pergeseran-anggaran')}
-                                        className="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-indigo-950 text-white rounded-2xl font-black text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 shrink-0"
+                                        className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#125138] to-[#157A52] hover:from-[#0E402C] hover:to-[#0F5E3F] text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm active:scale-95 shrink-0 cursor-pointer"
                                         title="Buka menu resmi Pergeseran Anggaran untuk memindahkan sisa pagu"
                                     >
                                         <ExternalLink size={15} />
@@ -1200,49 +1201,49 @@ export default function RealizationDashboard() {
 
                             {/* Second row: Sub-filters and sort controls */}
                             {semesterViewMode === 'ITEMS' ? (
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-slate-50/80 rounded-2xl border border-slate-200 text-xs">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3 bg-[#F7FAF8] rounded-2xl border border-[#DCE5DF] text-xs">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1 mr-1">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B7E75] flex items-center gap-1 mr-1">
                                             <Filter size={12} />
                                             Status:
                                         </span>
                                         <button
                                             onClick={() => setItemStatusFilter('ALL')}
-                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all ${itemStatusFilter === 'ALL' ? 'bg-slate-900 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${itemStatusFilter === 'ALL' ? 'bg-[#162922] text-white shadow-2xs' : 'bg-white text-[#5C6F66] border border-[#DCE5DF] hover:bg-[#EEF3F0]'}`}
                                         >
                                             Semua Pos ({flatCounts.total})
                                         </button>
                                         <button
                                             onClick={() => setItemStatusFilter('SURPLUS')}
-                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 ${itemStatusFilter === 'SURPLUS' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-50 text-emerald-800 border border-emerald-200 hover:bg-emerald-100'}`}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 cursor-pointer ${itemStatusFilter === 'SURPLUS' ? 'bg-[#157A52] text-white shadow-2xs' : 'bg-[#E9F5EF] text-[#0D6844] border border-[#C6E3D5] hover:bg-[#DFF1E7]'}`}
                                         >
                                             <Sparkles size={12} />
                                             <span>Ada Sisa / Hemat ({flatCounts.surplus})</span>
                                         </button>
                                         <button
                                             onClick={() => setItemStatusFilter('OVER')}
-                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 ${itemStatusFilter === 'OVER' ? 'bg-rose-600 text-white shadow-xs' : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'}`}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 cursor-pointer ${itemStatusFilter === 'OVER' ? 'bg-rose-600 text-white shadow-2xs' : 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'}`}
                                         >
                                             <AlertCircle size={12} />
                                             <span>Over Pagu ({flatCounts.over})</span>
                                         </button>
                                         <button
                                             onClick={() => setItemStatusFilter('EXACT')}
-                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all ${itemStatusFilter === 'EXACT' ? 'bg-slate-700 text-white shadow-xs' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'}`}
+                                            className={`px-3 py-1 rounded-xl font-bold text-[11px] transition-all cursor-pointer ${itemStatusFilter === 'EXACT' ? 'bg-[#364940] text-white shadow-2xs' : 'bg-white text-[#5C6F66] border border-[#DCE5DF] hover:bg-[#EEF3F0]'}`}
                                         >
                                             Terserap Pas ({flatCounts.exact})
                                         </button>
                                     </div>
 
                                     <div className="flex items-center gap-2 shrink-0">
-                                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 flex items-center gap-1">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-[#6B7E75] flex items-center gap-1">
                                             <ArrowUpDown size={12} />
                                             Urutkan:
                                         </span>
                                         <select
                                             value={itemSortBy}
                                             onChange={(e) => setItemSortBy(e.target.value)}
-                                            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl font-bold text-[11px] text-slate-800 outline-none focus:ring-2 focus:ring-indigo-100 cursor-pointer"
+                                            className="px-3 py-1.5 bg-white border border-[#DCE5DF] rounded-xl font-bold text-[11px] text-[#13261E] outline-none focus:ring-2 focus:ring-[#157A52]/20 cursor-pointer"
                                         >
                                             <option value="REMAINING_DESC">Sisa Smt 1 Terbanyak (Surplus)</option>
                                             <option value="REMAINING_ASC">Sisa Smt 1 Terkecil / Over</option>
@@ -1255,13 +1256,13 @@ export default function RealizationDashboard() {
                                     </div>
                                 </div>
                             ) : (
-                                <div className="flex items-center justify-between p-3 bg-slate-50/80 rounded-2xl border border-slate-200 text-xs">
-                                    <span className="text-[11px] font-bold text-slate-500">
+                                <div className="flex items-center justify-between p-3 bg-[#F7FAF8] rounded-2xl border border-[#DCE5DF] text-xs">
+                                    <span className="text-[11px] font-semibold text-[#5C6F66]">
                                         Menampilkan {displaySemesterRows.length} entitas. Klik baris atau tombol pos untuk melihat rincian item pengeluaran.
                                     </span>
                                     <button
                                         onClick={toggleAllSemesterRows}
-                                        className="px-3.5 py-1.5 bg-white hover:bg-slate-100 text-indigo-700 border border-indigo-200 rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 shadow-xs"
+                                        className="px-3.5 py-1.5 bg-white hover:bg-[#EEF3F0] text-[#0D6844] border border-[#C6E3D5] rounded-xl font-bold text-[11px] transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
                                     >
                                         <Layers size={13} />
                                         <span>Buka / Tutup Semua Rincian</span>
@@ -1272,31 +1273,31 @@ export default function RealizationDashboard() {
 
                         {/* MODE 1: DIRECT PER-ITEM EXPENSE VIEW (RINCIAN PER POS PENGELUARAN) */}
                         {semesterViewMode === 'ITEMS' ? (
-                            <div className="overflow-x-auto rounded-3xl border border-slate-200 shadow-sm">
+                            <div className="overflow-x-auto rounded-2xl border border-[#E4EAE6] shadow-xs">
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         {/* Multi-tier group header */}
-                                        <tr className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider">
-                                            <th rowSpan={2} className="px-4 py-4 w-12 text-center border-r border-slate-800">No</th>
-                                            <th rowSpan={2} className="px-5 py-4 min-w-[240px] border-r border-slate-800">Pos Pengeluaran</th>
+                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1C7F58] text-white font-bold uppercase text-[10px] tracking-wider">
+                                            <th rowSpan={2} className="px-4 py-4 w-12 text-center border-r border-white/15">No</th>
+                                            <th rowSpan={2} className="px-5 py-4 min-w-[240px] border-r border-white/15">Pos Pengeluaran</th>
                                             {currentUser?.role !== 'admin_unit' && (
-                                                <th rowSpan={2} className="px-4 py-4 min-w-[140px] border-r border-slate-800">Unit / Bidang</th>
+                                                <th rowSpan={2} className="px-4 py-4 min-w-[140px] border-r border-white/15">Unit / Bidang</th>
                                             )}
-                                            <th colSpan={4} className="px-6 py-3 text-center bg-indigo-900/90 border-r border-indigo-800">
+                                            <th colSpan={4} className="px-6 py-3 text-center bg-[#13553C]/80 border-r border-white/15">
                                                 SEMESTER 1 (JULI – DESEMBER)
                                             </th>
-                                            <th colSpan={2} className="px-6 py-3 text-center bg-emerald-900/90 border-r border-emerald-800">
+                                            <th colSpan={2} className="px-6 py-3 text-center bg-[#0F6E66]/80 border-r border-white/15">
                                                 SEMESTER 2 (JANUARI – JUNI)
                                             </th>
                                             <th rowSpan={2} className="px-4 py-4 min-w-[170px] text-center">Status Efisiensi</th>
                                         </tr>
-                                        <tr className="bg-slate-800 text-white font-bold text-[9px] uppercase tracking-wider">
-                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Pagu Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Realisasi Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700 text-emerald-300 font-black">Sisa Smt 1 (Surplus)</th>
-                                            <th className="px-3 py-2.5 text-center bg-indigo-950/70 border-r border-slate-700">% Serap</th>
-                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700">Pagu Awal S2</th>
-                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700 text-indigo-300 font-black">Proyeksi S2 Baru</th>
+                                        <tr className="bg-[#165D42] text-emerald-50 font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Pagu Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Realisasi Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15 text-emerald-200 font-bold">Sisa Smt 1 (Surplus)</th>
+                                            <th className="px-3 py-2.5 text-center bg-[#114B35]/80 border-r border-white/15">% Serap</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15">Pagu Awal S2</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15 text-emerald-200 font-bold">Proyeksi S2 Baru</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -1371,30 +1372,30 @@ export default function RealizationDashboard() {
                                         )}
 
                                         {/* TOTAL ROW FOR ITEMS */}
-                                        <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-slate-700">
-                                            <td colSpan={currentUser?.role !== 'admin_unit' ? 3 : 2} className="px-6 py-4 text-center uppercase tracking-widest text-indigo-300">
+                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1B7E57] text-white font-bold text-xs border-t border-white/15">
+                                            <td colSpan={currentUser?.role !== 'admin_unit' ? 3 : 2} className="px-6 py-4 text-center uppercase tracking-wider text-emerald-100">
                                                 TOTAL ({flatSemesterItems.length} POS BELANJA TERFILTER)
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(flatTotals.totalBudgetS1)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(flatTotals.totalSpentS1)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-emerald-400 bg-emerald-950/40">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-emerald-200 bg-black/15 tabular-nums">
                                                 {formatRupiah(flatTotals.totalRemainingS1)}
                                             </td>
-                                            <td className="px-3 py-4 text-center border-l border-slate-800 font-black text-[10px]">
+                                            <td className="px-3 py-4 text-center border-l border-white/15 font-bold text-[10px] tabular-nums">
                                                 {flatTotals.rateS1.toFixed(1)}%
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(flatTotals.totalBudgetS2)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-indigo-300 bg-indigo-950/40">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-emerald-100 bg-black/15 tabular-nums">
                                                 {formatRupiah(flatTotals.totalProjectedS2)}
                                             </td>
-                                            <td className="px-4 py-4 text-center border-l border-slate-800">
-                                                <span className="text-[10px] text-emerald-300 uppercase font-black block">
+                                            <td className="px-4 py-4 text-center border-l border-white/15">
+                                                <span className="text-[10px] text-emerald-200 uppercase font-bold block tabular-nums">
                                                     +{formatRupiah(flatTotals.totalSurplusS1)}
                                                 </span>
                                             </td>
@@ -1404,28 +1405,28 @@ export default function RealizationDashboard() {
                             </div>
                         ) : (
                             /* MODE 2: GROUPED ENTITIES VIEW (REKAP PER UNIT / BIDANG) */
-                            <div className="overflow-x-auto rounded-3xl border border-slate-200 shadow-sm">
+                            <div className="overflow-x-auto rounded-2xl border border-[#E4EAE6] shadow-xs">
                                 <table className="w-full text-left text-xs">
                                     <thead>
                                         {/* Multi-tier group header */}
-                                        <tr className="bg-slate-900 text-white font-black uppercase text-[10px] tracking-wider">
-                                            <th rowSpan={2} className="px-5 py-4 w-12 text-center border-r border-slate-800">No</th>
-                                            <th rowSpan={2} className="px-6 py-4 min-w-[200px] border-r border-slate-800">Nama Unit / Bidang</th>
-                                            <th colSpan={4} className="px-6 py-3 text-center bg-indigo-900/90 border-r border-indigo-800">
+                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1C7F58] text-white font-bold uppercase text-[10px] tracking-wider">
+                                            <th rowSpan={2} className="px-5 py-4 w-12 text-center border-r border-white/15">No</th>
+                                            <th rowSpan={2} className="px-6 py-4 min-w-[200px] border-r border-white/15">Nama Unit / Bidang</th>
+                                            <th colSpan={4} className="px-6 py-3 text-center bg-[#13553C]/80 border-r border-white/15">
                                                 SEMESTER 1 (JULI – DESEMBER)
                                             </th>
-                                            <th colSpan={2} className="px-6 py-3 text-center bg-emerald-900/90 border-r border-emerald-800">
+                                            <th colSpan={2} className="px-6 py-3 text-center bg-[#0F6E66]/80 border-r border-white/15">
                                                 SEMESTER 2 (JANUARI – JUNI)
                                             </th>
                                             <th rowSpan={2} className="px-4 py-4 w-28 text-center">Rincian Pos</th>
                                         </tr>
-                                        <tr className="bg-slate-800 text-white font-bold text-[9px] uppercase tracking-wider">
-                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Pagu Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700">Realisasi Smt 1</th>
-                                            <th className="px-4 py-2.5 text-right bg-indigo-950/70 border-r border-slate-700 text-emerald-300 font-black">Sisa Smt 1 (Surplus)</th>
-                                            <th className="px-3 py-2.5 text-center bg-indigo-950/70 border-r border-slate-700">% Serap</th>
-                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700">Pagu Awal S2</th>
-                                            <th className="px-4 py-2.5 text-right bg-emerald-950/70 border-r border-slate-700 text-indigo-300 font-black">Proyeksi S2 Baru</th>
+                                        <tr className="bg-[#165D42] text-emerald-50 font-bold text-[9px] uppercase tracking-wider">
+                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Pagu Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15">Realisasi Smt 1</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#114B35]/80 border-r border-white/15 text-emerald-200 font-bold">Sisa Smt 1 (Surplus)</th>
+                                            <th className="px-3 py-2.5 text-center bg-[#114B35]/80 border-r border-white/15">% Serap</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15">Pagu Awal S2</th>
+                                            <th className="px-4 py-2.5 text-right bg-[#0D5E57]/80 border-r border-white/15 text-emerald-200 font-bold">Proyeksi S2 Baru</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
@@ -1567,30 +1568,30 @@ export default function RealizationDashboard() {
                                         )}
 
                                         {/* GRAND TOTAL SEMESTER ROW */}
-                                        <tr className="bg-slate-900 text-white font-black text-xs border-t-2 border-slate-700">
-                                            <td colSpan={2} className="px-6 py-4 text-center uppercase tracking-widest text-indigo-300">
+                                        <tr className="bg-gradient-to-r from-[#114832] via-[#156947] to-[#1B7E57] text-white font-bold text-xs border-t border-white/15">
+                                            <td colSpan={2} className="px-6 py-4 text-center uppercase tracking-wider text-emerald-100">
                                                 TOTAL KESELURUHAN (EVALUASI SEMESTER)
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS1Budget)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS1Spent)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-emerald-400 bg-emerald-950/40">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-emerald-200 bg-black/15 tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS1Remaining)}
                                             </td>
-                                            <td className="px-3 py-4 text-center border-l border-slate-800 font-black text-[10px]">
+                                            <td className="px-3 py-4 text-center border-l border-white/15 font-bold text-[10px] tabular-nums">
                                                 {dashboardData.semTotalS1Budget > 0 ? ((dashboardData.semTotalS1Spent / dashboardData.semTotalS1Budget) * 100).toFixed(1) : 0}%
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS2Budget)}
                                             </td>
-                                            <td className="px-4 py-4 text-right border-l border-slate-800 font-black text-indigo-300 bg-indigo-950/40">
+                                            <td className="px-4 py-4 text-right border-l border-white/15 font-bold text-emerald-100 bg-black/15 tabular-nums">
                                                 {formatRupiah(dashboardData.semTotalS2Projected)}
                                             </td>
-                                            <td className="px-4 py-4 text-center border-l border-slate-800">
-                                                <span className="text-[9px] text-emerald-300 uppercase font-black block">
+                                            <td className="px-4 py-4 text-center border-l border-white/15">
+                                                <span className="text-[9px] text-emerald-200 uppercase font-bold block tabular-nums">
                                                     +{formatRupiah(dashboardData.semTotalS1Surplus)}
                                                 </span>
                                             </td>
@@ -1604,7 +1605,7 @@ export default function RealizationDashboard() {
                         <div className="mt-6 flex justify-end">
                             <button
                                 onClick={() => setShowSemesterAnalysis(false)}
-                                className="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl font-black text-xs uppercase tracking-wider transition-all flex items-center gap-2"
+                                className="px-5 py-2.5 bg-[#EEF3F0] hover:bg-[#E2ECE6] text-[#13261E] border border-[#DCE5DF] rounded-xl font-bold text-xs tracking-wide transition-all flex items-center gap-2 cursor-pointer"
                             >
                                 <ChevronUp size={16} />
                                 <span>Sembunyikan Tampilan Analisis</span>
@@ -1615,13 +1616,15 @@ export default function RealizationDashboard() {
             </div>
 
             {/* MAIN DATA TABLES */}
-            <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {/* BIDANG REALISASI */}
                 {currentUser.role !== 'admin_unit' && (
-                    <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50 mb-12">
-                        <div className="budget-table-title bg-slate-900 text-white">
-                            <Layers size={20} className="text-indigo-400" />
-                            <span className="uppercase tracking-widest text-sm font-black text-white italic">Serapan Anggaran Per Bidang</span>
+                    <div className="budget-table-wrapper bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden mb-8">
+                        <div className="budget-table-title bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white px-5 py-3.5 flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
+                                <Layers size={16} />
+                            </span>
+                            <span className="tracking-tight text-sm font-bold text-white">Serapan Anggaran Per Bidang</span>
                         </div>
                         <div className="budget-table-scroll">
                             <table className="budget-table">
@@ -1646,18 +1649,18 @@ export default function RealizationDashboard() {
                                                     isField={true}
                                                 />
                                             ))}
-                                            <tr className="budget-row-total bg-slate-50">
-                                                <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                            <tr className="budget-row-total bg-[#F2F6F4]">
+                                                <td className="budget-cell budget-cell-name font-bold text-xs text-[#13261E] uppercase tracking-wider">
                                                     TOTAL KESELURUHAN
                                                 </td>
-                                                <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-indigo-100">{formatRupiah(dashboardData.totalBidangRAB)}</td>
-                                                <td className="budget-cell budget-cell-number font-black text-slate-900">{formatRupiah(dashboardData.totalBidangSpent)}</td>
-                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-indigo-50/30 text-indigo-700 font-black">{formatRupiah(dashboardData.totalBidangRemaining)}</td>
+                                                <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#E3E9E5] tabular-nums">{formatRupiah(dashboardData.totalBidangRAB)}</td>
+                                                <td className="budget-cell budget-cell-number font-bold text-[#13261E] tabular-nums">{formatRupiah(dashboardData.totalBidangSpent)}</td>
+                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#E9F5EF]/70 text-[#157A52] font-bold tabular-nums">{formatRupiah(dashboardData.totalBidangRemaining)}</td>
                                             </tr>
                                         </>
                                     ) : (
                                         <tr>
-                                            <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                            <td colSpan={4} className="text-center py-16 text-[#8DA096] font-semibold uppercase tracking-widest text-[10px]">
                                                 Belum ada data bidang untuk periode ini.
                                             </td>
                                         </tr>
@@ -1670,10 +1673,12 @@ export default function RealizationDashboard() {
 
                 {/* UNIT REALISASI */}
                 {currentUser.role !== 'admin_bidang' && (
-                    <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50">
-                        <div className="budget-table-title bg-slate-900 text-white">
-                            <Building2 size={20} className="text-blue-400" />
-                            <span className="uppercase tracking-widest text-sm font-black text-white italic">Serapan Anggaran Per Unit</span>
+                    <div className="budget-table-wrapper bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden">
+                        <div className="budget-table-title bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white px-5 py-3.5 flex items-center gap-3">
+                            <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
+                                <Building2 size={16} />
+                            </span>
+                            <span className="tracking-tight text-sm font-bold text-white">Serapan Anggaran Per Unit</span>
                         </div>
                         <div className="budget-table-scroll">
                             <table className="budget-table">
@@ -1697,18 +1702,18 @@ export default function RealizationDashboard() {
                                                     formatCurrency={formatRupiah}
                                                 />
                                             ))}
-                                            <tr className="budget-row-total bg-slate-50">
-                                                <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                            <tr className="budget-row-total bg-[#F2F6F4]">
+                                                <td className="budget-cell budget-cell-name font-bold text-xs text-[#13261E] uppercase tracking-wider">
                                                     TOTAL KESELURUHAN
                                                 </td>
-                                                <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-blue-100">{formatRupiah(dashboardData.totalUnitRAB)}</td>
-                                                <td className="budget-cell budget-cell-number font-black text-slate-900">{formatRupiah(dashboardData.totalUnitSpent)}</td>
-                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-blue-50/30 text-blue-700 font-black">{formatRupiah(dashboardData.totalUnitRemaining)}</td>
+                                                <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#E3E9E5] tabular-nums">{formatRupiah(dashboardData.totalUnitRAB)}</td>
+                                                <td className="budget-cell budget-cell-number font-bold text-[#13261E] tabular-nums">{formatRupiah(dashboardData.totalUnitSpent)}</td>
+                                                <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#E9F5EF]/70 text-[#157A52] font-bold tabular-nums">{formatRupiah(dashboardData.totalUnitRemaining)}</td>
                                             </tr>
                                         </>
                                     ) : (
                                         <tr>
-                                            <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                            <td colSpan={4} className="text-center py-16 text-[#8DA096] font-semibold uppercase tracking-widest text-[10px]">
                                                 Belum ada data unit untuk periode ini.
                                             </td>
                                         </tr>
@@ -1720,9 +1725,9 @@ export default function RealizationDashboard() {
                 )}
             </div>
 
-            <div className="mt-20 text-center">
-                <div className="inline-block px-10 py-3 bg-white border border-slate-100 rounded-full shadow-sm">
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
+            <div className="mt-16 text-center">
+                <div className="inline-block px-6 py-2 bg-white border border-[#E4EAE6] rounded-full shadow-2xs">
+                    <p className="text-[10px] font-bold text-[#8DA096] uppercase tracking-[0.25em]">
                         Sistem Keuangan Dareliman — SIKAD
                     </p>
                 </div>

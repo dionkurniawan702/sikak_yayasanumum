@@ -316,12 +316,12 @@ export default function CashFlowStatement() {
                             <span>Kas & Setara Kas pada Awal Periode (1 Januari {currentYearStr})</span>
                             <span className="font-bold"><CurrencyDisplay value={cashStart} useColor={false} /></span>
                         </div>
-                        <div className="p-6 bg-slate-900 text-white rounded-2xl flex justify-between items-center shadow-lg">
+                        <div className="p-6 bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white rounded-2xl flex justify-between items-center shadow-md border border-[#2A946B]/30">
                              <div className="flex items-center gap-3">
-                                 <Banknote size={28} className="text-emerald-400" />
-                                 <span className="font-black text-sm uppercase tracking-wider">KAS & SETARA KAS AKHIR PERIODE (31 DESEMBER {currentYearStr})</span>
+                                 <Banknote size={28} className="text-emerald-200" />
+                                 <span className="font-bold text-sm uppercase tracking-wider">KAS &amp; SETARA KAS AKHIR PERIODE (31 DESEMBER {currentYearStr})</span>
                              </div>
-                             <span className="text-2xl font-black text-emerald-400 tabular-nums"><CurrencyDisplay value={cashEnd} useColor={false} /></span>
+                             <span className="text-2xl font-bold text-emerald-200 tabular-nums"><CurrencyDisplay value={cashEnd} useColor={false} /></span>
                         </div>
                     </div>
                 </div>

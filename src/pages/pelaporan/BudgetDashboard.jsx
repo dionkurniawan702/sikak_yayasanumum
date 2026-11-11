@@ -663,13 +663,13 @@ export default function BudgetDashboard() {
             {/* ===== BIDANG TABLE (Calm Ferna Sage & Emerald Theme) ===== */}
             {currentUser?.role !== 'admin_unit' && (
                 <div className="budget-table-wrapper mb-8 bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden animate-in">
-                    <div className="budget-table-title bg-[#F7FAF8] text-[#13261E] border-b border-[#E3E9E5] px-5 py-3.5 flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-[#E2F1EA] text-[#157A52] flex items-center justify-center shrink-0">
+                    <div className="budget-table-title bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white px-5 py-3.5 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
                             <Layers size={16} />
                         </span>
                         <div>
-                            <span className="text-sm font-bold text-[#13261E] tracking-tight block">Ringkasan Per Bidang</span>
-                            <span className="text-[11px] font-medium text-[#6B7E75]">Konsolidasi alokasi pendapatan &amp; rencana belanja per bidang</span>
+                            <span className="text-sm font-bold text-white tracking-tight block">Ringkasan Per Bidang</span>
+                            <span className="text-[11px] font-medium text-emerald-100/80">Konsolidasi alokasi pendapatan &amp; rencana belanja per bidang</span>
                         </div>
                     </div>
                     <div className="budget-table-scroll">
@@ -723,13 +723,13 @@ export default function BudgetDashboard() {
             {/* ===== UNIT TABLE (Calm Ferna Sage & Emerald Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && (
                 <div className="budget-table-wrapper bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden animate-in">
-                    <div className="budget-table-title bg-[#F7FAF8] text-[#13261E] border-b border-[#E3E9E5] px-5 py-3.5 flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-[#E2F1EA] text-[#157A52] flex items-center justify-center shrink-0">
+                    <div className="budget-table-title bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white px-5 py-3.5 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
                             <Building2 size={16} />
                         </span>
                         <div>
-                            <span className="text-sm font-bold text-[#13261E] tracking-tight block">Ringkasan Per Unit</span>
-                            <span className="text-[11px] font-medium text-[#6B7E75]">Rincian alokasi pendapatan &amp; belanja masing-masing unit</span>
+                            <span className="text-sm font-bold text-white tracking-tight block">Ringkasan Per Unit</span>
+                            <span className="text-[11px] font-medium text-emerald-100/80">Rincian alokasi pendapatan &amp; belanja masing-masing unit</span>
                         </div>
                     </div>
                     <div className="budget-table-scroll">
@@ -783,13 +783,13 @@ export default function BudgetDashboard() {
             {/* ===== BOS TABLE (Calm Ferna Sage & Emerald Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && bosUnitData.length > 0 && (
                 <div className="budget-table-wrapper mt-8 bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
-                    <div className="budget-table-title bg-[#F7FAF8] text-[#13261E] border-b border-[#E3E9E5] px-5 py-3.5 flex items-center gap-3">
-                        <span className="w-8 h-8 rounded-lg bg-[#E2F1EA] text-[#157A52] flex items-center justify-center shrink-0">
+                    <div className="budget-table-title bg-gradient-to-r from-[#0F5F4A] via-[#157A52] to-[#1FA376] text-white px-5 py-3.5 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-white/15 border border-white/20 text-emerald-100 flex items-center justify-center shrink-0">
                             <Gem size={16} />
                         </span>
                         <div>
-                            <span className="text-sm font-bold text-[#13261E] tracking-tight block">Ringkasan BOS Per Unit</span>
-                            <span className="text-[11px] font-medium text-[#6B7E75]">Konsolidasi alokasi &amp; rencana belanja Dana BOS per unit</span>
+                            <span className="text-sm font-bold text-white tracking-tight block">Ringkasan BOS Per Unit</span>
+                            <span className="text-[11px] font-medium text-emerald-100/80">Konsolidasi alokasi &amp; rencana belanja Dana BOS per unit</span>
                         </div>
                     </div>
                     <div className="budget-table-scroll">

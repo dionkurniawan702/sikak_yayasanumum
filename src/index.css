@@ -54,28 +54,30 @@ body {
 }
 
 /* Custom UI Components */
-.btn {
-  @apply flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all duration-200 active:scale-95;
-}
+@layer components {
+  .btn {
+    @apply flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-bold transition-all duration-200 active:scale-95;
+  }
 
-.btn-primary {
-  @apply bg-[#157A52] text-white shadow-sm hover:bg-[#0F5E3F];
-}
+  .btn-primary {
+    @apply bg-[#157A52] text-white shadow-sm hover:bg-[#0F5E3F];
+  }
 
-.btn-secondary {
-  @apply bg-white text-[#24372F] border border-[#D9E2DC] hover:bg-[#F2F6F4];
-}
+  .btn-secondary {
+    @apply bg-white text-[#24372F] border border-[#D9E2DC] hover:bg-[#F2F6F4];
+  }
 
-.form-input, .form-select {
-  @apply w-full px-4 py-2.5 rounded-xl border border-[#DCE4DF] bg-white focus:ring-2 focus:ring-emerald-600/15 focus:border-[#157A52] transition-all outline-none text-sm font-medium;
-}
+  .form-input, .form-select {
+    @apply w-full px-4 py-2.5 rounded-xl border border-[#DCE4DF] bg-white focus:ring-2 focus:ring-emerald-600/15 focus:border-[#157A52] transition-all outline-none text-sm font-medium;
+  }
 
-.form-label {
-  @apply text-[10px] font-bold text-[#6A7B73] uppercase tracking-wider block mb-1.5 px-1;
-}
+  .form-label {
+    @apply text-[10px] font-bold text-[#6A7B73] uppercase tracking-wider block mb-1.5 px-1;
+  }
 
-.card {
-  @apply bg-white rounded-2xl border border-[#E4EAE6] shadow-[0_1px_2px_rgba(16,32,26,0.03)] transition-all duration-200;
+  .card {
+    @apply bg-white rounded-2xl border border-[#E4EAE6] shadow-[0_1px_2px_rgba(16,32,26,0.03)] transition-all duration-200;
+  }
 }
 
 .custom-scrollbar {
@@ -159,106 +161,107 @@ body {
    Budget Dashboard Styles
    ======================================== */
 
-.budget-select {
-  @apply px-4 py-2.5 rounded-xl border border-[#DCE4DF] bg-white text-sm font-bold text-[#1E3129];
-  @apply focus:ring-2 focus:ring-emerald-600/15 focus:border-[#157A52] transition-all outline-none;
-  @apply cursor-pointer;
-  min-width: 160px;
-}
+@layer components {
+  .budget-select {
+    @apply px-4 py-2.5 rounded-xl border border-[#DCE4DF] bg-white text-sm font-bold text-[#1E3129];
+    @apply focus:ring-2 focus:ring-emerald-600/15 focus:border-[#157A52] transition-all outline-none;
+    @apply cursor-pointer;
+    min-width: 160px;
+  }
 
-.budget-export-btn {
-  @apply flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold;
-  @apply bg-white text-[#157A52] border border-[#CBE0D4];
-  @apply hover:bg-[#EAF4EE] hover:border-[#9FC9B1] hover:shadow-xs;
-  @apply active:scale-95 transition-all duration-200 cursor-pointer;
-}
+  .budget-export-btn {
+    @apply flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold;
+    @apply bg-white text-[#157A52] border border-[#CBE0D4];
+    @apply hover:bg-[#EAF4EE] hover:border-[#9FC9B1] hover:shadow-xs;
+    @apply active:scale-95 transition-all duration-200 cursor-pointer;
+  }
 
-.budget-table-wrapper {
-  @apply bg-white rounded-2xl border border-[#E4EAE6] overflow-hidden shadow-[0_1px_2px_rgba(16,32,26,0.03)];
-}
+  .budget-table-wrapper {
+    @apply bg-white rounded-2xl border border-[#E4EAE6] overflow-hidden shadow-[0_1px_2px_rgba(16,32,26,0.03)];
+  }
 
-.budget-table-title {
-  @apply flex items-center gap-3 px-6 py-4 text-lg font-extrabold text-[#162922] border-b border-[#E6ECE8];
-  @apply tracking-tight;
-}
+  .budget-table-title {
+    @apply flex items-center gap-3 px-6 py-4 text-base font-bold text-white border-b border-emerald-900/10 tracking-tight;
+    background-image: linear-gradient(to right, #114C35, #157A52, #218E63);
+  }
 
-.budget-table-scroll {
-  @apply overflow-x-auto;
-}
+  .budget-table-scroll {
+    @apply overflow-x-auto;
+  }
 
-.budget-table {
-  @apply w-full text-left border-collapse;
-  min-width: 700px;
-}
+  .budget-table {
+    @apply w-full text-left border-collapse;
+    min-width: 700px;
+  }
 
-.budget-th {
-  @apply text-[11px] font-bold uppercase tracking-wider;
-  background-color: #F2F6F4;
-  color: #364940;
-  padding: 12px 20px;
-  border-bottom: 1.5px solid #DCE5DF;
-}
+  .budget-th {
+    @apply text-[11px] font-bold uppercase tracking-wider;
+    background-color: #F2F6F4;
+    color: #364940;
+    padding: 12px 20px;
+    border-bottom: 1.5px solid #DCE5DF;
+  }
 
-.budget-th-name {
-  width: 35%;
-}
+  .budget-th-name {
+    width: 35%;
+  }
 
-.budget-th-number {
-  text-align: right;
-  width: 21.66%;
-}
+  .budget-th-number {
+    text-align: right;
+    width: 21.66%;
+  }
 
-.budget-cell {
-  padding: 14px 20px;
-  border-bottom: 1px solid #EEF2F0;
-  font-size: 14px;
-}
+  .budget-cell {
+    padding: 14px 20px;
+    border-bottom: 1px solid #EEF2F0;
+    font-size: 14px;
+  }
 
-.budget-cell-name {
-  /* Name column */
-  min-width: 200px;
-}
+  .budget-cell-name {
+    min-width: 200px;
+  }
 
-.budget-cell-number {
-  text-align: right;
-  min-width: 280px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
+  .budget-cell-number {
+    text-align: right;
+    min-width: 280px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
 
-.budget-cell-sisa {
-  background-color: #F8FBF9;
-}
+  .budget-cell-sisa {
+    background-color: #F8FBF9;
+  }
 
-.budget-row {
-  transition: background-color 0.15s ease;
-}
+  .budget-row {
+    transition: background-color 0.15s ease;
+  }
 
-.budget-row:hover {
-  background-color: #F6F9F7;
-}
+  .budget-row:hover {
+    background-color: #F6F9F7;
+  }
 
-.budget-row-detail {
-  background-color: #FAFBFB;
-  animation: slideDown 0.2s ease-out;
-}
+  .budget-row-detail {
+    background-color: #FAFBFB;
+    animation: slideDown 0.2s ease-out;
+  }
 
-.budget-row-detail:hover {
-  background-color: #F1F5F3;
-}
+  .budget-row-detail:hover {
+    background-color: #F1F5F3;
+  }
 
-.budget-row-total {
-  background-color: #F2F6F4;
-  border-top: 2px solid #CFDAD4;
-}
+  .budget-row-total {
+    background-color: #F2F6F4;
+    border-top: 2px solid #CFDAD4;
+  }
 
-.budget-row-total .budget-cell {
-  padding: 16px 20px;
-  border-bottom: none;
-}
+  .budget-row-total .budget-cell {
+    padding: 16px 20px;
+    border-bottom: none;
+  }
 
-.expand-icon {
-  @apply text-slate-400 transition-transform duration-200 inline-flex items-center;
+  .expand-icon {
+    @apply text-slate-400 transition-transform duration-200 inline-flex items-center;
+  }
 }
 
 @keyframes slideDown {

@@ -406,25 +406,25 @@ export default function ArchiveReports() {
     };
 
     return (
-        <div className="p-4 md:p-8 animate-in text-slate-900 pb-20 bg-slate-50 min-h-screen">
+        <div className="p-4 md:p-8 animate-in text-[#13261E] pb-20 min-h-screen">
             {/* Header Section */}
-            <div className="bg-gradient-to-br from-indigo-800 to-slate-900 rounded-[36px] p-6 md:p-8 text-white shadow-2xl relative overflow-hidden group mb-6">
-                <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+            <div className="bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] rounded-3xl p-6 md:p-8 text-white shadow-md border border-[#2A946B]/35 relative overflow-hidden group mb-6">
+                <div className="absolute top-0 right-0 p-8 opacity-15 group-hover:scale-110 transition-transform text-emerald-100">
                     <Archive size={140} />
                 </div>
                 <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-black mb-1">Arsip Laporan Realisasi</h1>
-                        <p className="text-blue-100/70 font-medium uppercase text-[10px] tracking-widest italic">
+                        <h1 className="text-2xl md:text-3xl font-bold mb-1 tracking-tight">Arsip Laporan Realisasi</h1>
+                        <p className="text-emerald-100/80 font-semibold uppercase text-[10px] tracking-wider">
                             RIWAYAT PENGELUARAN FINAL • TA {currentYear?.name || '-'}
                         </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-3 items-center bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20">
-                        <div className="flex bg-slate-900/40 p-1 rounded-xl">
+                    <div className="flex flex-wrap gap-3 items-center bg-black/15 backdrop-blur-md p-1.5 rounded-2xl border border-white/20">
+                        <div className="flex bg-black/15 p-1 rounded-xl">
                             <button 
                                 onClick={() => setSourceMode('YAYASAN')}
-                                className={`px-5 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-sm' : 'text-white/75 hover:text-white'}`}
                             >
                                 <Building2 size={12} className="inline mr-2" />
                                 Yayasan
@@ -593,15 +593,15 @@ export default function ArchiveReports() {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[1000px]">
                         <thead>
-                            <tr className="bg-slate-900 text-white">
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest w-12 text-center border-b border-slate-800">No</th>
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Tanggal</th>
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Nomor Nota</th>
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Periode Permintaan</th>
+                            <tr className="bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white">
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider w-12 text-center border-b border-emerald-900/20">No</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Tanggal</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Nomor Nota</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Periode Permintaan</th>
                                 {isSuperAdmin && (
-                                    <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Unit / Bidang</th>
+                                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Unit / Bidang</th>
                                 )}
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Keterangan Laporan</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Keterangan Laporan</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-center">Info Aset</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-right text-rose-400">Diskon (Rp)</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-right">Realisasi (Rp)</th>

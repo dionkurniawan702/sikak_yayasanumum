@@ -1898,20 +1898,20 @@ export default function MonthlyRequest() {
             )}
             {/* Header */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="lg:col-span-2 bg-gradient-to-br from-indigo-700 to-blue-900 rounded-[40px] p-10 text-white shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform">
-                        <Send size={160} />
+                <div className="lg:col-span-2 bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] rounded-3xl p-8 sm:p-9 text-white shadow-md border border-[#2A946B]/35 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-10 opacity-15 group-hover:scale-110 transition-transform text-emerald-100">
+                        <Send size={150} />
                     </div>
                     <div className="relative z-10">
-                        <h1 className="text-3xl font-black mb-1">Permintaan Dana</h1>
-                        <p className="text-blue-100/70 font-medium mb-4 uppercase text-[10px] tracking-widest italic">
+                        <h1 className="text-2xl sm:text-3xl font-bold mb-1 tracking-tight">Permintaan Dana</h1>
+                        <p className="text-emerald-100/80 font-semibold mb-5 uppercase text-[11px] tracking-wider">
                             TA {currentYear?.name || '-'} • {isSuperAdmin ? 'SELURUH YAYASAN' : (units.find(u => u.id === myUnitId)?.name || fields.find(f => f.id === myFieldId)?.name || 'Unit Saya')}
                         </p>
 
-                        <div className="flex bg-white/10 backdrop-blur-md p-1 rounded-2xl border border-white/20 mb-8 inline-flex">
+                        <div className="flex bg-black/15 backdrop-blur-md p-1 rounded-xl border border-white/20 mb-7 inline-flex">
                             <button 
                                 onClick={() => setSourceMode('YAYASAN')}
-                                className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-sm' : 'text-white/75 hover:text-white'}`}
                             >
                                 <Building2 size={12} className="inline mr-2" />
                                 Dana Yayasan
@@ -1919,7 +1919,7 @@ export default function MonthlyRequest() {
                             {(!myFieldId || isSuperAdmin) && (
                                 <button 
                                     onClick={() => setSourceMode('BOS')}
-                                    className={`px-6 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                    className={`px-5 py-2 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'BOS' ? 'bg-white text-[#0D6844] shadow-sm' : 'text-white/75 hover:text-white'}`}
                                 >
                                     <Gem size={12} className="inline mr-2" />
                                     Dana BOS
@@ -1930,15 +1930,15 @@ export default function MonthlyRequest() {
                         {!isSuperAdmin ? (
                             <button
                                 onClick={() => setShowRequestModal(true)}
-                                className="bg-white text-indigo-700 font-black px-8 py-4 rounded-2xl flex items-center gap-3 hover:shadow-2xl hover:scale-105 active:scale-95 transition-all"
+                                className="bg-white text-[#0F5E3F] font-bold px-6 py-3.5 rounded-xl flex items-center gap-2.5 hover:bg-[#E9F5EF] hover:scale-[1.02] active:scale-95 transition-all shadow-sm cursor-pointer text-xs uppercase tracking-wider"
                             >
-                                <Plus size={20} strokeWidth={3} />
-                                <span> BUAT PENGAJUAN DANA</span>
+                                <Plus size={18} strokeWidth={3} />
+                                <span>Buat Pengajuan Dana</span>
                             </button>
                         ) : (
-                            <div className="flex items-center gap-2 px-6 py-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10">
-                                <AlertCircle size={16} />
-                                <span className="text-[10px] font-black uppercase tracking-widest">MODE MONITORING SUPERADMIN</span>
+                            <div className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/15 backdrop-blur-md rounded-xl border border-white/20">
+                                <AlertCircle size={15} className="text-emerald-200" />
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-50">MODE MONITORING SUPERADMIN</span>
                             </div>
                         )}
                     </div>
@@ -2563,19 +2563,19 @@ export default function MonthlyRequest() {
                             )}
                         </div>
 
-                        <div className="p-10 bg-white border-t border-slate-100 flex items-center justify-between">
+                        <div className="p-8 sm:p-10 bg-white border-t border-[#E4EAE6] flex items-center justify-between">
                             <div>
-                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Terpilih</p>
-                                <h3 className="text-3xl font-black text-indigo-700 italic tracking-tighter">
+                                <p className="text-[11px] font-bold text-[#6B7E75] uppercase tracking-wider mb-1">Total Terpilih</p>
+                                <h3 className="text-2xl sm:text-3xl font-bold text-[#157A52] tracking-tight tabular-nums">
                                     {formatRupiah(approvedComponents.filter(c => selectedComponents.includes(c.id)).reduce((s, c) => s + (parseFloat(c.total) || 0), 0))}
                                 </h3>
                             </div>
-                            <div className="flex gap-4">
-                                <button onClick={() => setShowRequestModal(false)} className="btn bg-slate-100 text-slate-600 px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-200 transition-all">Batal</button>
+                            <div className="flex gap-3">
+                                <button onClick={() => setShowRequestModal(false)} className="btn bg-[#EEF3F0] text-[#5C6F66] px-7 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider hover:bg-[#E2ECE6] transition-all cursor-pointer">Batal</button>
                                 <button
                                     onClick={handleCreateRequest}
                                     disabled={selectedComponents.length === 0}
-                                    className={`btn ${sourceMode === 'BOS' ? 'bg-emerald-600' : 'bg-indigo-600'} text-white px-10 py-4 rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-slate-900 transition-all disabled:opacity-50 active:scale-95 flex items-center gap-3`}
+                                    className="btn bg-gradient-to-r from-[#125138] to-[#157A52] hover:from-[#0E402C] hover:to-[#0F5E3F] text-white px-8 py-3.5 rounded-xl font-bold text-xs uppercase tracking-wider shadow-sm transition-all disabled:opacity-50 active:scale-95 flex items-center gap-2.5 cursor-pointer"
                                 >
                                     <Send size={18} />
                                     AJUKAN PENCAIRAN {sourceMode}

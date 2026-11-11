@@ -240,8 +240,8 @@ export default function StatementOfChangesInNetAssets() {
                                     </td>
                                 </tr>
                             ))}
-                            <tr className="bg-slate-900 text-white font-black">
-                                <td className="px-6 py-6 text-xs uppercase tracking-widest text-slate-300">
+                            <tr className="bg-gradient-to-r from-[#114C35] to-[#157A52] text-white font-bold">
+                                <td className="px-6 py-6 text-xs uppercase tracking-wider text-emerald-100">
                                     Total Seluruh Aset Neto
                                 </td>
                                 <td className="px-6 py-6 text-right tabular-nums">
@@ -250,7 +250,7 @@ export default function StatementOfChangesInNetAssets() {
                                 <td className="px-6 py-6 text-right tabular-nums">
                                     <CurrencyDisplay value={totalSurplus} useColor={false} />
                                 </td>
-                                <td className="px-6 py-6 text-right text-xl tabular-nums text-emerald-400">
+                                <td className="px-6 py-6 text-right text-xl tabular-nums text-emerald-200">
                                     <CurrencyDisplay value={totalAkhir} useColor={false} />
                                 </td>
                             </tr>

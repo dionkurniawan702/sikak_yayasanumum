@@ -835,33 +835,33 @@ export default function FundAvailability() {
                                 setIsReturnAmountLocked(true);
                                 setShowReturnModal(true);
                             }}
-                            className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-95 font-bold text-xs"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#125138] to-[#157A52] hover:from-[#0E402C] hover:to-[#0F5E3F] text-white rounded-xl shadow-xs transition-all active:scale-95 font-bold text-xs cursor-pointer"
                         >
                             <HandCoins size={18} />
                             <span>KEMBALIKAN SISA DANA</span>
                         </button>
                     )}
-                    <div className="flex items-center gap-3 px-6 py-3 bg-indigo-50 text-indigo-700 rounded-2xl border border-indigo-100 shadow-sm">
-                        <ShieldCheck size={20} />
-                        <span className="text-xs font-black uppercase tracking-widest">Saldo Real-Time</span>
+                    <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#E9F5EF] text-[#0D6844] rounded-xl border border-[#C6E3D5] shadow-2xs">
+                        <ShieldCheck size={18} className="text-[#157A52]" />
+                        <span className="text-xs font-bold uppercase tracking-wider">Saldo Real-Time</span>
                     </div>
                 </div>
             </div>
 
             {/* ── Filter Bar & Tampilan Selector */}
-            <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-xl mb-8 flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="bg-white p-5 rounded-2xl border border-[#E4EAE6] shadow-xs mb-7 flex flex-col md:flex-row md:items-center justify-between gap-5">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
-                        <Calendar size={22} />
+                    <div className="w-11 h-11 rounded-xl bg-[#E2F1EA] text-[#157A52] flex items-center justify-center flex-shrink-0">
+                        <Calendar size={20} />
                     </div>
                     <div>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-1">
+                        <label className="text-[10px] font-bold text-[#6B7E75] uppercase tracking-wider block mb-1">
                             Bulan Permintaan Dana
                         </label>
                         <select
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(e.target.value)}
-                            className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer min-w-[220px]"
+                            className="px-4 py-2 bg-[#F7FAF8] border border-[#DCE5DF] rounded-xl font-bold text-[#13261E] text-sm focus:outline-none focus:ring-2 focus:ring-[#157A52]/20 focus:border-[#157A52] cursor-pointer min-w-[220px]"
                         >
                             <option value="ALL">🗓️ Semua Bulan Permintaan</option>
                             {monthOptions.map(m => (
@@ -874,27 +874,27 @@ export default function FundAvailability() {
                 </div>
 
                 {!isSuperAdmin && (
-                    <div className="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                    <div className="flex items-center bg-[#EEF3F0] p-1 rounded-xl border border-[#DCE5DF]">
                         <button
                             onClick={() => setViewMode('month_breakdown')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                                 viewMode === 'month_breakdown'
-                                    ? 'bg-indigo-600 text-white shadow-md'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-[#157A52] text-white shadow-xs'
+                                    : 'text-[#6B7E75] hover:text-[#13261E]'
                             }`}
                         >
-                            <Layers size={16} />
+                            <Layers size={15} />
                             <span>Per Surat Permintaan (Bulan)</span>
                         </button>
                         <button
                             onClick={() => setViewMode('category_breakdown')}
-                            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${
                                 viewMode === 'category_breakdown'
-                                    ? 'bg-indigo-600 text-white shadow-md'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-[#157A52] text-white shadow-xs'
+                                    : 'text-[#6B7E75] hover:text-[#13261E]'
                             }`}
                         >
-                            <Tag size={16} />
+                            <Tag size={15} />
                             <span>Per Kategori Barang</span>
                         </button>
                     </div>
@@ -902,43 +902,46 @@ export default function FundAvailability() {
             </div>
 
             {/* ── Stats Row */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
-                <div className="card p-8 bg-white border-b-4 border-emerald-500 shadow-lg hover:translate-y-[-4px] transition-all">
-                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center mb-4"><CheckCircle size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-5 mb-8">
+                <div className="p-6 bg-gradient-to-br from-white via-[#FAFDFB] to-[#EFF7F2] rounded-2xl border border-[#E4EAE6] shadow-xs hover:-translate-y-0.5 transition-all">
+                    <div className="w-10 h-10 bg-[#E2F1EA] text-[#157A52] rounded-xl flex items-center justify-center mb-3.5"><CheckCircle size={20} /></div>
+                    <p className="text-[11px] font-semibold text-[#6B7E75] mb-1">
                         Total Dana ACC {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Masuk)'}
                     </p>
-                    <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statApproved)}</h2>
+                    <h2 className="text-xl font-bold text-[#13261E] tabular-nums">{formatRupiah(statApproved)}</h2>
                 </div>
-                <div className="card p-8 bg-white border-b-4 border-rose-500 shadow-lg hover:translate-y-[-4px] transition-all">
-                    <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-4"><TrendingUp size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                <div className="p-6 bg-gradient-to-br from-white via-[#FAFDFB] to-[#FFF6F5] rounded-2xl border border-[#E4EAE6] shadow-xs hover:-translate-y-0.5 transition-all">
+                    <div className="w-10 h-10 bg-rose-50 text-rose-600 rounded-xl flex items-center justify-center mb-3.5"><TrendingUp size={20} /></div>
+                    <p className="text-[11px] font-semibold text-[#6B7E75] mb-1">
                         Total Realisasi {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Keluar)'}
                     </p>
-                    <h2 className="text-2xl font-black text-slate-900">{formatRupiah(statUsed)}</h2>
+                    <h2 className="text-xl font-bold text-[#13261E] tabular-nums">{formatRupiah(statUsed)}</h2>
                 </div>
-                <div className="card p-8 bg-white border-b-4 border-indigo-500 shadow-lg hover:translate-y-[-4px] transition-all">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center mb-4"><Wallet size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                <div className="p-6 bg-gradient-to-br from-[#0F4D35] via-[#157A52] to-[#209266] rounded-2xl border border-[#1E8F62]/40 shadow-sm hover:-translate-y-0.5 transition-all text-white">
+                    <div className="w-10 h-10 bg-white/15 text-emerald-100 rounded-xl flex items-center justify-center mb-3.5"><Wallet size={20} /></div>
+                    <p className="text-[11px] font-semibold text-emerald-100/80 mb-1">
                         Sisa Dana {selectedMonth !== 'ALL' ? `(${formatMonthLabel(selectedMonth)})` : '(Saldo)'}
                     </p>
-                    <h2 className="text-2xl font-black text-emerald-600">{formatRupiah(statBalance)}</h2>
+                    <h2 className="text-xl font-bold text-white tabular-nums">{formatRupiah(statBalance)}</h2>
                 </div>
-                <div className="card p-8 bg-white border-b-4 border-amber-500 shadow-lg hover:translate-y-[-4px] transition-all">
-                    <div className="w-12 h-12 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-4"><Clock size={24} /></div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Menunggu ACC (Proses)</p>
-                    <h2 className="text-2xl font-black text-amber-600">{formatRupiah(statPending)}</h2>
+                <div className="p-6 bg-gradient-to-br from-white via-[#FAFDFB] to-[#FBF8EF] rounded-2xl border border-[#E4EAE6] shadow-xs hover:-translate-y-0.5 transition-all">
+                    <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center mb-3.5"><Clock size={20} /></div>
+                    <p className="text-[11px] font-semibold text-[#6B7E75] mb-1">Menunggu ACC (Proses)</p>
+                    <h2 className="text-xl font-bold text-amber-700 tabular-nums">{formatRupiah(statPending)}</h2>
                 </div>
             </div>
 
             {/* ── SUPERADMIN: Tabel per Unit & Bidang */}
             {isSuperAdmin ? (
-                <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] bg-white border-0">
-                    <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
-                        <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
-                            <Layers className="text-indigo-400" size={16} /> Saldo per Unit & Bidang {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}
+                <div className="overflow-hidden shadow-xs mb-8 rounded-2xl bg-white border border-[#E4EAE6]">
+                    <div className="px-6 py-4 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
+                        <h3 className="font-bold text-sm tracking-tight flex items-center gap-2.5">
+                            <span className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-emerald-100">
+                                <Layers size={15} />
+                            </span>
+                            <span>Saldo per Unit &amp; Bidang {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}</span>
                         </h3>
-                        <span className="text-[10px] text-slate-400 font-bold italic">Klik baris untuk lihat rincian kategori</span>
+                        <span className="text-[11px] text-emerald-100/85 font-medium">Klik baris untuk lihat rincian kategori</span>
                     </div>
                     <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
                         <table className="w-full text-left border-collapse">
@@ -991,21 +994,21 @@ export default function FundAvailability() {
                                 <tr className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-800">
                                     <td className="px-6 py-5">
                                         <div className="flex items-center gap-4">
-                                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-slate-800 text-white font-black">
+                                            <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 bg-[#157A52] text-white font-bold">
                                                 Σ
                                             </div>
                                             <div>
-                                                <div className="font-black text-slate-800 text-sm">TOTAL KESELURUHAN</div>
-                                                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Semua Unit & Bidang</div>
+                                                <div className="font-bold text-[#13261E] text-sm">TOTAL KESELURUHAN</div>
+                                                <div className="text-[9px] font-bold text-[#6B7E75] uppercase tracking-wider">Semua Unit & Bidang</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-5 font-black text-emerald-700 text-sm">{formatRupiah(totalApproved)}</td>
-                                    <td className="px-6 py-5 font-black text-rose-600 text-sm">{formatRupiah(totalUsed)}</td>
-                                    <td className="px-6 py-5 font-black text-emerald-600 text-base">{formatRupiah(totalBalance)}</td>
-                                    <td className="px-6 py-5 font-black text-indigo-600 text-sm">{formatRupiah(totalReturned)}</td>
+                                    <td className="px-6 py-5 font-bold text-[#157A52] text-sm tabular-nums">{formatRupiah(totalApproved)}</td>
+                                    <td className="px-6 py-5 font-bold text-rose-600 text-sm tabular-nums">{formatRupiah(totalUsed)}</td>
+                                    <td className="px-6 py-5 font-bold text-[#0D6844] text-base tabular-nums">{formatRupiah(totalBalance)}</td>
+                                    <td className="px-6 py-5 font-bold text-[#1E3448] text-sm tabular-nums">{formatRupiah(totalReturned)}</td>
                                     <td className="px-6 py-5 text-center">
-                                        <span className="text-[10px] text-slate-300 italic">—</span>
+                                        <span className="text-[10px] text-[#8DA096]">—</span>
                                     </td>
                                 </tr>
                             </tfoot>
@@ -1018,51 +1021,51 @@ export default function FundAvailability() {
                     /* ── MODE 1: RINCIAN PER SURAT PERMINTAAN DANA (BULAN) */
                     <div className="space-y-6 mb-10">
                         <div className="flex items-center justify-between px-2">
-                            <h3 className="font-black text-lg text-slate-800 tracking-tight flex items-center gap-2">
-                                <Layers className="text-indigo-600" size={20} />
+                            <h3 className="font-bold text-lg text-[#13261E] tracking-tight flex items-center gap-2">
+                                <Layers className="text-[#157A52]" size={20} />
                                 <span>Rincian Saldo per Surat Permintaan Dana</span>
                             </h3>
-                            <span className="text-xs font-bold text-slate-400 italic">
+                            <span className="text-xs font-semibold text-[#6B7E75]">
                                 {monthBreakdownCards.length} Surat Permintaan Ditemukan
                             </span>
                         </div>
 
                         {monthBreakdownCards.length === 0 ? (
-                            <div className="bg-white p-12 rounded-[2rem] border border-slate-100 text-center shadow-xl">
-                                <Info size={40} className="text-slate-300 mx-auto mb-4" />
-                                <p className="text-slate-500 font-bold">Tidak ada surat permintaan dana yang di-ACC untuk periode bulan ini.</p>
+                            <div className="bg-white p-12 rounded-2xl border border-[#E4EAE6] text-center shadow-xs">
+                                <Info size={40} className="text-[#9DB0A6] mx-auto mb-4" />
+                                <p className="text-[#6B7E75] font-bold">Tidak ada surat permintaan dana yang di-ACC untuk periode bulan ini.</p>
                             </div>
                         ) : (
                             monthBreakdownCards.map((card) => {
                                 const isExpanded = expandedRequestIds.includes(card.reqId);
                                 return (
-                                    <div key={card.reqId} className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden transition-all duration-300 hover:border-indigo-200">
+                                    <div key={card.reqId} className="bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden transition-all duration-300 hover:border-[#9FC9B1]">
                                         {/* Card Header */}
                                         <div 
                                             onClick={() => toggleExpandRequest(card.reqId)}
-                                            className="p-6 md:p-8 bg-slate-900 text-white flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer hover:bg-slate-800 transition-colors"
+                                            className="p-6 md:p-7 bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer hover:brightness-105 transition-all"
                                         >
                                             <div className="flex items-start gap-4">
-                                                <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 flex items-center justify-center flex-shrink-0 mt-1">
-                                                    <Calendar size={22} />
+                                                <div className="w-11 h-11 rounded-2xl bg-white/15 text-emerald-100 border border-white/25 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    <Calendar size={20} />
                                                 </div>
                                                 <div>
                                                     <div className="flex items-center gap-3 mb-1">
-                                                        <span className="px-3 py-1 bg-indigo-500/20 text-indigo-300 rounded-lg text-xs font-black uppercase tracking-wider border border-indigo-500/30">
+                                                        <span className="px-3 py-0.5 bg-white/15 text-emerald-50 rounded-lg text-xs font-bold uppercase tracking-wider border border-white/20">
                                                             {formatMonthLabel(card.reqMonth)}
                                                         </span>
-                                                        <span className="text-xs font-bold text-slate-400">ID: {card.reqId}</span>
+                                                        <span className="text-xs font-semibold text-emerald-100/75">ID: {card.reqId}</span>
                                                     </div>
-                                                    <h4 className="text-lg font-black text-white">{card.reqDescription || 'Surat Permintaan Dana'}</h4>
+                                                    <h4 className="text-lg font-bold text-white">{card.reqDescription || 'Surat Permintaan Dana'}</h4>
                                                 </div>
                                             </div>
 
                                             <div className="flex items-center gap-6 self-end md:self-center">
                                                 <div className="text-right">
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo Bulan Ini</p>
-                                                    <p className="text-2xl font-black text-emerald-400">{formatRupiah(card.reqSisa)}</p>
+                                                    <p className="text-[10px] font-bold text-emerald-100/80 uppercase tracking-wider">Sisa Saldo Bulan Ini</p>
+                                                    <p className="text-2xl font-bold text-emerald-200 tabular-nums">{formatRupiah(card.reqSisa)}</p>
                                                 </div>
-                                                <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-300">
+                                                <div className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center text-white">
                                                     {isExpanded ? <ChevronDown size={20} /> : <ChevronRight size={20} />}
                                                 </div>
                                             </div>
@@ -1182,28 +1185,31 @@ export default function FundAvailability() {
                     </div>
                 ) : (
                     /* ── MODE 2: TABEL PER KATEGORI (BERDASARKAN FILTER BULAN) */
-                    <div className="card overflow-hidden shadow-2xl mb-10 rounded-[2rem] bg-white border-0">
-                        <div className="p-6 bg-slate-900 text-white flex items-center justify-between">
-                            <h3 className="font-black uppercase text-xs tracking-widest flex items-center gap-2">
-                                <Layers className="text-indigo-400" size={16} /> Rincian Saldo per Kategori {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}
+                    <div className="overflow-hidden shadow-xs mb-10 rounded-2xl bg-white border border-[#E4EAE6]">
+                        <div className="px-6 py-4 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
+                            <h3 className="font-bold text-sm tracking-tight flex items-center gap-2.5">
+                                <span className="w-7 h-7 rounded-lg bg-white/15 border border-white/20 flex items-center justify-center text-emerald-100">
+                                    <Layers size={15} />
+                                </span>
+                                <span>Rincian Saldo per Kategori {selectedMonth !== 'ALL' && `(${formatMonthLabel(selectedMonth)})`}</span>
                             </h3>
                         </div>
                         <div className="overflow-x-auto max-h-[500px] overflow-y-auto pr-1">
                             <table className="w-full text-left border-collapse">
-                                <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
-                                    <tr className="bg-slate-50 border-b border-slate-200">
-                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Kategori Pengeluaran</th>
-                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dana Cair (ACC)</th>
-                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Realisasi</th>
-                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa Saldo</th>
-                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">Dikembalikan</th>
-                                        <th className="sticky top-0 bg-slate-50 px-8 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Penyerapan</th>
+                                <thead className="sticky top-0 z-20 bg-[#F2F6F4] shadow-2xs">
+                                    <tr className="bg-[#F2F6F4] border-b border-[#DCE5DF]">
+                                        <th className="sticky top-0 bg-[#F2F6F4] px-8 py-4 text-[10px] font-bold text-[#364940] uppercase tracking-wider">Kategori Pengeluaran</th>
+                                        <th className="sticky top-0 bg-[#F2F6F4] px-8 py-4 text-[10px] font-bold text-[#364940] uppercase tracking-wider">Dana Cair (ACC)</th>
+                                        <th className="sticky top-0 bg-[#F2F6F4] px-8 py-4 text-[10px] font-bold text-[#364940] uppercase tracking-wider">Realisasi</th>
+                                        <th className="sticky top-0 bg-[#F2F6F4] px-8 py-4 text-[10px] font-bold text-[#364940] uppercase tracking-wider">Sisa Saldo</th>
+                                        <th className="sticky top-0 bg-[#F2F6F4] px-8 py-4 text-[10px] font-bold text-[#364940] uppercase tracking-wider">Dikembalikan</th>
+                                        <th className="sticky top-0 bg-[#F2F6F4] px-8 py-4 text-[10px] font-bold text-[#364940] uppercase tracking-wider text-right">Penyerapan</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100">
+                                <tbody className="divide-y divide-[#EEF2F0]">
                                     {categoryList.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" className="px-8 py-20 text-center text-slate-400 font-medium italic">
+                                            <td colSpan="6" className="px-8 py-20 text-center text-[#8DA096] font-medium">
                                                 Belum ada data saldo kas untuk periode bulan ini.
                                             </td>
                                         </tr>
@@ -1212,28 +1218,28 @@ export default function FundAvailability() {
                                             const available = Math.max(0, item.totalApproved - item.totalUsed - (item.totalReturned || 0));
                                             const pct = item.totalApproved > 0 ? (item.totalUsed / item.totalApproved) * 100 : 0;
                                             return (
-                                                <tr key={idx} className="hover:bg-slate-50 transition-colors group">
+                                                <tr key={idx} className="hover:bg-[#F6F9F7] transition-colors group">
                                                     <td className="px-8 py-6">
                                                         <div className="flex items-center gap-4">
-                                                            <div className="w-2 h-10 rounded-full bg-indigo-600 group-hover:scale-y-125 transition-transform" />
-                                                            <span className="font-black text-slate-700">{item.category}</span>
+                                                            <div className="w-1.5 h-9 rounded-full bg-[#157A52] group-hover:scale-y-115 transition-transform" />
+                                                            <span className="font-bold text-[#13261E]">{item.category}</span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-8 py-6 font-bold text-slate-500">{formatRupiah(item.totalApproved)}</td>
-                                                    <td className="px-8 py-6 font-black text-rose-600">{formatRupiah(item.totalUsed)}</td>
+                                                    <td className="px-8 py-6 font-bold text-[#5C6F66] tabular-nums">{formatRupiah(item.totalApproved)}</td>
+                                                    <td className="px-8 py-6 font-bold text-rose-600 tabular-nums">{formatRupiah(item.totalUsed)}</td>
                                                     <td className="px-8 py-6">
-                                                        <span className={`text-lg font-black ${available < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{formatRupiah(available)}</span>
+                                                        <span className={`text-base font-bold tabular-nums ${available < 0 ? 'text-rose-600' : 'text-[#157A52]'}`}>{formatRupiah(available)}</span>
                                                     </td>
-                                                    <td className="px-8 py-6 text-center text-slate-700 font-bold">
+                                                    <td className="px-8 py-6 text-center text-[#364940] font-bold tabular-nums">
                                                         {item.totalReturned > 0 ? formatRupiah(item.totalReturned) : '—'}
                                                     </td>
                                                     <td className="px-8 py-6 text-right w-64">
                                                         <div className="flex flex-col gap-2">
-                                                            <div className="flex justify-between items-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                                            <div className="flex justify-between items-center text-[10px] font-bold text-[#6B7E75] uppercase tracking-wider tabular-nums">
                                                                 <span>Terpakai</span><span>{pct.toFixed(1)}%</span>
                                                             </div>
-                                                            <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden border border-slate-200">
-                                                                <div className="h-full bg-indigo-600 shadow-sm" style={{ width: `${Math.min(100, pct)}%` }} />
+                                                            <div className="w-full bg-[#E9EEEC] h-2.5 rounded-full overflow-hidden">
+                                                                <div className="h-full bg-gradient-to-r from-[#157A52] to-[#249A70]" style={{ width: `${Math.min(100, pct)}%` }} />
                                                             </div>
                                                         </div>
                                                     </td>
@@ -1243,12 +1249,12 @@ export default function FundAvailability() {
                                     )}
                                 </tbody>
                                 {categoryList.length > 0 && (
-                                    <tfoot className="sticky bottom-0 z-20 bg-slate-50 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-                                        <tr className="bg-slate-50 border-t-2 border-slate-200 font-black text-slate-800">
+                                    <tfoot className="sticky bottom-0 z-20 bg-[#F2F6F4] shadow-[0_-2px_10px_rgba(0,0,0,0.03)]">
+                                        <tr className="bg-[#F2F6F4] border-t-2 border-[#CFDAD4] font-bold text-[#13261E]">
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-4">
-                                                    <div className="w-2 h-10 rounded-full bg-slate-800" />
-                                                    <span className="font-black text-slate-800">TOTAL</span>
+                                                    <div className="w-1.5 h-9 rounded-full bg-[#157A52]" />
+                                                    <span className="font-bold text-[#13261E]">TOTAL</span>
                                                 </div>
                                             </td>
                                             <td className="px-8 py-6 font-black text-slate-800">{formatRupiah(categoryTotals.totalApproved)}</td>
@@ -1716,19 +1722,19 @@ export default function FundAvailability() {
                 const isImg = proofData && (proofData.startsWith('data:image/') || (!isPdf && (proofData.includes('.jpg') || proofData.includes('.png') || proofData.includes('.webp'))));
 
                 return (
-                    <div className="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-                        <div className="bg-white rounded-[2.5rem] max-w-2xl w-full shadow-2xl border border-slate-100 overflow-hidden my-8 animate-in zoom-in-95">
+                    <div className="fixed inset-0 z-50 bg-[#142920]/45 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+                        <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-[#E4EAE6] overflow-hidden my-8 animate-in zoom-in-95">
                             {/* Header */}
-                            <div className="p-6 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white flex items-center justify-between">
+                            <div className="p-6 bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white flex items-center justify-between">
                                 <div className="flex items-center gap-3">
-                                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-white border border-white/20">
-                                        <HandCoins size={24} />
+                                    <div className="w-11 h-11 bg-white/15 backdrop-blur-md rounded-2xl flex items-center justify-center text-white border border-white/20">
+                                        <HandCoins size={22} />
                                     </div>
                                     <div>
-                                        <span className="text-[10px] font-black tracking-widest uppercase bg-white/20 px-2 py-0.5 rounded-full text-indigo-100">
+                                        <span className="text-[10px] font-bold tracking-wider uppercase bg-white/20 px-2 py-0.5 rounded-full text-emerald-50">
                                             Verifikasi Yayasan
                                         </span>
-                                        <h3 className="font-black text-lg text-white mt-0.5">
+                                        <h3 className="font-bold text-lg text-white mt-0.5">
                                             Rincian Pengembalian Sisa Dana
                                         </h3>
                                     </div>

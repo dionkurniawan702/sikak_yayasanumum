@@ -198,25 +198,25 @@ export default function ArchiveRAB() {
     }, [archiveData, startIndex, endIndex]);
 
     return (
-        <div className="p-4 md:p-8 animate-in text-slate-900 pb-20">
+        <div className="p-4 md:p-8 animate-in text-[#13261E] pb-20">
             {/* Header Section */}
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-                <div className="lg:col-span-3 bg-gradient-to-br from-indigo-800 to-slate-900 rounded-[40px] p-8 md:p-10 text-white shadow-2xl relative overflow-hidden group">
-                    <div className="absolute top-0 right-0 p-10 opacity-10 group-hover:scale-110 transition-transform">
-                        <Archive size={160} />
+                <div className="lg:col-span-3 bg-gradient-to-br from-[#103E2D] via-[#156947] to-[#1D885D] rounded-3xl p-8 md:p-9 text-white shadow-md border border-[#2A946B]/35 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 p-10 opacity-15 group-hover:scale-110 transition-transform text-emerald-100">
+                        <Archive size={150} />
                     </div>
                     <div className="relative z-10 flex flex-col h-full justify-between">
                         <div>
-                            <h1 className="text-3xl font-black mb-1">Arsip RAB</h1>
-                            <p className="text-blue-100/70 font-medium mb-6 uppercase text-[10px] tracking-widest italic">
-                                RINCIAN ANGGARAN RAB (ACC & MENUNGGU) • TA {currentYear?.name || '-'}
+                            <h1 className="text-2xl sm:text-3xl font-bold mb-1 tracking-tight">Arsip RAB</h1>
+                            <p className="text-emerald-100/80 font-semibold mb-6 uppercase text-[10px] tracking-wider">
+                                RINCIAN ANGGARAN RAB (ACC &amp; MENUNGGU) • TA {currentYear?.name || '-'}
                             </p>
 
-                            <div className="flex flex-wrap gap-4 items-center bg-white/10 backdrop-blur-md p-2 rounded-2xl border border-white/20 inline-flex">
-                                <div className="flex bg-slate-900/40 p-1 rounded-xl">
+                            <div className="flex flex-wrap gap-4 items-center bg-black/15 backdrop-blur-md p-1.5 rounded-2xl border border-white/20 inline-flex">
+                                <div className="flex bg-black/15 p-1 rounded-xl">
                                     <button 
                                         onClick={() => setSourceMode('YAYASAN')}
-                                        className={`px-6 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-indigo-700 shadow-xl' : 'text-white/60 hover:text-white'}`}
+                                        className={`px-5 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-sm' : 'text-white/75 hover:text-white'}`}
                                     >
                                         <Building2 size={12} className="inline mr-2" />
                                         Yayasan
@@ -327,15 +327,15 @@ export default function ArchiveRAB() {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[800px]">
                         <thead>
-                            <tr className="bg-slate-900 text-white">
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest w-12 text-center border-b border-slate-800">No</th>
+                            <tr className="bg-gradient-to-r from-[#114C35] via-[#157A52] to-[#218E63] text-white">
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider w-12 text-center border-b border-emerald-900/20">No</th>
                                 {isSuperAdmin && (
-                                    <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Unit / Bidang</th>
+                                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Unit / Bidang</th>
                                 )}
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Program Belanja</th>
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Kategori (Item)</th>
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800">Rincian Pengeluaran</th>
-                                <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-center">Bulan</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Program Belanja</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Kategori (Item)</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20">Rincian Pengeluaran</th>
+                                <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-wider border-b border-emerald-900/20 text-center">Bulan</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-center">Status</th>
                                 <th className="px-6 py-4 font-black text-[10px] uppercase tracking-widest border-b border-slate-800 text-right">Alokasi Dana</th>
                             </tr>

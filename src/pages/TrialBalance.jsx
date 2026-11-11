@@ -236,8 +236,8 @@ export default function TrialBalance() {
                             })}
 
                             {/* Baris Total Akumulasi */}
-                            <tr className="bg-slate-900 text-white font-black">
-                                <td colSpan={2} className="px-8 py-5 text-right text-xs uppercase tracking-widest">
+                            <tr className="bg-gradient-to-r from-[#114C35] to-[#157A52] text-white font-bold">
+                                <td colSpan={2} className="px-8 py-5 text-right text-xs uppercase tracking-wider text-emerald-100">
                                     Total Mutasi Terakumulasi
                                 </td>
                                 <td className="px-6 py-5 text-right text-base tabular-nums">

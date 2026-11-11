@@ -447,26 +447,26 @@ export default function BudgetShiftManagement() {
     return (
         <div className="p-4 md:p-8 max-w-7xl mx-auto space-y-6">
             {/* Header Section */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white p-6 md:p-8 rounded-3xl shadow-xl shadow-indigo-950/20 relative overflow-hidden">
-                <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] text-white p-6 md:p-8 rounded-3xl shadow-md border border-[#2A946B]/35 relative overflow-hidden">
+                <div className="absolute right-0 top-0 translate-x-10 -translate-y-10 w-96 h-96 bg-emerald-300/10 rounded-full blur-3xl pointer-events-none" />
                 
                 <div className="relative z-10 space-y-2">
-                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs font-semibold text-blue-200">
-                        <ArrowLeftRight className="w-3.5 h-3.5 text-cyan-400" />
-                        Tata Kelola & Mutasi Anggaran Berjalan
+                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-md border border-white/20 text-xs font-semibold text-emerald-50">
+                        <ArrowLeftRight className="w-3.5 h-3.5 text-emerald-200" />
+                        Tata Kelola &amp; Mutasi Anggaran Berjalan
                     </div>
-                    <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white flex items-center gap-3">
-                        Pergeseran & Revisi Anggaran
+                    <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-white flex items-center gap-3">
+                        Pergeseran &amp; Revisi Anggaran
                     </h1>
-                    <p className="text-sm text-blue-100/75 max-w-2xl leading-relaxed">
+                    <p className="text-sm text-emerald-100/85 max-w-2xl leading-relaxed">
                         Pencatatan resmi pergeseran mata anggaran mendadak maupun berkala dengan bukti surat permohonan unit dan memo instruksi yayasan secara transparan.
                     </p>
                 </div>
 
                 <div className="relative z-10 flex flex-wrap items-center gap-3">
                     {/* Tahun Ajaran Selector */}
-                    <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-1.5 flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-blue-300 ml-2" />
+                    <div className="bg-white/15 backdrop-blur-md border border-white/25 rounded-2xl p-1.5 flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-emerald-100 ml-2" />
                         <select
                             value={selectedYearId}
                             onChange={(e) => setSelectedYearId(e.target.value)}
@@ -555,10 +555,10 @@ export default function BudgetShiftManagement() {
                 <div className="flex items-center gap-2">
                     <button
                         onClick={() => setActiveTab('register')}
-                        className={`px-5 py-2.5 rounded-2xl font-bold text-xs flex items-center gap-2 transition-all ${
+                        className={`px-5 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all cursor-pointer ${
                             activeTab === 'register'
-                                ? 'bg-slate-900 text-white shadow-md'
-                                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                ? 'bg-[#157A52] text-white shadow-xs'
+                                : 'bg-[#EEF3F0] text-[#5C6F66] hover:bg-[#E2ECE6]'
                         }`}
                     >
                         <FileText className="w-4 h-4" />
@@ -1266,12 +1266,12 @@ export default function BudgetShiftManagement() {
             {previewDoc && (
                 <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col overflow-hidden border border-white/20">
-                        <div className="p-4 bg-slate-900 text-white flex items-center justify-between border-b border-slate-800">
+                        <div className="p-4 bg-gradient-to-r from-[#114C35] to-[#157A52] text-white flex items-center justify-between border-b border-emerald-900/20">
                             <div className="flex items-center gap-2">
-                                <FileText className="w-5 h-5 text-blue-400" />
+                                <FileText className="w-5 h-5 text-emerald-100" />
                                 <div>
                                     <div className="font-bold text-sm">{previewDoc.title || 'Dokumen Bukti'}</div>
-                                    <div className="text-[11px] text-slate-400">
+                                    <div className="text-[11px] text-emerald-100/80">
                                         No. Surat: {previewDoc.letterNumber || '-'} ({previewDoc.fileName})
                                     </div>
                                 </div>

@@ -307,12 +307,12 @@ export default function BalanceSheet() {
                     <div className="space-y-8 flex flex-col">
                         {/* LIABILITAS */}
                         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-                            <div className="bg-gradient-to-r from-slate-800 to-slate-900 p-6 text-white flex justify-between items-center">
+                            <div className="bg-gradient-to-r from-[#103E2D] via-[#156947] to-[#1D885D] p-6 text-white flex justify-between items-center">
                                 <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Sisi Kewajiban</p>
-                                    <h3 className="text-xl font-black">LIABILITAS</h3>
+                                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/80 mb-0.5">Sisi Kewajiban</p>
+                                    <h3 className="text-xl font-bold">LIABILITAS</h3>
                                 </div>
-                                <TrendingDown size={28} className="text-slate-400 opacity-60" />
+                                <TrendingDown size={28} className="text-emerald-200 opacity-70" />
                             </div>
                             <div className="p-3">
                                 <table className="w-full text-left border-separate border-spacing-y-1">
@@ -439,10 +439,10 @@ export default function BalanceSheet() {
                         </div>
 
                         {/* BALANCE EQUATION CHECK */}
-                        <div className="p-5 rounded-2xl bg-slate-900 text-white flex justify-between items-center shadow-lg">
-                            <span className="font-black text-xs uppercase tracking-wider text-slate-300">Total Pasiva (Liabilitas + Aset Neto)</span>
+                        <div className="p-5 rounded-2xl bg-gradient-to-r from-[#114C35] to-[#157A52] text-white flex justify-between items-center shadow-sm">
+                            <span className="font-bold text-xs uppercase tracking-wider text-emerald-100">Total Pasiva (Liabilitas + Aset Neto)</span>
                             <div className="text-right">
-                                <p className="text-xl font-black tabular-nums"><CurrencyDisplay value={totalPasivaCurr} useColor={false} /></p>
+                                <p className="text-xl font-bold tabular-nums"><CurrencyDisplay value={totalPasivaCurr} useColor={false} /></p>
                             </div>
                         </div>
                     </div>
