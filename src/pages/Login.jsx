@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { LogIn, Key, User as UserIcon, AlertCircle, Clock, Eye, EyeOff } from 'lucide-react';
+import { Key, User as UserIcon, AlertCircle, Clock, Eye, EyeOff, Check, ArrowLeft, HelpCircle, ShieldCheck } from 'lucide-react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 export default function Login() {
@@ -8,9 +8,24 @@ export default function Login() {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isExpired = searchParams.get('expired') === 'true';
-    const [username, setUsername] = useState('');
+    const [username, setUsername] = useState(() => {
+        try {
+            return localStorage.getItem('sikad_remember_username') || '';
+        } catch {
+            return '';
+        }
+    });
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [rememberUsername, setRememberUsername] = useState(() => {
+        try {
+            return Boolean(localStorage.getItem('sikad_remember_username'));
+        } catch {
+            return false;
+        }
+    });
+    const [activeView, setActiveView] = useState('login'); // 'login' | 'help'
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState('');
     const [serverStatus, setServerStatus] = useState('checking'); // 'checking', 'online', 'offline'
     
@@ -37,10 +52,21 @@ export default function Login() {
     const handleLogin = async (e) => {
         e.preventDefault();
         setError('');
+        setIsSubmitting(true);
 
-        const isRemote = (import.meta.env.VITE_DATA_MODE === 'remote') || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
-        
         try {
+            try {
+                if (rememberUsername && username.trim()) {
+                    localStorage.setItem('sikad_remember_username', username.trim());
+                } else {
+                    localStorage.removeItem('sikad_remember_username');
+                }
+            } catch {
+                // ignore storage errors
+            }
+
+            const isRemote = (import.meta.env.VITE_DATA_MODE === 'remote') || (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+            
             if (isRemote) {
                 let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
                 if (typeof window !== 'undefined') {
@@ -94,124 +120,296 @@ export default function Login() {
             const currentUrl = (window.location.hostname !== 'localhost') ? `${window.location.origin}/api/login` : 'http://localhost:5000/api/login';
             setError(`Gagal terhubung ke server (${currentUrl}). Pesan: ${err.message}. Pastikan internet aktif dan bukan blokir firewall.`);
             console.error(err);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
     return (
-        <div className="login-container" style={{
-            height: '100vh',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'linear-gradient(155deg, #F4F7F5 0%, #E9F3EE 55%, #F4F7F5 100%)',
-            padding: '20px'
-        }}>
-            <div className="card animate-in" style={{
-                maxWidth: '410px',
-                width: '100%',
-                padding: '40px',
-                borderRadius: '24px',
-                border: '1px solid #E4EAE6',
-                boxShadow: '0 20px 45px -15px rgba(19, 38, 30, 0.12)'
-            }}>
-                <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-                    <div style={{
-                        width: '60px',
-                        height: '60px',
-                        background: '#157A52',
-                        borderRadius: '16px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        margin: '0 auto 16px auto',
-                        boxShadow: '0 10px 20px -6px rgba(21, 122, 82, 0.35)'
-                    }}>
-                        <LogIn size={28} color="#FFFFFF" />
-                    </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#13261E', marginBottom: '8px', letterSpacing: '-0.02em' }}>SIKAD DARELIMAN</h2>
-                    <p style={{ color: '#6B7E75', fontSize: '0.875rem', fontWeight: 500 }}>Sistem Keuangan Dareliman — Berbasis PSAK 35</p>
+        <div className="login-container min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-gradient-to-br from-[#071A12] via-[#0B271B] to-[#05130D]">
+            {/* Ambient Emerald & Soft Gold Glows */}
+            <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#157A52]/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#C28D38]/15 blur-3xl" />
+
+            {/* Main Diagonal Split-Blade Card */}
+            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-[#FCF9F1] shadow-[0_32px_70px_-15px_rgba(0,0,0,0.68)] ring-1 ring-white/15 relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
+                {/* Mobile Top Emerald Header Banner */}
+                <div
+                    className="md:hidden bg-gradient-to-br from-[#103D2A] via-[#0B2A1C] to-[#061810] px-7 pt-7 pb-9 text-white relative"
+                    style={{ clipPath: 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' }}
+                >
+                    <p className="text-[10px] font-bold tracking-[0.26em] uppercase text-[#DFB262]">SIKAD DARELIMAN</p>
+                    <h1 className="text-2xl font-serif font-bold text-[#FAF6EC] mt-1.5 leading-snug">
+                        Selamat <span className="italic font-normal">datang kembali.</span>
+                    </h1>
+                    <p className="text-xs text-emerald-100/75 mt-1.5 leading-relaxed">
+                        Sistem Keuangan Dareliman berbasis PSAK 35.
+                    </p>
                 </div>
 
-                {error && (
-                    <div className="bg-rose-50 text-rose-800 p-4 rounded-xl mb-6 text-sm flex items-center gap-3 border border-rose-100">
-                        <AlertCircle size={18} />
-                        {error}
-                    </div>
-                )}
+                {/* Desktop & Mobile Panel Wrapper */}
+                <div className="relative flex-1 md:min-h-[500px] flex flex-col md:flex-row">
+                    {/* LEFT SLOT: Login Form Panel */}
+                    <div
+                        className={`w-full md:w-[47%] px-7 py-7 sm:px-10 sm:py-10 flex flex-col justify-center relative z-10 transition-all duration-500 ${
+                            activeView === 'login'
+                                ? 'opacity-100 translate-x-0 pointer-events-auto flex'
+                                : 'hidden md:flex md:opacity-0 md:-translate-x-4 md:pointer-events-none'
+                        }`}
+                    >
+                        <div className="mb-7">
+                            <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#13261E] tracking-tight leading-none">
+                                Masuk
+                            </h2>
+                            <div className="w-9 h-[2.5px] bg-[#C28D38] rounded-full mt-2" />
+                        </div>
 
-                {isExpired && !error && (
-                    <div className="bg-amber-50 text-amber-800 p-4 rounded-xl mb-6 text-sm flex items-center gap-3 border border-amber-100">
-                        <Clock size={18} />
-                        Sesi Anda telah berakhir. Silakan login kembali.
-                    </div>
-                )}
+                        {error && (
+                            <div className="bg-rose-50 text-rose-800 px-3.5 py-2.5 rounded-xl mb-5 text-xs font-medium flex items-start gap-2.5 border border-rose-200/80">
+                                <AlertCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
+                                <span className="leading-relaxed">{error}</span>
+                            </div>
+                        )}
 
-                <form onSubmit={handleLogin}>
-                    <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Username</label>
-                        <div style={{ position: 'relative' }}>
-                            <UserIcon style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
-                            <input
-                                type="text"
-                                className="form-input"
-                                placeholder="Masukkan username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                style={{ paddingLeft: '44px' }}
-                                required
+                        {isExpired && !error && (
+                            <div className="bg-amber-50 text-amber-900 px-3.5 py-2.5 rounded-xl mb-5 text-xs font-medium flex items-center gap-2.5 border border-amber-200">
+                                <Clock size={15} className="text-amber-600 shrink-0" />
+                                <span>Sesi Anda telah berakhir. Silakan login kembali.</span>
+                            </div>
+                        )}
+
+                        <form onSubmit={handleLogin} className="space-y-5">
+                            {/* Username Minimalist Underline Input */}
+                            <div>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        aria-label="Username"
+                                        placeholder="Username"
+                                        value={username}
+                                        onChange={(e) => setUsername(e.target.value)}
+                                        className="w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
+                                        required
+                                    />
+                                    <UserIcon
+                                        size={16}
+                                        className="absolute right-0.5 top-1/2 -translate-y-1/2 text-[#8E8B80] pointer-events-none"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Minimalist Underline Input */}
+                            <div>
+                                <div className="relative">
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        aria-label="Password"
+                                        placeholder="Password"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className="w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
+                                        required
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-0 top-1/2 -translate-y-1/2 text-[#8E8B80] hover:text-[#13261E] p-1 transition-colors cursor-pointer"
+                                        title={showPassword ? 'Sembunyikan password' : 'Lihat password'}
+                                    >
+                                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Helper Row: Ingat Username + Lupa Password */}
+                            <div className="flex items-center justify-between gap-2 pt-1 text-xs">
+                                <label className="inline-flex items-center gap-2 cursor-pointer select-none text-[#4E5B53] font-medium">
+                                    <button
+                                        type="button"
+                                        role="checkbox"
+                                        aria-checked={rememberUsername}
+                                        onClick={() => setRememberUsername(prev => !prev)}
+                                        className={`w-4 h-4 rounded-[4px] flex items-center justify-center border transition-all cursor-pointer ${
+                                            rememberUsername
+                                                ? 'bg-[#103D2A] border-[#103D2A] text-white'
+                                                : 'bg-white border-[#C9C2B2]'
+                                        }`}
+                                    >
+                                        {rememberUsername && <Check size={11} strokeWidth={3} />}
+                                    </button>
+                                    <span>Ingat username</span>
+                                </label>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveView('help')}
+                                    className="text-[#A87528] hover:text-[#7E5518] font-semibold underline decoration-[#C28D38]/70 underline-offset-4 transition-colors cursor-pointer"
+                                >
+                                    Lupa password?
+                                </button>
+                            </div>
+
+                            {/* Primary Pill Submit Button */}
+                            <div className="pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={isSubmitting}
+                                    className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0A291C] via-[#103D2A] to-[#15573B] hover:from-[#0E3625] hover:to-[#196A47] text-white text-sm font-bold tracking-wide shadow-[0_12px_28px_-6px_rgba(11,45,31,0.48)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
+                                >
+                                    {isSubmitting ? 'Memproses...' : 'Masuk Sekarang'}
+                                </button>
+                            </div>
+                        </form>
+
+                        {/* Bottom Secondary Action */}
+                        <div className="mt-6 text-center md:text-left text-xs text-[#6B7066]">
+                            <span>Butuh akses unit baru? </span>
+                            <button
+                                type="button"
+                                onClick={() => setActiveView('help')}
+                                className="font-bold text-[#13261E] underline decoration-[#C28D38] decoration-2 underline-offset-4 hover:text-[#157A52] transition-colors cursor-pointer"
+                            >
+                                Panduan &amp; Kontak Admin
+                            </button>
+                        </div>
+
+                        {/* Mobile Server Status Indicator */}
+                        <div className="mt-5 md:hidden flex items-center justify-center gap-2">
+                            <span
+                                className={`w-2 h-2 rounded-full ${
+                                    serverStatus === 'online'
+                                        ? 'bg-emerald-500'
+                                        : serverStatus === 'offline'
+                                            ? 'bg-rose-500'
+                                            : 'bg-slate-400 animate-pulse'
+                                }`}
                             />
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#7A7E75]">
+                                Status Server: {serverStatus === 'online' ? 'Tersambung' : serverStatus === 'offline' ? 'Terputus' : 'Mengecek...'}
+                            </span>
                         </div>
                     </div>
 
-                    <div style={{ marginBottom: '32px' }}>
-                        <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#64748b', marginBottom: '8px', textTransform: 'uppercase' }}>Password</label>
-                        <div style={{ position: 'relative' }}>
-                            <Key style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} size={18} />
-                            <input
-                                type={showPassword ? "text" : "password"}
-                                className="form-input"
-                                placeholder="Masukkan password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                style={{ paddingLeft: '44px', paddingRight: '44px' }}
-                                required
-                            />
+                    {/* RIGHT SLOT: Bantuan & Panduan Akses Panel (Revealed when Diagonal Blade slides Left) */}
+                    <div
+                        className={`w-full md:w-[47%] md:ml-auto px-7 py-7 sm:px-10 sm:py-10 flex flex-col justify-center relative z-10 transition-all duration-500 ${
+                            activeView === 'help'
+                                ? 'opacity-100 translate-x-0 pointer-events-auto flex'
+                                : 'hidden md:flex md:opacity-0 md:translate-x-4 md:pointer-events-none'
+                        }`}
+                    >
+                        <div className="mb-6">
+                            <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#13261E] tracking-tight leading-none">
+                                Bantuan Akses
+                            </h2>
+                            <div className="w-9 h-[2.5px] bg-[#C28D38] rounded-full mt-2" />
+                        </div>
+
+                        <div className="space-y-4 text-xs text-[#3D4B43] leading-relaxed">
+                            <div className="p-4 rounded-2xl bg-white border border-[#E5DEC9] shadow-2xs flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-[#E9F5EF] text-[#157A52] flex items-center justify-center shrink-0">
+                                    <ShieldCheck size={16} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-[#13261E] mb-0.5">Pembuatan &amp; Reset Akun</p>
+                                    <p className="text-[#5C665E]">
+                                        Akun unit pendidikan &amp; bidang dikelola terpusat oleh Super Administrator Keuangan Yayasan Dareliman untuk menjaga integritas data PSAK 35.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="p-4 rounded-2xl bg-white border border-[#E5DEC9] shadow-2xs flex items-start gap-3">
+                                <div className="w-8 h-8 rounded-xl bg-[#FDF6E4] text-[#B07D2B] flex items-center justify-center shrink-0">
+                                    <HelpCircle size={16} />
+                                </div>
+                                <div>
+                                    <p className="font-bold text-[#13261E] mb-0.5">Lupa Username / Password?</p>
+                                    <p className="text-[#5C665E]">
+                                        Silakan hubungi bagian <strong>Keuangan Yayasan Dareliman (Superadmin)</strong> untuk melakukan reset kata sandi sementara atau aktivasi unit baru.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="mt-7">
                             <button
                                 type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                                onClick={() => setActiveView('login')}
+                                className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0A291C] via-[#103D2A] to-[#15573B] hover:from-[#0E3625] hover:to-[#196A47] text-white text-sm font-bold tracking-wide shadow-[0_12px_28px_-6px_rgba(11,45,31,0.48)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                <ArrowLeft size={16} />
+                                Kembali ke Login
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    <button type="submit" className="btn btn-primary w-full py-3.5 text-base font-bold rounded-xl shadow-lg shadow-emerald-600/25">
-                        Masuk Sekarang
-                    </button>
-                </form>
+                {/* ANIMATED DIAGONAL EMERALD BLADE (Desktop Only) */}
+                <div
+                    className="hidden md:flex flex-col justify-center absolute top-0 bottom-0 w-[54%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#124530] via-[#0B291C] to-[#06170F] text-white shadow-2xl"
+                    style={{
+                        left: activeView === 'login' ? '46%' : '0%',
+                        clipPath:
+                            activeView === 'login'
+                                ? 'polygon(14% 0%, 100% 0%, 100% 100%, 0% 100%)'
+                                : 'polygon(0% 0%, 100% 0%, 86% 100%, 0% 100%)',
+                        paddingLeft: activeView === 'login' ? '4.5rem' : '2.75rem',
+                        paddingRight: activeView === 'login' ? '2.5rem' : '4.5rem'
+                    }}
+                >
+                    {/* Subtle Soft Gold Diagonal Edge Aura */}
+                    <div className="pointer-events-none -top-12 -right-12 absolute w-56 h-56 rounded-full bg-[#1F8A5E]/20 blur-3xl" />
+                    <div className="pointer-events-none -bottom-16 left-8 w-52 h-52 absolute rounded-full bg-[#D49B27]/15 blur-3xl" />
 
-                <div style={{ marginTop: '24px', textAlign: 'center' }}>
-                    <div className="flex items-center justify-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
-                            serverStatus === 'online' ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 
-                            serverStatus === 'offline' ? 'bg-rose-500' : 'bg-slate-300 animate-pulse'
-                        }`} />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                            Status Server: {
-                                serverStatus === 'online' ? 'Tersambung' : 
-                                serverStatus === 'offline' ? 'Terputus' : 'Mengecek...'
-                            }
-                        </span>
+                    <div className="relative z-10 max-w-[290px]">
+                        <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#DFB262]">
+                            {activeView === 'login' ? 'SIKAD DARELIMAN' : 'PUSAT BANTUAN'}
+                        </p>
+
+                        <h1 className="text-3xl lg:text-[34px] font-serif font-bold text-[#FAF6EC] mt-3 leading-[1.15]">
+                            {activeView === 'login' ? (
+                                <>
+                                    Selamat <br />
+                                    <span className="italic font-normal text-[#F2EAD5]">datang kembali.</span>
+                                </>
+                            ) : (
+                                <>
+                                    Akses aman <br />
+                                    <span className="italic font-normal text-[#F2EAD5]">terkelola pusat.</span>
+                                </>
+                            )}
+                        </h1>
+
+                        <p className="text-xs leading-relaxed text-emerald-100/75 mt-4 font-normal">
+                            {activeView === 'login'
+                                ? 'Sistem Keuangan Yayasan Dareliman berbasis PSAK 35 — pantau RAP, realisasi RAB, dan laporan secara terintegrasi.'
+                                : 'Setiap pengajuan akun & pembaruan kata sandi diverifikasi langsung oleh Superadmin untuk keamanan data keuangan yayasan.'}
+                        </p>
+
+                        <div className="mt-8 pt-5 border-t border-white/10 flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-2">
+                                <span
+                                    className={`w-2 h-2 rounded-full shrink-0 ${
+                                        serverStatus === 'online'
+                                            ? 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.7)]'
+                                            : serverStatus === 'offline'
+                                                ? 'bg-rose-400'
+                                                : 'bg-amber-300 animate-pulse'
+                                    }`}
+                                />
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/80">
+                                    Server: {serverStatus === 'online' ? 'Tersambung' : serverStatus === 'offline' ? 'Terputus' : 'Mengecek...'}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div style={{ marginTop: '32px', textAlign: 'center' }}>
-                    <p style={{ color: '#94a3b8', fontSize: '0.75rem' }}>
-                        &copy; 2026 SIKAD (Sistem Keuangan Dareliman) — Sistem Akuntansi Yayasan Terintegrasi
-                    </p>
-                </div>
             </div>
+
+            {/* Subtle Footer Caption Below Card */}
+            <p className="mt-6 text-[11px] text-emerald-100/45 text-center tracking-wide">
+                &copy; 2026 SIKAD Dareliman — Sistem Keuangan Yayasan Terintegrasi (PSAK 35)
+            </p>
         </div>
     );
 }
