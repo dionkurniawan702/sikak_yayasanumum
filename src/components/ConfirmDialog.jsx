@@ -54,9 +54,9 @@ export default function ConfirmDialog({
             confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-200'
         },
         primary: {
-            iconBg: 'bg-blue-50 text-blue-600 border-blue-100',
+            iconBg: 'bg-emerald-50 text-emerald-700 border-emerald-200',
             Icon: HelpCircle,
-            confirmBtn: 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-200'
+            confirmBtn: 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
         }
     };
 
@@ -79,7 +79,7 @@ export default function ConfirmDialog({
             aria-modal="true"
         >
             <div
-                className="fixed inset-0 bg-slate-900/45 backdrop-blur-[2px] animate-in fade-in duration-150"
+                className="fixed inset-0 bg-[#0f2347]/50 backdrop-blur-[2px] animate-in fade-in duration-150"
                 onClick={() => onCancel?.()}
             />
 
@@ -95,7 +95,7 @@ export default function ConfirmDialog({
                         </div>
                         <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2">
-                                <h3 className="text-base font-black text-slate-900 tracking-tight leading-snug">
+                                <h3 className="text-base font-black text-[#0f2347] tracking-tight leading-snug">
                                     {title}
                                 </h3>
                                 <button
@@ -119,7 +119,7 @@ export default function ConfirmDialog({
                                     value={inputValue}
                                     onChange={(e) => setInputValue(e.target.value)}
                                     placeholder={inputPlaceholder}
-                                    className="mt-3 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all resize-none"
+                                    className="mt-3 w-full px-3.5 py-2.5 text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 transition-all resize-none"
                                 />
                             )}
                         </div>

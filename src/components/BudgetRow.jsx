@@ -43,15 +43,15 @@ export default function BudgetRow({
     nameColSpan = 1,
     showSemesterColumns = false
 }) {
-    // Theme selection
+    // Theme selection (Emerald Green, Navy Blue & Soft Gold)
     const activeClass = isBos
-        ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-100'
-        : (isField ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' : 'bg-blue-600 text-white shadow-lg shadow-blue-100');
+        ? 'bg-emerald-600 text-white shadow-sm'
+        : (isField ? 'bg-[#0f2347] text-amber-200 shadow-sm' : 'bg-emerald-600 text-white shadow-sm');
 
     const isPergeseran = data.sisa < 0 && (data.isUnlocked || data.isShift);
     const sisaColor = data.sisa < 0
-        ? (isPergeseran ? 'bg-amber-50 text-amber-700 border border-amber-300' : 'bg-rose-50 text-rose-600')
-        : (isBos ? 'bg-emerald-50 text-emerald-600' : 'bg-blue-50 text-blue-600');
+        ? (isPergeseran ? 'bg-amber-50 text-amber-800 border border-amber-300' : 'bg-rose-50 text-rose-600 border border-rose-200')
+        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
 
     const hasUnbalancedComponents = React.useMemo(() => {
         if (!data.breakdown) return false;
@@ -143,7 +143,7 @@ export default function BudgetRow({
 
                         {/* 4. Smt 2 (Rencana) */}
                         <td className="budget-cell budget-cell-number py-3.5 px-4 text-right">
-                            <span className="font-black text-indigo-600 text-xs italic">
+                            <span className="font-black text-[#0f2347] text-xs italic">
                                 {formatCurrency(data.budgetS2 || 0)}
                             </span>
                         </td>
@@ -189,7 +189,7 @@ export default function BudgetRow({
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-black text-slate-800 tracking-tight text-sm">{data.name}</span>
                                         {data.typeLabel && (
-                                            <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 uppercase tracking-wider whitespace-nowrap">
+                                            <span className="text-[9px] font-black text-[#0f2347] bg-[#0f2347]/5 px-2 py-0.5 rounded-md border border-[#0f2347]/20 uppercase tracking-wider whitespace-nowrap">
                                                 {data.typeLabel.replace(/\s*\(USULAN REVISI\)/i, '')}
                                             </span>
                                         )}

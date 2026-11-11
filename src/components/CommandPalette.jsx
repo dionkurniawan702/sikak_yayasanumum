@@ -118,7 +118,7 @@ export default function CommandPalette({ isOpen, onClose, menuGroups = [], onOpe
             onKeyDown={handleKeyDown}
         >
             <div
-                className="fixed inset-0 bg-slate-900/50 backdrop-blur-[3px] animate-in fade-in duration-150"
+                className="fixed inset-0 bg-[#0f2347]/50 backdrop-blur-[3px] animate-in fade-in duration-150"
                 onClick={() => onClose?.()}
             />
 
@@ -127,8 +127,8 @@ export default function CommandPalette({ isOpen, onClose, menuGroups = [], onOpe
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Search Header */}
-                <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-slate-50/50">
-                    <Search size={18} className="text-slate-400 shrink-0" />
+                <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-[#fafbf9]">
+                    <Search size={18} className="text-emerald-600 shrink-0" />
                     <input
                         ref={inputRef}
                         type="text"
@@ -180,14 +180,14 @@ export default function CommandPalette({ isOpen, onClose, menuGroups = [], onOpe
                                     onClick={() => handleSelect(item)}
                                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-left transition-colors cursor-pointer ${
                                         isSelected
-                                            ? 'bg-blue-50 text-blue-900'
+                                            ? 'bg-emerald-50/90 text-[#0f2347] ring-1 ring-emerald-200/70'
                                             : 'text-slate-700 hover:bg-slate-50'
                                     }`}
                                 >
                                     <div
                                         className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition-colors ${
                                             isSelected
-                                                ? 'bg-blue-600 text-white shadow-xs'
+                                                ? 'bg-emerald-600 text-white shadow-xs'
                                                 : 'bg-slate-100 text-slate-500'
                                         }`}
                                     >
@@ -197,7 +197,7 @@ export default function CommandPalette({ isOpen, onClose, menuGroups = [], onOpe
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs font-black truncate">{item.label}</span>
                                             {isCurrent && (
-                                                <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 text-[9px] font-black uppercase tracking-wider">
+                                                <span className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-black uppercase tracking-wider">
                                                     Aktif
                                                 </span>
                                             )}
@@ -207,7 +207,7 @@ export default function CommandPalette({ isOpen, onClose, menuGroups = [], onOpe
                                         </p>
                                     </div>
                                     {isSelected && (
-                                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-blue-600 shrink-0">
+                                        <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-700 shrink-0">
                                             Buka <CornerDownLeft size={12} />
                                         </span>
                                     )}

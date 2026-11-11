@@ -437,18 +437,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
     return (
         <>
         <aside 
-            className={`sidebar fixed inset-y-0 bg-slate-900 w-72 ${isCollapsed ? 'lg:w-20' : 'lg:w-72'} z-[1000] lg:translate-x-0 transition-all duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            className={`sidebar fixed inset-y-0 bg-[#0f2347] border-r border-[#1a3463] w-72 ${isCollapsed ? 'lg:w-20' : 'lg:w-72'} z-[1000] lg:translate-x-0 transition-all duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
             {/* Brand + Collapse Toggle */}
-            <div className={`sidebar-brand border-b border-slate-800 shrink-0 ${isCollapsed ? 'p-6 lg:px-3 lg:py-5' : 'p-6 lg:px-6 lg:py-5'}`}>
+            <div className={`sidebar-brand border-b border-[#1c386b] bg-[#0b1a35]/60 shrink-0 ${isCollapsed ? 'p-6 lg:px-3 lg:py-5' : 'p-6 lg:px-6 lg:py-5'}`}>
                 <div className={`flex items-center ${isCollapsed ? 'justify-between lg:flex-col lg:gap-3' : 'justify-between gap-3'}`}>
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 bg-white/10 rounded-xl shadow-inner backdrop-blur-sm border border-white/5 shrink-0">
-                            <Landmark className="text-blue-200" size={22} />
+                        <div className="p-2 bg-emerald-500/15 rounded-xl shadow-inner backdrop-blur-sm border border-amber-300/30 shrink-0">
+                            <Landmark className="text-amber-300" size={22} />
                         </div>
                         <div className={`flex flex-col min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
                             <span className="text-xl font-black text-white tracking-tight truncate">SIKAD</span>
-                            <span className="text-[10px] text-blue-200/60 font-bold uppercase tracking-wider -mt-1 italic truncate">
+                            <span className="text-[10px] text-amber-200/80 font-bold uppercase tracking-wider -mt-1 italic truncate">
                                 Sistem Keuangan Dareliman
                             </span>
                         </div>
@@ -458,7 +458,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                         <button
                             type="button"
                             onClick={onToggleCollapse}
-                            className="hidden lg:flex p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
+                            className="hidden lg:flex p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-[#193362] transition-colors cursor-pointer shrink-0"
                             title={isCollapsed ? 'Perluas Sidebar' : 'Lipat Sidebar'}
                         >
                             {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
@@ -468,28 +468,28 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
             </div>
 
             {/* User Profile & Quick Search (Ctrl+K) */}
-            <div className={`border-b border-slate-800 shrink-0 space-y-3 ${isCollapsed ? 'p-5 lg:p-3' : 'px-5 py-4'}`}>
+            <div className={`border-b border-[#1c386b] shrink-0 space-y-3 ${isCollapsed ? 'p-5 lg:p-3' : 'px-5 py-4'}`}>
                 <div className={`flex items-center gap-3 ${isCollapsed ? 'lg:justify-center' : ''}`} title={isCollapsed ? `${currentUser?.name} (${currentUser?.role})` : undefined}>
-                    <div className="w-9 h-9 rounded-xl bg-slate-800 flex items-center justify-center text-base shrink-0">👤</div>
+                    <div className="w-9 h-9 rounded-xl bg-[#193362] border border-amber-300/20 flex items-center justify-center text-base shrink-0">👤</div>
                     <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
                         <p className="text-sm font-bold text-white truncate">{currentUser?.name}</p>
-                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest truncate">{currentUser?.role}</p>
+                        <p className="text-[10px] text-amber-200/70 font-bold uppercase tracking-widest truncate">{currentUser?.role}</p>
                     </div>
                 </div>
 
                 <button
                     type="button"
                     onClick={() => setIsCmdOpen(true)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-slate-800/80 hover:bg-slate-800 border border-slate-700/70 text-slate-300 hover:text-white transition-all cursor-pointer ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[#162f5c]/90 hover:bg-[#1c3a70] border border-[#294c8a]/70 hover:border-amber-300/40 text-slate-200 hover:text-white transition-all cursor-pointer ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}
                     title="Cari Menu Cepat (Ctrl + K)"
                 >
                     <div className="flex items-center gap-2 min-w-0">
-                        <Search size={14} className="text-slate-400 shrink-0" />
-                        <span className={`text-xs font-semibold text-slate-400 truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
+                        <Search size={14} className="text-amber-300/80 shrink-0" />
+                        <span className={`text-xs font-semibold text-slate-300 truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
                             Cari menu cepat...
                         </span>
                     </div>
-                    <kbd className={`px-1.5 py-0.5 text-[9px] font-black text-slate-400 bg-slate-900 border border-slate-700 rounded shrink-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                    <kbd className={`px-1.5 py-0.5 text-[9px] font-black text-amber-200/80 bg-[#0b1a35] border border-[#294c8a] rounded shrink-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
                         Ctrl K
                     </kbd>
                 </button>
@@ -504,18 +504,18 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                         {/* Accounting System Section (Only for Super Admin at the start) */}
                         {isSuperAdmin && gIdx === 0 && (
                             <div className={`px-3 py-2 mt-2 mb-1 flex items-center gap-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)] shrink-0"></div>
-                                <span className="text-[10px] font-black text-blue-400 uppercase tracking-[0.3em] whitespace-nowrap">ACCOUNTING SYSTEM</span>
-                                <div className="h-px flex-1 bg-slate-800/50"></div>
+                                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.55)] shrink-0"></div>
+                                <span className="text-[10px] font-black text-amber-300 uppercase tracking-[0.28em] whitespace-nowrap">ACCOUNTING SYSTEM</span>
+                                <div className="h-px flex-1 bg-[#1f3d73]"></div>
                             </div>
                         )}
 
                         {/* Budgeting & Reporting Section */}
                         {((isSuperAdmin && group.title === 'DASHBOARD & SALDO') || (!isSuperAdmin && gIdx === 0)) && (
                             <div className={`px-3 py-2 mt-4 mb-1 flex items-center gap-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)] shrink-0"></div>
-                                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-[0.3em] whitespace-nowrap">BUDGETING & REPORTING</span>
-                                <div className="h-px flex-1 bg-slate-800/50"></div>
+                                <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.55)] shrink-0"></div>
+                                <span className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.28em] whitespace-nowrap">BUDGETING & REPORTING</span>
+                                <div className="h-px flex-1 bg-[#1f3d73]"></div>
                             </div>
                         )}
 
@@ -527,7 +527,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                                 <>
                                     <button
                                         onClick={() => toggleGroup(group.title)}
-                                        className={`w-full flex items-center justify-between px-3 py-3 mt-1.5 text-[11px] font-bold text-slate-500 hover:text-slate-300 uppercase tracking-[0.18em] transition-colors group ${isCollapsed ? 'lg:hidden' : ''}`}
+                                        className={`w-full flex items-center justify-between px-3 py-3 mt-1.5 text-[11px] font-bold text-slate-300/75 hover:text-amber-200 uppercase tracking-[0.18em] transition-colors group ${isCollapsed ? 'lg:hidden' : ''}`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <span>{group.title}</span>
@@ -536,13 +536,13 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                                             )}
                                         </div>
                                         {expandedGroups[group.title] ? (
-                                            <ChevronDown size={12} className="text-slate-600 group-hover:text-slate-400" />
+                                            <ChevronDown size={12} className="text-slate-400 group-hover:text-amber-300" />
                                         ) : (
-                                            <ChevronRight size={12} className="text-slate-600 group-hover:text-slate-400" />
+                                            <ChevronRight size={12} className="text-slate-400 group-hover:text-amber-300" />
                                         )}
                                     </button>
                                     {isCollapsed && gIdx > 0 && (
-                                        <div className="hidden lg:block h-px bg-slate-800/80 my-2 mx-2" />
+                                        <div className="hidden lg:block h-px bg-[#1f3d73] my-2 mx-2" />
                                     )}
                                 </>
                             );
@@ -578,19 +578,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
 
                                                 return `
                                                     relative flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}
-                                                    ${isTrulyActive ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}
+                                                    ${isTrulyActive ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/35 ring-1 ring-amber-300/35' : 'text-slate-300 hover:bg-[#173260] hover:text-white'}
                                                 `;
                                             }}
                                             end={(item.path || '').split('?')[0] === '/'}
                                         >
-                                            <div className={`p-2 rounded-lg transition-colors shrink-0 ${location.pathname === item.path.split('?')[0] ? 'bg-white/15' : 'bg-slate-800/50 group-hover:bg-slate-700'}`}>
-                                                 {Icon ? <Icon size={17} /> : <div className="w-[17px] h-[17px] bg-slate-800 rounded" />}
+                                            <div className={`p-2 rounded-lg transition-colors shrink-0 ${location.pathname === item.path.split('?')[0] ? 'bg-white/15 text-amber-200' : 'bg-[#173260]/80 group-hover:bg-[#1e3f78]'}`}>
+                                                 {Icon ? <Icon size={17} /> : <div className="w-[17px] h-[17px] bg-[#173260] rounded" />}
                                             </div>
                                             <span className={`text-sm font-bold flex-1 tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
 
                                             {/* Compact notification dot when collapsed on desktop */}
                                             {isCollapsed && hasNotifBadge && (
-                                                <span className="hidden lg:block absolute top-1.5 right-2 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-slate-900 animate-pulse" />
+                                                <span className="hidden lg:block absolute top-1.5 right-2 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#0f2347] animate-pulse" />
                                             )}
                                             
                                             {/* Notification Badges */}
@@ -621,12 +621,12 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                                                     </span>
                                                 )}
                                                 {item.label === 'Saldo Yayasan' && pendingReturnYayasanCount > 0 && (
-                                                    <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-blue-500/40">
+                                                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-amber-500/30">
                                                         {pendingReturnYayasanCount}
                                                     </span>
                                                 )}
                                                 {item.label === 'Saldo BOS' && pendingReturnBosCount > 0 && (
-                                                    <span className="bg-blue-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-blue-500/40">
+                                                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-amber-500/30">
                                                         {pendingReturnBosCount}
                                                     </span>
                                                 )}
@@ -640,16 +640,16 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                 ))}
             </nav>
 
-            <div className={`border-t border-slate-800 shrink-0 ${isCollapsed ? 'p-5 lg:p-3' : 'p-5'}`}>
+            <div className={`border-t border-[#1c386b] bg-[#0b1a35]/40 shrink-0 ${isCollapsed ? 'p-5 lg:p-3' : 'p-5'}`}>
                 <button
-                    className={`flex items-center justify-center gap-2 px-4 py-2 text-rose-500 hover:bg-rose-500/10 rounded-xl transition-all text-[11px] font-black uppercase tracking-widest mx-auto border border-rose-500/20 cursor-pointer ${isCollapsed ? 'lg:w-full lg:px-0' : ''}`}
+                    className={`flex items-center justify-center gap-2 px-4 py-2 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300 rounded-xl transition-all text-[11px] font-black uppercase tracking-widest mx-auto border border-rose-500/25 cursor-pointer ${isCollapsed ? 'lg:w-full lg:px-0' : ''}`}
                     onClick={handleLogout}
                     title={isCollapsed ? 'Keluar dari sistem' : undefined}
                 >
                     <LogOut size={13} />
                     <span className={isCollapsed ? 'lg:hidden' : ''}>Keluar</span>
                 </button>
-                <div className={`mt-3 px-4 text-[9px] font-bold text-slate-700 uppercase tracking-widest text-center opacity-40 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                <div className={`mt-3 px-4 text-[9px] font-bold text-slate-400/60 uppercase tracking-widest text-center ${isCollapsed ? 'lg:hidden' : ''}`}>
                     SIKAD v1.5.0-diag
                 </div>
             </div>

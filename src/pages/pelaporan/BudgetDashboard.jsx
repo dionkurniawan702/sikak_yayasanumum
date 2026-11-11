@@ -663,8 +663,8 @@ export default function BudgetDashboard() {
             {/* ===== BIDANG TABLE (Indigo Theme) ===== */}
             {currentUser?.role !== 'admin_unit' && (
                 <div className="budget-table-wrapper mb-12 border-none shadow-xl shadow-slate-200/50 animate-in">
-                    <div className="budget-table-title bg-slate-900 text-white">
-                        <Layers size={20} className="text-indigo-400" />
+                    <div className="budget-table-title bg-[#0f2347] text-white border-b-2 border-amber-400/50">
+                        <Layers size={20} className="text-amber-300" />
                         <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan Per Bidang</span>
                     </div>
                     <div className="budget-table-scroll">
@@ -697,9 +697,9 @@ export default function BudgetDashboard() {
                                             <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
                                                 {(currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'Total Keseluruhan' : 'Total Konsolidasi Bidang'}
                                             </td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-indigo-100">{formatCurrency(totalBidangRAP)}</td>
+                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-emerald-100">{formatCurrency(totalBidangRAP)}</td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalBidangRAB)}</td>
-                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-indigo-50/30 text-indigo-700 font-black">{formatCurrency(totalBidangSisa)}</td>
+                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-emerald-50/40 text-emerald-700 font-black">{formatCurrency(totalBidangSisa)}</td>
                                         </tr>
                                     </>
                                 ) : (
@@ -715,11 +715,11 @@ export default function BudgetDashboard() {
                 </div>
             )}
 
-            {/* ===== UNIT TABLE (Indigo Theme) ===== */}
+            {/* ===== UNIT TABLE (Navy & Gold Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && (
                 <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50 animate-in">
-                    <div className="budget-table-title bg-slate-900 text-white">
-                        <Building2 size={20} className="text-blue-400" />
+                    <div className="budget-table-title bg-[#0f2347] text-white border-b-2 border-amber-400/50">
+                        <Building2 size={20} className="text-amber-300" />
                         <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan Per Unit</span>
                     </div>
                     <div className="budget-table-scroll">
@@ -750,9 +750,9 @@ export default function BudgetDashboard() {
                                             <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
                                                 {(currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'Total Keseluruhan' : 'Total Konsolidasi Unit'}
                                             </td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-blue-100">{formatCurrency(totalUnitRAP)}</td>
+                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-emerald-100">{formatCurrency(totalUnitRAP)}</td>
                                             <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalUnitRAB)}</td>
-                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-blue-50/30 text-blue-700 font-black">{formatCurrency(totalUnitSisa)}</td>
+                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-emerald-50/40 text-emerald-700 font-black">{formatCurrency(totalUnitSisa)}</td>
                                         </tr>
                                     </>
                                 ) : (

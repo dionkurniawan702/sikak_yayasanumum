@@ -103,7 +103,7 @@ export default function Login() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+            background: 'linear-gradient(135deg, #091730 0%, #0f2347 58%, #064e3b 100%)',
             padding: '20px'
         }}>
             <div className="card animate-in" style={{
@@ -111,23 +111,25 @@ export default function Login() {
                 width: '100%',
                 padding: '40px',
                 borderRadius: '24px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                border: '1px solid rgba(212, 175, 55, 0.25)',
+                boxShadow: '0 25px 50px -12px rgba(9, 23, 48, 0.6)'
             }}>
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{
                         width: '64px',
                         height: '64px',
-                        background: 'linear-gradient(to bottom right, #1e40af, #1e3a8a)',
+                        background: 'linear-gradient(135deg, #059669 0%, #0f2347 100%)',
+                        border: '1.5px solid rgba(212, 175, 55, 0.55)',
                         borderRadius: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 16px auto',
-                        boxShadow: '0 10px 15px -3px rgba(30, 64, 175, 0.3)'
+                        boxShadow: '0 10px 20px -4px rgba(5, 150, 105, 0.35)'
                     }}>
-                        <LogIn size={32} color="white" />
+                        <LogIn size={32} color="#fef3c7" />
                     </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#1e293b', marginBottom: '8px' }}>SIKAD DARELIMAN Login</h2>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f2347', marginBottom: '8px' }}>SIKAD DARELIMAN Login</h2>
                     <p style={{ color: '#64748b', fontSize: '0.875rem' }}>SIKAD (Sistem Keuangan Dareliman) — Berbasis PSAK 35</p>
                 </div>
 
@@ -185,7 +187,7 @@ export default function Login() {
                         </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary w-full py-3.5 text-base font-bold rounded-xl shadow-lg shadow-blue-500/25">
+                    <button type="submit" className="btn btn-primary w-full py-3.5 text-base font-bold rounded-xl shadow-lg shadow-emerald-600/25">
                         Masuk Sekarang
                     </button>
                 </form>
