@@ -139,15 +139,13 @@ export default function Login() {
                     style={{ clipPath: 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' }}
                 >
                     <p className="text-[10px] font-bold tracking-[0.26em] uppercase text-[#DFB262]">SIKAD DARELIMAN</p>
-                    <h1 className="mt-2 text-left">
-                        <span dir="rtl" lang="ar" className="block text-left text-3xl font-bold text-[#FAF6EC] leading-snug tracking-normal">
-                            أَهْلًا وَسَهْلًا
-                        </span>
-                        <span className="block text-sm font-serif italic font-normal text-[#DFB262] mt-0.5">
-                            Ahlan wa sahlan.
-                        </span>
+                    <h1
+                        className="mt-2 text-left text-4xl sm:text-[42px] text-[#FAF6EC] leading-[1.12] tracking-normal font-normal drop-shadow-sm"
+                        style={{ fontFamily: "'Berkshire Swash', Georgia, serif" }}
+                    >
+                        Ahlan wa sahlan.
                     </h1>
-                    <p className="text-xs text-emerald-100/75 mt-2 leading-relaxed">
+                    <p className="text-xs text-emerald-100/75 mt-2.5 leading-relaxed">
                         Sistem Keuangan Dareliman berbasis PSAK 35.
                     </p>
                 </div>
@@ -366,21 +364,20 @@ export default function Login() {
                     <div className="pointer-events-none -top-12 -right-12 absolute w-56 h-56 rounded-full bg-[#1F8A5E]/20 blur-3xl" />
                     <div className="pointer-events-none -bottom-16 left-8 w-52 h-52 absolute rounded-full bg-[#D49B27]/15 blur-3xl" />
 
-                    <div className="relative z-10 max-w-[290px]">
+                    <div className="relative z-10 max-w-[320px]">
                         <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#DFB262]">
                             {activeView === 'login' ? 'SIKAD DARELIMAN' : 'PUSAT BANTUAN'}
                         </p>
 
                         <h1 className="mt-3 text-left">
                             {activeView === 'login' ? (
-                                <>
-                                    <span dir="rtl" lang="ar" className="block text-left text-4xl lg:text-[42px] font-bold text-[#FAF6EC] leading-relaxed tracking-normal">
-                                        أَهْلًا وَسَهْلًا
-                                    </span>
-                                    <span className="block text-lg lg:text-xl font-serif italic font-normal text-[#DFB262] mt-0.5">
-                                        Ahlan wa sahlan.
-                                    </span>
-                                </>
+                                <span
+                                    className="block text-[44px] lg:text-[52px] text-[#FAF6EC] leading-[1.12] tracking-normal font-normal drop-shadow-sm"
+                                    style={{ fontFamily: "'Berkshire Swash', Georgia, serif" }}
+                                >
+                                    Ahlan wa <br />
+                                    sahlan.
+                                </span>
                             ) : (
                                 <span className="block text-3xl lg:text-[34px] font-serif font-bold text-[#FAF6EC] leading-[1.15]">
                                     Akses aman <br />
