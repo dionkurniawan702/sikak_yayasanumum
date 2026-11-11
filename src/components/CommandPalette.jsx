@@ -118,17 +118,17 @@ export default function CommandPalette({ isOpen, onClose, menuGroups = [], onOpe
             onKeyDown={handleKeyDown}
         >
             <div
-                className="fixed inset-0 bg-[#0f2347]/50 backdrop-blur-[3px] animate-in fade-in duration-150"
+                className="fixed inset-0 bg-[#142920]/40 backdrop-blur-[3px] animate-in fade-in duration-150"
                 onClick={() => onClose?.()}
             />
 
             <div
-                className="relative z-10 w-full max-w-xl bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                className="relative z-10 w-full max-w-xl bg-white rounded-2xl border border-[#E4EAE6] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Search Header */}
-                <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 bg-[#fafbf9]">
-                    <Search size={18} className="text-emerald-600 shrink-0" />
+                <div className="flex items-center gap-3 px-4 py-3.5 border-b border-[#E3E9E5] bg-[#F7FAF8]">
+                    <Search size={18} className="text-[#157A52] shrink-0" />
                     <input
                         ref={inputRef}
                         type="text"

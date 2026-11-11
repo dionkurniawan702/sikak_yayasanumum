@@ -598,28 +598,28 @@ export default function BudgetDashboard() {
 
 
     return (
-        <div className="p-4 md:p-8 animate-in pb-20">
+        <div className="p-4 md:p-7 animate-in pb-20 max-w-[1600px] mx-auto">
             {/* ===== HEADER & CONTROLS ===== */}
-            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 mb-12 pt-12 md:pt-0">
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 mb-8 pt-10 md:pt-0">
                 <div>
-                    <h2 className="text-4xl font-black text-slate-900 tracking-tighter italic">Dashboard Anggaran</h2>
-                    <div className="flex items-center gap-4">
-                        <p className="text-slate-500 font-medium tracking-tight">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold text-[#13261E] tracking-tight">Dashboard Anggaran</h2>
+                    <div className="flex flex-wrap items-center gap-3 mt-1">
+                        <p className="text-[#6B7E75] text-xs sm:text-sm font-medium">Konsolidasi rencana pendapatan dan belanja {sourceMode === 'YAYASAN' ? 'Yayasan' : 'BOS'}</p>
                         {sourceMode === 'YAYASAN' && isSuperAdmin && (
-                            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 rounded-full border border-slate-200">
-                                <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
-                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Base: {formatCurrency(totalMurni || 0)}</span>
+                            <div className="flex items-center gap-1.5 px-2.5 py-0.5 bg-white rounded-full border border-[#DCE5DF] shadow-2xs">
+                                <div className="w-1.5 h-1.5 rounded-full bg-[#157A52]"></div>
+                                <span className="text-[10px] font-bold text-[#5C6F66] uppercase tracking-wider tabular-nums">Base: {formatCurrency(totalMurni || 0)}</span>
                             </div>
                         )}
                     </div>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+                <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
                     {/* Source Selector */}
-                    <div className="flex bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                    <div className="flex bg-[#EEF3F0] p-1 rounded-xl border border-[#DCE5DF]">
                         <button
                             onClick={() => setSourceMode('YAYASAN')}
-                            className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'YAYASAN' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${sourceMode === 'YAYASAN' ? 'bg-white text-[#157A52] shadow-xs border border-[#E3E9E5]' : 'text-[#6B7E75] hover:text-[#13261E]'}`}
                         >
                             <Building2 size={14} />
                             Dana Yayasan
@@ -627,7 +627,7 @@ export default function BudgetDashboard() {
                         {(currentUser?.role !== 'admin_bidang' || currentUser?.role === 'superadmin') && (
                             <button
                                 onClick={() => setSourceMode('BOS')}
-                                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${sourceMode === 'BOS' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all cursor-pointer ${sourceMode === 'BOS' ? 'bg-white text-[#0D6844] shadow-xs border border-[#E3E9E5]' : 'text-[#6B7E75] hover:text-[#13261E]'}`}
                             >
                                 <Gem size={14} />
                                 Dana BOS
@@ -638,7 +638,7 @@ export default function BudgetDashboard() {
                     <select
                         value={selectedAcademicYearId}
                         onChange={(e) => setSelectedAcademicYearId(e.target.value)}
-                        className="p-3 bg-white border-2 border-slate-100 rounded-2xl font-black text-xs text-slate-800 uppercase tracking-widest focus:ring-4 focus:ring-blue-50 outline-none transition-all shadow-sm"
+                        className="px-3.5 py-2.5 bg-white border border-[#DCE5DF] rounded-xl font-bold text-xs text-[#13261E] tracking-wide focus:ring-2 focus:ring-[#157A52]/20 focus:border-[#157A52] outline-none transition-all shadow-2xs"
                     >
                         {academicYears.filter(a => !a.isDeleted && (a.isActive || a.id === selectedAcademicYearId))
                             .sort((a, b) => b.name.localeCompare(a.name))
@@ -649,23 +649,28 @@ export default function BudgetDashboard() {
 
                     <button
                         onClick={exportToExcel}
-                        className="budget-export-btn shadow-sm"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-[#F7FAF8] text-[#13261E] border border-[#DCE5DF] rounded-xl font-bold text-xs shadow-2xs transition-all cursor-pointer"
                     >
-                        <FileSpreadsheet size={16} />
+                        <FileSpreadsheet size={15} className="text-[#157A52]" />
                         <span>Cetak Laporan Excel</span>
                     </button>
                 </div>
             </div>
 
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                 {sourceMode === 'YAYASAN' ? (
                     <>
-            {/* ===== BIDANG TABLE (Indigo Theme) ===== */}
+            {/* ===== BIDANG TABLE (Calm Ferna Sage & Emerald Theme) ===== */}
             {currentUser?.role !== 'admin_unit' && (
-                <div className="budget-table-wrapper mb-12 border-none shadow-xl shadow-slate-200/50 animate-in">
-                    <div className="budget-table-title bg-[#0f2347] text-white border-b-2 border-amber-400/50">
-                        <Layers size={20} className="text-amber-300" />
-                        <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan Per Bidang</span>
+                <div className="budget-table-wrapper mb-8 bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden animate-in">
+                    <div className="budget-table-title bg-[#F7FAF8] text-[#13261E] border-b border-[#E3E9E5] px-5 py-3.5 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-[#E2F1EA] text-[#157A52] flex items-center justify-center shrink-0">
+                            <Layers size={16} />
+                        </span>
+                        <div>
+                            <span className="text-sm font-bold text-[#13261E] tracking-tight block">Ringkasan Per Bidang</span>
+                            <span className="text-[11px] font-medium text-[#6B7E75]">Konsolidasi alokasi pendapatan &amp; rencana belanja per bidang</span>
+                        </div>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
@@ -693,18 +698,18 @@ export default function BudgetDashboard() {
                                                 getUnitName={getUnitName}
                                             />
                                         ))}
-                                        <tr className="budget-row-total bg-slate-50">
-                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                        <tr className="budget-row-total bg-[#F2F6F4]">
+                                            <td className="budget-cell budget-cell-name font-bold text-xs text-[#13261E] uppercase tracking-wider">
                                                 {(currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'Total Keseluruhan' : 'Total Konsolidasi Bidang'}
                                             </td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-emerald-100">{formatCurrency(totalBidangRAP)}</td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalBidangRAB)}</td>
-                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-emerald-50/40 text-emerald-700 font-black">{formatCurrency(totalBidangSisa)}</td>
+                                            <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#E3E9E5] tabular-nums">{formatCurrency(totalBidangRAP)}</td>
+                                            <td className="budget-cell budget-cell-number font-bold text-[#13261E] tabular-nums">{formatCurrency(totalBidangRAB)}</td>
+                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#E9F5EF]/70 text-[#157A52] font-bold tabular-nums">{formatCurrency(totalBidangSisa)}</td>
                                         </tr>
                                     </>
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                        <td colSpan={4} className="text-center py-16 text-[#8DA096] font-semibold uppercase tracking-widest text-[10px]">
                                             Belum ada data bidang untuk periode ini.
                                         </td>
                                     </tr>
@@ -715,12 +720,17 @@ export default function BudgetDashboard() {
                 </div>
             )}
 
-            {/* ===== UNIT TABLE (Navy & Gold Theme) ===== */}
+            {/* ===== UNIT TABLE (Calm Ferna Sage & Emerald Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && (
-                <div className="budget-table-wrapper border-none shadow-xl shadow-slate-200/50 animate-in">
-                    <div className="budget-table-title bg-[#0f2347] text-white border-b-2 border-amber-400/50">
-                        <Building2 size={20} className="text-amber-300" />
-                        <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan Per Unit</span>
+                <div className="budget-table-wrapper bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden animate-in">
+                    <div className="budget-table-title bg-[#F7FAF8] text-[#13261E] border-b border-[#E3E9E5] px-5 py-3.5 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-[#E2F1EA] text-[#157A52] flex items-center justify-center shrink-0">
+                            <Building2 size={16} />
+                        </span>
+                        <div>
+                            <span className="text-sm font-bold text-[#13261E] tracking-tight block">Ringkasan Per Unit</span>
+                            <span className="text-[11px] font-medium text-[#6B7E75]">Rincian alokasi pendapatan &amp; belanja masing-masing unit</span>
+                        </div>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
@@ -746,18 +756,18 @@ export default function BudgetDashboard() {
                                                 onToggleDetailItem={toggleDetailItem}
                                             />
                                         ))}
-                                        <tr className="budget-row-total bg-slate-50">
-                                            <td className="budget-cell budget-cell-name font-black text-xs text-slate-800 uppercase tracking-widest">
+                                        <tr className="budget-row-total bg-[#F2F6F4]">
+                                            <td className="budget-cell budget-cell-name font-bold text-xs text-[#13261E] uppercase tracking-wider">
                                                 {(currentUser?.role === 'admin_bidang' || currentUser?.role === 'admin_unit') ? 'Total Keseluruhan' : 'Total Konsolidasi Unit'}
                                             </td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900 border-l-2 border-emerald-100">{formatCurrency(totalUnitRAP)}</td>
-                                            <td className="budget-cell budget-cell-number font-black text-slate-900">{formatCurrency(totalUnitRAB)}</td>
-                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-emerald-50/40 text-emerald-700 font-black">{formatCurrency(totalUnitSisa)}</td>
+                                            <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#E3E9E5] tabular-nums">{formatCurrency(totalUnitRAP)}</td>
+                                            <td className="budget-cell budget-cell-number font-bold text-[#13261E] tabular-nums">{formatCurrency(totalUnitRAB)}</td>
+                                            <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#E9F5EF]/70 text-[#157A52] font-bold tabular-nums">{formatCurrency(totalUnitSisa)}</td>
                                         </tr>
                                     </>
                                 ) : (
                                     <tr>
-                                        <td colSpan={4} className="text-center py-20 text-slate-300 font-bold uppercase tracking-widest text-[10px] italic">
+                                        <td colSpan={4} className="text-center py-16 text-[#8DA096] font-semibold uppercase tracking-widest text-[10px]">
                                             Belum ada data unit untuk periode ini.
                                         </td>
                                     </tr>
@@ -770,21 +780,26 @@ export default function BudgetDashboard() {
                     </>
                 ) : (
                     <>
-            {/* ===== BOS TABLE (Emerald/Green Theme) ===== */}
+            {/* ===== BOS TABLE (Calm Ferna Sage & Emerald Theme) ===== */}
             {currentUser?.role !== 'admin_bidang' && bosUnitData.length > 0 && (
-                <div className="budget-table-wrapper mt-12 border-none shadow-xl shadow-slate-200/50 animate-in slide-in-from-bottom-4 duration-700">
-                    <div className="budget-table-title bg-emerald-900 text-white">
-                        <Gem size={20} className="text-emerald-400" />
-                        <span className="uppercase tracking-widest text-sm font-black text-white italic">Ringkasan BOS Per Unit</span>
+                <div className="budget-table-wrapper mt-8 bg-white rounded-2xl border border-[#E4EAE6] shadow-xs overflow-hidden animate-in slide-in-from-bottom-4 duration-500">
+                    <div className="budget-table-title bg-[#F7FAF8] text-[#13261E] border-b border-[#E3E9E5] px-5 py-3.5 flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-lg bg-[#E2F1EA] text-[#157A52] flex items-center justify-center shrink-0">
+                            <Gem size={16} />
+                        </span>
+                        <div>
+                            <span className="text-sm font-bold text-[#13261E] tracking-tight block">Ringkasan BOS Per Unit</span>
+                            <span className="text-[11px] font-medium text-[#6B7E75]">Konsolidasi alokasi &amp; rencana belanja Dana BOS per unit</span>
+                        </div>
                     </div>
                     <div className="budget-table-scroll">
                         <table className="budget-table">
                             <thead>
-                                <tr className="bg-emerald-50/50">
-                                    <th className="budget-th budget-th-name text-emerald-900">NAMA UNIT</th>
-                                    <th className="budget-th budget-th-number text-emerald-900">RAP BOS (ALOKASI)</th>
-                                    <th className="budget-th budget-th-number text-emerald-900">RAB BOS (RENCANA)</th>
-                                    <th className="budget-th budget-th-number text-emerald-900">SISA BOS</th>
+                                <tr>
+                                    <th className="budget-th budget-th-name">NAMA UNIT</th>
+                                    <th className="budget-th budget-th-number">RAP BOS (ALOKASI)</th>
+                                    <th className="budget-th budget-th-number">RAB BOS (RENCANA)</th>
+                                    <th className="budget-th budget-th-number">SISA BOS</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -800,11 +815,11 @@ export default function BudgetDashboard() {
                                         isBos={true}
                                     />
                                 ))}
-                                <tr className="budget-row-total bg-emerald-50/20">
-                                    <td className="budget-cell budget-cell-name font-black text-xs text-emerald-900 uppercase tracking-widest italic">Total Konsolidasi BOS</td>
-                                    <td className="budget-cell budget-cell-number font-black text-emerald-950 border-l-2 border-emerald-100">{formatCurrency(totalBosUnitRAP)}</td>
-                                    <td className="budget-cell budget-cell-number font-black text-emerald-950">{formatCurrency(totalBosUnitRAB)}</td>
-                                    <td className="budget-cell budget-cell-number budget-cell-sisa bg-emerald-100/30 text-emerald-800 font-black">{formatCurrency(totalBosUnitSisa)}</td>
+                                <tr className="budget-row-total bg-[#F2F6F4]">
+                                    <td className="budget-cell budget-cell-name font-bold text-xs text-[#13261E] uppercase tracking-wider">Total Konsolidasi BOS</td>
+                                    <td className="budget-cell budget-cell-number font-bold text-[#13261E] border-l border-[#E3E9E5] tabular-nums">{formatCurrency(totalBosUnitRAP)}</td>
+                                    <td className="budget-cell budget-cell-number font-bold text-[#13261E] tabular-nums">{formatCurrency(totalBosUnitRAB)}</td>
+                                    <td className="budget-cell budget-cell-number budget-cell-sisa bg-[#E9F5EF]/70 text-[#157A52] font-bold tabular-nums">{formatCurrency(totalBosUnitSisa)}</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -815,9 +830,9 @@ export default function BudgetDashboard() {
                 )}
             </div>
 
-            <div className="mt-20 text-center">
-                <div className="inline-block px-10 py-3 bg-white border border-slate-100 rounded-full shadow-sm">
-                    <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
+            <div className="mt-16 text-center">
+                <div className="inline-block px-6 py-2 bg-white border border-[#E4EAE6] rounded-full shadow-2xs">
+                    <p className="text-[10px] font-bold text-[#8DA096] uppercase tracking-[0.25em]">
                         Sistem Keuangan Dareliman — SIKAD
                     </p>
                 </div>

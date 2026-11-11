@@ -14,15 +14,27 @@ import SyncStatus from './SyncStatus';
 import CommandPalette from './CommandPalette';
 import ConfirmDialog from './ConfirmDialog';
 
-export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }) {
+export default function Sidebar({
+    isOpen,
+    onClose,
+    isCollapsed = false,
+    onToggleCollapse,
+    isCmdOpen: controlledCmdOpen,
+    onOpenCmd,
+    onCloseCmd
+}) {
     const { state, dispatch } = useApp();
     const { currentUser } = state;
     const navigate = useNavigate();
     const location = useLocation();
 
     const [expandedGroups, setExpandedGroups] = useState({});
-    const [isCmdOpen, setIsCmdOpen] = useState(false);
+    const [localCmdOpen, setLocalCmdOpen] = useState(false);
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+    const isCmdOpen = controlledCmdOpen !== undefined ? controlledCmdOpen : localCmdOpen;
+    const openCmd = () => (onOpenCmd ? onOpenCmd() : setLocalCmdOpen(true));
+    const closeCmd = () => (onCloseCmd ? onCloseCmd() : setLocalCmdOpen(false));
 
     const isSuperAdmin = currentUser?.role === 'superadmin';
     const isAdminField = currentUser?.role === 'admin_bidang';
@@ -437,19 +449,19 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
     return (
         <>
         <aside 
-            className={`sidebar fixed inset-y-0 bg-[#0f2347] border-r border-[#1a3463] w-72 ${isCollapsed ? 'lg:w-20' : 'lg:w-72'} z-[1000] lg:translate-x-0 transition-all duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+            className={`sidebar fixed inset-y-0 bg-[#F7F9F8] border-r border-[#E3E9E5] w-64 ${isCollapsed ? 'lg:w-20' : 'lg:w-64'} z-[1000] lg:translate-x-0 transition-all duration-300 flex flex-col ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         >
-            {/* Brand + Collapse Toggle */}
-            <div className={`sidebar-brand border-b border-[#1c386b] bg-[#0b1a35]/60 shrink-0 ${isCollapsed ? 'p-6 lg:px-3 lg:py-5' : 'p-6 lg:px-6 lg:py-5'}`}>
-                <div className={`flex items-center ${isCollapsed ? 'justify-between lg:flex-col lg:gap-3' : 'justify-between gap-3'}`}>
-                    <div className="flex items-center gap-3 min-w-0">
-                        <div className="p-2 bg-emerald-500/15 rounded-xl shadow-inner backdrop-blur-sm border border-amber-300/30 shrink-0">
-                            <Landmark className="text-amber-300" size={22} />
+            {/* Brand + Collapse Toggle (Ferna Light Header) */}
+            <div className={`sidebar-brand shrink-0 ${isCollapsed ? 'px-4 pt-5 pb-3 lg:px-3' : 'px-4 pt-5 pb-3'}`}>
+                <div className={`flex items-center ${isCollapsed ? 'justify-between lg:flex-col lg:gap-2.5' : 'justify-between gap-2.5'}`}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-9 h-9 bg-[#157A52] rounded-xl flex items-center justify-center text-white shadow-xs shrink-0">
+                            <Landmark size={18} />
                         </div>
                         <div className={`flex flex-col min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            <span className="text-xl font-black text-white tracking-tight truncate">SIKAD</span>
-                            <span className="text-[10px] text-amber-200/80 font-bold uppercase tracking-wider -mt-1 italic truncate">
-                                Sistem Keuangan Dareliman
+                            <span className="text-base font-extrabold text-[#13261E] tracking-tight leading-tight truncate">SIKAD</span>
+                            <span className="text-[10px] text-[#6A7B73] font-medium truncate">
+                                Keuangan Dareliman
                             </span>
                         </div>
                     </div>
@@ -458,64 +470,56 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                         <button
                             type="button"
                             onClick={onToggleCollapse}
-                            className="hidden lg:flex p-1.5 rounded-lg text-slate-300 hover:text-amber-300 hover:bg-[#193362] transition-colors cursor-pointer shrink-0"
+                            className="hidden lg:flex p-1.5 rounded-lg bg-white border border-[#DCE4DF] text-[#55675F] hover:text-[#142920] hover:bg-[#EFF4F1] transition-colors cursor-pointer shrink-0 shadow-[0_1px_2px_rgba(16,32,26,0.03)]"
                             title={isCollapsed ? 'Perluas Sidebar' : 'Lipat Sidebar'}
                         >
-                            {isCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+                            {isCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
                         </button>
                     )}
                 </div>
             </div>
 
-            {/* User Profile & Quick Search (Ctrl+K) */}
-            <div className={`border-b border-[#1c386b] shrink-0 space-y-3 ${isCollapsed ? 'p-5 lg:p-3' : 'px-5 py-4'}`}>
-                <div className={`flex items-center gap-3 ${isCollapsed ? 'lg:justify-center' : ''}`} title={isCollapsed ? `${currentUser?.name} (${currentUser?.role})` : undefined}>
-                    <div className="w-9 h-9 rounded-xl bg-[#193362] border border-amber-300/20 flex items-center justify-center text-base shrink-0">👤</div>
-                    <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                        <p className="text-sm font-bold text-white truncate">{currentUser?.name}</p>
-                        <p className="text-[10px] text-amber-200/70 font-bold uppercase tracking-widest truncate">{currentUser?.role}</p>
-                    </div>
-                </div>
-
+            {/* Quick Action Dark Forest Pill (Ferna "Move money" silhouette -> Cari Menu) */}
+            <div className={`shrink-0 pb-3 border-b border-[#E6ECE8] ${isCollapsed ? 'px-3 lg:px-2.5' : 'px-4'}`}>
                 <button
                     type="button"
-                    onClick={() => setIsCmdOpen(true)}
-                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl bg-[#162f5c]/90 hover:bg-[#1c3a70] border border-[#294c8a]/70 hover:border-amber-300/40 text-slate-200 hover:text-white transition-all cursor-pointer ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}
-                    title="Cari Menu Cepat (Ctrl + K)"
+                    onClick={openCmd}
+                    className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#162922] hover:bg-[#1E362D] text-white transition-all shadow-xs cursor-pointer ${isCollapsed ? 'lg:justify-center lg:px-0' : 'justify-between'}`}
+                    title="Lompat Cepat ke Menu (Ctrl + K)"
                 >
                     <div className="flex items-center gap-2 min-w-0">
-                        <Search size={14} className="text-amber-300/80 shrink-0" />
-                        <span className={`text-xs font-semibold text-slate-300 truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
-                            Cari menu cepat...
+                        <div className="w-5 h-5 rounded-md bg-white/15 flex items-center justify-center shrink-0">
+                            <Search size={12} className="text-emerald-200" />
+                        </div>
+                        <span className={`text-xs font-bold tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>
+                            Cari Menu
                         </span>
                     </div>
-                    <kbd className={`px-1.5 py-0.5 text-[9px] font-black text-amber-200/80 bg-[#0b1a35] border border-[#294c8a] rounded shrink-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                    <kbd className={`px-1.5 py-0.5 text-[9px] font-bold text-emerald-100/90 bg-white/10 border border-white/15 rounded shrink-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
                         Ctrl K
                     </kbd>
                 </button>
             </div>
 
-            <nav className={`flex-1 overflow-y-auto min-h-0 py-4 space-y-1 sidebar-scrollbar ${isCollapsed ? 'px-3 lg:px-2' : 'px-3'}`}>
+            <nav className={`flex-1 overflow-y-auto min-h-0 py-3 space-y-1 sidebar-scrollbar ${isCollapsed ? 'px-3 lg:px-2' : 'px-3'}`}>
                 {menuGroups.map((group, gIdx) => (
                     <div 
                         key={gIdx} 
-                        className="space-y-1"
+                        className="space-y-0.5"
                     >
                         {/* Accounting System Section (Only for Super Admin at the start) */}
                         {isSuperAdmin && gIdx === 0 && (
-                            <div className={`px-3 py-2 mt-2 mb-1 flex items-center gap-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                <div className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.55)] shrink-0"></div>
-                                <span className="text-[10px] font-black text-amber-300 uppercase tracking-[0.28em] whitespace-nowrap">ACCOUNTING SYSTEM</span>
-                                <div className="h-px flex-1 bg-[#1f3d73]"></div>
+                            <div className={`px-2.5 pt-2 pb-1 flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                                <span className="text-[10px] font-bold text-[#7D8C84] uppercase tracking-[0.12em] whitespace-nowrap">AKUNTANSI</span>
+                                <div className="h-px flex-1 bg-[#E4EAE6]"></div>
                             </div>
                         )}
 
                         {/* Budgeting & Reporting Section */}
                         {((isSuperAdmin && group.title === 'DASHBOARD & SALDO') || (!isSuperAdmin && gIdx === 0)) && (
-                            <div className={`px-3 py-2 mt-4 mb-1 flex items-center gap-3 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                <div className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.55)] shrink-0"></div>
-                                <span className="text-[10px] font-black text-emerald-300 uppercase tracking-[0.28em] whitespace-nowrap">BUDGETING & REPORTING</span>
-                                <div className="h-px flex-1 bg-[#1f3d73]"></div>
+                            <div className={`px-2.5 pt-3 pb-1 flex items-center gap-2 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                                <span className="text-[10px] font-bold text-[#157A52] uppercase tracking-[0.12em] whitespace-nowrap">ANGGARAN &amp; LAPORAN</span>
+                                <div className="h-px flex-1 bg-[#DCE6E0]"></div>
                             </div>
                         )}
 
@@ -527,22 +531,22 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                                 <>
                                     <button
                                         onClick={() => toggleGroup(group.title)}
-                                        className={`w-full flex items-center justify-between px-3 py-3 mt-1.5 text-[11px] font-bold text-slate-300/75 hover:text-amber-200 uppercase tracking-[0.18em] transition-colors group ${isCollapsed ? 'lg:hidden' : ''}`}
+                                        className={`w-full flex items-center justify-between px-2.5 py-2 mt-1 text-[10px] font-bold text-[#7A8A82] hover:text-[#24372F] uppercase tracking-[0.12em] transition-colors group cursor-pointer ${isCollapsed ? 'lg:hidden' : ''}`}
                                     >
                                         <div className="flex items-center gap-2">
                                             <span>{group.title}</span>
                                             {showDot && (
-                                                <span className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse shrink-0"></span>
+                                                <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shrink-0"></span>
                                             )}
                                         </div>
                                         {expandedGroups[group.title] ? (
-                                            <ChevronDown size={12} className="text-slate-400 group-hover:text-amber-300" />
+                                            <ChevronDown size={12} className="text-[#8E9E96] group-hover:text-[#364940]" />
                                         ) : (
-                                            <ChevronRight size={12} className="text-slate-400 group-hover:text-amber-300" />
+                                            <ChevronRight size={12} className="text-[#8E9E96] group-hover:text-[#364940]" />
                                         )}
                                     </button>
                                     {isCollapsed && gIdx > 0 && (
-                                        <div className="hidden lg:block h-px bg-[#1f3d73] my-2 mx-2" />
+                                        <div className="hidden lg:block h-px bg-[#E3E9E5] my-2 mx-2" />
                                     )}
                                 </>
                             );
@@ -577,60 +581,71 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                                                 const isTrulyActive = isActive && isParamMatch;
 
                                                 return `
-                                                    relative flex items-center gap-3.5 px-3 py-2.5 rounded-xl transition-all ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}
-                                                    ${isTrulyActive ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-950/35 ring-1 ring-amber-300/35' : 'text-slate-300 hover:bg-[#173260] hover:text-white'}
+                                                    relative flex items-center gap-3 px-3 py-2 rounded-xl transition-colors ${isCollapsed ? 'lg:justify-center lg:px-2' : ''}
+                                                    ${isTrulyActive ? 'bg-[#E2F1EA] text-[#0D6844] font-bold' : 'text-[#44564E] font-medium hover:bg-[#ECF2EE] hover:text-[#142920]'}
                                                 `;
                                             }}
                                             end={(item.path || '').split('?')[0] === '/'}
                                         >
-                                            <div className={`p-2 rounded-lg transition-colors shrink-0 ${location.pathname === item.path.split('?')[0] ? 'bg-white/15 text-amber-200' : 'bg-[#173260]/80 group-hover:bg-[#1e3f78]'}`}>
-                                                 {Icon ? <Icon size={17} /> : <div className="w-[17px] h-[17px] bg-[#173260] rounded" />}
-                                            </div>
-                                            <span className={`text-sm font-bold flex-1 tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+                                            {({ isActive }) => {
+                                                const itemPath = item.path || '';
+                                                const itemSearch = itemPath.split('?')[1] || '';
+                                                const currentSearch = location.search.replace('?', '');
+                                                const isTrulyActive = isActive && (itemSearch === currentSearch);
 
-                                            {/* Compact notification dot when collapsed on desktop */}
-                                            {isCollapsed && hasNotifBadge && (
-                                                <span className="hidden lg:block absolute top-1.5 right-2 w-2 h-2 rounded-full bg-amber-400 ring-2 ring-[#0f2347] animate-pulse" />
-                                            )}
-                                            
-                                            {/* Notification Badges */}
-                                            <div className={`flex items-center gap-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
-                                                {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
-                                                    <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-rose-500/40">
-                                                        {pendingRabYayasanCount}
-                                                    </span>
-                                                )}
-                                                {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingSarprasAssetCount > 0 && (
-                                                    <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-amber-500/40 flex items-center gap-1" title={`${pendingSarprasAssetCount} Pengajuan Aset Menunggu Verifikasi Sarpras`}>
-                                                        📦 {pendingSarprasAssetCount}
-                                                    </span>
-                                                )}
-                                                {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
-                                                    <span className="bg-emerald-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-emerald-500/40">
-                                                        {pendingRabBosCount}
-                                                    </span>
-                                                )}
-                                                {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
-                                                    <span className="bg-amber-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-amber-500/40">
-                                                        {pendingFundRequestCount}
-                                                    </span>
-                                                )}
-                                                {item.label === 'Pengeluaran Yayasan' && pendingReportCount > 0 && (
-                                                    <span className="bg-rose-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-rose-500/40">
-                                                        {pendingReportCount}
-                                                    </span>
-                                                )}
-                                                {item.label === 'Saldo Yayasan' && pendingReturnYayasanCount > 0 && (
-                                                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-amber-500/30">
-                                                        {pendingReturnYayasanCount}
-                                                    </span>
-                                                )}
-                                                {item.label === 'Saldo BOS' && pendingReturnBosCount > 0 && (
-                                                    <span className="bg-amber-400 text-slate-950 text-[10px] font-black px-2 py-0.5 rounded-full animate-pulse shadow-lg shadow-amber-500/30">
-                                                        {pendingReturnBosCount}
-                                                    </span>
-                                                )}
-                                            </div>
+                                                return (
+                                                    <>
+                                                        <span className={`shrink-0 transition-colors ${isTrulyActive ? 'text-[#157A52]' : 'text-[#6A7B73]'}`}>
+                                                            {Icon ? <Icon size={17} strokeWidth={isTrulyActive ? 2.25 : 1.9} /> : <div className="w-[17px] h-[17px] bg-[#E3E9E5] rounded" />}
+                                                        </span>
+                                                        <span className={`text-[13px] flex-1 tracking-tight truncate ${isCollapsed ? 'lg:hidden' : ''}`}>{item.label}</span>
+
+                                                        {/* Compact notification dot when collapsed on desktop */}
+                                                        {isCollapsed && hasNotifBadge && (
+                                                            <span className="hidden lg:block absolute top-1.5 right-2 w-2 h-2 rounded-full bg-[#157A52] ring-2 ring-[#F7F9F8]" />
+                                                        )}
+
+                                                        {/* Notification Badges (Sleek Dark Charcoal / Semantic Pills ala Ferna) */}
+                                                        <div className={`flex items-center gap-1 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                                                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingRabYayasanCount > 0 && (
+                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                    {pendingRabYayasanCount}
+                                                                </span>
+                                                            )}
+                                                            {(item.label === 'RAB' || item.label === 'RAB Yayasan') && pendingSarprasAssetCount > 0 && (
+                                                                <span className="bg-amber-100 text-amber-800 border border-amber-200 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 tabular-nums" title={`${pendingSarprasAssetCount} Pengajuan Aset Menunggu Verifikasi Sarpras`}>
+                                                                    📦 {pendingSarprasAssetCount}
+                                                                </span>
+                                                            )}
+                                                            {item.label === 'RAB BOS' && pendingRabBosCount > 0 && (
+                                                                <span className="bg-[#157A52] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                    {pendingRabBosCount}
+                                                                </span>
+                                                            )}
+                                                            {item.label === 'Permintaan Dana' && pendingFundRequestCount > 0 && (
+                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                    {pendingFundRequestCount}
+                                                                </span>
+                                                            )}
+                                                            {item.label === 'Pengeluaran Yayasan' && pendingReportCount > 0 && (
+                                                                <span className="bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                    {pendingReportCount}
+                                                                </span>
+                                                            )}
+                                                            {item.label === 'Saldo Yayasan' && pendingReturnYayasanCount > 0 && (
+                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                    {pendingReturnYayasanCount}
+                                                                </span>
+                                                            )}
+                                                            {item.label === 'Saldo BOS' && pendingReturnBosCount > 0 && (
+                                                                <span className="bg-[#16231D] text-white text-[10px] font-bold px-2 py-0.5 rounded-full tabular-nums">
+                                                                    {pendingReturnBosCount}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </>
+                                                );
+                                            }}
                                         </NavLink>
                                     );
                                 })}
@@ -640,25 +655,34 @@ export default function Sidebar({ isOpen, onClose, isCollapsed = false, onToggle
                 ))}
             </nav>
 
-            <div className={`border-t border-[#1c386b] bg-[#0b1a35]/40 shrink-0 ${isCollapsed ? 'p-5 lg:p-3' : 'p-5'}`}>
-                <button
-                    className={`flex items-center justify-center gap-2 px-4 py-2 text-rose-400 hover:bg-rose-500/15 hover:text-rose-300 rounded-xl transition-all text-[11px] font-black uppercase tracking-widest mx-auto border border-rose-500/25 cursor-pointer ${isCollapsed ? 'lg:w-full lg:px-0' : ''}`}
-                    onClick={handleLogout}
-                    title={isCollapsed ? 'Keluar dari sistem' : undefined}
-                >
-                    <LogOut size={13} />
-                    <span className={isCollapsed ? 'lg:hidden' : ''}>Keluar</span>
-                </button>
-                <div className={`mt-3 px-4 text-[9px] font-bold text-slate-400/60 uppercase tracking-widest text-center ${isCollapsed ? 'lg:hidden' : ''}`}>
-                    SIKAD v1.5.0-diag
+            {/* Footer: User Profile Card & Logout (Ferna bottom-left profile style) */}
+            <div className={`border-t border-[#E3E9E5] bg-white/75 shrink-0 ${isCollapsed ? 'p-3 lg:px-2' : 'p-3.5'}`}>
+                <div className={`flex items-center gap-2.5 ${isCollapsed ? 'lg:flex-col lg:gap-2' : 'justify-between'}`}>
+                    <div className={`flex items-center gap-2.5 min-w-0 ${isCollapsed ? 'lg:justify-center' : ''}`} title={isCollapsed ? `${currentUser?.name} (${currentUser?.role})` : undefined}>
+                        <div className="w-8 h-8 rounded-full bg-[#E2F1EA] text-[#0D6844] border border-[#C6E3D4] flex items-center justify-center text-xs font-extrabold uppercase shrink-0">
+                            {(currentUser?.name || 'AD').slice(0, 2)}
+                        </div>
+                        <div className={`min-w-0 ${isCollapsed ? 'lg:hidden' : ''}`}>
+                            <p className="text-xs font-bold text-[#142920] truncate leading-tight">{currentUser?.name}</p>
+                            <p className="text-[10px] text-[#7A8A82] font-semibold uppercase tracking-wider truncate">{currentUser?.role}</p>
+                        </div>
+                    </div>
+
+                    <button
+                        className="p-2 text-[#6A7B73] hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-200 rounded-lg transition-all cursor-pointer shrink-0"
+                        onClick={handleLogout}
+                        title="Keluar dari sistem"
+                    >
+                        <LogOut size={15} />
+                    </button>
                 </div>
             </div>
         </aside>
 
         <CommandPalette
             isOpen={isCmdOpen}
-            onOpen={() => setIsCmdOpen(true)}
-            onClose={() => setIsCmdOpen(false)}
+            onOpen={openCmd}
+            onClose={closeCmd}
             menuGroups={menuGroups}
         />
 

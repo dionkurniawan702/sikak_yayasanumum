@@ -4244,15 +4244,15 @@ function RABContent() {
                                                                     setIsProgramDropdownOpen(false);
                                                                     setOpenActionMenuId(prev => (prev === menuId ? null : menuId));
                                                                 }}
-                                                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none active:scale-95 ${
+                                                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer select-none active:scale-95 ${
                                                                     isMenuOpen 
-                                                                        ? 'bg-emerald-700 text-white shadow-md ring-2 ring-amber-300/60' 
-                                                                        : 'bg-[#0f2347] hover:bg-emerald-700 text-white'
+                                                                        ? 'bg-[#0F5E3F] text-white shadow-sm ring-2 ring-emerald-200' 
+                                                                        : 'bg-[#157A52] hover:bg-[#0F5E3F] text-white'
                                                                 }`}
                                                                 title="Pilihan Aksi Super Admin"
                                                             >
                                                                 <span>Aksi</span>
-                                                                <ChevronDown size={14} className={`text-amber-200 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                                                                <ChevronDown size={14} className={`text-emerald-100 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
                                                             </button>
 
                                                             {isMenuOpen && (
@@ -5544,20 +5544,20 @@ function RABContent() {
                                                             setIsProgramDropdownOpen(false);
                                                             setOpenActionMenuId(prev => (prev === plan.id ? null : plan.id));
                                                         }}
-                                                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
+                                                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer select-none ${
                                                             isMenuOpen 
-                                                                ? 'bg-emerald-700 text-white shadow-md ring-2 ring-amber-300/60' 
-                                                                : 'bg-[#0f2347] hover:bg-emerald-700 text-white active:scale-95'
+                                                                ? 'bg-[#0F5E3F] text-white shadow-sm ring-2 ring-emerald-200' 
+                                                                : 'bg-[#157A52] hover:bg-[#0F5E3F] text-white active:scale-95'
                                                         }`}
                                                         title="Pilihan Aksi"
                                                     >
                                                         <span>Aksi</span>
-                                                        <ChevronDown size={14} className={`text-amber-200 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
+                                                        <ChevronDown size={14} className={`text-emerald-100 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`} />
                                                     </button>
 
                                                     {isMenuOpen && (
                                                         <div 
-                                                            className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-[110] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 min-w-[220px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container`}
+                                                            className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-[110] bg-white rounded-2xl shadow-xl border border-[#DCE5DF] p-2 min-w-[220px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container`}
                                                             onClick={(e) => e.stopPropagation()}
                                                         >
                                                                 {/* 1. Review & Edit */}
@@ -5780,20 +5780,20 @@ function RABContent() {
                                                                 setIsProgramDropdownOpen(false);
                                                                 setOpenActionMenuId(prev => (prev === `TEMP-${itemMaster.id}` ? null : `TEMP-${itemMaster.id}`));
                                                             }}
-                                                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-black transition-all shadow-sm cursor-pointer select-none ${
+                                                            className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer select-none ${
                                                                 isTempMenuOpen 
-                                                                    ? 'bg-emerald-700 text-white shadow-md ring-2 ring-amber-300/60' 
-                                                                    : 'bg-[#0f2347] hover:bg-emerald-700 text-white active:scale-95'
+                                                                    ? 'bg-[#0F5E3F] text-white shadow-sm ring-2 ring-emerald-200' 
+                                                                    : 'bg-[#157A52] hover:bg-[#0F5E3F] text-white active:scale-95'
                                                             }`}
                                                             title="Pilihan Aksi"
                                                         >
                                                             <span>Aksi</span>
-                                                            <ChevronDown size={14} className={`text-amber-200 transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
+                                                            <ChevronDown size={14} className={`text-emerald-100 transition-transform duration-200 ${isTempMenuOpen ? 'rotate-180' : ''}`} />
                                                         </button>
 
                                                         {isTempMenuOpen && (
                                                             <div 
-                                                                className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-[110] bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 min-w-[220px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container`}
+                                                                className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1.5' : 'top-full mt-1.5'} z-[110] bg-white rounded-2xl shadow-xl border border-[#DCE5DF] p-2 min-w-[220px] flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-150 text-left action-menu-container`}
                                                                 onClick={(e) => e.stopPropagation()}
                                                             >
                                                                 {canEditItem && (
@@ -6032,17 +6032,17 @@ function RABContent() {
                             <>
                                 <button
                                     onClick={() => setShowDashboard(!showDashboard)}
-                                    className={`px-3.5 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer ${showDashboard
-                                        ? 'bg-slate-900 text-white'
-                                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                    className={`px-3.5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 shadow-2xs cursor-pointer ${showDashboard
+                                        ? 'bg-[#162922] text-white'
+                                        : 'bg-white text-[#13261E] border border-[#DCE5DF] hover:bg-[#F7FAF8]'
                                         }`}
                                 >
-                                    <Layers size={15} />
-                                    {showDashboard ? 'TUTUP IKHTISAR' : 'LIHAT SEMUA UNIT'}
+                                    <Layers size={15} className={showDashboard ? 'text-emerald-400' : 'text-[#157A52]'} />
+                                    {showDashboard ? 'Tutup Ikhtisar' : 'Lihat Semua Unit'}
                                 </button>
 
                                 <select
-                                    className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 min-w-[230px] shadow-xs focus:ring-2 focus:ring-blue-100 outline-none"
+                                    className="px-3.5 py-2.5 bg-white border border-[#DCE5DF] rounded-xl font-bold text-sm text-[#13261E] min-w-[230px] shadow-2xs focus:ring-2 focus:ring-[#157A52]/20 focus:border-[#157A52] outline-none"
                                     value={selectedUnitId}
                                     onChange={e => {
                                         setSelectedUnitId(e.target.value);
@@ -6073,9 +6073,9 @@ function RABContent() {
                                 </select>
                             </>
                         ) : (
-                            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-blue-50/80 border border-blue-200/80 rounded-xl shadow-xs min-w-[190px]">
-                                <Building2 size={15} className="text-blue-600 shrink-0" />
-                                <span className="font-bold text-blue-900 text-sm">
+                            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-[#E9F5EF] border border-[#C6E3D5] rounded-xl shadow-2xs min-w-[190px]">
+                                <Building2 size={15} className="text-[#157A52] shrink-0" />
+                                <span className="font-bold text-[#0D6844] text-sm">
                                     {currentUser?.role === 'admin_unit'
                                         ? (units.find(u => u.id === currentUser.unitId)?.name || 'Unit Saya')
                                         : (fields.find(f => f.id === currentUser.fieldId)?.name || 'Bidang Saya')
@@ -6085,7 +6085,7 @@ function RABContent() {
                         )}
 
                         <select
-                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 min-w-[175px] shadow-xs focus:ring-2 focus:ring-blue-100 outline-none"
+                            className="px-3.5 py-2.5 bg-white border border-[#DCE5DF] rounded-xl font-bold text-sm text-[#13261E] min-w-[175px] shadow-2xs focus:ring-2 focus:ring-[#157A52]/20 focus:border-[#157A52] outline-none"
                             value={selectedYearId}
                             onChange={e => setSelectedYearId(e.target.value)}
                         >
@@ -6097,10 +6097,10 @@ function RABContent() {
 
                     <button
                         onClick={handleExportRAB}
-                        className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 hover:bg-emerald-600 hover:text-white active:scale-95 shadow-xs cursor-pointer"
+                        className="bg-white text-[#13261E] border border-[#DCE5DF] px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 hover:bg-[#F7FAF8] active:scale-95 shadow-2xs cursor-pointer"
                     >
-                        <Download size={15} />
-                        EXPORT EXCEL
+                        <Download size={15} className="text-[#157A52]" />
+                        Export Excel
                     </button>
                 </div>
 
@@ -6286,41 +6286,39 @@ function RABContent() {
                     ) : (
                         /* ===== YAYASAN CONSOLIDATION DASHBOARD ===== */
                         <>
-                    {/* Hero Card: Yayasan Consolidation */}
-                    <div className="bg-gradient-to-br from-[#091730] via-[#0f2347] to-[#064e3b] rounded-[2rem] p-8 lg:p-10 text-white shadow-2xl relative overflow-hidden ring-1 ring-amber-300/30">
-                        <div className="absolute top-0 right-0 p-10 text-amber-300/10 pointer-events-none">
-                            <Building2 size={220} />
-                        </div>
+                    {/* Hero Card: Yayasan Consolidation (Calm Ferna Style) */}
+                    <div className="bg-white rounded-3xl p-7 lg:p-9 text-[#13261E] shadow-xs relative overflow-hidden border border-[#E4EAE6]">
+                        <div className="absolute -top-10 -right-10 w-64 h-64 rounded-full bg-[#E9F5EF]/60 pointer-events-none" />
                         <div className="relative z-10 w-full xl:max-w-7xl">
-                            <div className="flex items-center gap-4 mb-5">
-                                <span className="px-4 py-1.5 bg-emerald-600 border border-amber-300/40 rounded-full text-[10px] font-black uppercase tracking-[0.2em] shadow-lg">
+                            <div className="flex flex-wrap items-center gap-3 mb-4">
+                                <span className="px-3.5 py-1 bg-[#E2F1EA] text-[#0D6844] border border-[#C6E3D5] rounded-full text-[10px] font-bold uppercase tracking-widest">
                                     IKHTISAR YAYASAN
                                 </span>
-                                <span className="text-amber-200/80 font-bold text-xs uppercase tracking-widest italic">Tahun Ajaran {academicYears.find(ay => ay.id === selectedYearId)?.name}</span>
+                                <span className="text-[#6B7E75] font-semibold text-xs uppercase tracking-wider">Tahun Ajaran {academicYears.find(ay => ay.id === selectedYearId)?.name}</span>
                             </div>
 
-                            <h2 className="text-3xl lg:text-4xl font-black tracking-tight italic leading-none mb-7">
-                                Konsolidasi <span className="text-amber-300">Anggaran</span>
+                            <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-[#13261E] leading-tight mb-6">
+                                Konsolidasi <span className="text-[#157A52]">Anggaran</span>
                             </h2>
 
-                            <div className={`grid grid-cols-1 md:grid-cols-2 ${(isBosRecipient && fundSourceFilter === 'BOS') ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-6 lg:gap-8`}>
-                                <div className="space-y-1.5 min-w-0">
-                                    <p className="text-[10px] font-black text-emerald-200/80 uppercase tracking-widest truncate" title="Total RAP">Total RAP</p>
-                                    <h3 className="text-2xl font-black italic truncate" title={formatRupiah(rapData.totalTarget)}>{formatRupiah(rapData.totalTarget)}</h3>
+                            <div className={`grid grid-cols-1 md:grid-cols-2 ${(isBosRecipient && fundSourceFilter === 'BOS') ? 'xl:grid-cols-4' : 'xl:grid-cols-3'} gap-5 bg-[#F7FAF8] p-5 rounded-2xl border border-[#E4EAE6]`}>
+                                <div className="space-y-1 min-w-0">
+                                    <p className="text-[11px] font-semibold text-[#6B7E75] truncate" title="Total RAP">Total RAP</p>
+                                    <h3 className="text-xl lg:text-2xl font-bold text-[#13261E] truncate tabular-nums" title={formatRupiah(rapData.totalTarget)}>{formatRupiah(rapData.totalTarget)}</h3>
                                 </div>
                                 {isBosRecipient && fundSourceFilter === 'BOS' && (
-                                    <div className="space-y-1.5 min-w-0">
-                                        <p className="text-[10px] font-black text-emerald-300 uppercase tracking-widest opacity-80 truncate" title="Total RAP BOS">Total RAP BOS</p>
-                                        <h3 className="text-2xl font-black italic truncate" title={formatRupiah(totalBosAllocated)}>{formatRupiah(totalBosAllocated)}</h3>
+                                    <div className="space-y-1 min-w-0">
+                                        <p className="text-[11px] font-semibold text-[#6B7E75] truncate" title="Total RAP BOS">Total RAP BOS</p>
+                                        <h3 className="text-xl lg:text-2xl font-bold text-[#157A52] truncate tabular-nums" title={formatRupiah(totalBosAllocated)}>{formatRupiah(totalBosAllocated)}</h3>
                                     </div>
                                 )}
-                                <div className="space-y-1.5 min-w-0">
-                                    <p className="text-[10px] font-black text-amber-200/80 uppercase tracking-widest truncate" title="Total RAB">Total RAB</p>
-                                    <h3 className="text-2xl font-black italic truncate" title={formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}>{formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}</h3>
+                                <div className="space-y-1 min-w-0">
+                                    <p className="text-[11px] font-semibold text-[#6B7E75] truncate" title="Total RAB">Total RAB</p>
+                                    <h3 className="text-xl lg:text-2xl font-bold text-[#1E3448] truncate tabular-nums" title={formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}>{formatRupiah(fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense)}</h3>
                                 </div>
-                                <div className="space-y-1.5 min-w-0">
-                                    <p className="text-[10px] font-black text-amber-200/80 uppercase tracking-widest truncate" title="Sisa Rencana Anggaran">Sisa Rencana Anggaran</p>
-                                    <h3 className={`text-2xl font-black italic truncate ${balance < 0 ? 'text-rose-400' : 'text-amber-300'}`} title={formatRupiah(balance)}>
+                                <div className="space-y-1 min-w-0">
+                                    <p className="text-[11px] font-semibold text-[#6B7E75] truncate" title="Sisa Rencana Anggaran">Sisa Rencana Anggaran</p>
+                                    <h3 className={`text-xl lg:text-2xl font-bold truncate tabular-nums ${balance < 0 ? 'text-rose-600' : 'text-[#157A52]'}`} title={formatRupiah(balance)}>
                                         {formatRupiah(balance)}
                                     </h3>
                                 </div>
@@ -6331,10 +6329,10 @@ function RABContent() {
                                     setSelectedUnitId('FOUNDATION');
                                     setShowDashboard(false);
                                 }}
-                                className="mt-8 group flex items-center gap-3 bg-white text-[#0f2347] px-7 py-3.5 rounded-xl font-black text-sm transition-all hover:bg-amber-50 hover:scale-[1.02] active:scale-95 shadow-xl cursor-pointer"
+                                className="mt-6 group inline-flex items-center gap-2.5 bg-[#157A52] hover:bg-[#0F5E3F] text-white px-5 py-3 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-xs cursor-pointer"
                             >
                                 Buka Rincian Konsolidasi
-                                <ChevronRight className="text-emerald-600 group-hover:translate-x-1 transition-transform" />
+                                <ChevronRight size={16} className="text-emerald-100 group-hover:translate-x-0.5 transition-transform" />
                             </button>
                         </div>
                     </div>
@@ -6434,97 +6432,110 @@ function RABContent() {
 
                 /* DETAIL VIEW (HEADER + TABLE/REVIEW) */
                 <div className="flex flex-col gap-4 min-h-[70vh]">
-                    {/* Header Info (Calm Executive Cards) */}
+                    {/* Header Info (Calm Ferna Executive Cards) */}
                     <div className="w-full flex flex-col xl:flex-row gap-3.5">
                         {/* Selected Entity Card */}
-                        <div className="bg-white px-5 py-4 rounded-2xl shadow-xs border border-slate-200/80 flex items-center gap-4 xl:w-[30%]">
-                            <div className="p-3 bg-[#0f2347]/5 border border-[#0f2347]/15 rounded-xl shrink-0">
-                                <Building2 size={24} className="text-[#0f2347]" />
+                        <div className="bg-white px-5 py-4 rounded-2xl shadow-xs border border-[#E4EAE6] flex items-center gap-4 xl:w-[30%]">
+                            <div className="p-3 bg-[#E2F1EA] border border-[#C6E3D5] rounded-xl shrink-0">
+                                <Building2 size={22} className="text-[#157A52]" />
                             </div>
                             <div className="min-w-0">
-                                <h3 className="text-lg font-black text-[#0f2347] tracking-tight leading-snug truncate">
+                                <h3 className="text-lg font-bold text-[#13261E] tracking-tight leading-snug truncate">
                                     {isConsolidation ? 'Yayasan (Konsolidasi)' : (
                                         selectedUnitId.startsWith('FIELD-')
                                             ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
                                             : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
                                     )}
                                 </h3>
-                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-0.5 italic">
-                                    {isConsolidation ? 'KONSOLIDASI DATA STRATEGIS' : (selectedUnitId.startsWith('FIELD-') ? 'BIDANG STRUKTURAL' : 'UNIT PENDIDIKAN')}
+                                <p className="text-[#6B7E75] text-[10px] font-bold uppercase tracking-wider mt-0.5">
+                                    {isConsolidation ? 'Konsolidasi Data Strategis' : (selectedUnitId.startsWith('FIELD-') ? 'Bidang Struktural' : 'Unit Pendidikan')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Quick Stats Cards in Header */}
                         <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 ${isBosRecipient && fundSourceFilter === 'all' ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
-                            <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 border-l-4 border-l-emerald-600 shadow-xs flex flex-col justify-center">
+                            <div className="bg-white px-5 py-4 rounded-2xl border border-[#E4EAE6] shadow-xs flex flex-col justify-center">
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <p className="text-[11px] font-semibold text-[#6B7E75]">
                                         {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
                                     </p>
-                                    <span className="w-2 h-2 rounded-full bg-emerald-600" />
+                                    <span className="w-2 h-2 rounded-full bg-[#157A52]" />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                                <h3 className="text-xl font-bold text-[#13261E] tracking-tight tabular-nums">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget)}
                                 </h3>
                             </div>
                             {isBosRecipient && fundSourceFilter === 'all' && (
-                                <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-center">
+                                <div className="bg-white px-5 py-4 rounded-2xl border border-[#E4EAE6] shadow-xs flex flex-col justify-center">
                                     <div className="flex items-center justify-between gap-2 mb-1">
-                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">RAP BOS</p>
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        <p className="text-[11px] font-semibold text-[#6B7E75]">RAP BOS</p>
+                                        <span className="w-2 h-2 rounded-full bg-[#249A8B]" />
                                     </div>
-                                    <h3 className="text-xl font-black text-slate-900 tracking-tight">{formatRupiah(totalBosAllocated)}</h3>
+                                    <h3 className="text-xl font-bold text-[#13261E] tracking-tight tabular-nums">{formatRupiah(totalBosAllocated)}</h3>
                                 </div>
                             )}
-                            <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 border-l-4 border-l-amber-500 shadow-xs flex flex-col justify-center">
+                            <div className="bg-white px-5 py-4 rounded-2xl border border-[#E4EAE6] shadow-xs flex flex-col justify-center">
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rencana RAB (Total)</p>
-                                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                    <p className="text-[11px] font-semibold text-[#6B7E75]">Rencana RAB (Total)</p>
+                                    <span className="w-2 h-2 rounded-full bg-[#1E3448]" />
                                 </div>
-                                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                                <h3 className="text-xl font-bold text-[#1E3448] tracking-tight tabular-nums">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}
                                 </h3>
                             </div>
-                            <div className={`bg-white px-5 py-4 rounded-2xl border shadow-xs flex flex-col justify-center border-l-4 ${balance < 0 ? 'border-rose-200 border-l-rose-600 bg-rose-50/40' : 'border-slate-200/80 border-l-[#0f2347]'}`}>
+                            <div className={`px-5 py-4 rounded-2xl border shadow-xs flex flex-col justify-center ${balance < 0 ? 'border-rose-200 bg-rose-50/40' : 'border-[#E4EAE6] bg-white'}`}>
                                 <div className="flex items-center justify-between gap-2 mb-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa RAP</p>
-                                    <span className={`w-2 h-2 rounded-full ${balance < 0 ? 'bg-rose-600 animate-ping' : 'bg-[#0f2347]'}`} />
+                                    <p className="text-[11px] font-semibold text-[#6B7E75]">Sisa RAP</p>
+                                    <span className={`w-2 h-2 rounded-full ${balance < 0 ? 'bg-rose-600 animate-ping' : 'bg-[#0D6844]'}`} />
                                 </div>
-                                <h3 className={`text-xl font-black tracking-tight ${balance < 0 ? 'text-rose-600' : 'text-[#0f2347]'}`}>
+                                <h3 className={`text-xl font-bold tracking-tight tabular-nums ${balance < 0 ? 'text-rose-600' : 'text-[#157A52]'}`}>
                                     {formatRupiah(balance)}
                                 </h3>
+                                {(() => {
+                                    const targetNum = fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget;
+                                    const usedNum = fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense);
+                                    const ratio = targetNum > 0 ? Math.min(100, Math.max(0, Math.round((usedNum / targetNum) * 100))) : 0;
+                                    return (
+                                        <div className="mt-2 h-1.5 w-full rounded-full bg-[#E9EEEC] overflow-hidden" title={`Serapan rencana: ${ratio}%`}>
+                                            <div
+                                                className={`h-full rounded-full transition-all duration-500 ${balance < 0 ? 'bg-rose-500' : 'bg-[#157A52]'}`}
+                                                style={{ width: `${ratio}%` }}
+                                            />
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </div>
 
                     {/* Superadmin Pending RAB Review Banner */}
                     {isSuperAdmin && pendingPlans.length > 0 && activeTab !== 'REVIEW' && (
-                        <div className="w-full bg-gradient-to-r from-[#0f2347] via-[#142e5c] to-emerald-800 rounded-2xl px-5 py-4 text-white shadow-lg shadow-[#0f2347]/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-300/35 animate-in fade-in slide-in-from-top-4 duration-300">
+                        <div className="w-full bg-[#162922] rounded-2xl px-5 py-4 text-white shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-[#244036] animate-in fade-in slide-in-from-top-4 duration-300">
                             <div className="flex items-center gap-3.5">
-                                <div className="p-2.5 bg-amber-400/15 border border-amber-300/30 rounded-xl backdrop-blur-md shadow-inner shrink-0">
-                                    <Wallet size={22} className="text-amber-300" />
+                                <div className="p-2.5 bg-[#157A52]/30 border border-emerald-400/25 rounded-xl shrink-0">
+                                    <Wallet size={20} className="text-emerald-300" />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="bg-amber-400/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-amber-200 border border-amber-300/30">
+                                        <span className="bg-[#157A52] px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider text-emerald-50">
                                             Perhatian Yayasan
                                         </span>
-                                        <span className="text-[11px] font-bold text-slate-200">TA {activeYearName || '2026-2027'}</span>
+                                        <span className="text-[11px] font-semibold text-emerald-100/75">TA {activeYearName || '2026-2027'}</span>
                                     </div>
-                                    <h4 className="text-sm font-black tracking-tight text-white mt-0.5">
+                                    <h4 className="text-sm font-bold tracking-tight text-white mt-0.5">
                                         Ada {pendingPlans.length} Pengajuan / Usulan Revisi RAB Menunggu Review Yayasan!
                                     </h4>
-                                    <p className="text-[11px] text-slate-200/90 font-medium">
+                                    <p className="text-[11px] text-emerald-100/75 font-medium">
                                         Unit telah mengirimkan pengajuan RAB atau usulan perubahan anggaran. Silakan tinjau rincian untuk di-ACC atau ditolak.
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setActiveTab('REVIEW')}
-                                className="px-5 py-2.5 bg-white text-[#0f2347] font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-50 transition-all shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
+                                className="px-4 py-2.5 bg-white text-[#13261E] font-bold text-xs rounded-xl shadow-xs hover:bg-[#E9F5EF] transition-all shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
                             >
-                                <Wallet size={15} className="text-emerald-600" />
+                                <Wallet size={15} className="text-[#157A52]" />
                                 Buka Review Pengajuan ({pendingPlans.length})
                             </button>
                         </div>
@@ -6563,14 +6574,14 @@ function RABContent() {
                     )}
 
                     {/* Content Component */}
-                    <div className="w-full flex-1 bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col">
+                    <div className="w-full flex-1 bg-white border border-[#E4EAE6] rounded-2xl shadow-xs overflow-hidden flex flex-col">
                         {/* Tab Switcher */}
-                        <div className="bg-slate-50/70 flex border-b border-slate-200/70 overflow-x-auto">
+                        <div className="bg-[#F7FAF8] flex border-b border-[#E3E9E5] overflow-x-auto">
                             <button
                                 onClick={() => setActiveTab('EXPENSE')}
-                                className={`px-6 py-3.5 font-black text-xs uppercase tracking-[0.16em] transition-all relative cursor-pointer ${activeTab === 'EXPENSE' ? 'text-emerald-700 bg-white' : 'text-slate-400 hover:text-slate-700'}`}
+                                className={`px-6 py-3.5 font-bold text-xs uppercase tracking-wider transition-all relative cursor-pointer ${activeTab === 'EXPENSE' ? 'text-[#157A52] bg-white' : 'text-[#6B7E75] hover:text-[#13261E]'}`}
                             >
-                                {activeTab === 'EXPENSE' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-emerald-600" />}
+                                {activeTab === 'EXPENSE' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#157A52]" />}
                                 <div className="flex items-center gap-2">
                                     <ArrowUpCircle size={15} />
                                     Input Anggaran
@@ -6579,14 +6590,14 @@ function RABContent() {
                             {isSuperAdmin && (
                                 <button
                                     onClick={() => setActiveTab('REVIEW')}
-                                    className={`px-6 py-3.5 font-black text-xs uppercase tracking-[0.16em] transition-all relative cursor-pointer ${activeTab === 'REVIEW' ? 'text-[#0f2347] bg-white' : 'text-slate-400 hover:text-slate-700'}`}
+                                    className={`px-6 py-3.5 font-bold text-xs uppercase tracking-wider transition-all relative cursor-pointer ${activeTab === 'REVIEW' ? 'text-[#13261E] bg-white' : 'text-[#6B7E75] hover:text-[#13261E]'}`}
                                 >
-                                    {activeTab === 'REVIEW' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#0f2347]" />}
+                                    {activeTab === 'REVIEW' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#157A52]" />}
                                     <div className="flex items-center gap-2">
                                         <Wallet size={15} />
                                         <span>Review Pengajuan</span>
                                         {pendingPlans.length > 0 && (
-                                            <span className="bg-emerald-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-xs">
+                                            <span className="bg-[#157A52] text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-2xs">
                                                 {pendingPlans.length}
                                             </span>
                                         )}
@@ -7366,16 +7377,16 @@ function RABContent() {
                                     {/* Sub-Modal (Rincian Entry) */}
                                     {showCompModal && (
                                          <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
-                                            <div className="fixed inset-0 bg-[#0f2347]/50 backdrop-blur-xs" onClick={() => setShowCompModal(false)} />
-                                            <div className="bg-white rounded-3xl w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col border border-slate-200/80 max-h-[88vh]">
-                                                <div className="bg-[#0f2347] border-b border-amber-300/25 px-6 py-4 text-white flex items-center justify-between">
+                                            <div className="fixed inset-0 bg-[#142920]/40 backdrop-blur-xs" onClick={() => setShowCompModal(false)} />
+                                            <div className="bg-white rounded-3xl w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col border border-[#E4EAE6] max-h-[88vh]">
+                                                <div className="bg-[#F7FAF8] border-b border-[#E3E9E5] px-6 py-4 text-[#13261E] flex items-center justify-between">
                                                     <div>
-                                                        <h3 className="text-lg font-black italic uppercase tracking-tight">{isReadOnlyComp ? 'Lihat Rincian' : 'Detail Rincian'}</h3>
-                                                        <p className="text-[10px] font-bold text-amber-200/80 uppercase tracking-widest mt-0.5">
-                                                            {isReadOnlyComp ? 'Rincian Telah Disetujui/Mengantre' : (editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru')}
+                                                        <h3 className="text-lg font-bold tracking-tight">{isReadOnlyComp ? 'Lihat Rincian' : 'Detail Rincian'}</h3>
+                                                        <p className="text-[11px] font-semibold text-[#6B7E75] mt-0.5">
+                                                            {isReadOnlyComp ? 'Rincian Telah Disetujui / Mengantre' : (editingCompIdx !== null ? 'Perbarui Rincian Anggaran' : 'Tambah Rincian Anggaran Baru')}
                                                         </p>
                                                     </div>
-                                                    <button onClick={() => setShowCompModal(false)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all cursor-pointer" title="Tutup (Esc)"><X size={18} /></button>
+                                                    <button onClick={() => setShowCompModal(false)} className="p-2 bg-white hover:bg-[#EEF3F0] border border-[#DCE5DF] text-[#5C6F66] hover:text-[#13261E] rounded-xl transition-all cursor-pointer" title="Tutup (Esc)"><X size={18} /></button>
                                                 </div>
 
                                                 <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">

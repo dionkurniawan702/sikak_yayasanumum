@@ -1,15 +1,17 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { formatRupiah, formatTanggal } from '../utils/format';
 import { hitungSaldoAkun } from '../utils/accounting';
 import { hitungNilaiBuku } from '../utils/depreciation';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Landmark, TrendingUp, TrendingDown, HardDrive, ArrowUpRight, ArrowDownRight, Clock, Search, Gem, Trash2 } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Landmark, TrendingUp, HardDrive, ArrowUpRight, ArrowDownRight, Clock, Send, Plus, Trash2 } from 'lucide-react';
 import CurrencyDisplay from '../components/CurrencyDisplay';
 
-const COLORS = ['#0f2347', '#059669', '#d4af37', '#1e40af', '#10b981', '#b45309'];
+const COLORS = ['#DF6B45', '#475D70', '#D49B27', '#157A52', '#7C9387'];
 
 export default function Dashboard() {
+    const navigate = useNavigate();
     const { state, dispatch } = useApp();
     const journals = state.journals.filter(j => !j.isDeleted);
     const accounts = state.accounts.filter(a => !a.isDeleted);
@@ -60,117 +62,269 @@ export default function Dashboard() {
 
     const recentJournals = [...journals].sort((a, b) => b.id.localeCompare(a.id)).slice(0, 5);
 
+    const pieTotal = pieData.reduce((s, d) => s + d.value, 0);
+    const netPeriod = totalPenghimpunan - totalBeban;
+    const spendingRatio = totalPenghimpunan > 0 ? Math.min(100, Math.round((totalBeban / totalPenghimpunan) * 100)) : 0;
+
     return (
-        <div className="p-6 lg:p-8">
-            <div className="flex justify-between items-center mb-8 gap-4 flex-wrap">
+        <div className="p-4 lg:p-8 max-w-[1440px] mx-auto w-full space-y-5 animate-in fade-in duration-500">
+            {/* Page Title Row + Quick Action Buttons (Ferna style) */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-black text-[#0f2347] tracking-tight">Executive Dashboard</h2>
-                    <p className="text-slate-500 font-medium">Monitoring Real-time Keuangan Yayasan Umum</p>
+                    <h2 className="text-2xl lg:text-[28px] font-extrabold text-[#13261E] tracking-tight leading-tight">
+                        Ikhtisar Keuangan
+                    </h2>
+                    <p className="text-xs font-medium text-[#6A7B73] mt-0.5">
+                        Aset kelolaan, arus dana tahun {currentYear}, dan posisi transaksi aktif Yayasan Umum.
+                    </p>
                 </div>
-                <div className="bg-white px-4 py-2 rounded-xl shadow-xs border border-slate-200/80 flex items-center gap-2">
-                    <Clock size={16} className="text-emerald-600" />
-                    <span className="text-sm font-bold text-[#0f2347]">{formatTanggal(new Date())}</span>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                    <button
+                        type="button"
+                        onClick={() => navigate('/anggaran/rab?source=Yayasan')}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-white hover:bg-[#F2F6F4] text-[#24372F] border border-[#D9E2DC] rounded-xl text-xs font-bold shadow-[0_1px_2px_rgba(16,32,26,0.03)] transition-all cursor-pointer active:scale-95"
+                    >
+                        <Landmark size={14} className="text-[#157A52]" />
+                        Lihat RAB
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/jurnal')}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#157A52] hover:bg-[#0F5E3F] text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer active:scale-95"
+                    >
+                        <Send size={14} />
+                        Catat Jurnal
+                    </button>
                 </div>
             </div>
 
-            {/* Statistics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                {[
-                    { title: 'Total Aset Kelolaan', value: totalAset, icon: <Landmark />, iconClass: 'bg-[#0f2347]/5 text-[#0f2347] border-[#0f2347]/15', borderAccent: 'border-l-[#0f2347]', trend: '+12%', isUp: true },
-                    { title: 'Penerimaan Periode', value: totalPenghimpunan, icon: <TrendingUp />, iconClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/70', borderAccent: 'border-l-emerald-600', trend: '+8.5%', isUp: true },
-                    { title: 'Beban Operasional', value: totalBeban, icon: <TrendingDown />, iconClass: 'bg-amber-50 text-amber-700 border-amber-200/70', borderAccent: 'border-l-amber-500', trend: '-2.1%', isUp: false },
-                    { title: 'Aset Tetap (NBV)', value: totalNilaiBukuAset, icon: <HardDrive />, iconClass: 'bg-emerald-50/70 text-[#0f2347] border-amber-200/70', borderAccent: 'border-l-amber-600', trend: 'Stabil', isUp: true },
-                ].map((stat, idx) => (
-                    <div key={idx} className={`bg-white p-6 rounded-2xl shadow-xs border border-slate-200/80 border-l-4 ${stat.borderAccent} relative overflow-hidden group hover:shadow-lg transition-all duration-300`}>
-                        <div className="flex justify-between mb-4 relative z-10">
-                            <div className={`p-3 rounded-xl border ${stat.iconClass} group-hover:scale-105 transition-transform`}>
-                                {stat.icon}
+            {/* Ferna Top 3-Part Summary Strip */}
+            <div className="bg-white rounded-2xl border border-[#E4EAE6] shadow-[0_1px_2px_rgba(16,32,26,0.03)] grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-[#ECF0ED]">
+                {/* Part 1: Total Aset Kelolaan */}
+                <div className="lg:col-span-4 p-5 lg:p-6 flex flex-col justify-between gap-3">
+                    <div>
+                        <p className="text-xs font-semibold text-[#6A7B73]">Total Aset Kelolaan</p>
+                        <h3 className="text-2xl lg:text-[30px] font-extrabold text-[#13261E] tracking-tight tabular-nums mt-1 leading-none">
+                            <CurrencyDisplay value={totalAset} />
+                        </h3>
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#E4F1EA] text-[#0D6844] text-[10px] font-bold tabular-nums">
+                            <ArrowUpRight size={11} /> Aset Tetap (NBV)
+                        </span>
+                        <span className="text-xs font-bold text-[#45574F] tabular-nums">
+                            {formatRupiah(totalNilaiBukuAset)}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Part 2: Segmented Asset Composition Bar + Legend */}
+                <div className="lg:col-span-5 p-5 lg:p-6 flex flex-col justify-between gap-4">
+                    <div className="w-full h-3 rounded-full bg-[#EFF4F1] overflow-hidden flex gap-0.5 p-0.5">
+                        {pieData.length > 0 && pieTotal > 0 ? (
+                            pieData.map((d, idx) => (
+                                <div
+                                    key={idx}
+                                    style={{
+                                        width: `${Math.max(4, (d.value / pieTotal) * 100)}%`,
+                                        backgroundColor: COLORS[idx % COLORS.length]
+                                    }}
+                                    className="h-full rounded-full transition-all"
+                                    title={`${d.name}: ${formatRupiah(d.value)}`}
+                                />
+                            ))
+                        ) : (
+                            <div className="w-full h-full bg-[#DCE5DF] rounded-full" />
+                        )}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-2">
+                        {pieData.slice(0, 4).map((d, idx) => (
+                            <div key={idx} className="flex items-center justify-between gap-2 min-w-0 text-xs">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                    <span
+                                        className="w-2 h-2 rounded-full shrink-0"
+                                        style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                                    />
+                                    <span className="font-medium text-[#52635B] truncate" title={d.name}>{d.name}</span>
+                                </div>
+                                <span className="font-bold text-[#13261E] tabular-nums shrink-0">{formatRupiah(d.value)}</span>
                             </div>
-                            <div className={`flex items-center gap-1 text-[10px] font-black px-2 py-1 rounded-full h-fit ${stat.isUp ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/60' : 'bg-amber-50 text-amber-800 border border-amber-200/70'}`}>
-                                {stat.isUp ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                                {stat.trend}
+                        ))}
+                    </div>
+                </div>
+
+                {/* Part 3: Selisih Periode & Rasio Beban */}
+                <div className="lg:col-span-3 p-5 lg:p-6 flex flex-col justify-between gap-3">
+                    <div>
+                        <p className="text-xs font-semibold text-[#6A7B73]">Saldo Bersih ({currentYear})</p>
+                        <h3 className={`text-2xl font-extrabold tracking-tight tabular-nums mt-1 leading-none ${netPeriod < 0 ? 'text-rose-600' : 'text-[#157A52]'}`}>
+                            {formatRupiah(netPeriod)}
+                        </h3>
+                        <p className="text-[11px] font-medium text-[#6A7B73] mt-1.5 tabular-nums">
+                            {spendingRatio}% beban terhadap penerimaan periode
+                        </p>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-[#E8EFEA] overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all duration-500 ${netPeriod < 0 ? 'bg-rose-500' : 'bg-[#157A52]'}`}
+                            style={{ width: `${Math.max(6, Math.min(100, 100 - spendingRatio))}%` }}
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* Cash Flow Chart + Right Breakdown Card (Ferna 2-column split) */}
+            <div className="bg-white rounded-2xl border border-[#E4EAE6] shadow-[0_1px_2px_rgba(16,32,26,0.03)] p-5 lg:p-6">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-stretch">
+                    {/* Left 8 Cols: Cash Flow BarChart */}
+                    <div className="xl:col-span-8 flex flex-col">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+                            <div>
+                                <h4 className="text-base font-extrabold text-[#13261E] tracking-tight">
+                                    Arus Kas &amp; Aktivitas Dana
+                                </h4>
+                                <p className="text-xs font-medium text-[#6A7B73]">
+                                    Perbandingan penerimaan dan pengeluaran bulanan Yayasan
+                                </p>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-semibold text-[#45574F]">
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#1E3448]" /> Masuk
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-[#DF6B45]" /> Keluar
+                                </span>
                             </div>
                         </div>
-                        <div className="relative z-10">
-                            <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{stat.title}</p>
-                            <h3 className="text-2xl font-black text-slate-900 leading-none">
-                                <CurrencyDisplay value={stat.value} useColor={!stat.isUp && stat.value < 0} />
-                            </h3>
+
+                        <div className="flex-1 min-h-[290px]">
+                            <ResponsiveContainer width="100%" height={295}>
+                                <BarChart data={barData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }} barGap={6}>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#EDF2EF" />
+                                    <XAxis dataKey="bulan" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#7A8A82', fontWeight: 600 }} dy={8} />
+                                    <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#7A8A82', fontWeight: 600 }} tickFormatter={v => `${(v/1000000).toFixed(0)}jt`} />
+                                    <Tooltip
+                                        cursor={{ fill: '#F4F7F5' }}
+                                        formatter={(value) => formatRupiah(value)}
+                                        contentStyle={{ borderRadius: '14px', border: '1px solid #E4EAE6', boxShadow: '0 8px 20px -4px rgba(16,32,26,0.08)', fontSize: '12px', fontWeight: 700 }}
+                                    />
+                                    <Bar dataKey="masuk" name="Penerimaan" fill="#1E3448" radius={[8, 8, 8, 8]} barSize={18} />
+                                    <Bar dataKey="keluar" name="Pengeluaran" fill="#DF6B45" radius={[8, 8, 8, 8]} barSize={18} />
+                                </BarChart>
+                            </ResponsiveContainer>
                         </div>
                     </div>
-                ))}
-            </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-xs border border-slate-200/80">
-                    <h4 className="text-lg font-black text-[#0f2347] mb-6 flex items-center gap-3">
-                        <div className="w-2.5 h-2.5 rounded-full bg-emerald-600"></div>
-                        Aktivitas Dana Yayasan
-                    </h4>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                            <XAxis dataKey="bulan" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} dy={10} />
-                            <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 700 }} tickFormatter={v => `${(v/1000000).toFixed(0)}jt`} />
-                            <Tooltip
-                                cursor={{ fill: '#f8fafc' }}
-                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                            />
-                            <Bar dataKey="masuk" fill="#059669" radius={[6, 6, 0, 0]} barSize={20} />
-                            <Bar dataKey="keluar" fill="#d4af37" radius={[6, 6, 0, 0]} barSize={20} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+                    {/* Right 4 Cols: Soft Sage Inner Summary Panel (Ferna "Where it went") */}
+                    <div className="xl:col-span-4 bg-[#F7FAF8] border border-[#E6ECE8] rounded-xl p-5 flex flex-col justify-between gap-5">
+                        <div>
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#E4F1EA] text-[#0D6844] text-[10px] font-bold mb-2">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#157A52]" />
+                                Periode {currentYear}
+                            </div>
+                            <h4 className="text-lg font-extrabold text-[#13261E] tracking-tight">Ringkasan Arus</h4>
 
-                <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-xs border border-slate-200/80">
-                    <h4 className="text-lg font-black text-[#0f2347] mb-6 flex items-center gap-3">
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#0f2347]"></div>
-                        Komposisi Aset
-                    </h4>
-                    <ResponsiveContainer width="100%" height={300}>
-                        <PieChart>
-                            <Pie data={pieData} innerRadius={80} outerRadius={110} paddingAngle={5} dataKey="value">
-                                {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                            </Pie>
-                            <Tooltip contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
-                            <Legend verticalAlign="bottom" iconType="circle" />
-                        </PieChart>
-                    </ResponsiveContainer>
+                            <div className="grid grid-cols-3 gap-2 mt-4 pb-4 border-b border-[#E3E9E5]">
+                                <div>
+                                    <p className="text-[10px] font-bold text-[#7A8A82] uppercase tracking-wider">Masuk</p>
+                                    <p className="text-xs font-extrabold text-[#157A52] tabular-nums mt-0.5 truncate" title={formatRupiah(totalPenghimpunan)}>
+                                        {formatRupiah(totalPenghimpunan)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-[#7A8A82] uppercase tracking-wider">Keluar</p>
+                                    <p className="text-xs font-extrabold text-[#13261E] tabular-nums mt-0.5 truncate" title={formatRupiah(totalBeban)}>
+                                        {formatRupiah(totalBeban)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-bold text-[#7A8A82] uppercase tracking-wider">Net</p>
+                                    <p className={`text-xs font-extrabold tabular-nums mt-0.5 truncate ${netPeriod >= 0 ? 'text-[#157A52]' : 'text-rose-600'}`} title={formatRupiah(netPeriod)}>
+                                        {formatRupiah(netPeriod)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-4 space-y-3">
+                                <p className="text-[11px] font-bold text-[#6A7B73] uppercase tracking-wider">Komposisi Pos Aset</p>
+                                {pieData.length === 0 ? (
+                                    <p className="text-xs text-[#7A8A82] py-4 text-center">Belum ada saldo akun aset detail.</p>
+                                ) : (
+                                    pieData.slice(0, 4).map((item, idx) => {
+                                        const pct = pieTotal > 0 ? Math.round((item.value / pieTotal) * 100) : 0;
+                                        return (
+                                            <div key={idx} className="space-y-1.5">
+                                                <div className="flex items-center justify-between gap-2 text-xs">
+                                                    <div className="flex items-center gap-2 min-w-0">
+                                                        <span
+                                                            className="w-6 h-6 rounded-lg flex items-center justify-center text-white text-[10px] font-extrabold shrink-0"
+                                                            style={{ backgroundColor: COLORS[idx % COLORS.length] }}
+                                                        >
+                                                            {pct}%
+                                                        </span>
+                                                        <span className="font-semibold text-[#24372F] truncate" title={item.name}>{item.name}</span>
+                                                    </div>
+                                                    <span className="font-bold text-[#13261E] tabular-nums shrink-0">{formatRupiah(item.value)}</span>
+                                                </div>
+                                                <div className="w-full h-1.5 rounded-full bg-[#E5EBE7] overflow-hidden">
+                                                    <div
+                                                        className="h-full rounded-full"
+                                                        style={{ width: `${Math.max(4, pct)}%`, backgroundColor: COLORS[idx % COLORS.length] }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="pt-3 border-t border-[#E3E9E5] flex items-center justify-between text-xs">
+                            <span className="font-semibold text-[#6A7B73]">Aset Tetap (NBV)</span>
+                            <span className="font-extrabold text-[#13261E] tabular-nums">{formatRupiah(totalNilaiBukuAset)}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             {/* Audit Trail */}
-            <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-xs border border-slate-200/80">
-                <h4 className="text-lg font-black text-[#0f2347] mb-6 flex items-center gap-3">
-                    <Clock size={20} className="text-emerald-600" />
-                    Jejak Transaksi Terbaru
-                </h4>
+            <div className="bg-white p-5 lg:p-6 rounded-2xl border border-[#E4EAE6] shadow-[0_1px_2px_rgba(16,32,26,0.03)]">
+                <div className="flex items-center justify-between gap-4 mb-4">
+                    <h4 className="text-base font-extrabold text-[#13261E] flex items-center gap-2.5">
+                        <span className="w-7 h-7 rounded-lg bg-[#E4F1EA] text-[#157A52] flex items-center justify-center">
+                            <Clock size={15} />
+                        </span>
+                        Jejak Transaksi Terbaru
+                    </h4>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/jurnal')}
+                        className="text-xs font-bold text-[#157A52] hover:text-[#0F5E3F] cursor-pointer"
+                    >
+                        Lihat semua →
+                    </button>
+                </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="border-b border-slate-100 uppercase text-[10px] font-black tracking-widest text-slate-400">
-                                <th className="pb-4">No. Reff</th>
-                                <th className="pb-4">Deskripsi</th>
-                                <th className="pb-4 text-right">Nominal</th>
-                                <th className="pb-4 text-center">Aksi</th>
+                            <tr className="border-b border-[#E6ECE8] uppercase text-[10px] font-bold tracking-wider text-[#7A8A82]">
+                                <th className="pb-3">No. Reff</th>
+                                <th className="pb-3">Deskripsi</th>
+                                <th className="pb-3 text-right">Nominal</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-50">
+                        <tbody className="divide-y divide-[#F0F4F1]">
                             {recentJournals.map((j) => (
-                                <tr key={j.id} className="group hover:bg-slate-50 transition-colors">
-                                    <td className="py-4 font-bold text-xs text-emerald-700">{j.id}</td>
-                                    <td className="py-4">
-                                        <p className="font-bold text-slate-700 text-sm">{j.description}</p>
-                                        <p className="text-[10px] text-slate-400">{j.date}</p>
+                                <tr key={j.id} className="group hover:bg-[#F7FAF8] transition-colors">
+                                    <td className="py-3.5 font-bold text-xs text-[#157A52] tabular-nums whitespace-nowrap pr-4">{j.id}</td>
+                                    <td className="py-3.5 pr-4">
+                                        <p className="font-semibold text-[#1E3129] text-sm">{j.description}</p>
+                                        <p className="text-[11px] text-[#7A8A82]">{j.date}</p>
                                     </td>
-                                    <td className="py-4 text-right font-black text-slate-900">
+                                    <td className="py-3.5 text-right font-extrabold text-[#13261E] tabular-nums whitespace-nowrap">
                                         <CurrencyDisplay value={j.entries.reduce((s,e) => s + (e.debit||0), 0)} />
-                                    </td>
-                                    <td className="py-4 text-center">
-                                        <button className="text-slate-200 hover:text-slate-400 transition-colors">
-                                            <Trash2 size={16} />
-                                        </button>
                                     </td>
                                 </tr>
                             ))}

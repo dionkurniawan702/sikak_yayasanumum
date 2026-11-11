@@ -43,15 +43,15 @@ export default function BudgetRow({
     nameColSpan = 1,
     showSemesterColumns = false
 }) {
-    // Theme selection (Emerald Green, Navy Blue & Soft Gold)
+    // Theme selection (Calm Ferna Sage & Emerald)
     const activeClass = isBos
-        ? 'bg-emerald-600 text-white shadow-sm'
-        : (isField ? 'bg-[#0f2347] text-amber-200 shadow-sm' : 'bg-emerald-600 text-white shadow-sm');
+        ? 'bg-[#157A52] text-white shadow-2xs'
+        : (isField ? 'bg-[#162922] text-white shadow-2xs' : 'bg-[#157A52] text-white shadow-2xs');
 
     const isPergeseran = data.sisa < 0 && (data.isUnlocked || data.isShift);
     const sisaColor = data.sisa < 0
         ? (isPergeseran ? 'bg-amber-50 text-amber-800 border border-amber-300' : 'bg-rose-50 text-rose-600 border border-rose-200')
-        : 'bg-emerald-50 text-emerald-700 border border-emerald-200/70';
+        : 'bg-[#E9F5EF] text-[#157A52] border border-[#C6E3D5]';
 
     const hasUnbalancedComponents = React.useMemo(() => {
         if (!data.breakdown) return false;
@@ -115,7 +115,7 @@ export default function BudgetRow({
 
                         {/* 2. Limit (RAP) */}
                         <td className="budget-cell budget-cell-number py-3.5 px-4 text-right">
-                            <span className="font-black text-slate-900 text-xs italic tracking-tight">
+                            <span className="font-bold text-[#13261E] text-xs tracking-tight tabular-nums">
                                 {formatCurrency(data.rap)}
                             </span>
                         </td>
@@ -124,17 +124,17 @@ export default function BudgetRow({
                         <td className="budget-cell budget-cell-number py-3.5 px-4 text-right">
                             <div className="flex flex-col items-end">
                                 <div className="flex items-center gap-1.5 justify-end">
-                                    <span className="text-[10px] font-bold text-slate-400">Realisasi:</span>
-                                    <span className="font-black text-slate-800 text-xs italic">
+                                    <span className="text-[10px] font-semibold text-[#6B7E75]">Realisasi:</span>
+                                    <span className="font-bold text-[#13261E] text-xs tabular-nums">
                                         {formatCurrency(data.spentS1 || 0)}
                                     </span>
                                 </div>
                                 <div className="flex items-center gap-1.5 mt-1 justify-end flex-wrap">
-                                    <span className="text-[10px] font-bold text-slate-400">
+                                    <span className="text-[10px] font-semibold text-[#6B7E75] tabular-nums">
                                         Pagu: {formatCurrency(data.budgetS1 || 0)}
                                     </span>
                                     <span className="text-slate-300">•</span>
-                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black italic ${(data.surplusS1 || 0) > 0 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : ((data.surplusS1 || 0) < 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-slate-400 bg-slate-50')}`}>
+                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-bold tabular-nums ${(data.surplusS1 || 0) > 0 ? 'bg-[#E9F5EF] text-[#157A52] border border-[#C6E3D5]' : ((data.surplusS1 || 0) < 0 ? 'bg-rose-50 text-rose-600 border border-rose-200' : 'text-[#6B7E75] bg-[#F2F6F4]')}`}>
                                         {(data.surplusS1 || 0) > 0 ? `Belum Terpakai: ${formatCurrency(data.surplusS1)}` : ((data.surplusS1 || 0) < 0 ? `Lebih Terpakai: ${formatCurrency(Math.abs(data.surplusS1))}` : 'Belum Terpakai: Rp 0')}
                                     </span>
                                 </div>
@@ -143,7 +143,7 @@ export default function BudgetRow({
 
                         {/* 4. Smt 2 (Rencana) */}
                         <td className="budget-cell budget-cell-number py-3.5 px-4 text-right">
-                            <span className="font-black text-[#0f2347] text-xs italic">
+                            <span className="font-bold text-[#13261E] text-xs tabular-nums">
                                 {formatCurrency(data.budgetS2 || 0)}
                             </span>
                         </td>
@@ -151,16 +151,16 @@ export default function BudgetRow({
                         {/* 5. Total RAB & Saldo Akhir */}
                         <td className="budget-cell budget-cell-number py-3.5 px-4 text-right">
                             <div className="flex flex-col items-end">
-                                <span className="font-black text-slate-900 text-xs italic">
+                                <span className="font-bold text-[#13261E] text-xs tabular-nums">
                                     {formatCurrency(data.rab || 0)}
                                 </span>
                                 {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
-                                    <span className="text-[8px] text-slate-400 font-bold line-through">
+                                    <span className="text-[8px] text-[#8DA096] font-bold line-through tabular-nums">
                                         Semula: {formatCurrency(data.oldRab ?? ((data.rab || 0) - data.totalNetChange))}
                                     </span>
                                 )}
                                 <div className="mt-1">
-                                    <span className={`inline-block font-black px-2.5 py-0.5 rounded-full text-[10px] shadow-sm ${sisaColor}`}>
+                                    <span className={`inline-block font-bold px-2.5 py-0.5 rounded-full text-[10px] shadow-2xs tabular-nums ${sisaColor}`}>
                                         {isPergeseran ? `🔄 Pergeseran: +${formatCurrency(Math.abs(data.sisa))}` : `Sisa: ${formatCurrency(data.sisa)}`}
                                     </span>
                                 </div>
@@ -169,7 +169,7 @@ export default function BudgetRow({
 
                         {/* 6. Aksi */}
                         <td 
-                            className={`budget-cell py-3.5 px-5 text-right sticky right-0 bg-white group-hover:bg-slate-50 transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)] ${isActionOpen ? 'z-[100]' : 'z-20'}`}
+                            className={`budget-cell py-3.5 px-5 text-right sticky right-0 bg-white group-hover:bg-[#F7FAF8] transition-colors shadow-[-4px_0_10px_rgba(0,0,0,0.03)] ${isActionOpen ? 'z-[100]' : 'z-20'}`}
                             style={{ minWidth: '110px', width: '120px' }}
                             onClick={(e) => e.stopPropagation()}
                         >
@@ -182,14 +182,14 @@ export default function BudgetRow({
                     <>
                         <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" colSpan={nameColSpan}>
                             <div className="flex items-center gap-3 py-1">
-                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'}`}>
+                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center transition-all ${isExpanded ? activeClass : 'bg-[#EEF3F0] text-[#5C6F66] group-hover:bg-[#E2ECE6]'}`}>
                                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                                 </span>
                                 <div className="flex flex-col min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
-                                        <span className="font-black text-slate-800 tracking-tight text-sm">{data.name}</span>
+                                        <span className="font-bold text-[#13261E] tracking-tight text-sm">{data.name}</span>
                                         {data.typeLabel && (
-                                            <span className="text-[9px] font-black text-[#0f2347] bg-[#0f2347]/5 px-2 py-0.5 rounded-md border border-[#0f2347]/20 uppercase tracking-wider whitespace-nowrap">
+                                            <span className="text-[9px] font-bold text-[#0D6844] bg-[#E2F1EA] px-2 py-0.5 rounded-md border border-[#C6E3D5] uppercase tracking-wider whitespace-nowrap">
                                                 {data.typeLabel.replace(/\s*\(USULAN REVISI\)/i, '')}
                                             </span>
                                         )}
@@ -197,31 +197,31 @@ export default function BudgetRow({
                                     {(data.status || (data.totalNetChange !== undefined && data.totalNetChange !== 0) || data.typeLabel?.includes('USULAN REVISI') || hasUnbalancedComponents) && (
                                         <div className="flex items-center gap-1.5 flex-wrap mt-1">
                                             {data.status && (
-                                                <span className={`w-fit px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${
-                                                    data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70' :
-                                                    (data.status === 'PENDING' ? 'bg-rose-50 text-rose-700 border border-rose-200/70' : 'bg-slate-100 text-slate-500 border border-slate-200')
+                                                <span className={`w-fit px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider whitespace-nowrap ${
+                                                    data.status === 'APPROVED' ? 'bg-[#E9F5EF] text-[#157A52] border border-[#C6E3D5]' :
+                                                    (data.status === 'PENDING' ? 'bg-rose-50 text-rose-700 border border-rose-200/70' : 'bg-[#F2F6F4] text-[#5C6F66] border border-[#DCE5DF]')
                                                 }`}>
                                                     {data.status === 'APPROVED' ? '● Disetujui' : (data.status === 'PENDING' ? '● Menunggu Review' : '● Draft')}
                                                 </span>
                                             )}
                                             {data.totalNetChange !== undefined && data.totalNetChange !== 0 ? (
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black tracking-wide uppercase border whitespace-nowrap ${
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wide uppercase border whitespace-nowrap tabular-nums ${
                                                     data.totalNetChange > 0 
                                                         ? 'bg-amber-50 text-amber-800 border-amber-300' 
-                                                        : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                                        : 'bg-[#E9F5EF] text-[#157A52] border-[#C6E3D5]'
                                                 }`}>
                                                     <span>Revisi:</span>
                                                     <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
                                                 </span>
                                             ) : (
                                                 data.typeLabel?.includes('USULAN REVISI') && (
-                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black tracking-wide uppercase bg-amber-50 text-amber-900 border border-amber-200 whitespace-nowrap">
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-bold tracking-wide uppercase bg-amber-50 text-amber-900 border border-amber-200 whitespace-nowrap">
                                                         Revisi
                                                     </span>
                                                 )
                                             )}
                                             {hasUnbalancedComponents && (
-                                                <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                                <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
                                                     <AlertCircle size={10} strokeWidth={2.5} /> Belum Seimbang
                                                 </span>
                                             )}
@@ -230,14 +230,14 @@ export default function BudgetRow({
                                 </div>
                             </div>
                         </td>
-                        <td className="budget-cell budget-cell-number font-black text-slate-900 text-xs italic">
+                        <td className="budget-cell budget-cell-number font-bold text-[#13261E] text-xs tabular-nums">
                             {formatCurrency(data.rap)}
                         </td>
-                        <td className="budget-cell budget-cell-number font-bold text-slate-500 text-xs italic">
+                        <td className="budget-cell budget-cell-number font-semibold text-[#5C6F66] text-xs tabular-nums">
                             <div className="flex flex-col items-end">
-                                <span className="font-black text-slate-900">{formatCurrency(data.rab)}</span>
+                                <span className="font-bold text-[#13261E]">{formatCurrency(data.rab)}</span>
                                 {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
-                                    <span className="text-[9px] text-slate-400 font-bold line-through">
+                                    <span className="text-[9px] text-[#8DA096] font-bold line-through">
                                         Semula: {formatCurrency((data.rab || 0) - data.totalNetChange)}
                                     </span>
                                 )}
@@ -245,7 +245,7 @@ export default function BudgetRow({
                         </td>
                         <td className={`budget-cell budget-cell-number budget-cell-sisa ${isActionOpen ? 'relative z-[100]' : ''}`}>
                             <div className="flex items-center justify-end gap-3">
-                                <span className={`font-black px-3 py-1 rounded-full text-[11px] ${sisaColor}`} title={isPergeseran ? "Pergeseran anggaran antar-pos" : undefined}>
+                                <span className={`font-bold px-3 py-1 rounded-full text-[11px] tabular-nums ${sisaColor}`} title={isPergeseran ? "Pergeseran anggaran antar-pos" : undefined}>
                                     {isPergeseran ? `🔄 Pergeseran: +${formatCurrency(Math.abs(data.sisa))}` : formatCurrency(data.sisa)}
                                 </span>
                                 {actions}
@@ -265,14 +265,14 @@ export default function BudgetRow({
                 return (
                     <React.Fragment key={item.id || idx}>
                         <tr
-                            className={`budget-row-detail group bg-white ${hasSubLevel ? 'cursor-pointer hover:bg-slate-50' : ''}`}
+                            className={`budget-row-detail group bg-white ${hasSubLevel ? 'cursor-pointer hover:bg-[#F7FAF8]' : ''}`}
                             onClick={() => hasSubLevel && onToggleDetailItem && onToggleDetailItem(data.id, item.id)}
                         >
                             <td className="budget-cell budget-cell-name sticky left-0 z-10 bg-inherit" style={{ paddingLeft: '44px' }} colSpan={showSemesterColumns ? 1 : nameColSpan}>
                                 <div className="flex items-center gap-2 py-1">
-                                    <span className="text-slate-300">└</span>
+                                    <span className="text-[#B4C2BA]">└</span>
                                     {hasSubLevel && (
-                                        <span className="text-indigo-400 group-hover:text-indigo-600">
+                                        <span className="text-[#6B7E75] group-hover:text-[#157A52]">
                                             {isDetailExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
                                         </span>
                                     )}

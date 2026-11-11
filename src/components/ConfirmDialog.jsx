@@ -79,13 +79,13 @@ export default function ConfirmDialog({
             aria-modal="true"
         >
             <div
-                className="fixed inset-0 bg-[#0f2347]/50 backdrop-blur-[2px] animate-in fade-in duration-150"
+                className="fixed inset-0 bg-[#142920]/40 backdrop-blur-[2px] animate-in fade-in duration-150"
                 onClick={() => onCancel?.()}
             />
 
             <form
                 onSubmit={handleSubmit}
-                className="relative z-10 w-full max-w-md bg-white rounded-2xl border border-slate-200/90 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+                className="relative z-10 w-full max-w-md bg-white rounded-2xl border border-[#E4EAE6] shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150"
                 onClick={(e) => e.stopPropagation()}
             >
                 <div className="p-6">

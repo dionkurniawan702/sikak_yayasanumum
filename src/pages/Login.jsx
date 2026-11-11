@@ -103,34 +103,33 @@ export default function Login() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            background: 'linear-gradient(135deg, #091730 0%, #0f2347 58%, #064e3b 100%)',
+            background: 'linear-gradient(155deg, #F4F7F5 0%, #E9F3EE 55%, #F4F7F5 100%)',
             padding: '20px'
         }}>
             <div className="card animate-in" style={{
-                maxWidth: '400px',
+                maxWidth: '410px',
                 width: '100%',
                 padding: '40px',
                 borderRadius: '24px',
-                border: '1px solid rgba(212, 175, 55, 0.25)',
-                boxShadow: '0 25px 50px -12px rgba(9, 23, 48, 0.6)'
+                border: '1px solid #E4EAE6',
+                boxShadow: '0 20px 45px -15px rgba(19, 38, 30, 0.12)'
             }}>
                 <div style={{ textAlign: 'center', marginBottom: '32px' }}>
                     <div style={{
-                        width: '64px',
-                        height: '64px',
-                        background: 'linear-gradient(135deg, #059669 0%, #0f2347 100%)',
-                        border: '1.5px solid rgba(212, 175, 55, 0.55)',
+                        width: '60px',
+                        height: '60px',
+                        background: '#157A52',
                         borderRadius: '16px',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         margin: '0 auto 16px auto',
-                        boxShadow: '0 10px 20px -4px rgba(5, 150, 105, 0.35)'
+                        boxShadow: '0 10px 20px -6px rgba(21, 122, 82, 0.35)'
                     }}>
-                        <LogIn size={32} color="#fef3c7" />
+                        <LogIn size={28} color="#FFFFFF" />
                     </div>
-                    <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f2347', marginBottom: '8px' }}>SIKAD DARELIMAN Login</h2>
-                    <p style={{ color: '#64748b', fontSize: '0.875rem' }}>SIKAD (Sistem Keuangan Dareliman) — Berbasis PSAK 35</p>
+                    <h2 style={{ fontSize: '1.5rem', fontWeight: 700, color: '#13261E', marginBottom: '8px', letterSpacing: '-0.02em' }}>SIKAD DARELIMAN</h2>
+                    <p style={{ color: '#6B7E75', fontSize: '0.875rem', fontWeight: 500 }}>Sistem Keuangan Dareliman — Berbasis PSAK 35</p>
                 </div>
 
                 {error && (
