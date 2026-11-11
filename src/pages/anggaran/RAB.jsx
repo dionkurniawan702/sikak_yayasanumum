@@ -17,6 +17,7 @@ import { formatRupiah } from '../../utils/format';
 import { api } from '../../services/api';
 import { calculateRAP } from '../../utils/budgetEngine';
 import BudgetRow from '../../components/BudgetRow';
+import ConfirmDialog from '../../components/ConfirmDialog';
 
 const monthNames = [
     'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
@@ -283,6 +284,57 @@ function RABContent() {
     const [selectedComponents, setSelectedComponents] = useState(new Set());
     const [programSearchQuery, setProgramSearchQuery] = useState('');
     const [showProgramDropdown, setShowProgramDropdown] = useState(false);
+
+    // State dan helper dialog konfirmasi kustom (pengganti window.confirm / window.prompt)
+    const [confirmModal, setConfirmModal] = useState(null);
+    const confirmResolverRef = useRef(null);
+
+    const requestConfirm = useCallback((options) => {
+        const config = typeof options === 'string' ? { message: options } : (options || {});
+        return new Promise((resolve) => {
+            confirmResolverRef.current = resolve;
+            setConfirmModal({
+                title: config.title || 'Konfirmasi Tindakan',
+                message: config.message || '',
+                confirmText: config.confirmText || 'Ya, Lanjutkan',
+                cancelText: config.cancelText || 'Batal',
+                variant: config.variant || 'primary',
+                withInput: !!config.withInput,
+                defaultInputValue: config.defaultInputValue || '',
+                inputPlaceholder: config.inputPlaceholder || 'Tuliskan catatan di sini...'
+            });
+        });
+    }, []);
+
+    const handleConfirmResolve = useCallback((result) => {
+        setConfirmModal(null);
+        if (confirmResolverRef.current) {
+            const resolve = confirmResolverRef.current;
+            confirmResolverRef.current = null;
+            resolve(result);
+        }
+    }, []);
+
+    // Tutup modal / dropdown teratas saat tombol Escape ditekan
+    useEffect(() => {
+        if (!rejectModalItem && !detailAssetItem && !showCompModal && !showImportModal && !editingItem && !openActionMenuId && !isMonthDropdownOpen && !isProgramDropdownOpen) {
+            return;
+        }
+        const handleEscKey = (e) => {
+            if (e.key !== 'Escape') return;
+            if (confirmModal) return; // ConfirmDialog handles its own Escape cleanly
+            if (rejectModalItem) { setRejectModalItem(null); return; }
+            if (detailAssetItem) { setDetailAssetItem(null); return; }
+            if (showCompModal) { setShowCompModal(false); return; }
+            if (showImportModal) { setShowImportModal(false); return; }
+            if (editingItem) { setEditingItem(null); return; }
+            setOpenActionMenuId(null);
+            setIsMonthDropdownOpen(false);
+            setIsProgramDropdownOpen(false);
+        };
+        window.addEventListener('keydown', handleEscKey);
+        return () => window.removeEventListener('keydown', handleEscKey);
+    }, [confirmModal, rejectModalItem, detailAssetItem, showCompModal, showImportModal, editingItem, openActionMenuId, isMonthDropdownOpen, isProgramDropdownOpen]);
 
     const componentSpending = useMemo(() => {
         const map = {};
@@ -1831,7 +1883,14 @@ function RABContent() {
         const plan = plans[planIndex];
         if (!plan) return;
 
-        const reason = window.prompt('Masukkan alasan pembatalan/penolakan rincian ini:', 'Pembatalan persetujuan rincian.');
+        const reason = await requestConfirm({
+            title: 'Batalkan Persetujuan Rincian?',
+            message: 'Masukkan alasan pembatalan atau penolakan rincian ini:',
+            withInput: true,
+            defaultInputValue: 'Pembatalan persetujuan rincian.',
+            variant: 'danger',
+            confirmText: 'Ya, Batalkan Rincian'
+        });
         if (reason === null) return; // User cancelled prompt
 
         const newComps = [...(plan.components || [])];
@@ -1890,9 +1949,15 @@ function RABContent() {
         setTimeout(() => setMessage(null), 4000);
     };
 
-    const handleResetBudget = (itemId) => {
+    const handleResetBudget = async (itemId) => {
         const type = activeTab === 'INCOME' ? 'income' : 'expense';
-        if (!window.confirm('Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)')) return;
+        const ok = await requestConfirm({
+            title: 'Kosongkan Alokasi Bulanan?',
+            message: 'Apakah Anda yakin ingin mengosongkan rincian alokasi bulanan untuk item ini? (Rincian komponen tetap dipertahankan)',
+            variant: 'warning',
+            confirmText: 'Ya, Kosongkan'
+        });
+        if (!ok) return;
 
         setCurrentPlan(prev => ({
             ...prev,
@@ -2200,7 +2265,13 @@ function RABContent() {
 
     const handleBatchApproveSarprasAssets = async (itemsToApprove) => {
         if (!itemsToApprove || itemsToApprove.length === 0) return;
-        if (!window.confirm(`Yakin ingin menyetujui (ACC) sekaligus ${itemsToApprove.length} item pengadaan aset ini?`)) return;
+        const ok = await requestConfirm({
+            title: 'ACC Massal Pengadaan Aset?',
+            message: `Yakin ingin menyetujui (ACC) sekaligus ${itemsToApprove.length} item pengadaan aset ini?`,
+            variant: 'primary',
+            confirmText: 'Ya, ACC Semua'
+        });
+        if (!ok) return;
 
         try {
             setIsSaving(true);
@@ -2272,7 +2343,13 @@ function RABContent() {
 
     const handleCreateRevision = async () => {
         if (!activePlan) return;
-        if (window.confirm("Apakah Anda yakin ingin mengajukan usulan revisi/pergeseran anggaran untuk unit ini?")) {
+        const ok = await requestConfirm({
+            title: 'Buat Draf Usulan Revisi?',
+            message: 'Apakah Anda yakin ingin mengajukan usulan revisi/pergeseran anggaran untuk unit ini?',
+            variant: 'warning',
+            confirmText: 'Ya, Buat Draf Revisi'
+        });
+        if (ok) {
             setIsSaving(true);
             try {
                 const newRevisionPlan = {
@@ -2302,7 +2379,13 @@ function RABContent() {
 
     const handleDeleteRevision = async () => {
         if (!revisionPlan) return;
-        if (window.confirm("Apakah Anda yakin ingin menghapus draf revisi anggaran ini? Tindakan ini akan membatalkan semua perubahan yang belum disetujui.")) {
+        const ok = await requestConfirm({
+            title: 'Hapus Draf Revisi Anggaran?',
+            message: 'Apakah Anda yakin ingin menghapus draf revisi anggaran ini? Tindakan ini akan membatalkan semua perubahan yang belum disetujui.',
+            variant: 'danger',
+            confirmText: 'Ya, Hapus Draf'
+        });
+        if (ok) {
             setIsSaving(true);
             try {
                 dispatch({ type: 'DELETE_RAB_PLAN', payload: revisionPlanId });
@@ -2394,7 +2477,13 @@ function RABContent() {
     const handleToggleAllLocks = async (shouldUnlock) => {
         if (!isSuperAdmin) return;
         const actionText = shouldUnlock ? 'MEMBUKA KUNCI SEMUA' : 'MENGUNCI SEMUA';
-        if (!window.confirm(`Apakah Anda yakin ingin ${actionText} mata anggaran untuk unit ini?`)) return;
+        const ok = await requestConfirm({
+            title: shouldUnlock ? 'Buka Kunci Semua Anggaran?' : 'Kunci Semua Anggaran?',
+            message: `Apakah Anda yakin ingin ${actionText} mata anggaran untuk unit ini?`,
+            variant: 'warning',
+            confirmText: 'Ya, Lanjutkan'
+        });
+        if (!ok) return;
 
         setIsSaving(true);
         try {
@@ -2831,7 +2920,13 @@ function RABContent() {
         const plan = rabPlans.find(p => p.id === planId);
         if (!plan || plan.status !== 'PENDING') return;
 
-        if (!window.confirm('Batalkan pengajuan RAB ini? Status akan kembali ke Draft dan dapat diedit kembali.')) return;
+        const ok = await requestConfirm({
+            title: 'Batalkan Pengajuan RAB?',
+            message: 'Batalkan pengajuan RAB ini? Status akan kembali ke Draft dan dapat diedit kembali.',
+            variant: 'warning',
+            confirmText: 'Ya, Batalkan Pengajuan'
+        });
+        if (!ok) return;
 
         const updatedExpense = { ...plan.expense };
         Object.keys(updatedExpense).forEach(itemId => {
@@ -3282,7 +3377,14 @@ function RABContent() {
         const plan = rabPlans.find(p => p.id === planId);
         if (!plan || plan.status !== 'APPROVED') return;
 
-        const reason = window.prompt('Masukkan alasan pembatalan persetujuan (agar unit tahu apa yang harus diperbaiki):', 'Pembatalan persetujuan untuk perbaikan/penambahan data.');
+        const reason = await requestConfirm({
+            title: 'Batalkan Persetujuan RAB?',
+            message: 'Masukkan alasan pembatalan persetujuan agar unit mengetahui bagian yang perlu diperbaiki:',
+            withInput: true,
+            defaultInputValue: 'Pembatalan persetujuan untuk perbaikan/penambahan data.',
+            variant: 'danger',
+            confirmText: 'Ya, Batalkan Persetujuan'
+        });
         if (reason === null) return; // User cancelled prompt
 
         // Cascade the rejection status to all components
@@ -5537,7 +5639,13 @@ function RABContent() {
                                                                         <button
                                                                             onClick={async () => {
                                                                                 setOpenActionMenuId(null);
-                                                                                if (window.confirm(`Hapus rencana belanja "${plan.description || itemMaster.name}"?`)) {
+                                                                                const ok = await requestConfirm({
+                                                                                    title: 'Hapus Rencana Belanja?',
+                                                                                    message: `Apakah Anda yakin ingin menghapus rencana belanja "${plan.description || itemMaster.name}"?`,
+                                                                                    variant: 'danger',
+                                                                                    confirmText: 'Ya, Hapus'
+                                                                                });
+                                                                                if (ok) {
                                                                                     const updatedPlans = (activePlan[type][itemMaster.id] || []).filter(p => p.id !== plan.id);
                                                                                     const nextPlan = {
                                                                                         ...activePlan,
@@ -5915,71 +6023,69 @@ function RABContent() {
     }, [fundSourceFilter, rapData?.totalTarget, totalIncome, totalBosAllocated, totalExpense, totalExpenseBos]);
 
     return (
-        <div className="p-4 lg:p-10 max-w-[1440px] mx-auto space-y-8 animate-in fade-in duration-700">
-            {/* Top Toolbar */}
-            <div className="flex flex-col gap-6">
-                <div className="flex items-center gap-4 flex-wrap">
-                    {isSuperAdmin ? (
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={() => setShowDashboard(!showDashboard)}
-                                className={`p-3 rounded-lg font-black text-xs transition-all flex items-center gap-2 shadow-sm ${showDashboard
-                                    ? 'bg-slate-900 text-white'
-                                    : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'
-                                    }`}
-                            >
-                                <Layers size={16} />
-                                {showDashboard ? 'TUTUP IKHTISAR' : 'LIHAT SEMUA UNIT'}
-                            </button>
+        <div className="p-4 lg:p-6 max-w-[1440px] mx-auto space-y-4 animate-in fade-in duration-500">
+            {/* Top Toolbar (Compact 1-row controls + metadata strip) */}
+            <div className="flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                        {isSuperAdmin ? (
+                            <>
+                                <button
+                                    onClick={() => setShowDashboard(!showDashboard)}
+                                    className={`px-3.5 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 shadow-xs cursor-pointer ${showDashboard
+                                        ? 'bg-slate-900 text-white'
+                                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                        }`}
+                                >
+                                    <Layers size={15} />
+                                    {showDashboard ? 'TUTUP IKHTISAR' : 'LIHAT SEMUA UNIT'}
+                                </button>
 
-                            <select
-                                className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[250px] shadow-sm focus:ring-2 focus:ring-blue-100 outline-none"
-                                value={selectedUnitId}
-                                onChange={e => {
-                                    setSelectedUnitId(e.target.value);
-                                    setShowDashboard(false);
-                                }}
-                            >
-                                <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
-                                <optgroup label="UNIT">
-                                    {units.filter(u => !u.isDeleted).map(u => {
-                                        const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS')));
-                                        return (
-                                            <option key={u.id} value={u.id}>
-                                                {u.name} {isPending ? '🔴' : ''}
-                                            </option>
-                                        );
-                                    })}
-                                </optgroup>
-                                <optgroup label="BIDANG / LAPANGAN">
-                                    {fields.map(f => {
-                                        const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS')));
-                                        return (
-                                            <option key={f.id} value={`FIELD-${f.id}`}>
-                                                {f.name} {isPending ? '🔴' : ''}
-                                            </option>
-                                        );
-                                    })}
-                                </optgroup>
-                            </select>
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-3 px-5 py-3 bg-blue-50 border border-blue-200 rounded-lg shadow-sm min-w-[200px]">
-                            <Building2 size={16} className="text-blue-500 shrink-0" />
-                            <span className="font-bold text-blue-800 text-sm">
-                                {currentUser?.role === 'admin_unit'
-                                    ? (units.find(u => u.id === currentUser.unitId)?.name || 'Unit Saya')
-                                    : (fields.find(f => f.id === currentUser.fieldId)?.name || 'Bidang Saya')
-                                }
-                            </span>
-                        </div>
-                    )}
+                                <select
+                                    className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 min-w-[230px] shadow-xs focus:ring-2 focus:ring-blue-100 outline-none"
+                                    value={selectedUnitId}
+                                    onChange={e => {
+                                        setSelectedUnitId(e.target.value);
+                                        setShowDashboard(false);
+                                    }}
+                                >
+                                    <option value="FOUNDATION">Yayasan (Konsolidasi)</option>
+                                    <optgroup label="UNIT">
+                                        {units.filter(u => !u.isDeleted).map(u => {
+                                            const isPending = (rabPlans || []).some(p => p.unitId === u.id && p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS')));
+                                            return (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.name} {isPending ? '🔴' : ''}
+                                                </option>
+                                            );
+                                        })}
+                                    </optgroup>
+                                    <optgroup label="BIDANG / LAPANGAN">
+                                        {fields.map(f => {
+                                            const isPending = (rabPlans || []).some(p => p.fieldId === f.id && p.status === 'PENDING' && p.academicYearId === selectedYearId && (fundSourceFilter === 'BOS' ? p.id.endsWith('-BOS') : !p.id.endsWith('-BOS')));
+                                            return (
+                                                <option key={f.id} value={`FIELD-${f.id}`}>
+                                                    {f.name} {isPending ? '🔴' : ''}
+                                                </option>
+                                            );
+                                        })}
+                                    </optgroup>
+                                </select>
+                            </>
+                        ) : (
+                            <div className="flex items-center gap-2.5 px-4 py-2.5 bg-blue-50/80 border border-blue-200/80 rounded-xl shadow-xs min-w-[190px]">
+                                <Building2 size={15} className="text-blue-600 shrink-0" />
+                                <span className="font-bold text-blue-900 text-sm">
+                                    {currentUser?.role === 'admin_unit'
+                                        ? (units.find(u => u.id === currentUser.unitId)?.name || 'Unit Saya')
+                                        : (fields.find(f => f.id === currentUser.fieldId)?.name || 'Bidang Saya')
+                                    }
+                                </span>
+                            </div>
+                        )}
 
-
-
-                    <div className="flex flex-col gap-1">
                         <select
-                            className="p-3 bg-white border border-slate-300 rounded-lg font-bold text-slate-700 min-w-[200px] shadow-sm"
+                            className="px-3.5 py-2.5 bg-white border border-slate-200 rounded-xl font-bold text-sm text-slate-700 min-w-[175px] shadow-xs focus:ring-2 focus:ring-blue-100 outline-none"
                             value={selectedYearId}
                             onChange={e => setSelectedYearId(e.target.value)}
                         >
@@ -5988,20 +6094,17 @@ function RABContent() {
                             ))}
                         </select>
                     </div>
-                </div>
 
-
-                <div className="flex items-center gap-3 ml-auto">
                     <button
                         onClick={handleExportRAB}
-                        className="bg-emerald-50 text-emerald-600 border border-emerald-200 px-6 py-3 rounded-2xl font-black text-xs transition-all flex items-center gap-2 hover:bg-emerald-600 hover:text-white active:scale-95 shadow-sm"
+                        className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-4 py-2.5 rounded-xl font-black text-xs transition-all flex items-center gap-2 hover:bg-emerald-600 hover:text-white active:scale-95 shadow-xs cursor-pointer"
                     >
-                        <Download size={16} />
+                        <Download size={15} />
                         EXPORT EXCEL
                     </button>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 p-6 bg-slate-50 border border-slate-200 rounded-2xl shadow-inner">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 px-4 py-3 bg-slate-50/90 border border-slate-200/80 rounded-xl">
                     <div className="space-y-1">
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sumber Dana</p>
                         <span className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${fundSourceFilter === 'BOS' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
@@ -6330,51 +6433,65 @@ function RABContent() {
             ) : (
 
                 /* DETAIL VIEW (HEADER + TABLE/REVIEW) */
-                <div className="flex flex-col gap-6 min-h-[70vh]">
-                    {/* Header Info */}
-                    <div className="w-full flex flex-col xl:flex-row gap-6">
+                <div className="flex flex-col gap-4 min-h-[70vh]">
+                    {/* Header Info (Calm Executive Cards) */}
+                    <div className="w-full flex flex-col xl:flex-row gap-3.5">
                         {/* Selected Entity Card */}
-                        <div className="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100 flex items-center gap-6 xl:w-1/3">
-                            <div className="p-4 bg-blue-50 rounded-2xl">
-                                <Building2 size={32} className="text-blue-600" />
+                        <div className="bg-white px-5 py-4 rounded-2xl shadow-xs border border-slate-200/80 flex items-center gap-4 xl:w-[30%]">
+                            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl shrink-0">
+                                <Building2 size={24} className="text-blue-600" />
                             </div>
-                            <div>
-                                <h3 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                            <div className="min-w-0">
+                                <h3 className="text-lg font-black text-slate-900 tracking-tight leading-snug truncate">
                                     {isConsolidation ? 'Yayasan (Konsolidasi)' : (
                                         selectedUnitId.startsWith('FIELD-')
                                             ? (fields.find(f => f.id === selectedUnitId.replace('FIELD-', ''))?.name)
                                             : (units.find(u => u.id === selectedUnitId)?.name || 'Pilih Unit')
                                     )}
                                 </h3>
-                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-1 italic">
+                                <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest mt-0.5 italic">
                                     {isConsolidation ? 'KONSOLIDASI DATA STRATEGIS' : (selectedUnitId.startsWith('FIELD-') ? 'BIDANG STRUKTURAL' : 'UNIT PENDIDIKAN')}
                                 </p>
                             </div>
                         </div>
 
                         {/* Quick Stats Cards in Header */}
-                        <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 ${isBosRecipient && fundSourceFilter === 'all' ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} gap-4`}>
-                            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 rounded-[2rem] text-white shadow-xl shadow-emerald-100 relative overflow-hidden group flex flex-col justify-center">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">
-                                    {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
-                                </p>
-                                <h3 className="text-2xl font-black italic">
+                        <div className={`flex-1 grid grid-cols-1 sm:grid-cols-2 ${isBosRecipient && fundSourceFilter === 'all' ? 'xl:grid-cols-4' : 'lg:grid-cols-3'} gap-3`}>
+                            <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 border-l-4 border-l-emerald-500 shadow-xs flex flex-col justify-center">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                        {fundSourceFilter === 'BOS' ? 'RAP BOS' : 'RAP'}
+                                    </p>
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">
                                     {formatRupiah(fundSourceFilter === 'BOS' ? totalBosAllocated : rapData.totalTarget)}
                                 </h3>
                             </div>
                             {isBosRecipient && fundSourceFilter === 'all' && (
-                                <div className="bg-gradient-to-br from-indigo-500 to-blue-600 p-6 rounded-[2rem] text-white shadow-xl shadow-indigo-100 relative overflow-hidden group flex flex-col justify-center">
-                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">RAP BOS</p>
-                                    <h3 className="text-2xl font-black italic">{formatRupiah(totalBosAllocated)}</h3>
+                                <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 border-l-4 border-l-indigo-500 shadow-xs flex flex-col justify-center">
+                                    <div className="flex items-center justify-between gap-2 mb-1">
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">RAP BOS</p>
+                                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                                    </div>
+                                    <h3 className="text-xl font-black text-slate-900 tracking-tight">{formatRupiah(totalBosAllocated)}</h3>
                                 </div>
                             )}
-                            <div className="bg-gradient-to-br from-rose-500 to-pink-600 p-6 rounded-[2rem] text-white shadow-xl shadow-rose-100 relative overflow-hidden group flex flex-col justify-center">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Rencana RAB (Total)</p>
-                                <h3 className="text-2xl font-black italic">{formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}</h3>
+                            <div className="bg-white px-5 py-4 rounded-2xl border border-slate-200/80 border-l-4 border-l-rose-500 shadow-xs flex flex-col justify-center">
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Rencana RAB (Total)</p>
+                                    <span className="w-2 h-2 rounded-full bg-rose-500" />
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                                    {formatRupiah(fundSourceFilter === 'BOS' ? totalExpenseBos : (fundSourceFilter === 'Yayasan' ? (totalExpense - totalExpenseBos) : totalExpense))}
+                                </h3>
                             </div>
-                            <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-6 rounded-[2rem] text-white shadow-xl shadow-blue-100 relative overflow-hidden group flex flex-col justify-center">
-                                <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-2">Sisa RAP</p>
-                                <h3 className={`text-2xl font-black italic ${balance < 0 ? 'text-amber-200 animate-pulse' : 'text-white'}`}>
+                            <div className={`bg-white px-5 py-4 rounded-2xl border shadow-xs flex flex-col justify-center border-l-4 ${balance < 0 ? 'border-rose-200 border-l-rose-600 bg-rose-50/40' : 'border-slate-200/80 border-l-blue-600'}`}>
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sisa RAP</p>
+                                    <span className={`w-2 h-2 rounded-full ${balance < 0 ? 'bg-rose-600 animate-ping' : 'bg-blue-600'}`} />
+                                </div>
+                                <h3 className={`text-xl font-black tracking-tight ${balance < 0 ? 'text-rose-600' : 'text-blue-700'}`}>
                                     {formatRupiah(balance)}
                                 </h3>
                             </div>
@@ -6383,31 +6500,31 @@ function RABContent() {
 
                     {/* Superadmin Pending RAB Review Banner */}
                     {isSuperAdmin && pendingPlans.length > 0 && activeTab !== 'REVIEW' && (
-                        <div className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 rounded-[2rem] p-6 text-white shadow-xl shadow-indigo-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner shrink-0">
-                                    <Wallet size={28} className="text-white animate-bounce" />
+                        <div className="w-full bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-700 rounded-2xl px-5 py-4 text-white shadow-lg shadow-indigo-500/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="flex items-center gap-3.5">
+                                <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md shadow-inner shrink-0">
+                                    <Wallet size={22} className="text-white" />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="bg-white/25 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-indigo-50 border border-white/20">
+                                        <span className="bg-white/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-indigo-50 border border-white/20">
                                             Perhatian Yayasan
                                         </span>
-                                        <span className="text-xs font-bold text-indigo-100">TA {activeYearName || '2026-2027'}</span>
+                                        <span className="text-[11px] font-bold text-indigo-100">TA {activeYearName || '2026-2027'}</span>
                                     </div>
-                                    <h4 className="text-base font-black tracking-tight text-white mt-1">
+                                    <h4 className="text-sm font-black tracking-tight text-white mt-0.5">
                                         Ada {pendingPlans.length} Pengajuan / Usulan Revisi RAB Menunggu Review Yayasan!
                                     </h4>
-                                    <p className="text-xs text-indigo-100/90 font-medium">
+                                    <p className="text-[11px] text-indigo-100/90 font-medium">
                                         Unit telah mengirimkan pengajuan RAB atau usulan perubahan anggaran. Silakan tinjau rincian untuk di-ACC atau ditolak.
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setActiveTab('REVIEW')}
-                                className="px-6 py-3.5 bg-white text-indigo-900 font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-indigo-50 hover:shadow-xl transition-all shrink-0 flex items-center gap-2 active:scale-95"
+                                className="px-5 py-2.5 bg-white text-indigo-900 font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-indigo-50 transition-all shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
                             >
-                                <Wallet size={16} className="text-indigo-600" />
+                                <Wallet size={15} className="text-indigo-600" />
                                 Buka Review Pengajuan ({pendingPlans.length})
                             </button>
                         </div>
@@ -6415,61 +6532,61 @@ function RABContent() {
 
                     {/* Sarpras Pending Asset Notification Banner */}
                     {isSarprasAdmin && pendingSarprasCount > 0 && activeTab !== 'SARPRAS_ASSETS' && (
-                        <div className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-[2rem] p-6 text-white shadow-xl shadow-amber-500/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
-                            <div className="flex items-center gap-4">
-                                <div className="p-3 bg-white/20 rounded-2xl backdrop-blur-md shadow-inner shrink-0">
-                                    <Package size={28} className="text-white animate-bounce" />
+                        <div className="w-full bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 rounded-2xl px-5 py-4 text-white shadow-lg shadow-amber-500/15 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-amber-400/40 animate-in fade-in slide-in-from-top-4 duration-300">
+                            <div className="flex items-center gap-3.5">
+                                <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md shadow-inner shrink-0">
+                                    <Package size={22} className="text-white" />
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <span className="bg-white/25 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider text-amber-50 border border-white/20">
+                                        <span className="bg-white/20 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-amber-50 border border-white/20">
                                             Perhatian Sarpras
                                         </span>
-                                        <span className="text-xs font-bold text-amber-100">TA {activeYearName || '2026-2027'}</span>
+                                        <span className="text-[11px] font-bold text-amber-100">TA {activeYearName || '2026-2027'}</span>
                                     </div>
-                                    <h4 className="text-base font-black tracking-tight text-white mt-1">
+                                    <h4 className="text-sm font-black tracking-tight text-white mt-0.5">
                                         Ada {pendingSarprasCount} Pengajuan Aset Baru Menunggu Verifikasi Sarpras!
                                     </h4>
-                                    <p className="text-xs text-amber-100/90 font-medium">
+                                    <p className="text-[11px] text-amber-100/90 font-medium">
                                         Unit/bidang telah mengajukan rincian pengadaan aset. Silakan lakukan verifikasi dan persetujuan agar perencanaan aset terdata rapi.
                                     </p>
                                 </div>
                             </div>
                             <button
                                 onClick={() => setActiveTab('SARPRAS_ASSETS')}
-                                className="px-6 py-3.5 bg-white text-amber-800 font-black text-xs uppercase tracking-widest rounded-2xl shadow-lg hover:bg-amber-50 hover:shadow-xl transition-all shrink-0 flex items-center gap-2 active:scale-95"
+                                className="px-5 py-2.5 bg-white text-amber-800 font-black text-xs uppercase tracking-widest rounded-xl shadow-md hover:bg-amber-50 transition-all shrink-0 flex items-center gap-2 active:scale-95 cursor-pointer"
                             >
-                                <Package size={16} className="text-amber-600" />
+                                <Package size={15} className="text-amber-600" />
                                 Buka Verifikasi Aset ({pendingSarprasCount})
                             </button>
                         </div>
                     )}
 
                     {/* Content Component */}
-                    <div className="w-full flex-1 bg-white border border-slate-100 rounded-[2rem] shadow-sm overflow-hidden flex flex-col">
+                    <div className="w-full flex-1 bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden flex flex-col">
                         {/* Tab Switcher */}
-                        <div className="bg-slate-50/50 flex border-b border-slate-100 overflow-x-auto">
+                        <div className="bg-slate-50/70 flex border-b border-slate-200/70 overflow-x-auto">
                             <button
                                 onClick={() => setActiveTab('EXPENSE')}
-                                className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'EXPENSE' ? 'text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                className={`px-6 py-3.5 font-black text-xs uppercase tracking-[0.16em] transition-all relative cursor-pointer ${activeTab === 'EXPENSE' ? 'text-blue-600 bg-white' : 'text-slate-400 hover:text-slate-700'}`}
                             >
-                                {activeTab === 'EXPENSE' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-blue-600" />}
+                                {activeTab === 'EXPENSE' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600" />}
                                 <div className="flex items-center gap-2">
-                                    <ArrowUpCircle size={16} />
+                                    <ArrowUpCircle size={15} />
                                     Input Anggaran
                                 </div>
                             </button>
                             {isSuperAdmin && (
                                 <button
                                     onClick={() => setActiveTab('REVIEW')}
-                                    className={`px-10 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'REVIEW' ? 'text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-6 py-3.5 font-black text-xs uppercase tracking-[0.16em] transition-all relative cursor-pointer ${activeTab === 'REVIEW' ? 'text-indigo-600 bg-white' : 'text-slate-400 hover:text-slate-700'}`}
                                 >
-                                    {activeTab === 'REVIEW' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-indigo-600" />}
+                                    {activeTab === 'REVIEW' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-indigo-600" />}
                                     <div className="flex items-center gap-2">
-                                        <Wallet size={16} />
+                                        <Wallet size={15} />
                                         <span>Review Pengajuan</span>
                                         {pendingPlans.length > 0 && (
-                                            <span className="bg-indigo-600 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-indigo-500/50">
+                                            <span className="bg-indigo-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-xs">
                                                 {pendingPlans.length}
                                             </span>
                                         )}
@@ -6479,14 +6596,14 @@ function RABContent() {
                             {isSarprasAdmin && (
                                 <button
                                     onClick={() => setActiveTab('SARPRAS_ASSETS')}
-                                    className={`px-8 py-6 font-black text-xs uppercase tracking-[0.2em] transition-all relative ${activeTab === 'SARPRAS_ASSETS' ? 'text-amber-600' : 'text-slate-400 hover:text-slate-600'}`}
+                                    className={`px-6 py-3.5 font-black text-xs uppercase tracking-[0.16em] transition-all relative cursor-pointer ${activeTab === 'SARPRAS_ASSETS' ? 'text-amber-600 bg-white' : 'text-slate-400 hover:text-slate-700'}`}
                                 >
-                                    {activeTab === 'SARPRAS_ASSETS' && <div className="absolute bottom-0 left-0 right-0 h-1 bg-amber-600" />}
+                                    {activeTab === 'SARPRAS_ASSETS' && <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-amber-600" />}
                                     <div className="flex items-center gap-2">
-                                        <Package size={16} />
+                                        <Package size={15} />
                                         <span>Verifikasi Aset Unit</span>
                                         {pendingSarprasCount > 0 && (
-                                            <span className="bg-amber-500 text-white text-[10px] px-2.5 py-0.5 rounded-full font-black animate-pulse shadow-sm shadow-amber-500/50">
+                                            <span className="bg-amber-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black animate-pulse shadow-xs">
                                                 {pendingSarprasCount}
                                             </span>
                                         )}
@@ -6496,7 +6613,7 @@ function RABContent() {
                         </div>
 
                         {/* Content Area */}
-                        <div className="flex-1 p-8 lg:p-12">
+                        <div className="flex-1 p-5 lg:p-6">
                             {activeTab === 'SARPRAS_ASSETS' ? (
                                 renderSarprasAssetVerificationView()
                             ) : activeTab === 'REVIEW' ? (
@@ -6511,25 +6628,25 @@ function RABContent() {
 
             {/* Float Info Box */}
             {message && (
-                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-10 duration-500 z-[2000] ${message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
+                <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 px-6 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3.5 animate-in slide-in-from-bottom-10 duration-300 z-[2000] ${message.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-rose-600 text-white'
                     }`}>
                     <div className="p-2 bg-white/20 rounded-xl">
-                        {message.type === 'success' ? <ShieldCheck size={20} /> : <AlertCircle size={20} />}
+                        {message.type === 'success' ? <ShieldCheck size={18} /> : <AlertCircle size={18} />}
                     </div>
                     <div>
-                        <p className="font-black text-sm tracking-tight">{message.text}</p>
+                        <p className="font-black text-xs sm:text-sm tracking-tight">{message.text}</p>
                     </div>
-                    <button onClick={() => setMessage(null)} className="ml-4 p-1 hover:bg-white/10 rounded-lg transition-colors">
-                        <ChevronRight size={18} />
+                    <button onClick={() => setMessage(null)} className="ml-2 p-1 hover:bg-white/10 rounded-lg transition-colors">
+                        <X size={16} />
                     </button>
                 </div>
             )}
 
             {/* Detail Modal */}
             {editingItem && (
-                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-4">
-                    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setEditingItem(null)} />
-                    <div className="bg-white rounded-[3.5rem] w-full max-w-[95vw] relative z-10 shadow-2xl overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[95vh] ring-12 ring-white/10">
+                <div className="fixed inset-0 z-[4000] flex items-center justify-center p-3 sm:p-4">
+                    <div className="fixed inset-0 bg-slate-900/55 backdrop-blur-xs" onClick={() => setEditingItem(null)} />
+                    <div className="bg-white rounded-3xl w-full max-w-[94vw] xl:max-w-[1320px] relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[94vh] border border-slate-200/80">
                         {(() => {
                             const type = activeTab === 'INCOME' ? 'income' : 'expense';
                             const itemId = editingItem.itemId || editingItem.id;
@@ -6588,16 +6705,16 @@ function RABContent() {
                             return (
                                 <>
                                     {/* Modal Header */}
-                                    <div className="p-8 lg:p-10 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-                                        <div>
-                                            <h2 className="text-2xl font-black text-slate-900 tracking-tight italic uppercase">{editingItem.name}</h2>
-                                            <p className="text-xs font-black text-slate-400 uppercase tracking-widest mt-1">
+                                    <div className="px-6 py-4 border-b border-slate-200/80 flex items-center justify-between bg-slate-50/90 gap-4">
+                                        <div className="min-w-0">
+                                            <h2 className="text-xl font-black text-slate-900 tracking-tight italic uppercase truncate">{editingItem.name}</h2>
+                                            <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5 truncate">
                                                 {editingItem.isNewPlan ? 'RENCANA BARU • ' : `ID: ${item.id} • `}
                                                 TA {academicYears.find(ay => ay.id === selectedYearId)?.name}
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center gap-4">
+                                        <div className="flex items-center gap-3 shrink-0">
                                             {(() => {
                                                 const detail = item;
                                                 const itemCatalog = activeTab === 'INCOME' ? (incomeItems || []) : (expenseItems || []);
@@ -6625,12 +6742,12 @@ function RABContent() {
                                                     // tampilkan sebagai Pergeseran Anggaran (bukan bouncing merah error).
                                                     if (balance >= -100) {
                                                         return (
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
+                                                            <div className="flex items-center gap-2.5">
+                                                                <div className="px-4 py-2 bg-white border border-slate-200 rounded-xl flex flex-col items-end">
                                                                     <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{limitLabel}</span>
                                                                     <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
                                                                 </div>
-                                                                <div className="px-5 py-2.5 bg-amber-50 border border-amber-300 rounded-2xl flex flex-col items-end shadow-xs">
+                                                                <div className="px-4 py-2 bg-amber-50 border border-amber-300 rounded-xl flex flex-col items-end shadow-xs">
                                                                     <span className="text-[9px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
                                                                         <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
                                                                         🔄 Pergeseran: +{formatRupiah(Math.abs(remainingLimit))}
@@ -6644,26 +6761,26 @@ function RABContent() {
                                                     }
 
                                                     return (
-                                                        <div className="flex items-center gap-3">
-                                                            <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
+                                                        <div className="flex items-center gap-2.5">
+                                                            <div className="px-4 py-2 bg-white border border-slate-200 rounded-xl flex flex-col items-end">
                                                                 <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{limitLabel}</span>
                                                                 <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
                                                             </div>
-                                                            <div className="px-6 py-2.5 bg-rose-50 border-2 border-rose-200 rounded-2xl flex items-center gap-3 text-rose-600 font-black text-xs animate-bounce">
-                                                                <AlertCircle size={18} />
+                                                            <div className="px-4 py-2 bg-rose-50 border border-rose-200 rounded-xl flex items-center gap-2 text-rose-600 font-black text-xs animate-pulse">
+                                                                <AlertCircle size={16} />
                                                                 TOTAL UNIT MELEBIHI LIMIT! (Defisit: {formatRupiah(Math.abs(balance))})
                                                             </div>
                                                         </div>
                                                     );
                                                 }
                                                 return (
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="px-5 py-2.5 bg-slate-100 border border-slate-200 rounded-2xl flex flex-col items-end">
+                                                    <div className="flex items-center gap-2.5">
+                                                        <div className="px-4 py-2 bg-white border border-slate-200 rounded-xl flex flex-col items-end">
                                                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{limitLabel}</span>
                                                             <span className="text-sm font-black text-slate-800">{formatRupiah(allocated)}</span>
                                                         </div>
-                                                        <div className="px-6 py-2.5 bg-blue-50 border border-blue-100 rounded-2xl flex flex-col items-end">
-                                                            <span className="text-[9px] font-black text-blue-400 uppercase tracking-widest">{sisaLabel}</span>
+                                                        <div className="px-4 py-2 bg-blue-50 border border-blue-200 rounded-xl flex flex-col items-end">
+                                                            <span className="text-[9px] font-black text-blue-500 uppercase tracking-widest">{sisaLabel}</span>
                                                             <span className="text-sm font-black text-blue-700">{formatRupiah(remainingLimit)}</span>
                                                         </div>
                                                     </div>
@@ -6671,14 +6788,15 @@ function RABContent() {
                                             })()}
                                             <button
                                                 onClick={() => setEditingItem(null)}
-                                                className="p-4 hover:bg-slate-200 rounded-2xl text-slate-400 transition-colors"
+                                                className="p-2 hover:bg-slate-200/80 rounded-xl text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                                                title="Tutup (Esc)"
                                             >
-                                                <XCircle size={24} />
+                                                <XCircle size={22} />
                                             </button>
                                         </div>
                                     </div>
 
-                                    <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8 bg-slate-50/20">
+                                    <div className="flex-1 overflow-y-auto p-5 lg:p-6 space-y-5 bg-slate-50/30">
                                         {/* Status Lock/Unlock Banner */}
                                         {(() => {
                                             const isLockedItem = editingItem.canEdit === false && !editingItem.isUnlocked;
@@ -6906,16 +7024,16 @@ function RABContent() {
                                                                             const compOldTotal = comp.oldTotal !== undefined ? comp.oldTotal : (isCompModified ? 1500000 : undefined);
 
                                                                             return (
-                                                                                <div key={idx} className={`flex flex-col md:flex-row md:items-center justify-between p-6 rounded-[2rem] border transition-all ${
+                                                                                <div key={idx} className={`flex flex-col md:flex-row md:items-center justify-between p-4 lg:p-5 rounded-2xl border transition-all ${
                                                                                     isCompModified 
-                                                                                        ? 'bg-amber-50/70 border-amber-300 shadow-md ring-1 ring-amber-300/60' 
-                                                                                        : 'bg-white border-slate-100 shadow-sm hover:shadow-md'
+                                                                                        ? 'bg-amber-50/70 border-amber-300 shadow-sm ring-1 ring-amber-300/60' 
+                                                                                        : 'bg-white border-slate-200/70 shadow-xs hover:shadow-md'
                                                                                 }`}>
-                                                                                    <div className="flex-1">
-                                                                                        <div className="flex items-center gap-2 flex-wrap mb-2">
-                                                                                            <h4 className="font-black text-slate-800 text-base">{comp.label}</h4>
+                                                                                    <div className="flex-1 min-w-0">
+                                                                                        <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                                                                                            <h4 className="font-black text-slate-800 text-sm lg:text-base">{comp.label}</h4>
                                                                                             {isCompModified && (
-                                                                                                <span className="text-[9px] font-black text-white bg-amber-500 px-2.5 py-0.5 rounded-full uppercase tracking-wider shadow-xs animate-pulse">
+                                                                                                <span className="text-[10px] font-black text-amber-900 bg-amber-100 border border-amber-300 px-2.5 py-0.5 rounded-lg uppercase tracking-wider">
                                                                                                     🔄 Usulan Perubahan ({compOldTotal ? `${formatRupiah(compOldTotal)} ➔ ` : ''}{formatRupiah(compTotal)})
                                                                                                 </span>
                                                                                             )}
@@ -6965,9 +7083,17 @@ function RABContent() {
                                                                                                             {comp.sarprasStatus !== 'REJECTED' && (
                                                                                                                 <button
                                                                                                                     type="button"
-                                                                                                                    onClick={(e) => {
+                                                                                                                    onClick={async (e) => {
                                                                                                                         e.stopPropagation();
-                                                                                                                        const reason = window.prompt('Masukkan catatan penolakan / revisi Sarpras:', comp.sarprasNotes || '');
+                                                                                                                        const reason = await requestConfirm({
+                                                                                                                            title: 'Catatan Penolakan / Revisi Sarpras',
+                                                                                                                            message: 'Masukkan catatan penolakan atau arahan revisi untuk pengadaan aset ini:',
+                                                                                                                            withInput: true,
+                                                                                                                            defaultInputValue: comp.sarprasNotes || '',
+                                                                                                                            inputPlaceholder: 'Contoh: Spesifikasi belum sesuai standar atau mohon lengkapi penawaran...',
+                                                                                                                            variant: 'danger',
+                                                                                                                            confirmText: 'Simpan Catatan'
+                                                                                                                        });
                                                                                                                         if (reason !== null) {
                                                                                                                             handleSarprasApproveComponent(itemId, item.id, idx, 'REJECTED', reason);
                                                                                                                         }
@@ -7183,8 +7309,8 @@ function RABContent() {
                                     </div>
 
                                     {/* Modal Footer */}
-                                    <div className="p-10 border-t border-slate-100 bg-white flex items-center justify-between">
-                                        <button onClick={() => setEditingItem(null)} className="px-10 py-5 bg-slate-100 text-slate-500 rounded-[2rem] font-black text-xs uppercase hover:bg-slate-200 transition-all">TUTUP</button>
+                                    <div className="px-6 py-4 border-t border-slate-200/80 bg-white flex items-center justify-between gap-3">
+                                        <button onClick={() => setEditingItem(null)} className="px-6 py-2.5 bg-slate-100 text-slate-600 rounded-xl font-black text-xs uppercase hover:bg-slate-200 transition-all cursor-pointer">TUTUP</button>
                                         {(() => {
                                             const canSave = item.total > 0 && (editingItem.canEdit !== false || isSuperAdmin);
                                             return (
@@ -7228,9 +7354,9 @@ function RABContent() {
 
                                                         await persistPlanToServer(dbPlan);
                                                     }}
-                                                    className={`px-12 py-5 rounded-[2rem] font-black text-xs uppercase tracking-widest shadow-2xl transition-all active:scale-95 flex items-center gap-3 ${canSave ? 'bg-blue-600 text-white hover:bg-slate-900 shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                                                    className={`px-7 py-2.5 rounded-xl font-black text-xs uppercase tracking-widest shadow-md transition-all active:scale-95 flex items-center gap-2 cursor-pointer ${canSave ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                                                 >
-                                                    <Save size={18} />
+                                                    <Save size={16} />
                                                     SIMPAN RENCANA BELANJA
                                                 </button>
                                             );
@@ -7239,17 +7365,17 @@ function RABContent() {
 
                                     {/* Sub-Modal (Rincian Entry) */}
                                     {showCompModal && (
-                                         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-6 animate-in fade-in duration-200">
-                                            <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setShowCompModal(false)} />
-                                            <div className="bg-white rounded-[3rem] w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in zoom-in slide-in-from-bottom-8 duration-300 flex flex-col ring-8 ring-white/10 max-h-[85vh]">
-                                                <div className="bg-slate-900 p-8 text-white flex items-center justify-between">
+                                         <div className="fixed inset-0 z-[5000] flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
+                                            <div className="fixed inset-0 bg-slate-900/45 backdrop-blur-xs" onClick={() => setShowCompModal(false)} />
+                                            <div className="bg-white rounded-3xl w-full max-w-5xl relative z-10 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150 flex flex-col border border-slate-200/80 max-h-[88vh]">
+                                                <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
                                                     <div>
-                                                        <h3 className="text-xl font-black italic uppercase tracking-tight">{isReadOnlyComp ? 'Lihat Rincian' : 'Detail Rincian'}</h3>
-                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                                        <h3 className="text-lg font-black italic uppercase tracking-tight">{isReadOnlyComp ? 'Lihat Rincian' : 'Detail Rincian'}</h3>
+                                                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
                                                             {isReadOnlyComp ? 'Rincian Telah Disetujui/Mengantre' : (editingCompIdx !== null ? 'Perbarui Rincian' : 'Tambah Rincian Baru')}
                                                         </p>
                                                     </div>
-                                                    <button onClick={() => setShowCompModal(false)} className="p-3 bg-white/10 hover:bg-white/20 rounded-2xl transition-all"><X size={20} /></button>
+                                                    <button onClick={() => setShowCompModal(false)} className="p-2 bg-white/10 hover:bg-white/20 rounded-xl transition-all cursor-pointer" title="Tutup (Esc)"><X size={18} /></button>
                                                 </div>
 
                                                 <div className="flex-1 overflow-y-auto p-8 lg:p-10 space-y-8">
@@ -7815,8 +7941,20 @@ function RABContent() {
                 </div>
             )}
 
-            /* Semester modal removed - integrated directly into main table */
-            </div>
+            <ConfirmDialog
+                isOpen={!!confirmModal}
+                title={confirmModal?.title}
+                message={confirmModal?.message}
+                confirmText={confirmModal?.confirmText}
+                cancelText={confirmModal?.cancelText}
+                variant={confirmModal?.variant}
+                withInput={confirmModal?.withInput}
+                defaultInputValue={confirmModal?.defaultInputValue}
+                inputPlaceholder={confirmModal?.inputPlaceholder}
+                onConfirm={(val) => handleConfirmResolve(val)}
+                onCancel={() => handleConfirmResolve(confirmModal?.withInput ? null : false)}
+            />
+        </div>
     );
 }
 

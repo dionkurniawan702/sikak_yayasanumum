@@ -81,29 +81,33 @@ export default function BudgetRow({
                                 <div className="flex flex-col min-w-0">
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-black text-slate-800 tracking-tight text-sm truncate">{data.name}</span>
-                                        {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase border shadow-2xs whitespace-nowrap ${
-                                                data.totalNetChange > 0 
-                                                    ? 'bg-amber-500 text-white border-amber-600' 
-                                                    : 'bg-emerald-600 text-white border-emerald-700'
-                                            }`}>
-                                                <span>Revisi:</span>
-                                                <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
-                                            </span>
-                                        )}
-                                        {hasUnbalancedComponents && (
-                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-1.5 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
-                                                <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
-                                            </span>
-                                        )}
                                     </div>
-                                    {data.status && (
-                                        <span className={`w-fit px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest mt-1 whitespace-nowrap ${
-                                            data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                            (data.status === 'PENDING' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-slate-100 text-slate-500 border border-slate-200')
-                                        }`}>
-                                            {data.status === 'APPROVED' ? '● Disetujui' : (data.status === 'PENDING' ? '● Menunggu Review' : '● Draft')}
-                                        </span>
+                                    {(data.status || (data.totalNetChange !== undefined && data.totalNetChange !== 0) || hasUnbalancedComponents) && (
+                                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                            {data.status && (
+                                                <span className={`w-fit px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${
+                                                    data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70' :
+                                                    (data.status === 'PENDING' ? 'bg-amber-50 text-amber-700 border border-amber-200/70' : 'bg-slate-100 text-slate-500 border border-slate-200')
+                                                }`}>
+                                                    {data.status === 'APPROVED' ? '● Disetujui' : (data.status === 'PENDING' ? '● Menunggu Review' : '● Draft')}
+                                                </span>
+                                            )}
+                                            {data.totalNetChange !== undefined && data.totalNetChange !== 0 && (
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black tracking-wide uppercase border whitespace-nowrap ${
+                                                    data.totalNetChange > 0 
+                                                        ? 'bg-amber-50 text-amber-800 border-amber-300' 
+                                                        : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                                }`}>
+                                                    <span>Revisi:</span>
+                                                    <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
+                                                </span>
+                                            )}
+                                            {hasUnbalancedComponents && (
+                                                <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                                    <AlertCircle size={10} strokeWidth={2.5} /> Belum Seimbang
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
                             </div>
@@ -185,40 +189,44 @@ export default function BudgetRow({
                                     <div className="flex items-center gap-2 flex-wrap">
                                         <span className="font-black text-slate-800 tracking-tight text-sm">{data.name}</span>
                                         {data.typeLabel && (
-                                            <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200 uppercase tracking-wider whitespace-nowrap">
+                                            <span className="text-[9px] font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200 uppercase tracking-wider whitespace-nowrap">
                                                 {data.typeLabel.replace(/\s*\(USULAN REVISI\)/i, '')}
                                             </span>
                                         )}
-                                        {data.totalNetChange !== undefined && data.totalNetChange !== 0 ? (
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase border shadow-2xs whitespace-nowrap ${
-                                                data.totalNetChange > 0 
-                                                    ? 'bg-amber-500 text-white border-amber-600' 
-                                                    : 'bg-emerald-600 text-white border-emerald-700'
-                                            }`}>
-                                                <span>Revisi:</span>
-                                                <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
-                                            </span>
-                                        ) : (
-                                            data.typeLabel?.includes('USULAN REVISI') && (
-                                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-black tracking-wide uppercase bg-amber-100 text-amber-900 border border-amber-200 whitespace-nowrap">
-                                                    Revisi
-                                                </span>
-                                            )
-                                        )}
-                                        {data.status && (
-                                            <span className={`w-fit px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest whitespace-nowrap ${
-                                                data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
-                                                (data.status === 'PENDING' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-slate-50 text-slate-400 border border-slate-200')
-                                            }`}>
-                                                {data.status === 'APPROVED' ? '● Disetujui' : (data.status === 'PENDING' ? '● Menunggu Review' : '● Draft')}
-                                            </span>
-                                        )}
-                                        {hasUnbalancedComponents && (
-                                            <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-widest animate-pulse whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
-                                                <AlertCircle size={9} strokeWidth={3} /> Belum Seimbang
-                                            </span>
-                                        )}
                                     </div>
+                                    {(data.status || (data.totalNetChange !== undefined && data.totalNetChange !== 0) || data.typeLabel?.includes('USULAN REVISI') || hasUnbalancedComponents) && (
+                                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                                            {data.status && (
+                                                <span className={`w-fit px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap ${
+                                                    data.status === 'APPROVED' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/70' :
+                                                    (data.status === 'PENDING' ? 'bg-rose-50 text-rose-700 border border-rose-200/70' : 'bg-slate-100 text-slate-500 border border-slate-200')
+                                                }`}>
+                                                    {data.status === 'APPROVED' ? '● Disetujui' : (data.status === 'PENDING' ? '● Menunggu Review' : '● Draft')}
+                                                </span>
+                                            )}
+                                            {data.totalNetChange !== undefined && data.totalNetChange !== 0 ? (
+                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black tracking-wide uppercase border whitespace-nowrap ${
+                                                    data.totalNetChange > 0 
+                                                        ? 'bg-amber-50 text-amber-800 border-amber-300' 
+                                                        : 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                                }`}>
+                                                    <span>Revisi:</span>
+                                                    <span>{data.totalNetChange > 0 ? `+${formatCurrency(data.totalNetChange)}` : `-${formatCurrency(Math.abs(data.totalNetChange))}`}</span>
+                                                </span>
+                                            ) : (
+                                                data.typeLabel?.includes('USULAN REVISI') && (
+                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] font-black tracking-wide uppercase bg-amber-50 text-amber-900 border border-amber-200 whitespace-nowrap">
+                                                        Revisi
+                                                    </span>
+                                                )
+                                            )}
+                                            {hasUnbalancedComponents && (
+                                                <span className="inline-flex items-center gap-1 bg-rose-50 border border-rose-200 text-rose-600 px-2 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider whitespace-nowrap" title="Ada rincian yang alokasi bulanan-nya belum seimbang!">
+                                                    <AlertCircle size={10} strokeWidth={2.5} /> Belum Seimbang
+                                                </span>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </td>

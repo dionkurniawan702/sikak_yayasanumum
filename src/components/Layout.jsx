@@ -9,6 +9,25 @@ export default function Layout() {
     const { state } = useApp();
     const navigate = useNavigate();
     const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        try {
+            return localStorage.getItem('sikad_sidebar_collapsed') === 'true';
+        } catch {
+            return false;
+        }
+    });
+
+    const toggleSidebarCollapse = () => {
+        setIsSidebarCollapsed(prev => {
+            const next = !prev;
+            try {
+                localStorage.setItem('sikad_sidebar_collapsed', String(next));
+            } catch {
+                // ignore storage errors
+            }
+            return next;
+        });
+    };
 
     useEffect(() => {
         if (!state.currentUser) {
@@ -31,9 +50,14 @@ export default function Layout() {
                 />
             )}
 
-            <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+            <Sidebar
+                isOpen={isSidebarOpen}
+                onClose={() => setIsSidebarOpen(false)}
+                isCollapsed={isSidebarCollapsed}
+                onToggleCollapse={toggleSidebarCollapse}
+            />
 
-            <main className="main-content flex-1 w-full lg:ml-72 transition-all duration-300 pt-16 lg:pt-0">
+            <main className={`main-content flex-1 min-w-0 w-full ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-72'} transition-all duration-300 pt-16 lg:pt-0`}>
                 <div className="show-on-mobile fixed top-4 left-4 z-[1001] lg:hidden">
                     <button
                         className="mobile-nav-toggle p-2 bg-white rounded-lg shadow-md border border-slate-200"
