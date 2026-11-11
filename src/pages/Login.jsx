@@ -126,21 +126,23 @@ export default function Login() {
     };
 
     return (
-        <div className="login-container min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-gradient-to-br from-[#081C14] via-[#0C281D] to-[#06160F]">
-            {/* Ambient Emerald & Soft Gold Glows */}
-            <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#157A52]/20 blur-3xl" />
-            <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#C28D38]/12 blur-3xl" />
+        <div className="login-container min-h-screen w-full flex flex-col items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-gradient-to-br from-[#08241C] via-[#0A293A] to-[#071830]">
+            {/* Ambient Emerald, Cobalt Blue & Soft Gold Glows */}
+            <div className="pointer-events-none absolute -top-24 -left-24 w-96 h-96 rounded-full bg-[#157A52]/24 blur-3xl" />
+            <div className="pointer-events-none absolute -top-20 -right-20 w-80 h-80 rounded-full bg-[#2563EB]/18 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -right-24 w-96 h-96 rounded-full bg-[#1D4ED8]/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 left-12 w-72 h-72 rounded-full bg-[#C28D38]/10 blur-3xl" />
 
             {/* Main Diagonal Split-Blade Card */}
-            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-[#0B281B] shadow-[0_28px_90px_-12px_rgba(2,10,6,0.68)] relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
-                {/* Sliding Ivory Cream Backdrop (Desktop Only: keeps opposite curved corners pure dark emerald with zero white edge bleed) */}
+            <div className="w-full max-w-[840px] md:min-h-[500px] rounded-[28px] bg-gradient-to-br from-[#0F4938] via-[#0E3A4D] to-[#0B2342] shadow-[0_28px_90px_-12px_rgba(3,10,24,0.72)] relative overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col md:block">
+                {/* Sliding Ivory Cream Backdrop (Desktop Only: keeps opposite curved corners matching dark blade with zero white edge bleed) */}
                 <div
                     className="hidden md:block absolute top-0 bottom-0 w-[55%] z-0 bg-[#FCF9F1] transition-all duration-700 ease-in-out"
                     style={{ left: activeView === 'login' ? '0%' : '45%' }}
                 />
 
-                {/* Mobile Top Emerald Header Banner */}
-                <div className="md:hidden bg-gradient-to-br from-[#103827] via-[#0B281B] to-[#071A12] px-7 pt-7 pb-10 text-white relative">
+                {/* Mobile Top Emerald-to-Blue Header Banner */}
+                <div className="md:hidden bg-gradient-to-br from-[#0F4938] via-[#0E3A4D] to-[#0B2342] px-7 pt-7 pb-10 text-white relative">
                     <p className="text-[10px] font-bold tracking-[0.26em] uppercase text-[#DFB262]">SIKAD DARELIMAN</p>
                     <h1
                         className="mt-2 text-left text-4xl sm:text-[42px] text-[#FAF6EC] leading-[1.12] tracking-normal font-normal drop-shadow-sm"
@@ -148,7 +150,7 @@ export default function Login() {
                     >
                         Ahlan wa sahlan.
                     </h1>
-                    <p className="text-xs text-emerald-100/75 mt-2.5 leading-relaxed">
+                    <p className="text-xs text-sky-100/80 mt-2.5 leading-relaxed">
                         Sistem Keuangan Dareliman berbasis PSAK 35.
                     </p>
                 </div>
@@ -164,10 +166,10 @@ export default function Login() {
                         }`}
                     >
                         <div className="mb-7">
-                            <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#13261E] tracking-tight leading-none">
+                            <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#102937] tracking-tight leading-none">
                                 Masuk
                             </h2>
-                            <div className="w-9 h-[2.5px] bg-[#C28D38] rounded-full mt-2" />
+                            <div className="w-10 h-[2.5px] bg-gradient-to-r from-[#157A52] via-[#136690] to-[#C28D38] rounded-full mt-2" />
                         </div>
 
                         {error && (
@@ -194,7 +196,7 @@ export default function Login() {
                                         placeholder="Username"
                                         value={username}
                                         onChange={(e) => setUsername(e.target.value)}
-                                        className="login-underline-input w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
+                                        className="login-underline-input w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#135E7A] py-2.5 pr-8 text-sm font-medium text-[#102937] placeholder-[#8E8B80] outline-none transition-colors"
                                         required
                                     />
                                     <UserIcon
@@ -213,7 +215,7 @@ export default function Login() {
                                         placeholder="Password"
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="login-underline-input w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#103D2A] py-2.5 pr-8 text-sm font-medium text-[#13261E] placeholder-[#8E8B80] outline-none transition-colors"
+                                        className="login-underline-input w-full bg-transparent border-0 border-b border-[#D6D0C2] focus:border-[#135E7A] py-2.5 pr-8 text-sm font-medium text-[#102937] placeholder-[#8E8B80] outline-none transition-colors"
                                         required
                                     />
                                     <button
@@ -237,7 +239,7 @@ export default function Login() {
                                         onClick={() => setRememberUsername(prev => !prev)}
                                         className={`w-4 h-4 rounded-[4px] flex items-center justify-center border transition-all cursor-pointer ${
                                             rememberUsername
-                                                ? 'bg-[#103D2A] border-[#103D2A] text-white'
+                                                ? 'bg-gradient-to-br from-[#157A52] to-[#1B4E8C] border-[#135E7A] text-white'
                                                 : 'bg-white border-[#C9C2B2]'
                                         }`}
                                     >
@@ -260,7 +262,7 @@ export default function Login() {
                                 <button
                                     type="submit"
                                     disabled={isSubmitting}
-                                    className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0A291C] via-[#103D2A] to-[#15573B] hover:from-[#0E3625] hover:to-[#196A47] text-white text-sm font-bold tracking-wide shadow-[0_12px_28px_-6px_rgba(11,45,31,0.48)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
+                                    className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0F523B] via-[#135E6B] to-[#1B4982] hover:from-[#13664A] hover:via-[#177080] hover:to-[#22589B] text-white text-sm font-bold tracking-wide shadow-[0_12px_28px_-6px_rgba(17,78,108,0.48)] active:scale-[0.98] transition-all cursor-pointer disabled:opacity-60"
                                 >
                                     {isSubmitting ? 'Memproses...' : 'Masuk Sekarang'}
                                 </button>
@@ -273,7 +275,7 @@ export default function Login() {
                             <button
                                 type="button"
                                 onClick={() => setActiveView('help')}
-                                className="font-bold text-[#13261E] underline decoration-[#C28D38] decoration-2 underline-offset-4 hover:text-[#157A52] transition-colors cursor-pointer"
+                                className="font-bold text-[#102937] underline decoration-[#C28D38] decoration-2 underline-offset-4 hover:text-[#14658E] transition-colors cursor-pointer"
                             >
                                 Panduan &amp; Kontak Admin
                             </button>
@@ -305,10 +307,10 @@ export default function Login() {
                         }`}
                     >
                         <div className="mb-6">
-                            <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#13261E] tracking-tight leading-none">
+                            <h2 className="text-2xl sm:text-[26px] font-extrabold text-[#102937] tracking-tight leading-none">
                                 Bantuan Akses
                             </h2>
-                            <div className="w-9 h-[2.5px] bg-[#C28D38] rounded-full mt-2" />
+                            <div className="w-10 h-[2.5px] bg-gradient-to-r from-[#157A52] via-[#136690] to-[#C28D38] rounded-full mt-2" />
                         </div>
 
                         <div className="space-y-4 text-xs text-[#3D4B43] leading-relaxed">
@@ -317,7 +319,7 @@ export default function Login() {
                                     <ShieldCheck size={16} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-[#13261E] mb-0.5">Pembuatan &amp; Reset Akun</p>
+                                    <p className="font-bold text-[#102937] mb-0.5">Pembuatan &amp; Reset Akun</p>
                                     <p className="text-[#5C665E]">
                                         Akun unit pendidikan &amp; bidang dikelola terpusat oleh Super Administrator Keuangan Yayasan Dareliman untuk menjaga integritas data PSAK 35.
                                     </p>
@@ -325,11 +327,11 @@ export default function Login() {
                             </div>
 
                             <div className="p-4 rounded-2xl bg-white border border-[#E5DEC9] shadow-2xs flex items-start gap-3">
-                                <div className="w-8 h-8 rounded-xl bg-[#FDF6E4] text-[#B07D2B] flex items-center justify-center shrink-0">
+                                <div className="w-8 h-8 rounded-xl bg-[#E8F2FC] text-[#1D5EA8] flex items-center justify-center shrink-0">
                                     <HelpCircle size={16} />
                                 </div>
                                 <div>
-                                    <p className="font-bold text-[#13261E] mb-0.5">Lupa Username / Password?</p>
+                                    <p className="font-bold text-[#102937] mb-0.5">Lupa Username / Password?</p>
                                     <p className="text-[#5C665E]">
                                         Silakan hubungi bagian <strong>Keuangan Yayasan Dareliman (Superadmin)</strong> untuk melakukan reset kata sandi sementara atau aktivasi unit baru.
                                     </p>
@@ -341,7 +343,7 @@ export default function Login() {
                             <button
                                 type="button"
                                 onClick={() => setActiveView('login')}
-                                className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0A291C] via-[#103D2A] to-[#15573B] hover:from-[#0E3625] hover:to-[#196A47] text-white text-sm font-bold tracking-wide shadow-[0_12px_28px_-6px_rgba(11,45,31,0.48)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                className="w-full py-3.5 rounded-full bg-gradient-to-r from-[#0F523B] via-[#135E6B] to-[#1B4982] hover:from-[#13664A] hover:via-[#177080] hover:to-[#22589B] text-white text-sm font-bold tracking-wide shadow-[0_12px_28px_-6px_rgba(17,78,108,0.48)] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer"
                             >
                                 <ArrowLeft size={16} />
                                 Kembali ke Login
@@ -350,9 +352,9 @@ export default function Login() {
                     </div>
                 </div>
 
-                {/* ANIMATED DIAGONAL EMERALD BLADE (Desktop Only) */}
+                {/* ANIMATED DIAGONAL EMERALD-TO-BLUE BLADE (Desktop Only) */}
                 <div
-                    className="hidden md:flex flex-col justify-center absolute -top-px -bottom-px w-[55%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#103827] via-[#0B281B] to-[#071A12] text-white"
+                    className="hidden md:flex flex-col justify-center absolute -top-px -bottom-px w-[55%] z-20 transition-all duration-700 ease-in-out overflow-hidden bg-gradient-to-br from-[#0F4938] via-[#0E3A4D] to-[#0B2342] text-white"
                     style={{
                         left: activeView === 'login' ? '45.5%' : '-0.5%',
                         clipPath:
@@ -363,9 +365,10 @@ export default function Login() {
                         paddingRight: activeView === 'login' ? '2.5rem' : '4.5rem'
                     }}
                 >
-                    {/* Subtle Soft Gold Diagonal Edge Aura */}
-                    <div className="pointer-events-none -top-12 -right-12 absolute w-56 h-56 rounded-full bg-[#1F8A5E]/20 blur-3xl" />
-                    <div className="pointer-events-none -bottom-16 left-8 w-52 h-52 absolute rounded-full bg-[#D49B27]/15 blur-3xl" />
+                    {/* Subtle Cobalt Blue, Emerald & Soft Gold Diagonal Edge Aura */}
+                    <div className="pointer-events-none -top-12 -right-12 absolute w-56 h-56 rounded-full bg-[#38BDF8]/18 blur-3xl" />
+                    <div className="pointer-events-none -bottom-16 left-8 w-56 h-56 absolute rounded-full bg-[#10B981]/20 blur-3xl" />
+                    <div className="pointer-events-none top-1/2 -left-10 w-40 h-40 absolute rounded-full bg-[#D49B27]/10 blur-3xl" />
 
                     <div className="relative z-10 max-w-[320px]">
                         <p className="text-[10px] font-bold tracking-[0.28em] uppercase text-[#DFB262]">
@@ -389,7 +392,7 @@ export default function Login() {
                             )}
                         </h1>
 
-                        <p className="text-xs leading-relaxed text-emerald-100/75 mt-4 font-normal">
+                        <p className="text-xs leading-relaxed text-sky-100/80 mt-4 font-normal">
                             {activeView === 'login'
                                 ? 'Sistem Keuangan Yayasan Dareliman berbasis PSAK 35 — pantau RAP, realisasi RAB, dan laporan secara terintegrasi.'
                                 : 'Setiap pengajuan akun & pembaruan kata sandi diverifikasi langsung oleh Superadmin untuk keamanan data keuangan yayasan.'}
@@ -406,7 +409,7 @@ export default function Login() {
                                                 : 'bg-amber-300 animate-pulse'
                                     }`}
                                 />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-100/80">
+                                <span className="text-[10px] font-bold uppercase tracking-widest text-sky-100/85">
                                     Server: {serverStatus === 'online' ? 'Tersambung' : serverStatus === 'offline' ? 'Terputus' : 'Mengecek...'}
                                 </span>
                             </div>
@@ -416,7 +419,7 @@ export default function Login() {
             </div>
 
             {/* Subtle Footer Caption Below Card */}
-            <p className="mt-6 text-[11px] text-emerald-100/45 text-center tracking-wide">
+            <p className="mt-6 text-[11px] text-sky-100/50 text-center tracking-wide">
                 &copy; 2026 SIKAD Dareliman — Sistem Keuangan Yayasan Terintegrasi (PSAK 35)
             </p>
         </div>
